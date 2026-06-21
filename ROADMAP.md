@@ -20,16 +20,17 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.1.0)
+## Current status (v0.2.0)
 
-Design baseline. The Milestone-1 contracts are drafted, and the RFC 014
-reconciliation plus the cross-document cleanup are complete.
+Design baseline. The Milestone-1 contracts are drafted; the RFC 014
+reconciliation and cross-document cleanup are complete; and the RFC 001
+`OrderedScalar` scalar-tier split is resolved (the scalar model is now six tiers,
+with ordering / `min` / `max` / `clamp` on a dedicated `OrderedScalar`).
 
 ### Open design rounds (precede implementation)
 
-1. RFC 001 — `OrderedScalar` scalar-tier split.
-2. RFC 006 — box/bound-constrained first device kernel scope.
-3. RFCs 007 / 008 / 012 — validation-state reconciliation.
+1. RFC 006 — box/bound-constrained first device kernel scope.
+2. RFCs 007 / 008 / 012 — validation-state reconciliation.
 
 Once these are settled, Phase 0 (workspace skeleton) begins implementation under
 the design-before-code workflow.

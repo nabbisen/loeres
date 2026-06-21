@@ -26,7 +26,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> This is the **v0.1.0 design baseline**: the public boundary and contracts are frozen as RFCs; implementation follows. The crates are not yet published.
+> This is the **v0.2.0 design baseline**: the public boundary and contracts are frozen as RFCs; implementation follows. The crates are not yet published.
 
 The intended downstream import model (specified in the external design, §1.4) is environment-selected by crate choice:
 
@@ -45,7 +45,7 @@ To navigate this release: start with `docs/specs/loeres-requirements-v1.md`, the
 ## Design Notes
 
 - **Five crates, one contract.** `loeres-core` (`no_std`, no-`alloc`) defines scalar, vector/matrix access, problem, solver-outcome, error, and dimension contracts. Backends (`-backend-std`, `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own the server and edge solve paths. The dependency graph is acyclic and environment-separated; edge crates can never depend on server crates.
-- **Stratified scalar capabilities** rather than one monolithic `Scalar` trait, so edge solvers are not forced to implement operations they never use.
+- **Stratified scalar capabilities** — six tiers (`BaseScalar`, `OrderedScalar`, `FiniteScalar`, `DivisibleScalar`, `MetricScalar`, `AdvancedNumericalScalar`) rather than one monolithic `Scalar` trait, so edge solvers are not forced to implement operations they never use. Ordering is split out of the base tier so order-free numeric types stay valid and floating-point `min`/`max` behavior is pinned.
 - **Status / error split.** Bounded solver progress (including non-convergence at the iteration cap) is a *status* returned in `Ok`; boundary rejection and fail-safe conditions are *errors* returned in `Err`.
 - **Caller-owned typed workspaces** on device — no hidden allocation; memory footprint is reviewable before execution.
 - **Target-scoped determinism.** Floating-point reproducibility claims are tied to documented target profiles, not asserted globally.

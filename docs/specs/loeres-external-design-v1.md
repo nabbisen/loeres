@@ -450,14 +450,15 @@ The external scalar families are:
 
 | Scalar family | Purpose | Examples of capability category | Baseline? |
 |---|---|---|---:|
-| `BaseScalar` | Minimal arithmetic representation | copyable value, equality/order category, zero/one category, addition/subtraction/multiplication/negation category | yes |
+| `BaseScalar` | Minimal arithmetic representation | copyable value, equality category (no ordering), zero/one category, addition/subtraction/multiplication/negation category | yes |
+| `OrderedScalar` | Ordering and extrema for projection, comparison, and box constraints | ordering category, `min` / `max` / `clamp` (NaN-propagating for floating-point) | opt-in; implied by `MetricScalar` |
 | `FiniteScalar` | Boundary validation for hostile or broken inputs | finite/NaN/infinite checks or equivalent domain-validity checks | required by public solve boundaries that accept floating-like values |
 | `DivisibleScalar` | Algorithms that need guarded division or inverse-like operations | checked division, denominator validation, reciprocal category | opt-in |
 | `MetricScalar` | Tolerances, residuals, convergence metrics | absolute magnitude, epsilon/tolerance comparison, norm component category | opt-in by convergence-checking solvers |
 | `AdvancedNumericalScalar` | Expensive or specialized numerical functions | square root, logarithm, exponential, powers, barrier-method support | strictly opt-in |
 | `FixedPointScalar` | Fixed-point integration category | scale metadata, saturation/checked conversion category | optional extension |
 
-The base scalar family must not require division, square root, logarithms, exponentials, powers, heap allocation, or string formatting.
+The base scalar family must not require ordering, division, square root, logarithms, exponentials, powers, heap allocation, or string formatting. Ordering, extrema, and `clamp` live on `OrderedScalar`.
 
 This stratification is a public design commitment. Exact trait method names and blanket implementations are Milestone 1 RFC topics.
 
@@ -470,6 +471,7 @@ Examples:
 | Solver or operation category | Minimum scalar capability category |
 |---|---|
 | Basic affine residual evaluation | `BaseScalar` |
+| Box/bound projection or order comparison | `OrderedScalar` (implied by `MetricScalar`) |
 | Public floating-point input validation | `BaseScalar + FiniteScalar` |
 | Residual tolerance comparison | `BaseScalar + MetricScalar` |
 | Algorithms requiring division | `BaseScalar + DivisibleScalar` |
@@ -1296,7 +1298,7 @@ This external design is accepted only if the following are true:
 The following questions are intentionally left to RFCs:
 
 1. Exact names and method signatures for scalar capability traits.
-2. Whether `BaseScalar` requires `PartialOrd` directly or moves ordering into a separate comparable scalar category.
+2. **(Resolved by RFC 001, v0.2.0.)** Ordering is split into a dedicated `OrderedScalar` tier: `BaseScalar` requires only `PartialEq` (not `PartialOrd`), and `min` / `max` / `clamp` live on `OrderedScalar` with a pinned NaN-propagating contract for floating-point types.
 3. Exact treatment of fixed-point scalar implementations.
 4. Exact representation of static dimensions without relying on unstable generic const expressions.
 5. Exact boundary between baseline contiguous borrowed adapters and advanced `static-views` APIs.

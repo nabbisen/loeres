@@ -200,7 +200,8 @@ Required capability families:
 
 | Capability | Purpose | Baseline status |
 |---|---|---|
-| `BaseScalar` | Basic arithmetic and identity values. | Required for all problem representation. |
+| `BaseScalar` | Basic arithmetic and identity values; no ordering. | Required for all problem representation. |
+| `OrderedScalar` | Ordering and Loeres-defined `min` / `max` / `clamp` (NaN-propagating for floats). | Optional; required by projection / box-constrained solvers; implied by `MetricScalar`. |
 | `FiniteScalar` | Boundary validation for NaN/Inf-like states where applicable. | Required by public solve entrypoints that accept floating-like values. |
 | `DivisibleScalar` | Checked division and inversion-like operations. | Optional; required only by algorithms that divide. |
 | `MetricScalar` | Magnitude, tolerance, residual, and convergence comparisons. | Optional; required by convergence-aware solvers. |
@@ -210,15 +211,15 @@ Required capability families:
 
 - No scalar trait may require `std`.
 - No scalar trait may require allocation.
-- Base scalar capability must not require division.
+- Base scalar capability must not require ordering or division.
 - Advanced transcendental operations must not be pulled into the base capability.
 - Checked operations must return structured errors or option-like states rather than panic.
 - Fixed-point and integer-like future scalar profiles must not be made impossible by premature floating-point assumptions.
 
 #### Key risks to resolve
 
-- Whether `PartialOrd` is sufficient for all base comparisons.
-- How NaN-like semantics are represented for scalar families that do not have NaN.
+- Whether `PartialOrd` is sufficient for all base comparisons. *(Resolved in v0.2.0: ordering moved out of `BaseScalar` into `OrderedScalar`; `BaseScalar` requires only `PartialEq`.)*
+- How NaN-like semantics are represented for scalar families that do not have NaN. *(Resolved in v0.2.0: `min` / `max` / `clamp` are NaN-propagating for floats and ordinary total-order extrema for NaN-free families.)*
 - Whether core should define marker traits for scalar categories or method-bearing traits for every category.
 - How to avoid pulling a third-party numeric trait crate into `loeres-core` by default.
 

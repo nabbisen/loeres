@@ -5,6 +5,71 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.2.0] — 2026-06-21 — RFC 001 `OrderedScalar` split resolved
+
+Design / governance baseline increment. This release resolves the first open
+design round (RFC 001 — `OrderedScalar` scalar-tier split) and reconciles the
+design-layer documents with it. No implementation code is included yet; coding
+still follows the design-before-code workflow once Phase 0 (workspace skeleton)
+lands.
+
+### Changed
+
+- **RFC 001 — Stratified Scalar Capability Model: five tiers → six tiers.**
+  Adds `OrderedScalar` as Tier 2 (between `BaseScalar` and `FiniteScalar`):
+  - `BaseScalar` now requires only `Copy + Clone + PartialEq + Sized` — it no
+    longer requires `PartialOrd` or `core::fmt::Debug`. Ordering, `min`, `max`,
+    and `clamp` move to `OrderedScalar`.
+  - `OrderedScalar: BaseScalar + PartialOrd` defines Loeres-owned `min` / `max` /
+    `clamp` with a **NaN-propagating** contract for floating-point (deliberately
+    unlike `f64::min` / `f64::max`); `clamp` is panic-free with a documented
+    `lo <= hi` precondition validated at the solve boundary.
+  - Supertrait graph: `FiniteScalar: BaseScalar`, `DivisibleScalar: BaseScalar`,
+    `MetricScalar: OrderedScalar`, `AdvancedNumericalScalar: DivisibleScalar +
+    MetricScalar`. A `MetricScalar` bound therefore implies `OrderedScalar`.
+  - `DivisibleScalar::checked_div` must not return `Ok` containing NaN/∞: finite
+    operands whose quotient is non-finite return `Err` (`Overflow` / numerical
+    domain), keeping near-zero conditioning a solver-level `MetricScalar` concern.
+  - `AdvancedNumericalScalar` for primitive floats is **not** baseline core work
+    (requires `libm` or a later adapter decision); transcendentals stay out of
+    baseline core.
+  - `epsilon()` accepted only as a provisional name (candidate
+    `algorithmic_epsilon()`); to be re-decided by RFC 006 / RFC 013 before first
+    public release.
+  - New verification: ordering/NaN tests (§6.4) and scalar-law tests (§6.5).
+- **External design reconciled to six tiers.** §2.2 scalar-family table adds the
+  `OrderedScalar` row and corrects `BaseScalar` (equality only, no ordering);
+  §2.3 adds an `OrderedScalar` opt-in row; §9 open question #2 (whether
+  `BaseScalar` requires `PartialOrd`) is marked **resolved**.
+- **Roadmap reconciled to six tiers.** §2.3 (RFC 001) capability table adds the
+  `OrderedScalar` row; the "must not require division" constraint becomes "must
+  not require ordering or division"; the `PartialOrd`-sufficiency and NaN-
+  semantics risks are annotated as resolved.
+- **ROADMAP.md / README.md** updated: open design round #1 (RFC 001
+  `OrderedScalar`) is resolved; the README Design Notes describe the six tiers.
+
+### Known reconciliation flag (deferred to the architect)
+
+- **Requirements §5.1.2** still describes the base scalar as having
+  "equality/ordering behavior", which now contradicts the six-tier `BaseScalar`
+  (equality only). This apex requirements wording was **left unchanged** pending
+  architect confirmation; the suggested amendment is to move "ordering" to the
+  `OrderedScalar` capability. (Sibling RFCs 002/004/005/006/007 remain valid:
+  `BaseScalar` is still the correct storage bound and `MetricScalar` now implies
+  `OrderedScalar`, so RFC 006's box-projection step gains `clamp` for free.)
+
+### Release audit
+
+- **Security.** Documentation/RFC-only change — no executable code, data flows,
+  external integrations, or auth logic — so no new attack surface is introduced.
+  The design-level threat model (requirements §8; external design §5;
+  `docs/src/threat-model.md`) and its controls (compile-time server/edge
+  isolation, FFI restricted to the cluster crate and default-off, boundary
+  validation, panic-aversion) remain valid and unchanged.
+- **Documentation consistency.** The scalar model is now uniform across RFC 001,
+  the external design, and the roadmap (no residual "five-tier" wording and no
+  `BaseScalar`-with-ordering statements outside the flagged requirements line).
+
 ## [0.1.0] — 2026-06-21 — Design baseline
 
 First release. This is a **design / governance baseline**: the public boundary,
@@ -62,4 +127,5 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.2.0]: https://github.com/nabbisen/loeres/releases/tag/v0.2.0
 [0.1.0]: https://github.com/nabbisen/loeres/releases/tag/v0.1.0
