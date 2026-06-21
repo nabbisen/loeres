@@ -5,6 +5,88 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.6.0] — 2026-06-21 — RFC 001: stratified scalar capability model
+
+Third Milestone 1 contract, and resolution of the base-scalar ordering blocker.
+The architect chose **Direction B** (base scalar excludes ordering; ordering is
+the separate `OrderedScalar` tier — the RFC 001 model). RFC 001 moves to
+`rfcs/done/`.
+
+### Decided / reconciled
+
+- **Architect decision (Direction B), recorded as ADR-017:** the base scalar tier
+  excludes ordering; ordering is `OrderedScalar`, and metric comparison is
+  `MetricScalar: OrderedScalar`. This keeps storage/access traits free of
+  comparison semantics and lets solvers state their numerical needs explicitly.
+- **Requirements §5.1.3 amended** to match: the "Base scalar" row no longer
+  claims ordering, and a new "Ordered scalar" row was added. (The blocker was
+  tracked informally as "§5.1.2"; the wording is actually in §5.1.3.) RFC 001,
+  the External Design, and the Roadmap already reflected this model.
+
+### Added
+
+- **`loeres_core::scalar`** — the six-tier capability model (RFC 001):
+  - `BaseScalar: Copy + Clone + PartialEq + Sized` — method-based arithmetic
+    (`zero`/`one`/`add`/`sub`/`mul`/`neg`/`is_zero`); requires neither
+    `PartialOrd` nor `Debug`.
+  - `OrderedScalar: BaseScalar + PartialOrd` — `min`/`max`/`clamp`, with a
+    **NaN-propagating** float contract (deliberately unlike `f32::min`) and a
+    panic-free `clamp` (returns `hi` if `lo > hi`).
+  - `FiniteScalar: BaseScalar` — `is_finite`/`is_nan`/`is_infinite`.
+  - `DivisibleScalar: BaseScalar` — `checked_div`/`checked_recip` returning
+    `Result<_, SolverError>` (zero denominator → `NumericalDomain`; non-finite
+    quotient → `Overflow`; never `Ok(inf/NaN)`).
+  - `MetricScalar: OrderedScalar` — `abs`/`epsilon`/`lte_tolerance`.
+  - `AdvancedNumericalScalar: DivisibleScalar + MetricScalar` — `checked_sqrt`/
+    `checked_ln`/`checked_exp`; **not** implemented for primitive floats in
+    baseline core (requires `libm` or a later adapter).
+  - Baseline `f32`/`f64` implementations of the five non-advanced tiers
+    (`crates/loeres-core/src/scalar/primitive.rs`), via a DRY macro.
+- Crate-root re-exports of all six scalar traits.
+- 15 spec-driven tests (`loeres-core/src/tests/scalar.rs`): base algebra,
+  ordering/NaN propagation, clamp bounds + NaN + inverted-bounds, guarded
+  division (including overflow-to-non-finite), finite mutual-exclusivity, and the
+  scalar laws. Tests use UFCS where the trait method shadows an inherent float
+  method.
+
+### Changed
+
+- RFC 001 moved `proposed/` → `done/` (Implemented (v0.6.0)); RFC index and all
+  cross-references updated.
+- `cargo xtask check-rfcs` now also audits `scalar.rs` and `scalar/primitive.rs`.
+- ADR-017 added to Requirements §15 and to `docs/src/adr.md`.
+- Workspace version `0.5.0` → `0.6.0`.
+
+### Verified
+
+- 36 tests pass (12 error + 9 solver + 15 scalar); `release-gate` green
+  (check / zero-bleed / **no-std** / check-rfcs) — the scalar tiers add only
+  `core`, so the edge crates still build `no_std`/no-`alloc` for
+  `thumbv7em-none-eabihf`; fmt + clippy `-D warnings` clean.
+
+### Design notes
+
+- On a concrete `f64`, `x.min(y)` resolves to the **inherent** (NaN-ignoring)
+  method; Loeres's NaN-propagating semantics apply through the trait in generic
+  solver code (`S: OrderedScalar`), which is the intended use. The primitive impl
+  documents this.
+- `MetricScalar::epsilon()` returns the type's machine epsilon as a provisional
+  default tolerance unit; the name is provisional (RFC 001 §3.6), to be confirmed
+  or renamed by RFC 006/013 before first public release.
+- `AdvancedNumericalScalar` is defined but intentionally has no baseline
+  primitive impl; a `libm`-gated impl is a later increment.
+
+### Release audit
+
+- **Security.** RFC 001 adds pure `no_std` math traits and `f32`/`f64` impls — no
+  `unsafe`, data flows, integrations, or auth. No threat-model change; existing
+  controls remain valid. The contract *strengthens* the device safety posture:
+  division is guarded (`Result`, never a panic or silent inf/NaN), `min`/`max`/
+  `clamp` are panic-free, and NaN propagation surfaces contract violations to the
+  next finite check rather than masking them.
+- **Docs.** Requirements (§5.1.3, ADR-017), ROADMAP, README, CHANGELOG, RFC index
+  updated; whole-tree cross-reference sweep verified.
+
 ## [0.5.0] — 2026-06-21 — RFC 014: core solver outcome/status taxonomy
 
 Second Milestone 1 contract. `loeres-core` gains the `Ok`-side of the outcome
@@ -329,6 +411,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.6.0]: https://github.com/nabbisen/loeres/releases/tag/v0.6.0
 [0.5.0]: https://github.com/nabbisen/loeres/releases/tag/v0.5.0
 [0.4.0]: https://github.com/nabbisen/loeres/releases/tag/v0.4.0
 [0.3.0]: https://github.com/nabbisen/loeres/releases/tag/v0.3.0

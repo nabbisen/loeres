@@ -20,7 +20,7 @@ The public module name is `loeres_core::access`, not `loeres_core::linalg`, to a
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It depends on [RFC 001](001-stratified-scalar.md) for scalar bounds and [RFC 003](../done/003-allocation-free-errors.md) for error types.
+This RFC touches only `loeres-core`. It depends on [RFC 001](../done/001-stratified-scalar.md) for scalar bounds and [RFC 003](../done/003-allocation-free-errors.md) for error types.
 
 Dependency alignment:
 

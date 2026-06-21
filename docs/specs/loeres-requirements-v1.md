@@ -336,7 +336,8 @@ The scalar model must be stratified:
 
 | Capability | Requirement |
 |---|---|
-| Base scalar | Copyable numeric value with equality/ordering behavior and basic additive/multiplicative operations. |
+| Base scalar | Copyable numeric value with equality behavior, identity values, and basic additive/multiplicative operations. It does not require ordering, division, metric comparison, finite checking, or transcendental functions. |
+| Ordered scalar | Extends base scalar with ordering and Loeres-defined `min`, `max`, and `clamp` semantics. Required by solvers or validation logic that perform projection, comparison, bounds checks, or ordering-dependent convergence decisions. |
 | Finite check | A scalar capability must exist for rejecting NaN/Inf-like values when relevant. |
 | Absolute value | A scalar capability must exist for convergence and tolerance checks. |
 | Division | Division must be explicit and checked where numerical domain violations matter. It must not be implicit in the base scalar contract unless justified by RFC. |
@@ -1109,6 +1110,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | ADR-014 | `no_panic`-style tooling is a release gate, not proof. | Accepted in v0.2 |
 | ADR-015 | Floating-point determinism requires reference-target/profile documentation. | Accepted in v0.2 |
 | ADR-016 | Requirements and RFCs precede API stabilization. | Accepted in v0.2 |
+| ADR-017 | The base scalar tier excludes ordering; ordering is the separate `OrderedScalar` capability, and metric comparison is `MetricScalar: OrderedScalar`. This keeps storage/access traits free of comparison semantics and lets solver families state their numerical needs explicitly. Requirements §5.1.3 amended accordingly. | Accepted |
 
 ---
 

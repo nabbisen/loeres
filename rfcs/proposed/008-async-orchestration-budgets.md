@@ -20,7 +20,7 @@ This RFC defines the cluster orchestration architecture, including a monomorphiz
 
 This RFC depends on:
 
-* [RFC 001](001-stratified-scalar.md);
+* [RFC 001](../done/001-stratified-scalar.md);
 * [RFC 003](../done/003-allocation-free-errors.md);
 * [RFC 007](007-dynamic-sparse-adapters.md).
 

@@ -20,7 +20,7 @@ This RFC defines the external and systems-level design for the baseline determin
 
 This RFC depends on:
 
-* [RFC 001](001-stratified-scalar.md) for scalar bounds;
+* [RFC 001](../done/001-stratified-scalar.md) for scalar bounds;
 * [RFC 002](002-storage-agnostic-contracts.md) for access traits;
 * [RFC 003](../done/003-allocation-free-errors.md) for fail-safe error categories;
 * [RFC 004](004-static-storage-engine.md) for fixed storage;

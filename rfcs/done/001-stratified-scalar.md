@@ -1,6 +1,6 @@
 # RFC 001 — Stratified Scalar Capability Model
 
-**Status.** Proposed
+**Status.** Implemented (v0.6.0)
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture
 **Touches.** `loeres-core/src/scalar.rs`, `loeres-core/src/lib.rs`, public scalar trait namespace
 
