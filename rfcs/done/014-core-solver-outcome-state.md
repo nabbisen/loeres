@@ -1,6 +1,6 @@
 # RFC 014 — Core Solver Outcome and Status Taxonomy
 
-**Status.** Proposed
+**Status.** Implemented (v0.5.0) — core `loeres_core::solver` taxonomy and `AsCoreReport` complete; the device (RFC 006) and cluster (RFC 008) report derivations land with those crates.
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture (sequenced immediately after RFC 003)
 **Touches.** `loeres-core/src/solver.rs`, `loeres-core/src/lib.rs`, the public solver-status namespace; reconciles `loeres-core/src/error.rs` (RFC 003), `loeres-device` report types (RFC 006), `loeres-cluster` report types (RFC 008), conformance status categories (RFC 013), and `xtask check-public-api` (RFC 010)
 
@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary & Problem Statement
 
-The external design (§2.10) and the roadmap (RFC 1.3 scope) both call for a shared `loeres_core::solver` taxonomy. No RFC in the 001–013 set owns it. As a result [RFC 006](006-deterministic-solver-kernel.md) §5 already references `Result<StepOutcome, SolverError>` with `StepOutcome` undefined, and separately invents a device-local `ConvergenceStatus`. Left unowned, every execution crate grows its own parallel outcome taxonomy — the same fragmentation that occurred with validation state across RFCs 007, 008, and 012.
+The external design (§2.10) and the roadmap (RFC 1.3 scope) both call for a shared `loeres_core::solver` taxonomy. No RFC in the 001–013 set owns it. As a result [RFC 006](../proposed/006-deterministic-solver-kernel.md) §5 already references `Result<StepOutcome, SolverError>` with `StepOutcome` undefined, and separately invents a device-local `ConvergenceStatus`. Left unowned, every execution crate grows its own parallel outcome taxonomy — the same fragmentation that occurred with validation state across RFCs 007, 008, and 012.
 
 This RFC defines the single core outcome/status taxonomy for `loeres-core` and the rule by which device and cluster report types derive from it. Its central principle is a clean status/error split:
 
@@ -22,7 +22,7 @@ The headline consequence is that **non-convergence at the configured iteration c
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It depends on [RFC 003](../done/003-allocation-free-errors.md) for `SolverError` and `DiagnosticSnapshot`. It is consumed by [RFC 005](005-typed-workspace-mechanics.md), [RFC 006](006-deterministic-solver-kernel.md), [RFC 008](008-async-orchestration-budgets.md), and [RFC 013](013-conformance-corpus-and-numerical-parity.md). Although numbered 014, it is implemented in Milestone 1 directly after RFC 003, because device and cluster solve entrypoints cannot be designed until the shared outcome vocabulary is frozen.
+This RFC touches only `loeres-core`. It depends on [RFC 003](003-allocation-free-errors.md) for `SolverError` and `DiagnosticSnapshot`. It is consumed by [RFC 005](../proposed/005-typed-workspace-mechanics.md), [RFC 006](../proposed/006-deterministic-solver-kernel.md), [RFC 008](../proposed/008-async-orchestration-budgets.md), and [RFC 013](../proposed/013-conformance-corpus-and-numerical-parity.md). Although numbered 014, it is implemented in Milestone 1 directly after RFC 003, because device and cluster solve entrypoints cannot be designed until the shared outcome vocabulary is frozen.
 
 | Crate | Relationship to this RFC |
 |---|---|

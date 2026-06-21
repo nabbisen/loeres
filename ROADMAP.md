@@ -20,21 +20,24 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.4.0)
+## Current status (v0.5.0)
 
-**Milestone 1 in progress — RFC 003 implemented.** `loeres-core` now ships its
-first contracts: the allocation-free error/diagnostic topology (`SolverError`,
-`DiagnosticSnapshot`, `error_code_to_str`), with compile-time size budgets and
-the `check-rfcs` hygiene gate. Phase 0 (workspace skeleton) is complete: all
-crates compile, the edge crates build `no_std`/no-`alloc` for
-`thumbv7em-none-eabihf`, and `zero-bleed` + `no-std` + `check-rfcs` pass.
+**Milestone 1 in progress — RFC 003 and RFC 014 implemented.** `loeres-core` now
+owns the full outcome taxonomy: the `Err` side (RFC 003 — `SolverError`,
+`DiagnosticSnapshot`) and the `Ok` side (RFC 014 — `SolveStatus`,
+`TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`), with
+non-convergence reported as a status, not an error. All gates pass
+(check / zero-bleed / no-std / check-rfcs); 21 tests.
 
 ### Next: Milestone 1 remainder — `loeres-core` contracts
 
-Implement, in order: ~~RFC 003 (errors)~~ ✓ → RFC 001 (six-tier scalars) →
-RFC 002 (access) → RFC 014 (solver outcome/status). **Blocker before RFC 001:**
-the requirements §5.1.2 base-scalar wording flag (architect) should be resolved
-so the scalar code traces to a clean spec.
+Sequence: ~~RFC 003 (errors)~~ ✓ → ~~RFC 014 (solver outcome/status)~~ ✓ →
+RFC 001 (six-tier scalars) → RFC 002 (access). RFC 014 was taken ahead of
+001/002 because it depends only on RFC 003 and is scalar-agnostic.
+
+**Blocker before RFC 001:** the requirements §5.1.2 base-scalar wording flag
+(architect) should be resolved so the scalar code traces to a clean spec.
+RFC 002 (access) bounds on `BaseScalar`, so it is gated behind RFC 001.
 
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 

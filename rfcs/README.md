@@ -20,7 +20,6 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | [011](proposed/011-target-profiles-and-deterministic-math.md) | Target Profiles and Deterministic Math Policy | Cross-cutting / Target Profiles | `loeres-device`, `loeres-backend-static`, `xtask` |
 | [012](proposed/012-validation-state-and-trusted-input-policy.md) | Validation State and Trusted Input Policy | Cross-cutting / Validation | `loeres-core`, all solve entrypoints |
 | [013](proposed/013-conformance-corpus-and-numerical-parity.md) | Conformance Corpus and Numerical Parity Policy | Cross-cutting / Conformance | `conformance`, `xtask`, device/cluster examples |
-| [014](proposed/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Phase 1 / Milestone 1 | `loeres-core` |
 
 ## Done RFCs
 
@@ -28,6 +27,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 |---:|---|---|---|
 | [000](done/000-rfc-lifecycle-policy.md) | RFC Lifecycle Policy | Implemented | Governs RFC folders, state transitions, numbering, index integrity, and cross-reference hygiene. |
 | [003](done/003-allocation-free-errors.md) | Allocation-Free Error Topology and Formatting Restrictions | Implemented (v0.4.0) | `loeres-core` `error` / `diagnostic` modules; `SolverError`, `DiagnosticSnapshot`, `error_code_to_str`. |
+| [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres-core` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 
 ## Archived RFCs
 

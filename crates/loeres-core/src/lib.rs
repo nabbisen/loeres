@@ -9,8 +9,8 @@
 //! `scalar`, `access`, `problem`, `solver`, `error`, `diagnostic`, `dimension`.
 //!
 //! Milestone 1 in progress: the [`error`] and [`diagnostic`] topologies (RFC
-//! 003) are implemented; the remaining modules are documented placeholders
-//! pending their owning RFCs.
+//! 003) and the [`solver`] outcome/status taxonomy (RFC 014) are implemented;
+//! the remaining modules are documented placeholders pending their owning RFCs.
 #![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 
@@ -24,6 +24,9 @@ pub mod solver;
 
 pub use diagnostic::{DiagnosticCode, DiagnosticSnapshot};
 pub use error::{SolverError, error_code_to_str};
+pub use solver::{
+    AsCoreReport, IterationReport, SolveReport, SolveStatus, StepOutcome, TerminationReason,
+};
 
 #[cfg(test)]
 mod tests;

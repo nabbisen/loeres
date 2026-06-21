@@ -9,13 +9,15 @@
 //! * §6.4 — every public error/diagnostic `enum` carries `#[non_exhaustive]`.
 //!
 //! Broader RFC-index and link-integrity checks are owned by RFC 010 and land
-//! with it; this gate is intentionally scoped to the two core modules above.
+//! with it; this gate is intentionally scoped to the implemented core modules
+//! above (RFC 003 error/diagnostic, RFC 014 solver).
 
 use std::fs;
 
-const CORE_ERROR_MODULES: &[&str] = &[
+const CORE_MODULES: &[&str] = &[
     "crates/loeres-core/src/error.rs",
     "crates/loeres-core/src/diagnostic.rs",
+    "crates/loeres-core/src/solver.rs",
 ];
 
 /// Tokens forbidden on core error/diagnostic *code* lines (comments excluded).
@@ -30,9 +32,11 @@ const FORBIDDEN: &[&str] = &[
 ];
 
 pub fn run() -> bool {
-    eprintln!("[check-rfcs] core error/diagnostic hygiene (RFC 003 §6.2/§6.4)");
+    eprintln!(
+        "[check-rfcs] core error/diagnostic/solver hygiene (RFC 003 §6.2/§6.4, RFC 014 §4.3)"
+    );
     let mut ok = true;
-    for rel in CORE_ERROR_MODULES {
+    for rel in CORE_MODULES {
         match fs::read_to_string(rel) {
             Ok(src) => {
                 ok &= audit_forbidden(rel, &src);

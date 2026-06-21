@@ -5,6 +5,75 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.5.0] — 2026-06-21 — RFC 014: core solver outcome/status taxonomy
+
+Second Milestone 1 contract. `loeres-core` gains the `Ok`-side of the outcome
+split, completing the core taxonomy alongside RFC 003's `Err` side. RFC 014
+moves to `rfcs/done/`. Taken out of strict sequence ahead of RFC 001/002
+because RFC 014 depends only on the (done) RFC 003, is fully scalar-agnostic,
+and the RFC itself specifies implementation "directly after RFC 003"; RFC 001
+(scalars) remains gated on the requirements §5.1.2 flag, and RFC 002 (access)
+bounds on RFC 001.
+
+### Added
+
+- **`loeres_core::solver`** implementing the RFC 014 status/error split, where
+  **non-convergence is a status, not an error**:
+  - `StepOutcome` (`Continue` / `Converged` / `NoProgress`), `SolveStatus`
+    (`Converged` / `NotConverged`, with `const is_converged`), and
+    `TerminationReason` (`ConvergenceCriterion` / `IterationCap` / `NoProgress`)
+    — all `#[repr(u8)]`, `#[non_exhaustive]`, **1 byte** each.
+  - `IterationReport` and `SolveReport` — `#[repr(C)]`, private fields, public
+    `const` constructors/accessors. `SolveReport` exposes only the four valid
+    `(status, termination)` combinations via named constructors
+    (`converged_early`, `converged_at_cap`, `not_converged_cap`,
+    `not_converged_stalled`); the two invalid combinations are unconstructable.
+    `SolveReport` is **12 bytes** (`IterationReport` 8), scalar-agnostic, and
+    deliberately excludes `DiagnosticSnapshot` to stay within the 16-byte core
+    ceiling.
+  - `AsCoreReport` — the static-dispatch projection trait by which device
+    (RFC 006) and cluster (RFC 008) reports map losslessly onto `SolveReport`.
+  - Compile-time size/representation assertions per RFC 014 §4.1.
+- Crate-root re-exports of all six solver types.
+- 9 spec-driven tests in `loeres-core/src/tests/solver.rs` (sizes, one-byte
+  enums, the four valid combinations, accessor round-trips, the `AsCoreReport`
+  round-trip via a reference report, and the RFC 003 reconciliation).
+
+### Changed
+
+- RFC 014 moved `proposed/` → `done/` (Implemented (v0.5.0)); RFC index and all
+  cross-references updated.
+- Tests reorganized into `loeres-core/src/tests/` (`error.rs`, `solver.rs`) per
+  the file-separation guidance, with `tests.rs` as the module index.
+- `cargo xtask check-rfcs` now also audits `solver.rs` (same no-format/no-alloc
+  and `#[non_exhaustive]` rules).
+- Workspace version `0.4.0` → `0.5.0`.
+
+### Verified
+
+- 21 tests pass (12 error + 9 solver); `release-gate` green
+  (check / zero-bleed / no-std / check-rfcs); fmt + clippy `-D warnings` clean.
+- RFC 003 reconciliation holds: `SolverError` carries no non-convergence
+  variant and no `PanicGateViolation` (confirmed by test).
+
+### Deferred (RFC 000 granularity)
+
+- The concrete `AsCoreReport` derivations — `DeviceSolveReport` (RFC 006,
+  Milestone 2) and the cluster per-item report (RFC 008, Milestone 3) — land
+  with those crates; the core trait and a reference round-trip are complete now.
+- `xtask check-public-api` enforcement of the §6.3 rules (`dyn AsCoreReport`
+  absent from edge APIs, no non-convergence error variant) is owned by RFC 010;
+  the core satisfies the rules by construction.
+
+### Release audit
+
+- **Security.** RFC 014 adds only `Copy` plain-data types — no `unsafe`, data
+  flows, integrations, or auth. No threat-model change; existing controls remain
+  valid. The status/error split *strengthens* the device posture: non-convergence
+  is a well-defined bounded outcome rather than a panic or error path.
+- **Docs.** RFC index, CHANGELOG, ROADMAP, README updated; whole-tree
+  cross-reference sweep verified.
+
 ## [0.4.0] — 2026-06-21 — RFC 003: allocation-free error topology
 
 First Milestone 1 contract. `loeres-core` now ships real public API: the
@@ -260,6 +329,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.5.0]: https://github.com/nabbisen/loeres/releases/tag/v0.5.0
 [0.4.0]: https://github.com/nabbisen/loeres/releases/tag/v0.4.0
 [0.3.0]: https://github.com/nabbisen/loeres/releases/tag/v0.3.0
 [0.2.0]: https://github.com/nabbisen/loeres/releases/tag/v0.2.0
