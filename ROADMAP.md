@@ -20,7 +20,7 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.6.0)
+## Current status (v0.6.1)
 
 **Milestone 1 nearly complete — RFC 003, RFC 014, and RFC 001 implemented.**
 `loeres-core` now ships the error/diagnostic topology (RFC 003), the solver
@@ -34,10 +34,14 @@ tests.
 ### Next: Milestone 1 remainder — RFC 002 (access)
 
 Sequence: ~~RFC 003 (errors)~~ ✓ → ~~RFC 014 (solver status)~~ ✓ →
-~~RFC 001 (six-tier scalars)~~ ✓ → RFC 002 (access contracts). RFC 002 is now
-**unblocked**: it bounds storage/access on `BaseScalar` and names
-`OrderedScalar` / `MetricScalar` only on APIs that compare, project, or evaluate
-tolerance (per the architect's note).
+~~RFC 001 (six-tier scalars)~~ ✓ → RFC 002 (access contracts). The v0.6.0
+architect review **conditionally approved** RFC 001/003/014 (no rollback) and
+directed design patches to RFC 002 before coding; those are now applied (v0.6.1):
+`dimension` naming, `DimensionKind` without `Borrowed`, contiguous-only core
+views (strided → RFC 004), an optional contiguous fast path, an explicit
+access-error mapping, and no overlapping mutable views. RFC 002 is now ready to
+implement as the final Milestone 1 core contract; access traits bound only
+`BaseScalar` except where they compare / project / tolerance-check.
 
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 

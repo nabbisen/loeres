@@ -1,4 +1,4 @@
-# Loeres Requirements Specification v0.2 (Actually v1)
+# Loeres Requirements Specification v1
 
 **Project:** Loeres  
 **Document type:** Requirements specification  

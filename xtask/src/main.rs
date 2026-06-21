@@ -7,6 +7,14 @@
 //! Phase 0 implements the gates that the workspace skeleton can already satisfy
 //! (`zero-bleed`, `no-std`, `check`) and registers the remaining gates from the
 //! RFC 010 / roadmap §5.4 blueprint as scaffolds that land in later milestones.
+//!
+//! NOTE (temporary scaffolding, to be reconciled before RFC 010 is accepted):
+//! RFC 010 intends `check` as the aggregate and `release-gate` as an alias, and
+//! reserves `check-rfcs` for RFC index/status/link integrity. Today `release-gate`
+//! is the aggregate and `check-rfcs` runs a core-module *source* hygiene scan
+//! (no-format / no-alloc / `#[non_exhaustive]`). When RFC 010 is implemented,
+//! `check` becomes the aggregate, source scans move to `check-public-api` or a
+//! named source-lint, and `check-rfcs` validates the RFC index.
 
 mod checks;
 

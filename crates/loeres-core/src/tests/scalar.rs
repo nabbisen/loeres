@@ -147,6 +147,20 @@ fn division_overflowing_to_non_finite_is_an_error() {
 }
 
 #[test]
+fn division_with_non_finite_operands_does_not_yield_ok_non_finite() {
+    // Architect review §5.1: a non-finite operand that escaped boundary
+    // validation must not produce `Ok(NaN/inf)`. The coarse policy classifies a
+    // non-finite quotient as `Overflow`; pin it so the behavior is intentional.
+    // (Public solve entrypoints reject non-finite inputs earlier via FiniteScalar.)
+    assert!(f64::NAN.checked_div(2.0).is_err());
+    assert!(2.0_f64.checked_div(f64::NAN).is_err());
+    assert!(f64::INFINITY.checked_div(2.0).is_err());
+    // 2.0 / inf == 0.0 is finite, so this one legitimately succeeds; assert it
+    // explicitly rather than leaving the boundary ambiguous.
+    assert_eq!(2.0_f64.checked_div(f64::INFINITY), Ok(0.0));
+}
+
+#[test]
 fn recip_agrees_with_one_over_x() {
     // §6.5: checked_recip(x) and checked_div(one(), x) agree for nonzero finite x.
     for x in [1.0_f64, -2.0, 0.5, 1234.5] {

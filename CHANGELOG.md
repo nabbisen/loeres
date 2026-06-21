@@ -5,6 +5,67 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.6.1] — 2026-06-21 — v0.6.0 architect-review response; RFC 002 design patched
+
+The v0.6.0 architecture review **conditionally approved** the implemented core
+(RFC 001/003/014 — accepted, no rollback) and directed design patches to RFC 002
+before coding, plus a few hygiene items. This patch release applies them; no
+shipped public API changes (hence a patch bump).
+
+### Changed — RFC 002 design (patched before implementation, per review B1–B6)
+
+`rfcs/proposed/002-storage-agnostic-contracts.md` revised:
+
+- **B1** — module is `dimension` (matching the crate and external design), not
+  `dim`; the `Touches` line and re-exports updated.
+- **B6** — `DimensionKind` drops `Borrowed` (an ownership property, not a
+  dimension property); it now carries only `Static` / `Dynamic`.
+- **B2** — core owns only a **simple contiguous row-major** matrix view;
+  column-major / strided / sub-matrix views are deferred to
+  `loeres-backend-static` (RFC 004). `StrideKind` removed from core.
+- **B3** — added an **optional** contiguous fast-path surface
+  (`ContiguousVectorAccess` / `ContiguousVectorAccessMut` / `ContiguousMatrixAccess`,
+  returning `Option<&[S]>`), narrowly scoped to RFC 006 kernel needs; the
+  fallible per-element traits remain the baseline. No sparse traversal (RFC 007).
+- **B4** — added an explicit **access-error mapping** over the RFC 003
+  `SolverError` set, with a rule that `usize` → `u32` diagnostic conversions are
+  checked and **never silently truncated**.
+- **B5** — core admits **no overlapping mutable views**; any future custom-strided
+  mutable view (RFC 004) must be injective or read-only.
+- Aligned the static-dispatch audit to `xtask check-public-api` (RFC 010),
+  consistent with RFC 014.
+
+### Changed — hygiene
+
+- **M2** — Requirements title `v0.2 (Actually v1)` → `v1`.
+- **M1** — `xtask` now documents that its command semantics (`release-gate` as the
+  aggregate; `check-rfcs` as a core-module source scan) are **temporary
+  scaffolding** to be reconciled with RFC 010 before that RFC is accepted (where
+  `check` is the aggregate, source scans move to `check-public-api`/a source-lint,
+  and `check-rfcs` validates the RFC index).
+
+### Added — tests
+
+- Pinned `DivisibleScalar::checked_div` behavior on **NaN / infinity operands**
+  (architect §5.1): non-finite operands do not yield `Ok(NaN/inf)`; `2.0 / inf`
+  legitimately yields `Ok(0.0)`. (`loeres-core`: 37 tests now.)
+
+### Not changed (deferred by the review)
+
+- The full `xtask` ↔ RFC 010 command reconciliation lands before RFC 010 is
+  accepted. `MetricScalar::epsilon()` remains provisionally named (RFC 006/013).
+  `AdvancedNumericalScalar` remains baseline-unimplemented for primitives.
+
+### Release audit
+
+- **Security.** No code behavior change beyond an added test; the RFC 002 and
+  documentation edits introduce no data flows, integrations, or auth. No
+  threat-model change; existing controls remain valid. The RFC 002 access-error
+  mapping and no-overlapping-mutable-view rule *strengthen* the eventual access
+  layer's fail-closed and aliasing posture.
+- **Docs.** Requirements (title), ROADMAP, README state, RFC 002, and CHANGELOG
+  reconciled; whole-tree link/version sweep verified.
+
 ## [0.6.0] — 2026-06-21 — RFC 001: stratified scalar capability model
 
 Third Milestone 1 contract, and resolution of the base-scalar ordering blocker.
@@ -411,6 +472,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.6.1]: https://github.com/nabbisen/loeres/releases/tag/v0.6.1
 [0.6.0]: https://github.com/nabbisen/loeres/releases/tag/v0.6.0
 [0.5.0]: https://github.com/nabbisen/loeres/releases/tag/v0.5.0
 [0.4.0]: https://github.com/nabbisen/loeres/releases/tag/v0.4.0
