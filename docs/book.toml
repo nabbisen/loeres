@@ -1,0 +1,10 @@
+[book]
+title = "Loeres"
+authors = ["nabbisen"]
+description = "A Rust optimization library family with a hard compile-time boundary between server and edge solving."
+language = "en"
+src = "src"
+
+[output.html]
+default-theme = "rust"
+git-repository-url = "https://github.com/nabbisen/loeres"
