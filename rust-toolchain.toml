@@ -1,0 +1,5 @@
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
+# Bare-metal no_std design-test target for the edge crates (external design §1.8).
+targets = ["thumbv7em-none-eabihf"]

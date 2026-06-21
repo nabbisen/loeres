@@ -1,0 +1,19 @@
+[package]
+name = "loeres-device"
+description = "Loeres deterministic, allocation-free, panic-averse edge solver entrypoints. no_std, no alloc."
+version.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[features]
+default = []
+constant-iteration = []   # timing-stabilized fixed iteration-count modes (RFC 006/011)
+diagnostic-snapshot = []  # compact numeric diagnostics via result/state types (RFC 006)
+panic-gate = []           # CI release-gate instrumentation for panic-path detection (RFC 010/011)
+
+[dependencies]
+loeres-core = { workspace = true }
+loeres-backend-static = { workspace = true }

@@ -1,8 +1,17 @@
 # Loeres
 
-[![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
-[![Rust 2024](https://img.shields.io/badge/rust-2024-orange.svg)](https://www.rust-lang.org/)
-[![Status: design baseline](https://img.shields.io/badge/status-design%20baseline-orange.svg)](docs/specs/loeres-roadmap-milestones-v1.md)
+[![License](https://img.shields.io/github/license/nabbisen/loeres)](LICENSE)
+[![loeres-core Docs](https://docs.rs/loeres-core/badge.svg?version=latest)](https://docs.rs/loeres-core)    
+[![loeres-core crate](https://img.shields.io/crates/v/loeres-core?label=loeres-core)](https://crates.io/crates/loeres-core)
+[![loeres-core Deps Status](https://deps.rs/crate/loeres-core/latest/status.svg)](https://deps.rs/crate/loeres-core)
+[![loeres-backend-std crate](https://img.shields.io/crates/v/loeres-backend-std?label=loeres-backend-std)](https://crates.io/crates/loeres-backend-std)
+[![loeres-backend-std Deps Status](https://deps.rs/crate/loeres-backend-std/latest/status.svg)](https://deps.rs/crate/loeres-backend-std)
+[![loeres-backend-static crate](https://img.shields.io/crates/v/loeres-backend-static?label=loeres-backend-static)](https://crates.io/crates/loeres-backend-static)
+[![loeres-backend-static Deps Status](https://deps.rs/crate/loeres-backend-static/latest/status.svg)](https://deps.rs/crate/loeres-backend-static)    
+[![loeres-cluster crate](https://img.shields.io/crates/v/loeres-cluster?label=loeres-cluster)](https://crates.io/crates/loeres-cluster)
+[![loeres-cluster Deps Status](https://deps.rs/crate/loeres-cluster/latest/status.svg)](https://deps.rs/crate/loeres-cluster)
+[![loeres-device crate](https://img.shields.io/crates/v/loeres-device?label=loeres-device)](https://crates.io/crates/loeres-device)
+[![loeres-device Deps Status](https://deps.rs/crate/loeres-device/latest/status.svg)](https://deps.rs/crate/loeres-device)
 
 **One optimization contract, two worlds — high-throughput server solving and deterministic `no_std` edge solving, without letting either contaminate the other.**
 
@@ -26,7 +35,16 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> This is the **v0.2.0 design baseline**: the public boundary and contracts are frozen as RFCs; implementation follows. The crates are not yet published.
+> This is the **v0.3.0 Phase 0 skeleton**: the Cargo workspace is scaffolded and every crate compiles — the edge crates are verified `no_std`/no-`alloc` on a bare-metal target — but the crates expose no public API yet and are unpublished. Implementation of the contracts follows in Milestone 1.
+
+Build and verify from source:
+
+```sh
+# toolchain, components, and the bare-metal target come from rust-toolchain.toml
+cargo check --workspace --all-features
+cargo xtask zero-bleed   # no server <-> edge dependency bleed
+cargo xtask no-std       # edge crates build for thumbv7em-none-eabihf
+```
 
 The intended downstream import model (specified in the external design, §1.4) is environment-selected by crate choice:
 
@@ -40,7 +58,7 @@ loeres-device         = { version = "0.x", default-features = false }
 loeres-backend-static = { version = "0.x", default-features = false, features = ["owned-arrays"] }
 ```
 
-To navigate this release: start with `docs/specs/loeres-requirements-v1.md`, then the external design, then the RFC set under `rfcs/`.
+To navigate this release: the workspace lives under `crates/` (five crates) and `xtask/`; the design lives in `docs/specs/` (requirements → external design → roadmap) and `rfcs/`. For local development see `docs/src/development.md`.
 
 ## Design Notes
 

@@ -1,0 +1,24 @@
+[package]
+name = "loeres-backend-std"
+description = "Loeres dynamic dense/sparse storage and server numerical adapters. std, heap-backed; server-only."
+version.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[features]
+# All features are server-only. Optional adapters wire to their dependencies in
+# RFC 007; they are no-ops in the Phase 0 skeleton.
+default = ["dense"]
+dense = []
+sparse = []
+serde = []
+parallel-rayon = []
+adapter-ndarray = []
+adapter-nalgebra = []
+native-linalg = []   # BLAS/LAPACK-like adapters; must never be pulled by default
+
+[dependencies]
+loeres-core = { workspace = true }

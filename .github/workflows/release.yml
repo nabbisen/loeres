@@ -1,0 +1,16 @@
+name: release
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+      # Runs every gate implemented at the current milestone. Crate publishing
+      # is intentionally not wired up: crates are unpublished until a public
+      # release is approved by the project owner (requirements REL-008).
+      - run: cargo xtask release-gate

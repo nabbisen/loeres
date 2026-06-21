@@ -20,17 +20,24 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.2.0)
+## Current status (v0.3.0)
 
-Design baseline. The Milestone-1 contracts are drafted; the RFC 014
-reconciliation and cross-document cleanup are complete; and the RFC 001
-`OrderedScalar` scalar-tier split is resolved (the scalar model is now six tiers,
-with ordering / `min` / `max` / `clamp` on a dedicated `OrderedScalar`).
+**Phase 0 (workspace skeleton) complete.** The Cargo workspace exists with the
+five crates plus `xtask`; everything compiles; the edge crates
+(`loeres-core`, `loeres-backend-static`, `loeres-device`) build `no_std` /
+no-`alloc` for `thumbv7em-none-eabihf`; and the `zero-bleed` dependency-direction
+gate passes. The crates carry the public module topography (external design §1.5)
+as documented placeholders — no public API yet. The RFC 001 `OrderedScalar`
+split (v0.2.0) and the RFC 014 reconciliation are folded in.
 
-### Open design rounds (precede implementation)
+### Next: Phase 1 / Milestone 1 — `loeres-core` contracts
 
-1. RFC 006 — box/bound-constrained first device kernel scope.
-2. RFCs 007 / 008 / 012 — validation-state reconciliation.
+Implement, in order, RFC 003 (errors) → RFC 001 (six-tier scalars) →
+RFC 002 (access) → RFC 014 (solver outcome/status). **Blocker to clear first:**
+the requirements §5.1.2 base-scalar wording flag (architect) should be resolved
+so the scalar code traces to a clean spec.
 
-Once these are settled, Phase 0 (workspace skeleton) begins implementation under
-the design-before-code workflow.
+### Open design rounds (gate later-milestone *content*, not the skeleton)
+
+1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2).
+2. RFCs 007 / 008 / 012 — validation-state reconciliation (Milestone 3).

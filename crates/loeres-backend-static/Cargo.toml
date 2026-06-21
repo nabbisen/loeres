@@ -1,0 +1,18 @@
+[package]
+name = "loeres-backend-static"
+description = "Loeres fixed-size, allocation-free storage and borrowed views for edge/device use. no_std, no alloc."
+version.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[features]
+default = []
+owned-arrays = []         # owned fixed-size array wrappers (RFC 004)
+static-views = []         # advanced strided / row / column / sub-matrix views (RFC 004)
+diagnostic-snapshot = []  # compact numeric diagnostic snapshots (RFC 004/005)
+
+[dependencies]
+loeres-core = { workspace = true }

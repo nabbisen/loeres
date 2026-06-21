@@ -1,0 +1,18 @@
+[package]
+name = "loeres-core"
+description = "Loeres shared mathematical contracts: scalar, access, problem, solver, error, dimension. no_std, no alloc, no storage."
+version.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[features]
+# Baseline is the no_std / no-alloc contract surface. Optional tiers wire to
+# implementations in their owning RFCs; they are no-ops in the Phase 0 skeleton.
+default = []
+libm = []               # optional no_std math adapters for AdvancedNumericalScalar (RFC 001)
+fixed-point-hooks = []  # integration hooks for fixed-point scalars (RFC 001)
+
+[dependencies]

@@ -1,0 +1,12 @@
+[package]
+name = "xtask"
+description = "Loeres repository automation: dependency-direction, no_std, and release gates. Never a dependency of any library crate."
+version.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+publish = false
+
+[dependencies]

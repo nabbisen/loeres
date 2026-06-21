@@ -1,0 +1,25 @@
+[package]
+name = "loeres-cluster"
+description = "Loeres server-side solving: dynamic models, batch, orchestration, observability, optional FFI. std; server-only."
+version.workspace       = true
+edition.workspace       = true
+rust-version.workspace  = true
+license.workspace       = true
+authors.workspace       = true
+repository.workspace    = true
+
+[features]
+# All features are server-only. `ffi-gateway` must never be a default feature.
+default = ["sync", "batch"]
+sync = []
+batch = []
+parallel-rayon = []
+async-tokio = []
+observability-tracing = []
+observability-metrics = []
+serde = []
+ffi-gateway = []   # audited, opt-in native/legacy solver gateway (RFC 009)
+
+[dependencies]
+loeres-core = { workspace = true }
+loeres-backend-std = { workspace = true }

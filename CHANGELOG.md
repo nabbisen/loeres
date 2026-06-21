@@ -5,6 +5,72 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.3.0] — 2026-06-21 — Phase 0: Cargo workspace skeleton
+
+First implementation phase (roadmap §12.1; external design §1). This release
+instantiates the workspace structure and the verification gates the structure
+can already satisfy. It contains **no** solver, scalar, access, or validation
+logic — those land in Milestone 1+. Design-before-code is preserved: the
+skeleton realizes already-accepted structure and does not pre-empt the open
+design rounds.
+
+### Added
+
+- **Cargo workspace** (`resolver = "3"`, edition 2024, MSRV 1.85) with the five
+  crates and shared metadata via `[workspace.package]`:
+  - `loeres-core` — `#![no_std]`, no `alloc`, `#![forbid(unsafe_code)]`, no deps.
+  - `loeres-backend-static` — `#![no_std]`, no `alloc`; depends on `loeres-core`.
+  - `loeres-device` — `#![no_std]`, no `alloc`, `#![forbid(unsafe_code)]`;
+    depends on `loeres-core` + `loeres-backend-static`.
+  - `loeres-backend-std` — `std`; depends on `loeres-core`.
+  - `loeres-cluster` — `std`; depends on `loeres-core` + `loeres-backend-std`.
+  Each crate carries its public module topography (external design §1.5) as
+  documented placeholder modules, each tracing to its owning RFC. The feature
+  surface from external design §1.6 is declared (no-op until its RFC wires it).
+- **`xtask` automation crate** with the gates the skeleton supports implemented
+  for real — `zero-bleed` (forbidden server↔edge dependency edges, roadmap §5.5),
+  `no-std` (edge crates build for `thumbv7em-none-eabihf`), `check`, and an
+  aggregate `release-gate` — plus the remaining RFC 010 / §5.4 gates registered
+  as honest scaffolds. `cargo xtask <cmd>` alias added.
+- **`rust-toolchain.toml`** pinning stable + rustfmt/clippy + the bare-metal
+  target; **CI workflows** (`ci`, `no-std`, `msrv`, `release`) wired to `xtask`;
+  `.github/SECURITY.md` and issue templates.
+- **Docs:** per-crate `README.md`; maintainer docs `docs/src/development.md`
+  (local dev / xtask) and `docs/src/adr.md` (ADR index), wired into the mdbook
+  `SUMMARY.md`.
+
+### Verified
+
+- `cargo check --workspace --all-features` — clean.
+- `cargo clippy --workspace --all-features -- -D warnings` — clean.
+- `cargo xtask zero-bleed` — **PASS** (no forbidden dependency edge).
+- `cargo xtask no-std` — **PASS** (`loeres-core`, `loeres-backend-static`,
+  `loeres-device` build `no_std`/no-`alloc` for `thumbv7em-none-eabihf`).
+- `cargo fmt --all` applied.
+
+This meets the Phase 0 acceptance criteria (roadmap §12.1): the workspace
+compiles with placeholder crates, edge-facing crates have no forbidden
+dependency path, and the docs explain the server/edge split.
+
+### Release audit
+
+- **Security.** No executable application logic, data flows, external
+  integrations, or auth were introduced — the crates expose no public API and
+  the only runtime code (`xtask`) is a local dev tool that shells out to cargo.
+  No new attack surface; the design-level threat model and its controls
+  (compile-time server/edge isolation, FFI cluster-only/default-off,
+  panic-aversion, boundary validation) remain valid. The structural isolation
+  control is now **machine-enforced** by `zero-bleed` + `no-std` rather than
+  asserted only in prose. `SECURITY.md` added.
+- **Docs consistency.** README, ROADMAP, and CHANGELOG reflect the Phase 0
+  state; the workspace layout matches external design §1.1/§1.5.
+
+### Deferred (unchanged from v0.2.0)
+
+- `examples/` (cluster/device) arrive with their solver milestones (M2/M3).
+- Requirements §5.1.2 base-scalar wording flag remains open for the architect;
+  it gates Milestone 1 scalar code, not this skeleton.
+
 ## [0.2.0] — 2026-06-21 — RFC 001 `OrderedScalar` split resolved
 
 Design / governance baseline increment. This release resolves the first open
@@ -127,5 +193,6 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.3.0]: https://github.com/nabbisen/loeres/releases/tag/v0.3.0
 [0.2.0]: https://github.com/nabbisen/loeres/releases/tag/v0.2.0
 [0.1.0]: https://github.com/nabbisen/loeres/releases/tag/v0.1.0

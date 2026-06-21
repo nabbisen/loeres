@@ -1,0 +1,16 @@
+name: no-std
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  bare-metal:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv7em-none-eabihf
+      # Builds loeres-core, loeres-backend-static, loeres-device for a `none`
+      # target with --no-default-features; fails on any std/alloc leakage.
+      - run: cargo xtask no-std
