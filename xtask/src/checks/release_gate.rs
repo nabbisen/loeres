@@ -3,7 +3,7 @@
 //! Scaffolded gates (panic-audit, size-budget, …) are intentionally not run
 //! yet; they join the aggregate as their owning milestones implement them.
 
-use super::{basic, no_std, zero_bleed};
+use super::{basic, check_rfcs, no_std, zero_bleed};
 
 pub fn run() -> bool {
     eprintln!("[release-gate] running Phase 0 gates");
@@ -11,6 +11,7 @@ pub fn run() -> bool {
         ("check", basic::run()),
         ("zero-bleed", zero_bleed::run()),
         ("no-std", no_std::run()),
+        ("check-rfcs", check_rfcs::run()),
     ];
     let ok = results.iter().all(|(_, r)| *r);
     eprintln!("[release-gate] summary:");

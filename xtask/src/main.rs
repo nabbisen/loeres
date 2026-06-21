@@ -12,7 +12,13 @@ mod checks;
 
 use std::process::ExitCode;
 
-const IMPLEMENTED: &[&str] = &["zero-bleed", "no-std", "check", "release-gate"];
+const IMPLEMENTED: &[&str] = &[
+    "zero-bleed",
+    "no-std",
+    "check",
+    "check-rfcs",
+    "release-gate",
+];
 const SCAFFOLD: &[&str] = &[
     "feature-matrix",
     "panic-audit",
@@ -21,7 +27,6 @@ const SCAFFOLD: &[&str] = &[
     "target-profiles",
     "link-audit",
     "unsafe-audit",
-    "check-rfcs",
     "conformance",
 ];
 
@@ -31,6 +36,7 @@ fn main() -> ExitCode {
         Some("zero-bleed") => checks::zero_bleed::run(),
         Some("no-std") => checks::no_std::run(),
         Some("check") => checks::basic::run(),
+        Some("check-rfcs") => checks::check_rfcs::run(),
         Some("release-gate") => checks::release_gate::run(),
         Some(other) if SCAFFOLD.contains(&other) => checks::stubs::run(other),
         Some(other) => {

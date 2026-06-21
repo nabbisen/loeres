@@ -21,7 +21,7 @@ This RFC defines typed, caller-owned workspace mechanics for `loeres-device`. Th
 This RFC depends on:
 
 * [RFC 001](001-stratified-scalar.md) for scalar capabilities;
-* [RFC 003](003-allocation-free-errors.md) for `WorkspaceTooSmall` and numerical errors;
+* [RFC 003](../done/003-allocation-free-errors.md) for `WorkspaceTooSmall` and numerical errors;
 * [RFC 004](004-static-storage-engine.md) for static storage primitives.
 
 Dependency rules:

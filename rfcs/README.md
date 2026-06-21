@@ -10,7 +10,6 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 |---:|---|---|---|
 | [001](proposed/001-stratified-scalar.md) | Stratified Scalar Capability Model | Phase 1 / Milestone 1 | `loeres-core` |
 | [002](proposed/002-storage-agnostic-contracts.md) | Storage-Agnostic Matrix and Vector Access Contracts | Phase 1 / Milestone 1 | `loeres-core` |
-| [003](proposed/003-allocation-free-errors.md) | Allocation-Free Error Topology and Formatting Restrictions | Phase 1 / Milestone 1 | `loeres-core` |
 | [004](proposed/004-static-storage-engine.md) | Const-Generic and Fixed-Size Static Storage Engine | Phase 2 / Milestone 2 | `loeres-backend-static` |
 | [005](proposed/005-typed-workspace-mechanics.md) | Caller-Owned Typed Workspace Mechanics and Poison-Free Reuse | Phase 2 / Milestone 2 | `loeres-device`, `loeres-backend-static` |
 | [006](proposed/006-deterministic-solver-kernel.md) | Baseline Deterministic Device Solver Kernel | Phase 2 / Milestone 2 | `loeres-device` |
@@ -28,6 +27,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
 | [000](done/000-rfc-lifecycle-policy.md) | RFC Lifecycle Policy | Implemented | Governs RFC folders, state transitions, numbering, index integrity, and cross-reference hygiene. |
+| [003](done/003-allocation-free-errors.md) | Allocation-Free Error Topology and Formatting Restrictions | Implemented (v0.4.0) | `loeres-core` `error` / `diagnostic` modules; `SolverError`, `DiagnosticSnapshot`, `error_code_to_str`. |
 
 ## Archived RFCs
 

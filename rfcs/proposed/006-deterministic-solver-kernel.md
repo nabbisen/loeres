@@ -22,7 +22,7 @@ This RFC depends on:
 
 * [RFC 001](001-stratified-scalar.md) for scalar bounds;
 * [RFC 002](002-storage-agnostic-contracts.md) for access traits;
-* [RFC 003](003-allocation-free-errors.md) for fail-safe error categories;
+* [RFC 003](../done/003-allocation-free-errors.md) for fail-safe error categories;
 * [RFC 004](004-static-storage-engine.md) for fixed storage;
 * [RFC 005](005-typed-workspace-mechanics.md) for workspace lifecycle.
 

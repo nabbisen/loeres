@@ -5,6 +5,73 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.4.0] — 2026-06-21 — RFC 003: allocation-free error topology
+
+First Milestone 1 contract. `loeres-core` now ships real public API: the
+allocation-free error and diagnostic topology specified by RFC 003. RFC 003
+moves to `rfcs/done/` (Implemented). This is the first unit of the core
+sequence (RFC 003 → 001 → 002 → 014).
+
+### Added
+
+- **`loeres_core::error`** — `SolverError`, a 13-variant `#[non_exhaustive]`,
+  `Copy` error enum (the canonical set: `DimensionMismatch { lhs, rhs }`,
+  `InvalidDimension`, `InvalidInput`, `NonFiniteInput`,
+  `UnsupportedProblemStructure`, `SingularMatrix`, `IllConditioned`,
+  `NumericalDomain`, `Overflow`, `WorkspaceTooSmall`, `Cancelled`,
+  `BackendUnavailable`, `InternalInvariantViolation`). Implements `Debug` but
+  **not** `Display`/`core::error::Error`. Adds `const fn error_code_to_str`
+  (stable `snake_case` codes) and `const` classifiers `is_input_error` /
+  `is_numerical_error` / `is_resource_error`.
+- **`loeres_core::diagnostic`** — `DiagnosticCode` (`#[non_exhaustive]`) and the
+  data-only `DiagnosticSnapshot { code, iteration, primary_index,
+  secondary_index }` with a `const EMPTY` and `Default`.
+- Crate-root re-exports: `SolverError`, `error_code_to_str`, `DiagnosticCode`,
+  `DiagnosticSnapshot`.
+- **Compile-time size budgets** (RFC 003 §3.3/§3.4): `const` assertions pin
+  `size_of::<SolverError>() <= 16` and `size_of::<DiagnosticSnapshot>() <= 16`
+  (both measure **12 bytes**).
+- **`cargo xtask check-rfcs`** promoted from scaffold to a real gate enforcing
+  RFC 003 §6.2 (no `Display`/`error::Error`/`format!`/`String`/`Vec`/`Box`/
+  `alloc` in core error code) and §6.4 (`#[non_exhaustive]` on public
+  error/diagnostic enums); added to `release-gate`.
+- 12 spec-driven tests in `loeres-core/src/tests.rs` validating the variant set,
+  size budgets, code stability/uniqueness, classification exclusivity, `Debug`,
+  and that non-convergence is **not** an error variant (RFC 014).
+
+### Changed
+
+- RFC 003 moved `proposed/` → `done/` (Status: Implemented (v0.4.0)); RFC index
+  updated; all inbound/outbound RFC cross-references rewritten to the new paths.
+- Workspace version `0.3.0` → `0.4.0` (a resolved RFC is a minor bump).
+
+### Design notes / deferred
+
+- `error_code_to_str` matches exhaustively inside the crate, so adding a variant
+  is a compile error until the mapping is updated — totality by construction.
+- The three classifier helpers use a documented grouping (input = malformed
+  caller data; numerical; resource); `UnsupportedProblemStructure` and
+  `InternalInvariantViolation` are intentionally in no group. Flagged for
+  architect confirmation of the exact partition.
+- `loeres-cluster` will later wrap `SolverError` in a `Display`/`std::error::Error`
+  type at the server boundary (RFC 003 §4.4); not part of core.
+
+### Release audit
+
+- **Security.** RFC 003 adds only plain, `Copy`, allocation-free data types —
+  no `unsafe`, no data flows, no external integrations, no auth. No threat-model
+  change; existing controls remain valid. The structured fail-closed error set
+  in fact *supports* the threat model (no panics, no string leakage on device
+  paths), and the new `check-rfcs` gate mechanically enforces the no-format /
+  no-alloc core constraint.
+- **Docs.** RFC index, CHANGELOG, ROADMAP, and README reflect the new state;
+  whole-tree cross-reference sweep verified (no stale `proposed/003` links).
+
+### Still open (architect)
+
+- Requirements §5.1.2 base-scalar wording flag — gates **RFC 001** (next in the
+  sequence), not RFC 003. Recommend clearing it before scalar implementation.
+
 ## [0.3.0] — 2026-06-21 — Phase 0: Cargo workspace skeleton
 
 First implementation phase (roadmap §12.1; external design §1). This release
@@ -193,6 +260,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.4.0]: https://github.com/nabbisen/loeres/releases/tag/v0.4.0
 [0.3.0]: https://github.com/nabbisen/loeres/releases/tag/v0.3.0
 [0.2.0]: https://github.com/nabbisen/loeres/releases/tag/v0.2.0
 [0.1.0]: https://github.com/nabbisen/loeres/releases/tag/v0.1.0

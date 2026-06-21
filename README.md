@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> This is the **v0.3.0 Phase 0 skeleton**: the Cargo workspace is scaffolded and every crate compiles — the edge crates are verified `no_std`/no-`alloc` on a bare-metal target — but the crates expose no public API yet and are unpublished. Implementation of the contracts follows in Milestone 1.
+> **v0.4.0 — Milestone 1 in progress.** `loeres-core` ships its first contracts: the RFC 003 allocation-free error topology (`SolverError`, `DiagnosticSnapshot`, `error_code_to_str`), verified `no_std`/no-`alloc` on a bare-metal target. The remaining Milestone 1 contracts — scalars (RFC 001), access (RFC 002), and solver status (RFC 014) — follow.
 
 Build and verify from source:
 

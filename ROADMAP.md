@@ -20,20 +20,19 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.3.0)
+## Current status (v0.4.0)
 
-**Phase 0 (workspace skeleton) complete.** The Cargo workspace exists with the
-five crates plus `xtask`; everything compiles; the edge crates
-(`loeres-core`, `loeres-backend-static`, `loeres-device`) build `no_std` /
-no-`alloc` for `thumbv7em-none-eabihf`; and the `zero-bleed` dependency-direction
-gate passes. The crates carry the public module topography (external design §1.5)
-as documented placeholders — no public API yet. The RFC 001 `OrderedScalar`
-split (v0.2.0) and the RFC 014 reconciliation are folded in.
+**Milestone 1 in progress — RFC 003 implemented.** `loeres-core` now ships its
+first contracts: the allocation-free error/diagnostic topology (`SolverError`,
+`DiagnosticSnapshot`, `error_code_to_str`), with compile-time size budgets and
+the `check-rfcs` hygiene gate. Phase 0 (workspace skeleton) is complete: all
+crates compile, the edge crates build `no_std`/no-`alloc` for
+`thumbv7em-none-eabihf`, and `zero-bleed` + `no-std` + `check-rfcs` pass.
 
-### Next: Phase 1 / Milestone 1 — `loeres-core` contracts
+### Next: Milestone 1 remainder — `loeres-core` contracts
 
-Implement, in order, RFC 003 (errors) → RFC 001 (six-tier scalars) →
-RFC 002 (access) → RFC 014 (solver outcome/status). **Blocker to clear first:**
+Implement, in order: ~~RFC 003 (errors)~~ ✓ → RFC 001 (six-tier scalars) →
+RFC 002 (access) → RFC 014 (solver outcome/status). **Blocker before RFC 001:**
 the requirements §5.1.2 base-scalar wording flag (architect) should be resolved
 so the scalar code traces to a clean spec.
 

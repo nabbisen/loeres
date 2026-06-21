@@ -22,7 +22,7 @@ This RFC depends on:
 
 * [RFC 001](001-stratified-scalar.md);
 * [RFC 002](002-storage-agnostic-contracts.md);
-* [RFC 003](003-allocation-free-errors.md).
+* [RFC 003](../done/003-allocation-free-errors.md).
 
 Dependency rules:
 

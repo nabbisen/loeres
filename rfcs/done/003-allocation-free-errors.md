@@ -1,6 +1,6 @@
 # RFC 003 — Allocation-Free Error Topology and Formatting Restrictions
 
-**Status.** Proposed
+**Status.** Implemented (v0.4.0)
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture
 **Touches.** `loeres-core/src/error.rs`, `loeres-core/src/diagnostic.rs`, public error namespace
 
@@ -18,7 +18,7 @@ This RFC defines the allocation-free error topology for `loeres-core`. It forbid
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It is referenced by [RFC 001](001-stratified-scalar.md), [RFC 002](002-storage-agnostic-contracts.md), and all later RFCs.
+This RFC touches only `loeres-core`. It is referenced by [RFC 001](../proposed/001-stratified-scalar.md), [RFC 002](../proposed/002-storage-agnostic-contracts.md), and all later RFCs.
 
 Dependency constraints:
 

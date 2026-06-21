@@ -20,7 +20,7 @@ This RFC defines public observability hooks, redaction rules, and FFI gateway sa
 
 This RFC depends on:
 
-* [RFC 003](003-allocation-free-errors.md) for shared error categories;
+* [RFC 003](../done/003-allocation-free-errors.md) for shared error categories;
 * [RFC 007](007-dynamic-sparse-adapters.md) for dynamic backend wrappers;
 * [RFC 008](008-async-orchestration-budgets.md) for orchestration boundaries.
 
