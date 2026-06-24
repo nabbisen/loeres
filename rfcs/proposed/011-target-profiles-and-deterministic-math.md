@@ -8,7 +8,7 @@
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-device`, `loeres-backend-static`, `loeres-core`, and cluster/device conformance comparison
+* **Target Environment:** `loeres-device`, `loeres-backend-static`, `loeres`, and cluster/device conformance comparison
 
 ## 1. Executive Summary & Problem Statement
 
@@ -28,7 +28,7 @@ Dependency alignment:
 
 | Crate | Relationship to this RFC | Dependency impact |
 |---|---|---|
-| `loeres-core` | Must compile under no-std target profiles | No new dependencies |
+| `loeres` | Must compile under no-std target profiles | No new dependencies |
 | `loeres-backend-static` | Must compile under reference device profiles | No `std`, no `alloc` |
 | `loeres-device` | Must follow deterministic-profile release gates | No `std`, no `alloc` |
 | `loeres-backend-std` | Participates in parity testing as cluster counterpart | `std` allowed |
@@ -158,7 +158,7 @@ Minimum public policy:
 Acceptance gates:
 
 1. `cargo xtask target-profiles` validates the machine-readable target profile manifest.
-2. `loeres-core`, `loeres-backend-static`, and `loeres-device` compile for `device-thumbv7em-hardfloat` baseline once the crates exist.
+2. `loeres`, `loeres-backend-static`, and `loeres-device` compile for `device-thumbv7em-hardfloat` baseline once the crates exist.
 3. Device builds use the required panic strategy.
 4. The build log records target triple and Rust toolchain version.
 5. `cargo xtask conformance` reports same-profile and cross-profile results separately.

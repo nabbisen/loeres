@@ -9,7 +9,7 @@ this file is a short summary.
 
 - **Phase 0 — Repository & policy foundation.** Workspace skeleton, crate layout,
   CI/verification scaffolding, dependency-direction checks.
-- **Phase 1 / Milestone 1 — `loeres-core`.** Stratified scalar capabilities,
+- **Phase 1 / Milestone 1 — `loeres`.** Stratified scalar capabilities,
   storage-agnostic access contracts, allocation-free error topology, and the
   core solver outcome/status taxonomy (RFCs 001–003, 014).
 - **Phase 2 / Milestone 2 — Static backend & device.** Fixed-size storage,
@@ -23,7 +23,7 @@ this file is a short summary.
 ## Current status (v0.6.2)
 
 **Milestone 1 nearly complete — RFC 003, RFC 014, and RFC 001 implemented.**
-`loeres-core` now ships the error/diagnostic topology (RFC 003), the solver
+`loeres` now ships the error/diagnostic topology (RFC 003), the solver
 outcome/status taxonomy (RFC 014), and the six-tier scalar capability model
 (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline
 impls). The base-scalar ordering question is resolved: the architect chose

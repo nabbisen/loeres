@@ -1,20 +1,20 @@
 # RFC 014 — Core Solver Outcome and Status Taxonomy
 
-**Status.** Implemented (v0.5.0) — core `loeres_core::solver` taxonomy and `AsCoreReport` complete; the device (RFC 006) and cluster (RFC 008) report derivations land with those crates.
+**Status.** Implemented (v0.5.0) — core `loeres::solver` taxonomy and `AsCoreReport` complete; the device (RFC 006) and cluster (RFC 008) report derivations land with those crates. Note: `loeres` package renamed to `loeres`, directory to `crates/loeres/` (v0.6.3).
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture (sequenced immediately after RFC 003)
-**Touches.** `loeres-core/src/solver.rs`, `loeres-core/src/lib.rs`, the public solver-status namespace; reconciles `loeres-core/src/error.rs` (RFC 003), `loeres-device` report types (RFC 006), `loeres-cluster` report types (RFC 008), conformance status categories (RFC 013), and `xtask check-public-api` (RFC 010)
+**Touches.** `loeres/src/solver.rs`, `loeres/src/lib.rs`, the public solver-status namespace; reconciles `loeres/src/error.rs` (RFC 003), `loeres-device` report types (RFC 006), `loeres-cluster` report types (RFC 008), conformance status categories (RFC 013), and `xtask check-public-api` (RFC 010)
 
 ---
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-core`; consumed by `loeres-device`, `loeres-cluster`, and host-side conformance tooling
+* **Target Environment:** `loeres`; consumed by `loeres-device`, `loeres-cluster`, and host-side conformance tooling
 
 ## 1. Executive Summary & Problem Statement
 
-The external design (§2.10) and the roadmap (RFC 1.3 scope) both call for a shared `loeres_core::solver` taxonomy. No RFC in the 001–013 set owns it. As a result [RFC 006](../proposed/006-deterministic-solver-kernel.md) §5 already references `Result<StepOutcome, SolverError>` with `StepOutcome` undefined, and separately invents a device-local `ConvergenceStatus`. Left unowned, every execution crate grows its own parallel outcome taxonomy — the same fragmentation that occurred with validation state across RFCs 007, 008, and 012.
+The external design (§2.10) and the roadmap (RFC 1.3 scope) both call for a shared `loeres::solver` taxonomy. No RFC in the 001–013 set owns it. As a result [RFC 006](../proposed/006-deterministic-solver-kernel.md) §5 already references `Result<StepOutcome, SolverError>` with `StepOutcome` undefined, and separately invents a device-local `ConvergenceStatus`. Left unowned, every execution crate grows its own parallel outcome taxonomy — the same fragmentation that occurred with validation state across RFCs 007, 008, and 012.
 
-This RFC defines the single core outcome/status taxonomy for `loeres-core` and the rule by which device and cluster report types derive from it. Its central principle is a clean status/error split:
+This RFC defines the single core outcome/status taxonomy for `loeres` and the rule by which device and cluster report types derive from it. Its central principle is a clean status/error split:
 
 > **Status** is expected, bounded solver progress and is returned in `Ok`. **Error** is a boundary-validation rejection or a fail-safe condition and is returned in `Err`. The same condition must never be representable as both.
 
@@ -22,11 +22,11 @@ The headline consequence is that **non-convergence at the configured iteration c
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It depends on [RFC 003](003-allocation-free-errors.md) for `SolverError` and `DiagnosticSnapshot`. It is consumed by [RFC 005](../proposed/005-typed-workspace-mechanics.md), [RFC 006](../proposed/006-deterministic-solver-kernel.md), [RFC 008](../proposed/008-async-orchestration-budgets.md), and [RFC 013](../proposed/013-conformance-corpus-and-numerical-parity.md). Although numbered 014, it is implemented in Milestone 1 directly after RFC 003, because device and cluster solve entrypoints cannot be designed until the shared outcome vocabulary is frozen.
+This RFC touches only `loeres`. It depends on [RFC 003](003-allocation-free-errors.md) for `SolverError` and `DiagnosticSnapshot`. It is consumed by [RFC 005](../proposed/005-typed-workspace-mechanics.md), [RFC 006](../proposed/006-deterministic-solver-kernel.md), [RFC 008](../proposed/008-async-orchestration-budgets.md), and [RFC 013](../proposed/013-conformance-corpus-and-numerical-parity.md). Although numbered 014, it is implemented in Milestone 1 directly after RFC 003, because device and cluster solve entrypoints cannot be designed until the shared outcome vocabulary is frozen.
 
 | Crate | Relationship to this RFC |
 |---|---|
-| `loeres-core` | Owns `loeres_core::solver` outcome/status types and the derivation trait |
+| `loeres` | Owns `loeres::solver` outcome/status types and the derivation trait |
 | `loeres-backend-static` | Not affected; defines no solver outcomes |
 | `loeres-device` | `DeviceSolveReport` must derive from the core `SolveReport` |
 | `loeres-backend-std` | Not affected; defines no solver outcomes |
@@ -255,7 +255,7 @@ The baseline device report carries no diagnostic field; the diagnostic is read f
 
 ```rust
 // loeres-device (baseline shape; RFC 006 owns the final form)
-use loeres_core::solver::{AsCoreReport, SolveReport};
+use loeres::solver::{AsCoreReport, SolveReport};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct DeviceSolveReport {
@@ -302,7 +302,7 @@ Because `SolveReport` excludes `DiagnosticSnapshot`, it fits inside the same 16-
 
 ### 4.2 Static dispatch only
 
-`AsCoreReport` is a projection trait for static dispatch and tests only. It must not appear as `dyn AsCoreReport` in any `loeres-core`, `loeres-device`, or `loeres-backend-static` public signature; `xtask check-public-api` (RFC 010) must reject that form in edge-facing APIs. Cluster orchestration may box derived reports as allowed by RFC 008. Every other type here is `Copy` plain data with no references, allocation, or trait objects.
+`AsCoreReport` is a projection trait for static dispatch and tests only. It must not appear as `dyn AsCoreReport` in any `loeres`, `loeres-device`, or `loeres-backend-static` public signature; `xtask check-public-api` (RFC 010) must reject that form in edge-facing APIs. Cluster orchestration may box derived reports as allowed by RFC 008. Every other type here is `Copy` plain data with no references, allocation, or trait objects.
 
 ### 4.3 Semver extensibility
 
@@ -371,7 +371,7 @@ Adopting this taxonomy requires the following edits in sibling RFCs, applied in 
 
 ### 6.1 Size, representation, and no-std gates
 
-CI must compile the §4.1 assertions on every supported target profile and confirm `loeres-core::solver` builds under `#![no_std]` without `alloc`. A test must confirm each data-free enum is one byte under `#[repr(u8)]`.
+CI must compile the §4.1 assertions on every supported target profile and confirm `loeres::solver` builds under `#![no_std]` without `alloc`. A test must confirm each data-free enum is one byte under `#[repr(u8)]`.
 
 ### 6.2 Invalid-combination gate
 
@@ -398,7 +398,7 @@ A test must assert that `SolverError` (post-RFC-003 patch) contains no non-conve
 | Sprint | Work |
 |---|---|
 | S0 | Freeze status/error split, taxonomy names, valid-combination matrix, and size budgets. |
-| S1 | Add `loeres_core::solver` module skeleton, enums with `#[repr(u8)]`, and `AsCoreReport`. |
+| S1 | Add `loeres::solver` module skeleton, enums with `#[repr(u8)]`, and `AsCoreReport`. |
 | S2 | Add size/representation assertions, invalid-combination tests, and split-classification compile tests. |
 | S3 | Implement the report constructors/accessors and the trait. |
 | S4 | Run no-std, no-alloc, size-budget, and `check-public-api` checks. |
@@ -409,7 +409,7 @@ A test must assert that `SolverError` (post-RFC-003 patch) contains no non-conve
 
 RFC 014 may move to `done/` only when:
 
-1. `loeres_core::solver` defines `StepOutcome`, `SolveStatus`, `TerminationReason`, `IterationReport`, `SolveReport`, and `AsCoreReport`;
+1. `loeres::solver` defines `StepOutcome`, `SolveStatus`, `TerminationReason`, `IterationReport`, `SolveReport`, and `AsCoreReport`;
 2. all core outcome types satisfy the §4.1 size and representation budgets under `no_std`;
 3. `SolveReport` exposes only the four valid status/termination combinations through named constructors, verified by §6.2;
 4. `MaxIterationsReached` and `PanicGateViolation` have been removed from `SolverError`, and non-convergence is reported as a status;

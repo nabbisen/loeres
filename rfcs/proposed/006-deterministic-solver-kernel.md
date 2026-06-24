@@ -8,7 +8,7 @@
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-device`; depends on `loeres-core` and `loeres-backend-static`
+* **Target Environment:** `loeres-device`; depends on `loeres` and `loeres-backend-static`
 
 ## 1. Executive Summary & Problem Statement
 
@@ -114,7 +114,7 @@ This is constant-iteration, not cryptographic constant-time.
 ### 3.5 Report type
 
 ```rust
-use loeres_core::solver::{AsCoreReport, SolveReport, SolveStatus};
+use loeres::solver::{AsCoreReport, SolveReport, SolveStatus};
 
 // Status comes from the core taxonomy (RFC 014). The baseline device report
 // carries no diagnostic field; the compact diagnostic is read from the
@@ -181,7 +181,7 @@ The baseline deterministic kernel must use safe Rust only. Any later unsafe opti
 ## 5. Algorithmic & Numerical Fail-Safe Guardrails
 
 1. Boundary validation runs before the iteration loop unless the caller supplies a validated-input state accepted by a later RFC.
-2. Every step returns `Result<StepOutcome, SolverError>` using `StepOutcome` from `loeres_core::solver` (RFC 014 §3.2); the bounded driver maps step outcomes onto the terminal `SolveReport` exactly as in RFC 014 §3.5, and must test the `converged_at_cap` cap-equality invariant per timing mode.
+2. Every step returns `Result<StepOutcome, SolverError>` using `StepOutcome` from `loeres::solver` (RFC 014 §3.2); the bounded driver maps step outcomes onto the terminal `SolveReport` exactly as in RFC 014 §3.5, and must test the `converged_at_cap` cap-equality invariant per timing mode.
 3. The solver cannot loop forever because iteration count is bounded.
 4. In constant-iteration mode, convergence does not change the number of loop iterations.
 5. In early-exit mode, convergence may return early but never exceeds the cap.

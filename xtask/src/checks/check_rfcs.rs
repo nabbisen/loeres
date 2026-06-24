@@ -1,6 +1,6 @@
 //! `check-rfcs` — core error/diagnostic source hygiene.
 //!
-//! Enforces the gates RFC 003 mandates against the `loeres-core` error and
+//! Enforces the gates RFC 003 mandates against the `loeres` error and
 //! diagnostic modules:
 //!
 //! * §6.2 — no `Display` impl, no `error::Error` impl, and no
@@ -15,11 +15,11 @@
 use std::fs;
 
 const CORE_MODULES: &[&str] = &[
-    "crates/loeres-core/src/error.rs",
-    "crates/loeres-core/src/diagnostic.rs",
-    "crates/loeres-core/src/solver.rs",
-    "crates/loeres-core/src/scalar.rs",
-    "crates/loeres-core/src/scalar/primitive.rs",
+    "crates/loeres/src/error.rs",
+    "crates/loeres/src/diagnostic.rs",
+    "crates/loeres/src/solver.rs",
+    "crates/loeres/src/scalar.rs",
+    "crates/loeres/src/scalar/primitive.rs",
 ];
 
 /// Tokens forbidden on core error/diagnostic *code* lines (comments excluded).

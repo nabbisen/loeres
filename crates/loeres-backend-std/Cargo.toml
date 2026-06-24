@@ -21,4 +21,4 @@ adapter-nalgebra = []
 native-linalg = []   # BLAS/LAPACK-like adapters; must never be pulled by default
 
 [dependencies]
-loeres-core = { workspace = true }
+loeres = { workspace = true }

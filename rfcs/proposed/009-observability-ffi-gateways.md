@@ -30,7 +30,7 @@ Dependency rules:
 |---|---|
 | `loeres-cluster` | Owns observability and FFI gateway features |
 | `loeres-backend-std` | May expose cluster-only FFI adapter internals |
-| `loeres-core` | No dependency on telemetry or FFI |
+| `loeres` | No dependency on telemetry or FFI |
 | `loeres-backend-static` | No telemetry or FFI dependency |
 | `loeres-device` | No telemetry or FFI dependency |
 

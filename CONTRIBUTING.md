@@ -42,7 +42,7 @@ To propose a design change:
 
 - Separate `.rs` files by logical boundaries. Consider splitting a file past
   **300 effective lines of code**; strongly consider it past **500**.
-- Keep edge-facing crates (`loeres-core`, `loeres-backend-static`,
+- Keep edge-facing crates (`loeres`, `loeres-backend-static`,
   `loeres-device`) `#![no_std]` and free of `alloc`; never let server-facing
   types or features reach them.
 - When implementation is complete: run `cargo fmt` **once** (do not hand-review

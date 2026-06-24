@@ -28,7 +28,7 @@ Dependency alignment:
 | `xtask conformance` | Loads fixtures and runs comparisons | Host-only; may use `std` |
 | `loeres-device` | Exposes testable deterministic solver entrypoints | No parser dependency required |
 | `loeres-cluster` | Exposes dynamic solver entrypoints | `std` allowed |
-| `loeres-core` | Owns shared status/error categories | No `std`, no `alloc` |
+| `loeres` | Owns shared status/error categories | No `std`, no `alloc` |
 
 ## 3. Concrete Technical Specification
 
@@ -91,7 +91,7 @@ Solver-specific RFCs may define tighter or looser tolerances, but they must just
 
 | Category | Meaning |
 |---|---|
-| `status_match` | Device and cluster return compatible `loeres_core::solver::SolveStatus` values (RFC 014); non-convergence is `Ok(NotConverged)`, never an error |
+| `status_match` | Device and cluster return compatible `loeres::solver::SolveStatus` values (RFC 014); non-convergence is `Ok(NotConverged)`, never an error |
 | `objective_within_tolerance` | Objective values differ by no more than declared tolerance |
 | `residual_within_tolerance` | Constraint/residual measures satisfy declared tolerance |
 | `solution_within_tolerance` | Solution vectors are compatible under the selected norm |

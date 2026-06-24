@@ -2,7 +2,7 @@
 
 This chapter consolidates the design-level threat model from the requirements
 specification (§8) and the external design (§5). It is a design artifact: Loeres
-is in early implementation — `loeres-core` ships the error/diagnostic topology,
+is in early implementation — `loeres` ships the error/diagnostic topology,
 the solver outcome/status taxonomy, and the scalar capability contracts, while
 the access contracts and all solver engines remain in design or ahead on the
 roadmap. The model therefore still describes the controls the implementation
@@ -52,7 +52,7 @@ workspace is treated as reset-required unless the solver documents otherwise.
 
 ## FFI policy
 
-`loeres-core`, `loeres-backend-static`, and `loeres-device` must not use FFI.
+`loeres`, `loeres-backend-static`, and `loeres-device` must not use FFI.
 `loeres-backend-std` and `loeres-cluster` may use FFI only behind explicit,
 default-off feature gates, with documented memory ownership, thread-safety, and
 failure behavior. FFI results are normalized into Loeres structured

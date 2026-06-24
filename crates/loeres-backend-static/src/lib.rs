@@ -2,8 +2,8 @@
 //!
 //! Environment: `#![no_std]`, no `alloc`. Provides owned fixed arrays and
 //! borrowed views over caller-owned memory (peripheral buffers, DMA regions,
-//! RTOS-owned control-loop state) that implement the `loeres-core` access
-//! contracts. Depends on `loeres-core` only.
+//! RTOS-owned control-loop state) that implement the `loeres` access
+//! contracts. Depends on `loeres` only.
 //!
 //! Public module topography (external design §1.5):
 //! `array`, `view`, `workspace`, `dimension`.

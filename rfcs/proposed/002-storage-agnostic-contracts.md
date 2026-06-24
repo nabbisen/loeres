@@ -2,13 +2,13 @@
 
 **Status.** Proposed
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture
-**Touches.** `loeres-core/src/access.rs`, `loeres-core/src/dimension.rs`, `loeres-core/src/lib.rs`, core vector/matrix access namespaces
+**Touches.** `loeres/src/access.rs`, `loeres/src/dimension.rs`, `loeres/src/lib.rs`, core vector/matrix access namespaces
 
 ---
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-core`; consumed by static and dynamic backends
+* **Target Environment:** `loeres`; consumed by static and dynamic backends
 
 > **Revision note (v0.6.1, in response to the v0.6.0 architect review).** This RFC
 > was patched before implementation: the module is `dimension`, not `dim` (B1);
@@ -26,17 +26,17 @@ Loeres must allow the same mathematical solver contracts to operate over multipl
 
 This RFC defines storage-agnostic access contracts for vectors and matrices. These contracts describe dimensions and fallible element access only. They deliberately do not define heavyweight linear algebra kernels such as matrix multiplication, Cholesky factorization, sparse assembly, or BLAS-style routines.
 
-The public module name is `loeres_core::access`, not `loeres_core::linalg`, to avoid suggesting that core owns algorithmic linear algebra operations.
+The public module name is `loeres::access`, not `loeres::linalg`, to avoid suggesting that core owns algorithmic linear algebra operations.
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It depends on [RFC 001](../done/001-stratified-scalar.md) for scalar bounds and [RFC 003](../done/003-allocation-free-errors.md) for error types.
+This RFC touches only `loeres`. It depends on [RFC 001](../done/001-stratified-scalar.md) for scalar bounds and [RFC 003](../done/003-allocation-free-errors.md) for error types.
 
 Dependency alignment:
 
 | Crate | Role |
 |---|---|
-| `loeres-core` | Defines dimension and access traits only |
+| `loeres` | Defines dimension and access traits only |
 | `loeres-backend-static` | Implements traits for fixed arrays and borrowed views |
 | `loeres-backend-std` | Implements traits for heap-backed dense/sparse layouts |
 | `loeres-device` | Consumes these traits via static dispatch only |
@@ -150,7 +150,7 @@ These traits are layout-independent. A backend may be row-major, column-major, s
 
 ### 3.5 Borrowed vector views
 
-Borrowed views provide allocation-free adapters for existing memory. They live in `loeres-core` only if they can be represented with slices and no backend assumptions.
+Borrowed views provide allocation-free adapters for existing memory. They live in `loeres` only if they can be represented with slices and no backend assumptions.
 
 ```rust
 pub struct VectorView<'a, S: BaseScalar> {
@@ -183,7 +183,7 @@ A `VectorViewMut` must not expose APIs that allow aliasing mutable access. The R
 
 ### 3.6 Borrowed matrix views
 
-`loeres-core` owns only a **simple contiguous, row-major** dense matrix view.
+`loeres` owns only a **simple contiguous, row-major** dense matrix view.
 This keeps core small and avoids turning RFC 002 into a storage-layout RFC.
 Advanced views — column-major, arbitrary strided, and sub-matrix views — are
 **not** in the core baseline; they belong to `loeres-backend-static` behind the
@@ -227,7 +227,7 @@ Core access traits are not object-safe targets for device mathematics. The publi
 &dyn VectorAccess<Scalar = S>
 ```
 
-inside `loeres-core`, `loeres-backend-static`, and `loeres-device` solver kernels.
+inside `loeres`, `loeres-backend-static`, and `loeres-device` solver kernels.
 
 Allowed pattern:
 
@@ -364,7 +364,7 @@ bound); a diagnostic consumer distinguishes index-vs-shape mismatches by context
 
 ### 6.1 Core compile gates
 
-CI must verify that `loeres-core::access` compiles under `no_std` without `alloc`.
+CI must verify that `loeres::access` compiles under `no_std` without `alloc`.
 
 ### 6.2 View safety tests
 
@@ -397,7 +397,7 @@ Each backend must provide conformance tests that run the same access corpus agai
 
 RFC 002 may move to `done/` only when:
 
-1. `loeres_core::access` exposes access-only traits and borrowed views;
+1. `loeres::access` exposes access-only traits and borrowed views;
 2. view constructors validate dimensions without panics;
 3. no heavy linalg operations exist in core baseline traits;
 4. static dispatch is enforced for core/device paths;

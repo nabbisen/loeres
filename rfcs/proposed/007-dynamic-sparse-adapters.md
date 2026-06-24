@@ -12,7 +12,7 @@
 
 ## 1. Executive Summary & Problem Statement
 
-Cluster workloads need dynamic dimensions, sparse data, heap allocation, and interoperability with high-throughput Rust numerical libraries. At the same time, these dynamic capabilities must not leak backward into `loeres-core`, `loeres-backend-static`, or `loeres-device`.
+Cluster workloads need dynamic dimensions, sparse data, heap allocation, and interoperability with high-throughput Rust numerical libraries. At the same time, these dynamic capabilities must not leak backward into `loeres`, `loeres-backend-static`, or `loeres-device`.
 
 This RFC defines the external design for `loeres-backend-std` dense and sparse adapters. The adapters implement core access contracts over heap-backed layouts and provide allocation-minimizing ingestion paths for request-driven workloads.
 
@@ -29,7 +29,7 @@ Dependency rules:
 | Crate | Rule |
 |---|---|
 | `loeres-backend-std` | May use `std`, heap allocation, third-party dense/sparse crates |
-| `loeres-core` | Must not depend on this crate |
+| `loeres` | Must not depend on this crate |
 | `loeres-backend-static` | Must not depend on this crate |
 | `loeres-device` | Must not depend on this crate |
 | `loeres-cluster` | Consumes this crate |

@@ -1,34 +1,34 @@
 # RFC 003 — Allocation-Free Error Topology and Formatting Restrictions
 
-**Status.** Implemented (v0.4.0)
+**Status.** Implemented (v0.4.0) — note: `loeres` package renamed to `loeres`, directory to `crates/loeres/` (v0.6.3).
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture
-**Touches.** `loeres-core/src/error.rs`, `loeres-core/src/diagnostic.rs`, public error namespace
+**Touches.** `loeres/src/error.rs`, `loeres/src/diagnostic.rs`, public error namespace
 
 ---
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-core`; consumed by all Loeres crates
+* **Target Environment:** `loeres`; consumed by all Loeres crates
 
 ## 1. Executive Summary & Problem Statement
 
 Loeres error values cross every crate boundary. They must be useful enough to express numerical and structural failure, but small enough not to inflate `Result<T, E>` in device hot paths. They must also be semver-extensible because future solvers will need new error categories.
 
-This RFC defines the allocation-free error topology for `loeres-core`. It forbids `Display` in core, requires `Debug`, mandates static string lookup, and establishes compile-time size limits for errors and diagnostics.
+This RFC defines the allocation-free error topology for `loeres`. It forbids `Display` in core, requires `Debug`, mandates static string lookup, and establishes compile-time size limits for errors and diagnostics.
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It is referenced by [RFC 001](001-stratified-scalar.md), [RFC 002](../proposed/002-storage-agnostic-contracts.md), and all later RFCs.
+This RFC touches only `loeres`. It is referenced by [RFC 001](001-stratified-scalar.md), [RFC 002](../proposed/002-storage-agnostic-contracts.md), and all later RFCs.
 
 Dependency constraints:
 
-* no `std::error::Error` implementation in `loeres-core`;
-* no `core::fmt::Display` implementation in `loeres-core` baseline;
+* no `std::error::Error` implementation in `loeres`;
+* no `core::fmt::Display` implementation in `loeres` baseline;
 * no heap-allocated strings;
 * no formatting paths required for normal error translation;
 * no backend-specific error payloads in core error variants.
 
-Cluster crates may wrap `SolverError` in richer `std` errors, but that wrapper must not be part of `loeres-core`.
+Cluster crates may wrap `SolverError` in richer `std` errors, but that wrapper must not be part of `loeres`.
 
 ## 3. Concrete Technical Specification
 
@@ -66,7 +66,7 @@ pub enum SolverError {
 }
 ```
 
-The exact variant list may be refined during implementation, but this RFC mandates the categories above. Any payload must remain compact, copyable, and allocation-free. Non-convergence at the iteration cap is not an error; it is reported as `loeres_core::solver::SolveStatus::NotConverged` (RFC 014). `PanicGateViolation` is not a runtime error; it is a CI/release-gate result owned by RFC 010.
+The exact variant list may be refined during implementation, but this RFC mandates the categories above. Any payload must remain compact, copyable, and allocation-free. Non-convergence at the iteration cap is not an error; it is reported as `loeres::solver::SolveStatus::NotConverged` (RFC 014). `PanicGateViolation` is not a runtime error; it is a CI/release-gate result owned by RFC 010.
 
 ### 3.3 Fixed-size maximum bounds
 
@@ -111,7 +111,7 @@ pub struct DiagnosticSnapshot {
 
 ### 3.5 `Display` prohibition
 
-`loeres-core` must not implement:
+`loeres` must not implement:
 
 ```rust
 impl core::fmt::Display for SolverError
@@ -185,7 +185,7 @@ This RFC requires no `unsafe`. Error values are plain data.
 
 ### 4.4 Cluster wrapping
 
-`loeres-cluster` may define a separate error type that implements `std::error::Error` and `Display`, but it must wrap or translate `SolverError` at the cluster boundary. That richer error must never be returned by `loeres-core`, `loeres-backend-static`, or `loeres-device` baseline APIs.
+`loeres-cluster` may define a separate error type that implements `std::error::Error` and `Display`, but it must wrap or translate `SolverError` at the cluster boundary. That richer error must never be returned by `loeres`, `loeres-backend-static`, or `loeres-device` baseline APIs.
 
 ## 5. Algorithmic & Numerical Fail-Safe Guardrails
 
@@ -225,8 +225,8 @@ on every supported target profile.
 
 `xtask check-rfcs` must reject:
 
-* `impl Display for SolverError` in `loeres-core`;
-* `std::error::Error` implementation in `loeres-core`;
+* `impl Display for SolverError` in `loeres`;
+* `std::error::Error` implementation in `loeres`;
 * heap-allocated strings in core error paths;
 * `format!`, `String`, `Vec`, or `Box` in core error and diagnostic modules.
 
@@ -243,7 +243,7 @@ A source-level lint must ensure public error and diagnostic enums carry `#[non_e
 RFC 003 may move to `done/` only when:
 
 1. `SolverError` and `DiagnosticSnapshot` satisfy the size budget;
-2. `loeres-core` implements `Debug` but not `Display` for core errors;
+2. `loeres` implements `Debug` but not `Display` for core errors;
 3. `error_code_to_str(err: SolverError) -> &'static str` exists;
 4. all access/scalar failure cases use structured errors;
 5. no baseline core error path imports `std` or `alloc`.

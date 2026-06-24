@@ -1,4 +1,4 @@
-//! Allocation-free error topology for `loeres-core` (RFC 003).
+//! Allocation-free error topology for `loeres` (RFC 003).
 //!
 //! [`SolverError`] is the canonical, copyable, allocation-free error returned by
 //! every fallible core API. It implements `Debug` but deliberately **not**

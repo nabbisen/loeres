@@ -2,7 +2,7 @@
 //!
 //! Environment: `std`, dynamic allocation. Provides dense/sparse storage
 //! adapters and optional third-party numerical backends, all implementing the
-//! `loeres-core` access contracts. Server-only: it must never be depended on
+//! `loeres` access contracts. Server-only: it must never be depended on
 //! by `loeres-device` or `loeres-backend-static`.
 //!
 //! Public module topography (external design §1.5):

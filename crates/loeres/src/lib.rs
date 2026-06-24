@@ -1,4 +1,4 @@
-//! `loeres-core` — the shared mathematical vocabulary of the Loeres family.
+//! `loeres` — the shared mathematical vocabulary of the Loeres family.
 //!
 //! Environment: `#![no_std]`, no `alloc`. Defines contracts only; it owns no
 //! storage, runtime, or OS assumptions. Both the server (`loeres-cluster` /

@@ -29,7 +29,7 @@ Dependency rules:
 | Crate | Rule |
 |---|---|
 | `loeres-backend-static` | `#![no_std]`, no `alloc`, no `std` |
-| `loeres-core` | Only internal Loeres dependency |
+| `loeres` | Only internal Loeres dependency |
 | `loeres-device` | Consumes static backend but does not own storage primitives |
 | `loeres-backend-std` | No dependency from static backend |
 | `loeres-cluster` | No dependency from static backend baseline |

@@ -3,7 +3,7 @@
 Deterministic, bounded-iteration, panic-averse edge solver entrypoints with caller-owned typed workspaces.
 
 - **Environment:** `#![no_std]`, no `alloc`
-- **Depends on:** `loeres-core`, `loeres-backend-static`
+- **Depends on:** `loeres`, `loeres-backend-static`
 - **Status:** Phase 0 skeleton — public module topography is in place; public
   items land in the owning RFCs' milestones.
 

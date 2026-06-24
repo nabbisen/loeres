@@ -15,4 +15,4 @@ static-views = []         # advanced strided / row / column / sub-matrix views (
 diagnostic-snapshot = []  # compact numeric diagnostic snapshots (RFC 004/005)
 
 [dependencies]
-loeres-core = { workspace = true }
+loeres = { workspace = true }

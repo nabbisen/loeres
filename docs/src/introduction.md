@@ -18,7 +18,7 @@ The core design principle is:
 
 > **Share mathematical contracts, not execution assumptions.**
 
-`loeres-core` defines the shared vocabulary — scalar capabilities, vector and
+`loeres` defines the shared vocabulary — scalar capabilities, vector and
 matrix access contracts, problem families, solver outcome/status categories,
 dimensions, and an allocation-free error topology. It is `#![no_std]` and does
 not depend on `alloc`. Backends provide storage; execution crates provide the

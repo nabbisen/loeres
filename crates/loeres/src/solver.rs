@@ -1,4 +1,4 @@
-//! Solver outcome and status taxonomy for `loeres-core` (RFC 014).
+//! Solver outcome and status taxonomy for `loeres` (RFC 014).
 //!
 //! This module owns the single shared vocabulary for solver outcomes, so device
 //! and cluster crates do not each grow a parallel taxonomy. Its central rule is

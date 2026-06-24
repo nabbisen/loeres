@@ -8,7 +8,7 @@
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-cluster`; uses `loeres-core` and `loeres-backend-std`
+* **Target Environment:** `loeres-cluster`; uses `loeres` and `loeres-backend-std`
 
 ## 1. Executive Summary & Problem Statement
 
@@ -30,7 +30,7 @@ Dependency rules:
 |---|---|
 | `loeres-cluster` | May use `std`, async runtimes, thread pools, logging/tracing |
 | `loeres-backend-std` | Provides dynamic storage |
-| `loeres-core` | Provides minimal contracts |
+| `loeres` | Provides minimal contracts |
 | `loeres-device` | No dependency relation |
 | `loeres-backend-static` | No dependency relation |
 
@@ -69,7 +69,7 @@ The exact time type may be adjusted to `std::time::Duration` in implementation. 
 Batch APIs must return per-item outcomes. One ill-conditioned model must not fail the entire batch.
 
 ```rust
-use loeres_core::solver::SolveReport;
+use loeres::solver::SolveReport;
 
 pub struct BatchSolveReport<Solution> {
     pub outcomes: Vec<BatchItemOutcome<Solution>>,
@@ -100,7 +100,7 @@ pub trait ClusterJob: Send + Sync {
 }
 ```
 
-This trait is not part of `loeres-core` and must never be used by `loeres-device`.
+This trait is not part of `loeres` and must never be used by `loeres-device`.
 
 ### 3.4 Monomorphization budget metric
 

@@ -5,6 +5,62 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.6.3] — 2026-06-22 — `loeres-core` renamed to `loeres`
+
+Structural rename only. The core crate — the shared mathematical contracts
+that all five crates depend on — is renamed from `loeres-core` to `loeres`,
+and its directory moves from `crates/loeres-core/` to `crates/loeres/`. No
+public API, contract, trait, type, or test changes; hence a patch bump under
+Direction A of the rename review.
+
+### Rationale
+
+Naming the foundation crate `loeres` matches the Rust ecosystem convention
+(`serde` / `serde_json`, `tokio` / `tokio-util`, etc.). 
+Every downstream user of either the server or edge environment must
+depend on this crate; `loeres = { … }` is the natural name for that import.
+
+### Changed
+
+- `crates/loeres-core/` directory renamed to `crates/loeres/`.
+- `[package] name` in the crate manifest changed from `loeres-core` to
+  `loeres`.
+- Root `[workspace.dependencies]` key updated from `loeres-core` to `loeres`;
+  path updated to `crates/loeres`.
+- All four dependent crate manifests updated: `loeres-core = { workspace =
+  true }` → `loeres = { workspace = true }`.
+- `xtask` path strings updated throughout (`check_rfcs`, `no_std`, `zero_bleed`).
+- Doc comments, crate-level README headings, `docs/src/` narrative, root
+  `README.md`, `ROADMAP.md`, `CONTRIBUTING.md`, `SECURITY.md`, CI workflow
+  comment, and sibling crate READMEs updated from `loeres-core` / `loeres_core`
+  to `loeres`.
+- **`done/` RFC Status fields updated** (R1 policy): rename noted in
+  RFC 000, 001, 003, and 014.
+- Workspace version bumped `0.6.2` → `0.6.3`.
+
+### Not changed
+
+- Public module paths inside the crate (`loeres::scalar`, `loeres::access`,
+  etc.) are unchanged at the Rust level — the old `loeres_core::` prefix is
+  replaced by `loeres::` automatically by the rename; module structure is
+  identical.
+- CHANGELOG historical entries for v0.1.0–v0.6.2 retain `loeres-core` as
+  accurate historical record.
+- `docs/specs/` canonical design specifications retain `loeres-core`; they are
+  your apex artifacts and will be updated in the next canonical revision.
+
+### Security / threat model
+
+No executable logic change, no data flows, no integrations, no auth. Existing
+controls remain valid.
+
+### Verification
+
+`cargo check`, `clippy -D warnings`, `fmt --check`, 37 core tests,
+`xtask zero-bleed`, `xtask no-std` (bare-metal `thumbv7em-none-eabihf`), and
+`xtask check-rfcs` all pass; whole-tree sweep clean (excluding CHANGELOG
+history and canonical specs).
+
 ## [0.6.2] — 2026-06-22 — In-repo spec currency sync (docs only)
 
 A documentation-currency release. The in-repo design specs under `docs/specs/`
@@ -514,6 +570,8 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.6.3]: https://github.com/nabbisen/loeres/releases/tag/v0.6.3
+[0.6.2]: https://github.com/nabbisen/loeres/releases/tag/v0.6.2
 [0.6.1]: https://github.com/nabbisen/loeres/releases/tag/v0.6.1
 [0.6.0]: https://github.com/nabbisen/loeres/releases/tag/v0.6.0
 [0.5.0]: https://github.com/nabbisen/loeres/releases/tag/v0.5.0

@@ -3,7 +3,7 @@
 Server-side solving: dynamic models, batch with per-item failure isolation, orchestration, observability, and optional audited FFI. **Server-only.**
 
 - **Environment:** `std`
-- **Depends on:** `loeres-core`, `loeres-backend-std`
+- **Depends on:** `loeres`, `loeres-backend-std`
 - **Status:** Phase 0 skeleton — public module topography is in place; public
   items land in the owning RFCs' milestones.
 

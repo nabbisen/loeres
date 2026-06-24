@@ -3,7 +3,7 @@
 Fixed-size, allocation-free storage and borrowed views over caller-owned memory for the edge.
 
 - **Environment:** `#![no_std]`, no `alloc`
-- **Depends on:** `loeres-core`
+- **Depends on:** `loeres`
 - **Status:** Phase 0 skeleton — public module topography is in place; public
   items land in the owning RFCs' milestones.
 

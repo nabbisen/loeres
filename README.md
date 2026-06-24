@@ -1,9 +1,9 @@
 # Loeres
 
 [![License](https://img.shields.io/github/license/nabbisen/loeres)](LICENSE)
-[![loeres-core Docs](https://docs.rs/loeres-core/badge.svg?version=latest)](https://docs.rs/loeres-core)    
-[![loeres-core crate](https://img.shields.io/crates/v/loeres-core?label=loeres-core)](https://crates.io/crates/loeres-core)
-[![loeres-core Deps Status](https://deps.rs/crate/loeres-core/latest/status.svg)](https://deps.rs/crate/loeres-core)
+[![loeres Docs](https://docs.rs/loeres/badge.svg?version=latest)](https://docs.rs/loeres)    
+[![loeres crate](https://img.shields.io/crates/v/loeres?label=loeres)](https://crates.io/crates/loeres)
+[![loeres Deps Status](https://deps.rs/crate/loeres/latest/status.svg)](https://deps.rs/crate/loeres)
 [![loeres-backend-std crate](https://img.shields.io/crates/v/loeres-backend-std?label=loeres-backend-std)](https://crates.io/crates/loeres-backend-std)
 [![loeres-backend-std Deps Status](https://deps.rs/crate/loeres-backend-std/latest/status.svg)](https://deps.rs/crate/loeres-backend-std)
 [![loeres-backend-static crate](https://img.shields.io/crates/v/loeres-backend-static?label=loeres-backend-static)](https://crates.io/crates/loeres-backend-static)
@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.6.2 — Milestone 1 nearly complete.** `loeres-core` ships the error/diagnostic topology (RFC 003), the solver outcome/status taxonomy (RFC 014), and the six-tier scalar capability model (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline impls; ordering is the opt-in `OrderedScalar` tier). All verified `no_std`/no-`alloc` on a bare-metal target. The last Milestone 1 contract — access (RFC 002) — has its design finalized and is next to implement.
+> **v0.6.2 — Milestone 1 nearly complete.** `loeres` ships the error/diagnostic topology (RFC 003), the solver outcome/status taxonomy (RFC 014), and the six-tier scalar capability model (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline impls; ordering is the opt-in `OrderedScalar` tier). All verified `no_std`/no-`alloc` on a bare-metal target. The last Milestone 1 contract — access (RFC 002) — has its design finalized and is next to implement.
 
 Build and verify from source:
 
@@ -62,7 +62,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 
 ## Design Notes
 
-- **Five crates, one contract.** `loeres-core` (`no_std`, no-`alloc`) defines scalar, vector/matrix access, problem, solver-outcome, error, and dimension contracts. Backends (`-backend-std`, `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own the server and edge solve paths. The dependency graph is acyclic and environment-separated; edge crates can never depend on server crates.
+- **Five crates, one contract.** `loeres` (`no_std`, no-`alloc`) defines scalar, vector/matrix access, problem, solver-outcome, error, and dimension contracts. Backends (`-backend-std`, `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own the server and edge solve paths. The dependency graph is acyclic and environment-separated; edge crates can never depend on server crates.
 - **Stratified scalar capabilities** — six tiers (`BaseScalar`, `OrderedScalar`, `FiniteScalar`, `DivisibleScalar`, `MetricScalar`, `AdvancedNumericalScalar`) rather than one monolithic `Scalar` trait, so edge solvers are not forced to implement operations they never use. Ordering is split out of the base tier so order-free numeric types stay valid and floating-point `min`/`max` behavior is pinned.
 - **Status / error split.** Bounded solver progress (including non-convergence at the iteration cap) is a *status* returned in `Ok`; boundary rejection and fail-safe conditions are *errors* returned in `Err`.
 - **Caller-owned typed workspaces** on device — no hidden allocation; memory footprint is reviewable before execution.

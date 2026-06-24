@@ -9,7 +9,7 @@ use super::util::cargo_stdout;
 /// `(crate, forbidden direct-or-transitive dependency)` pairs.
 const FORBIDDEN: &[(&str, &[&str])] = &[
     (
-        "loeres-core",
+        "loeres",
         &[
             "loeres-backend-std",
             "loeres-backend-static",
@@ -47,7 +47,7 @@ pub fn run() -> bool {
                 continue;
             }
         };
-        // Dependency crate names appear at the start of a line, e.g. "loeres-core v0.0.0".
+        // Dependency crate names appear at the start of a line, e.g. "loeres v0.0.0".
         let deps: Vec<&str> = tree
             .lines()
             .filter_map(|l| l.split_whitespace().next())

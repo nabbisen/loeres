@@ -1,4 +1,4 @@
-# loeres-core
+# loeres
 
 Shared mathematical contracts for the Loeres family: stratified scalars, storage-agnostic vector/matrix access, problem families, the solver outcome/status taxonomy, dimensions, and allocation-free errors. Defines **no** storage, runtime, or OS assumptions.
 

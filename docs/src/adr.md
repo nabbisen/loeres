@@ -6,7 +6,7 @@ traceability appendix, and are refined by the RFC sequence under `rfcs/`.
 
 Foundational decisions include: Loeres is a library *family*, not one unified
 solver (ADR-001); server and edge models are separated by **crates**, not a
-runtime switch (ADR-002, ADR-003); `loeres-core` is `no_std` / no-`alloc`
+runtime switch (ADR-002, ADR-003); `loeres` is `no_std` / no-`alloc`
 (ADR-004); edge crates never depend on server crates (ADR-005); scalar
 capabilities are **stratified** rather than one broad trait (ADR-011, refined to
 six tiers by RFC 001), with the base tier deliberately **excluding ordering** —

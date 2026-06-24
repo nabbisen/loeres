@@ -2,13 +2,13 @@
 
 **Status.** Proposed
 **Tracks.** Cross-cutting input validation, trusted-pipeline responsibility transfer, and fail-safe boundary semantics
-**Touches.** `loeres-core/src/validation.rs`, public solve entrypoints, `loeres-device` boundary APIs, `loeres-cluster` ingestion APIs, conformance fixtures
+**Touches.** `loeres/src/validation.rs`, public solve entrypoints, `loeres-device` boundary APIs, `loeres-cluster` ingestion APIs, conformance fixtures
 
 ---
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** Shared policy for `loeres-core`, `loeres-device`, `loeres-cluster`, `loeres-backend-static`, and `loeres-backend-std`
+* **Target Environment:** Shared policy for `loeres`, `loeres-device`, `loeres-cluster`, `loeres-backend-static`, and `loeres-backend-std`
 
 ## 1. Executive Summary & Problem Statement
 
@@ -20,13 +20,13 @@ The design goal is to make validation status visible in API shape, logs, diagnos
 
 ## 2. Architectural Context & Dependency Alignment
 
-Validation-state types live in `loeres-core` and must be allocation-free. Cluster-side ingestion may attach richer host diagnostics, but the core state model must remain usable by device code.
+Validation-state types live in `loeres` and must be allocation-free. Cluster-side ingestion may attach richer host diagnostics, but the core state model must remain usable by device code.
 
 Dependency alignment:
 
 | Crate | Relationship to this RFC | Dependency impact |
 |---|---|---|
-| `loeres-core` | Owns validation state markers and compact categories | No `std`, no `alloc` |
+| `loeres` | Owns validation state markers and compact categories | No `std`, no `alloc` |
 | `loeres-backend-static` | Provides static storage validation traversal | No `std`, no `alloc` |
 | `loeres-device` | Requires validated or explicitly trusted inputs before solving | No `std`, no `alloc` |
 | `loeres-backend-std` | Provides dynamic/sparse validation traversal | `std` allowed |
@@ -84,7 +84,7 @@ A trusted state must carry compact evidence:
 * whether the trust is valid for dimensions only, finite checks only, sparse structure only, or all baseline checks;
 * optional corpus/test tag for CI.
 
-In `loeres-core`, this evidence must remain allocation-free. `loeres-cluster` may attach richer host-side labels outside core types.
+In `loeres`, this evidence must remain allocation-free. `loeres-cluster` may attach richer host-side labels outside core types.
 
 ### 3.5 Validation caching
 

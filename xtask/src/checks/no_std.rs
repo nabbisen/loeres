@@ -6,7 +6,7 @@
 use super::util::cargo;
 
 const TARGET: &str = "thumbv7em-none-eabihf";
-const EDGE_CRATES: &[&str] = &["loeres-core", "loeres-backend-static", "loeres-device"];
+const EDGE_CRATES: &[&str] = &["loeres", "loeres-backend-static", "loeres-device"];
 
 pub fn run() -> bool {
     eprintln!("[no-std] building edge crates for {TARGET}");

@@ -13,7 +13,7 @@ reproduction where possible.
 
 ## Scope notes
 
-- Edge crates (`loeres-core`, `loeres-backend-static`, `loeres-device`) are
+- Edge crates (`loeres`, `loeres-backend-static`, `loeres-device`) are
   `no_std` / no-`alloc` and panic-averse by design; reports of `std`/`alloc`
   leakage, hidden allocation, panic paths, or dependency bleed are in scope.
 - FFI is restricted to `loeres-cluster` behind an audited, default-off feature.

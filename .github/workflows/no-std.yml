@@ -11,6 +11,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv7em-none-eabihf
-      # Builds loeres-core, loeres-backend-static, loeres-device for a `none`
+      # Builds loeres, loeres-backend-static, loeres-device for a `none`
       # target with --no-default-features; fails on any std/alloc leakage.
       - run: cargo xtask no-std

@@ -8,11 +8,11 @@
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** Verification tooling; not linked by `loeres-core`, `loeres-backend-static`, `loeres-device`, `loeres-backend-std`, or `loeres-cluster`
+* **Target Environment:** Verification tooling; not linked by `loeres`, `loeres-backend-static`, `loeres-device`, `loeres-backend-std`, or `loeres-cluster`
 
 ## 1. Executive Summary & Problem Statement
 
-Loeres relies on mechanical gates to preserve its central architecture: `loeres-core`, `loeres-backend-static`, and `loeres-device` must remain free of `std`, `alloc`, hidden dependency bleed, unchecked panic paths, oversized diagnostics, broken RFC references, and accidental binary-size growth.
+Loeres relies on mechanical gates to preserve its central architecture: `loeres`, `loeres-backend-static`, and `loeres-device` must remain free of `std`, `alloc`, hidden dependency bleed, unchecked panic paths, oversized diagnostics, broken RFC references, and accidental binary-size growth.
 
 Many earlier RFCs refer to `xtask` checks as mandatory enforcement points. Without a first-class RFC for `xtask`, those checks would become informal promises rather than part of the public project governance model.
 
@@ -27,7 +27,7 @@ Dependency alignment:
 | Component | Relationship to this RFC | Runtime dependency impact |
 |---|---|---|
 | `xtask` | Owns verification commands | Host-only; may use `std` |
-| `loeres-core` | Subject of checks | Must not depend on `xtask` |
+| `loeres` | Subject of checks | Must not depend on `xtask` |
 | `loeres-backend-static` | Subject of zero-bleed and size checks | Must not depend on `xtask` |
 | `loeres-device` | Subject of zero-bleed, panic-path, size, and target checks | Must not depend on `xtask` |
 | `loeres-backend-std` | Subject of cluster-side dependency and feature checks | Must not depend on `xtask` |
@@ -76,7 +76,7 @@ This command implements the lifecycle hygiene expected by RFC 000.
 
 The check must fail if any of the following crates transitively pull in `std` or `alloc` through normal library dependencies:
 
-* `loeres-core`
+* `loeres`
 * `loeres-backend-static`
 * `loeres-device`
 
@@ -95,7 +95,7 @@ Dev-dependencies may use `std` only when the target being compiled is a host-sid
 
 | Profile | Required behavior |
 |---|---|
-| `core-min` | `loeres-core` builds as `#![no_std]` with no `alloc` |
+| `core-min` | `loeres` builds as `#![no_std]` with no `alloc` |
 | `static-min` | `loeres-backend-static` builds without `std` or `alloc` |
 | `device-min` | `loeres-device` builds without `std`, `alloc`, threads, logging frameworks, or heap-backed collections |
 | `cluster-default` | `loeres-cluster` builds with approved `std` integrations |
@@ -167,7 +167,7 @@ The command must support:
 
 ### 3.10 Public-API surface checks
 
-`cargo xtask check-public-api` must scan public signatures in `loeres-core`, `loeres-backend-static`, and `loeres-device` and reject, unless explicitly allowlisted by an accepted RFC:
+`cargo xtask check-public-api` must scan public signatures in `loeres`, `loeres-backend-static`, and `loeres-device` and reject, unless explicitly allowlisted by an accepted RFC:
 
 * `Vec`, `String`, `Box`, `Rc`, `Arc`, `HashMap`, `BTreeMap`;
 * `std::*` / `alloc::*` types;
@@ -177,7 +177,7 @@ The command must support:
 It must additionally reject (RFC 014):
 
 * any `SolverError` variant denoting non-convergence at the iteration cap;
-* any device-facing terminal status category not derivable from `loeres_core::solver::SolveStatus`.
+* any device-facing terminal status category not derivable from `loeres::solver::SolveStatus`.
 
 The scanner is source-level at first; it need not be perfect in v0.x, but it must be mandatory and part of the aggregate `check`. An `xtask/public-api-allowlist.toml` (or equivalent) may exempt a signature, but every entry must cite an accepted RFC ID; entries without a valid RFC reference fail the check.
 

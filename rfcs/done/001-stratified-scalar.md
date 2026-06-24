@@ -1,20 +1,20 @@
 # RFC 001 — Stratified Scalar Capability Model
 
-**Status.** Implemented (v0.6.0)
+**Status.** Implemented (v0.6.0) — note: `loeres` package renamed to `loeres`, directory to `crates/loeres/` (v0.6.3).
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture
-**Touches.** `loeres-core/src/scalar.rs`, `loeres-core/src/lib.rs`, public scalar trait namespace
+**Touches.** `loeres/src/scalar.rs`, `loeres/src/lib.rs`, public scalar trait namespace
 
 ---
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-core`; consumed by `loeres-backend-static`, `loeres-backend-std`, `loeres-device`, and `loeres-cluster`
+* **Target Environment:** `loeres`; consumed by `loeres-backend-static`, `loeres-backend-std`, `loeres-device`, and `loeres-cluster`
 
 ## 1. Executive Summary & Problem Statement
 
 Loeres must support two incompatible numerical deployment worlds: dynamically allocated cluster workloads and allocation-free device workloads. A monolithic `Scalar` trait would over-constrain the device path by forcing every numeric type to expose operations such as ordering, division, square root, logarithm, and exponentiation even when a solver does not need them.
 
-This RFC defines a six-tier scalar capability model for `loeres-core`:
+This RFC defines a six-tier scalar capability model for `loeres`:
 
 1. `BaseScalar` — copyable arithmetic and identity values; no ordering.
 2. `OrderedScalar` — ordering and Loeres-defined `min` / `max` / `clamp`.
@@ -27,14 +27,14 @@ The design goal is to let algorithms state the smallest numerical contract they 
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres-core`. It introduces no dependency on `std`, `alloc`, `num-traits`, `libm`, `micromath`, BLAS, or any backend crate.
+This RFC touches only `loeres`. It introduces no dependency on `std`, `alloc`, `num-traits`, `libm`, `micromath`, BLAS, or any backend crate.
 
 Dependency alignment:
 
 | Crate | Relationship to this RFC | Dependency impact |
 |---|---|---|
-| `loeres-core` | Owns the scalar traits | Remains `#![no_std]`, no `alloc` |
-| `loeres-backend-static` | Implements traits for fixed-size storage scalar choices | Depends on `loeres-core` only |
+| `loeres` | Owns the scalar traits | Remains `#![no_std]`, no `alloc` |
+| `loeres-backend-static` | Implements traits for fixed-size storage scalar choices | Depends on `loeres` only |
 | `loeres-backend-std` | Implements traits for primitive floats and dynamic storage scalar choices | May depend on `std`, but not through core |
 | `loeres-device` | Requires minimal scalar bounds per deterministic solver | No `std`, no `alloc` |
 | `loeres-cluster` | May request richer scalar bounds for high-level algorithms | `std` allowed only outside core |
@@ -45,7 +45,7 @@ The zero-pollution rule is mandatory: no scalar trait may mention `f32`, `f64`, 
 
 ### 3.1 Module layout
 
-`loeres-core` must expose scalar traits from an explicit module:
+`loeres` must expose scalar traits from an explicit module:
 
 ```rust
 pub mod scalar;
@@ -191,7 +191,7 @@ pub trait MetricScalar: OrderedScalar {
 
 ### 3.7 Tier 6: `AdvancedNumericalScalar`
 
-`AdvancedNumericalScalar` is optional and solver-specific. It is forbidden as a baseline bound for `loeres-core` access traits, problem representations, or device entrypoints unless a concrete algorithm explicitly requires it.
+`AdvancedNumericalScalar` is optional and solver-specific. It is forbidden as a baseline bound for `loeres` access traits, problem representations, or device entrypoints unless a concrete algorithm explicitly requires it.
 
 ```rust
 pub trait AdvancedNumericalScalar: DivisibleScalar + MetricScalar {
@@ -213,7 +213,7 @@ Domain and overflow failures for the primitive case:
 | `checked_ln(x)` | `x <= 0` → `NumericalDomain` | implementation-specific |
 | `checked_exp(x)` | none for finite real input | overflow → `Overflow` |
 
-Baseline primitive implementations in `loeres-core` do **not** imply baseline `AdvancedNumericalScalar` implementations. Advanced functions for primitive floats may require the `libm` feature or a later backend/adapter RFC, because `no_std` targets have no built-in transcendental functions. This keeps transcendental math out of the baseline core.
+Baseline primitive implementations in `loeres` do **not** imply baseline `AdvancedNumericalScalar` implementations. Advanced functions for primitive floats may require the `libm` feature or a later backend/adapter RFC, because `no_std` targets have no built-in transcendental functions. This keeps transcendental math out of the baseline core.
 
 ### 3.8 Supertrait summary
 
@@ -232,13 +232,13 @@ AdvancedNumericalScalar : DivisibleScalar + MetricScalar
 
 ### 3.9 Inlining policy
 
-`#[inline]` is required on default method bodies in `loeres-core` and on Loeres-owned impl methods in backend crates. On required trait methods without a body, the annotation is a documentation and lint target only; actual code-generation behavior depends on the concrete impl and the compiler's optimization decisions, so `#[inline]` does not by itself guarantee a zero-cost abstraction.
+`#[inline]` is required on default method bodies in `loeres` and on Loeres-owned impl methods in backend crates. On required trait methods without a body, the annotation is a documentation and lint target only; actual code-generation behavior depends on the concrete impl and the compiler's optimization decisions, so `#[inline]` does not by itself guarantee a zero-cost abstraction.
 
 The default policy is `#[inline]`, not `#[inline(always)]`, because excessive forced inlining can inflate `.text` size on device targets. `#[inline(always)]` is reserved for extremely small accessors validated by size profiling.
 
 ### 3.10 Primitive scalar implementations
 
-Primitive scalar implementations are allowed in `loeres-core` only if they do not introduce additional dependencies or target-specific behavior. Initial support should include:
+Primitive scalar implementations are allowed in `loeres` only if they do not introduce additional dependencies or target-specific behavior. Initial support should include:
 
 * `f32`
 * `f64`
@@ -262,7 +262,7 @@ Implementers must not treat advanced float operations as baseline core work.
 
 ### 4.1 Static dispatch
 
-Scalar traits are intended for monomorphized generic use. They must not be used behind `dyn` in `loeres-device` or `loeres-core` mathematical kernels. Cluster orchestration may use dynamic dispatch at a higher boundary, but not to define the scalar semantics in core.
+Scalar traits are intended for monomorphized generic use. They must not be used behind `dyn` in `loeres-device` or `loeres` mathematical kernels. Cluster orchestration may use dynamic dispatch at a higher boundary, but not to define the scalar semantics in core.
 
 ### 4.2 No hidden panics
 
@@ -292,7 +292,7 @@ For reference, the first deterministic device solver (a box/bound-constrained pr
 
 ### 6.1 Compile gates
 
-CI must verify that `loeres-core` compiles as:
+CI must verify that `loeres` compiles as:
 
 ```text
 #![no_std]
@@ -304,9 +304,9 @@ with no `std` or `alloc` dependency.
 
 A static check must reject:
 
-* `std::` imports inside `loeres-core/src/scalar.rs`;
-* `alloc::` imports inside `loeres-core/src/scalar.rs`;
-* dependencies such as `num-traits` from `loeres-core` baseline;
+* `std::` imports inside `loeres/src/scalar.rs`;
+* `alloc::` imports inside `loeres/src/scalar.rs`;
+* dependencies such as `num-traits` from `loeres` baseline;
 * direct primitive-float assumptions in trait definitions beyond optional primitive impl blocks.
 
 ### 6.3 Division guard tests
@@ -349,9 +349,9 @@ The inlining annotation check is a source-level hygiene gate ensuring Loeres-own
 
 RFC 001 may move to `done/` only when:
 
-1. all six scalar trait tiers are defined in `loeres-core`, with the §3.8 supertrait graph;
+1. all six scalar trait tiers are defined in `loeres`, with the §3.8 supertrait graph;
 2. `BaseScalar` requires neither `PartialOrd` nor `core::fmt::Debug`, and ordering / `min` / `max` / `clamp` live on `OrderedScalar`;
 3. no public scalar trait imports `std`, `alloc`, or backend types;
 4. primitive implementations pass the division-domain, ordering/NaN, and scalar-law tests;
-5. device-target compilation succeeds with `loeres-core` only;
+5. device-target compilation succeeds with `loeres` only;
 6. downstream RFCs 002 and 003 can refer to these traits without circular dependency.

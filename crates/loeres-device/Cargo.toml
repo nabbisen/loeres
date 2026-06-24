@@ -15,5 +15,5 @@ diagnostic-snapshot = []  # compact numeric diagnostics via result/state types (
 panic-gate = []           # CI release-gate instrumentation for panic-path detection (RFC 010/011)
 
 [dependencies]
-loeres-core = { workspace = true }
+loeres = { workspace = true }
 loeres-backend-static = { workspace = true }

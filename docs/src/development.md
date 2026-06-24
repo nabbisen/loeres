@@ -7,7 +7,7 @@ target are declared in `rust-toolchain.toml`.
 ## Layout
 
 ```text
-crates/loeres-core             # no_std, no alloc — shared contracts
+crates/loeres             # no_std, no alloc — shared contracts
 crates/loeres-backend-static   # no_std, no alloc — fixed-size storage / views
 crates/loeres-device           # no_std, no alloc — deterministic edge solvers
 crates/loeres-backend-std      # std — dynamic storage (server-only)

@@ -8,7 +8,7 @@
 
 ### Extended Metadata
 * **Rust Edition Compliance:** Rust 2024 Baseline
-* **Target Environment:** `loeres-device`; uses `loeres-core` and `loeres-backend-static`
+* **Target Environment:** `loeres-device`; uses `loeres` and `loeres-backend-static`
 
 ## 1. Executive Summary & Problem Statement
 
@@ -30,7 +30,7 @@ Dependency rules:
 |---|---|
 | `loeres-device` | Owns typed workspace lifecycle and deterministic entrypoints |
 | `loeres-backend-static` | Provides static storage containers used inside workspace structs |
-| `loeres-core` | Provides errors, scalar bounds, access traits |
+| `loeres` | Provides errors, scalar bounds, access traits |
 | `loeres-backend-std` | Not permitted |
 | `loeres-cluster` | Not permitted |
 

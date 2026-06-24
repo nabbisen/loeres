@@ -2,7 +2,7 @@
 //!
 //! Environment: `#![no_std]`, no `alloc`. Optimizes for bounded iteration,
 //! fixed memory, small binaries, and analyzable, panic-averse solve paths.
-//! Depends on `loeres-core` and `loeres-backend-static` only — never on
+//! Depends on `loeres` and `loeres-backend-static` only — never on
 //! `loeres-cluster`, `loeres-backend-std`, async runtimes, threads, logging,
 //! or FFI gateways.
 //!

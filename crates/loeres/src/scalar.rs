@@ -1,4 +1,4 @@
-//! Stratified scalar capability tiers for `loeres-core` (RFC 001).
+//! Stratified scalar capability tiers for `loeres` (RFC 001).
 //!
 //! Rather than one monolithic `Scalar` trait, Loeres splits scalar capabilities
 //! into six tiers so an algorithm states the *smallest* numerical contract it

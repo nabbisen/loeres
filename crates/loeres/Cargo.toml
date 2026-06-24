@@ -1,5 +1,5 @@
 [package]
-name = "loeres-core"
+name = "loeres"
 description = "Loeres shared mathematical contracts: scalar, access, problem, solver, error, dimension. no_std, no alloc, no storage."
 version.workspace       = true
 edition.workspace       = true

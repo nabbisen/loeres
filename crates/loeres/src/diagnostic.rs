@@ -1,4 +1,4 @@
-//! Compact, data-only diagnostics for `loeres-core` (RFC 003).
+//! Compact, data-only diagnostics for `loeres` (RFC 003).
 //!
 //! Diagnostics carry optional numeric context alongside a result or solver
 //! state. They contain no strings, no heap allocation, and no logging-framework
