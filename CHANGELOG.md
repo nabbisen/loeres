@@ -5,6 +5,48 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.6.2] — 2026-06-22 — In-repo spec currency sync (docs only)
+
+A documentation-currency release. The in-repo design specs under `docs/specs/`
+had drifted behind the accepted design; most notably the **requirements** spec
+was never reconciled with RFC 014, so it still framed non-convergence as a
+panic/error case and lacked the status/error split — contradicting code shipped
+in v0.5.0. This release resyncs them. No design, contract, code, or public API
+change; hence a patch bump.
+
+### Changed — `docs/specs/` resynced to the accepted v0.6.1 design
+
+The three in-repo specs are now mirrored from the canonical design specifications
+(byte-identical). Net effect of the reconciliation:
+
+- **Requirements** — advanced from the `Draft for architecture review` / `v0.2`
+  framing to `Accepted — Milestone 1 in progress`; added the Document-currency
+  block; reconciled with **RFC 014** throughout (NG-007 and §3.5 no longer treat
+  non-convergence as a panic/error case; **ADR-018** — non-convergence is a
+  status, not an error — recorded). The §5.1.3 base-scalar amendment (ADR-017)
+  and the six-tier scalar model were already present.
+- **External design** and **Roadmap** — advanced to the `Accepted` /
+  current-as-of-v0.6.1 framing with their Document-currency blocks.
+
+### Fixed — stale narrative
+
+- `docs/src/threat-model.md` — corrected the "contains no executable code yet"
+  framing; `loeres-core` has shipped contracts since v0.4.0.
+- `ROADMAP.md` — corrected the core test count (36 → 37, matching v0.6.1) and
+  bumped the status label to v0.6.2.
+
+### Security / threat model
+
+No new data flows, external integrations, or auth logic. Per the release policy,
+existing controls were re-verified and remain valid; the threat-model change is
+limited to the stale framing sentence above.
+
+### Verification
+
+`cargo check`, `clippy -D warnings`, `fmt --check`, 37 core tests,
+`xtask zero-bleed`, `xtask no-std` (bare-metal `thumbv7em-none-eabihf`), and
+`xtask check-rfcs` all pass; whole-tree currency sweep clean.
+
 ## [0.6.1] — 2026-06-21 — v0.6.0 architect-review response; RFC 002 design patched
 
 The v0.6.0 architecture review **conditionally approved** the implemented core

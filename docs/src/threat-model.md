@@ -2,9 +2,11 @@
 
 This chapter consolidates the design-level threat model from the requirements
 specification (§8) and the external design (§5). It is a design artifact: Loeres
-is at its design baseline and contains no executable code yet, so the model
-describes the controls the implementation must uphold rather than an assessment
-of running software.
+is in early implementation — `loeres-core` ships the error/diagnostic topology,
+the solver outcome/status taxonomy, and the scalar capability contracts, while
+the access contracts and all solver engines remain in design or ahead on the
+roadmap. The model therefore still describes the controls the implementation
+must uphold rather than an assessment of a running solver.
 
 ## Boundary validation principle
 

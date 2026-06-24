@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.6.1 — Milestone 1 nearly complete.** `loeres-core` ships the error/diagnostic topology (RFC 003), the solver outcome/status taxonomy (RFC 014), and the six-tier scalar capability model (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline impls; ordering is the opt-in `OrderedScalar` tier). All verified `no_std`/no-`alloc` on a bare-metal target. The last Milestone 1 contract — access (RFC 002) — has its design finalized and is next to implement.
+> **v0.6.2 — Milestone 1 nearly complete.** `loeres-core` ships the error/diagnostic topology (RFC 003), the solver outcome/status taxonomy (RFC 014), and the six-tier scalar capability model (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline impls; ordering is the opt-in `OrderedScalar` tier). All verified `no_std`/no-`alloc` on a bare-metal target. The last Milestone 1 contract — access (RFC 002) — has its design finalized and is next to implement.
 
 Build and verify from source:
 

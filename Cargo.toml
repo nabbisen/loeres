@@ -13,7 +13,7 @@ members = [
 # Member crates are unpublished in the Phase 0 skeleton (no public API yet);
 # the repository release tag is the source of version truth (see CHANGELOG.md).
 [workspace.package]
-version = "0.6.1"
+version = "0.6.2"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
@@ -22,8 +22,8 @@ repository = "https://github.com/nabbisen/loeres"
 
 # Internal path dependencies, so members write `loeres-core = { workspace = true }`.
 [workspace.dependencies]
-loeres-core                 = { version = "0.6.1", path = "crates/loeres-core" }
-loeres-backend-std          = { version = "0.6.1", path = "crates/loeres-backend-std" }
-loeres-backend-static       = { version = "0.6.1", path = "crates/loeres-backend-static" }
-loeres-cluster              = { version = "0.6.1", path = "crates/loeres-cluster" }
-loeres-device               = { version = "0.6.1", path = "crates/loeres-device" }
+loeres-core                 = { version = "0.6.2", path = "crates/loeres-core" }
+loeres-backend-std          = { version = "0.6.2", path = "crates/loeres-backend-std" }
+loeres-backend-static       = { version = "0.6.2", path = "crates/loeres-backend-static" }
+loeres-cluster              = { version = "0.6.2", path = "crates/loeres-cluster" }
+loeres-device               = { version = "0.6.2", path = "crates/loeres-device" }

@@ -1,9 +1,20 @@
 # Loeres External Design Specification v1
 
-Status: Draft for architecture review  
+Status: Accepted — Milestone 1 (`loeres-core`) in progress (current as of v0.6.1)  
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
+
+> **Document currency.** Current as of repository release **v0.6.1**; the design is
+> **accepted** (no longer a draft). Implemented in `loeres-core` (`rfcs/done/`):
+> the error/diagnostic topology (RFC 003, v0.4.0); the solver outcome/status
+> taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); and the
+> six-tier scalar model with the base tier **excluding ordering** (RFC 001, v0.6.0
+> — see ED-004 and §2.2). The storage-agnostic access contracts (RFC 002) are
+> **design-finalized but not yet implemented** (see ED-015); implementing them is
+> the next step (**v0.7.0**) and **completes Milestone 1**. Phase 0 (five-crate
+> workspace plus `xtask`) is complete (v0.3.0); **Milestone 1 (`loeres-core`) is in
+> progress**. The roadmap holds the authoritative live status.
 
 ---
 
@@ -1137,9 +1148,9 @@ Rationale: Storage belongs to backends. Core must remain shared and no-alloc.
 
 ### ED-004: Scalar Capabilities Are Stratified
 
-Decision: Scalar requirements are split into base, finite, divisible, metric, advanced numerical, and fixed-point categories.
+Decision: Scalar requirements are split into `BaseScalar`, `OrderedScalar`, `FiniteScalar`, `DivisibleScalar`, `MetricScalar`, and `AdvancedNumericalScalar`. `BaseScalar` excludes ordering; `OrderedScalar` owns comparison, `min`, `max`, and `clamp`. Fixed-point support remains an optional extension topic, not a baseline scalar tier.
 
-Rationale: Edge solvers should not be forced to support expensive or unavailable numerical operations unless the selected solver requires them.
+Rationale: Edge solvers should not be forced to support expensive or unavailable numerical operations unless the selected solver requires them. Keeping ordering out of the base tier also lets storage/access contracts use arithmetic values without imposing projection or comparison semantics.
 
 ### ED-005: Device Workspace Is Typed and Caller-Owned
 
@@ -1194,6 +1205,36 @@ Rationale: Encoding ordinary policy values at type level risks monomorphization 
 Decision: Batch solve APIs return individual outcomes for individual models by default.
 
 Rationale: Multi-tenant and high-throughput workloads must isolate failures. One malformed or ill-conditioned model should not invalidate unrelated batch items.
+
+---
+
+### ED-014: Solver Outcome Is a Status/Error Split
+
+Decision: A bounded solve returns `Result<SolveReport, SolverError>`. The `Ok`
+side carries a `SolveStatus` (`Converged` / `NotConverged`) with a
+`TerminationReason`; the `Err` side carries a `SolverError`. Non-convergence —
+including reaching the iteration cap — is a **status**, not an error. (RFC 014.)
+
+Rationale: Boundary rejection and fail-safe conditions are genuine failures and
+belong in `Err`; a bounded run that simply did not converge is expected,
+recoverable information and belongs in `Ok`. Conflating them forces callers to
+treat normal progress as exceptional and bloats the error type.
+
+---
+
+### ED-015: Core Owns Access Contracts and Simple Contiguous Views Only
+
+Decision: `loeres-core` owns the storage-agnostic access traits, a simple
+contiguous row-major view, and an **optional** contiguous fast-path surface.
+Column-major, strided, and sub-matrix views are **not** in core; they belong to
+`loeres-backend-static` (the `static-views` feature, RFC 004) and to the dynamic
+backend. Access failures map onto the existing `SolverError` set, and core admits
+no overlapping mutable views. (RFC 002.)
+
+Rationale: Keeping core to access plus simple contiguous views avoids turning the
+shared contract into a storage-layout RFC, while the optional fast path lets a
+kernel branch once into contiguous storage without making per-element fallible
+access expensive. *(Design finalized in v0.6.1; implementation lands in v0.7.0.)*
 
 ---
 
@@ -1297,13 +1338,13 @@ This external design is accepted only if the following are true:
 
 The following questions are intentionally left to RFCs:
 
-1. Exact names and method signatures for scalar capability traits.
-2. **(Resolved by RFC 001, v0.2.0.)** Ordering is split into a dedicated `OrderedScalar` tier: `BaseScalar` requires only `PartialEq` (not `PartialOrd`), and `min` / `max` / `clamp` live on `OrderedScalar` with a pinned NaN-propagating contract for floating-point types.
+1. **(Resolved by RFC 001, v0.6.0.)** The six scalar traits and their method signatures are defined and implemented in `loeres_core::scalar` (with `f32`/`f64` baseline impls); `AdvancedNumericalScalar` is non-baseline for primitives.
+2. **(Resolved by RFC 001, v0.6.0.)** Ordering is split into a dedicated `OrderedScalar` tier: `BaseScalar` requires only `PartialEq` (not `PartialOrd`), and `min` / `max` / `clamp` live on `OrderedScalar` with a pinned NaN-propagating contract for floating-point types.
 3. Exact treatment of fixed-point scalar implementations.
 4. Exact representation of static dimensions without relying on unstable generic const expressions.
-5. Exact boundary between baseline contiguous borrowed adapters and advanced `static-views` APIs.
-6. Exact diagnostic snapshot fields, numeric encoding, and byte-size caps.
-7. Exact public representation of non-exhaustive error and diagnostic categories.
+5. **(Resolved in design — RFC 002, v0.6.1; ED-015.)** Core owns simple contiguous row-major views plus an optional contiguous fast path; column-major / strided / sub-matrix views belong to `loeres-backend-static`'s `static-views` feature (RFC 004). Implementation lands in v0.7.0.
+6. **(Resolved by RFC 003, v0.4.0.)** `DiagnosticSnapshot { code, iteration, primary_index, secondary_index }` is fixed, `Copy`, and compile-time size-budgeted (≤ 16 bytes).
+7. **(Resolved by RFC 003, v0.4.0.)** Public error and diagnostic enums (`SolverError`, `DiagnosticCode`) carry `#[non_exhaustive]`, enforced by the `xtask check-rfcs` source audit.
 8. Exact workspace reset/poison type-state or lifecycle API.
 9. Exact release-gate tooling for panic-averse device entrypoints.
 10. Exact target compiler settings for floating-point reference profiles.
@@ -1325,4 +1366,4 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-The next step is Milestone 1 RFC work, starting with the stratified scalar model, storage-agnostic vector/matrix contracts, and allocation-free error/state topology.
+Milestone 1 is almost complete: RFC 001, RFC 003, and RFC 014 are implemented in `loeres-core`; RFC 002's access contracts are design-finalized and are the next implementation step for v0.7.0.

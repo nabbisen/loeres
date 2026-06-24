@@ -5,9 +5,39 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Draft for architecture review  
+**Status:** Accepted — Milestone 1 (`loeres-core`) in progress (current as of v0.6.1)  
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
+
+> **Document currency.** This specification is current as of repository release
+> **v0.6.1** and reflects the **accepted** design (no longer a draft). The
+> architecture and the Milestone-1 contracts are accepted; implementation is in
+> progress.
+>
+> **Implemented** (`loeres-core`, in `rfcs/done/`):
+> - **RFC 003** — allocation-free error/diagnostic topology (`SolverError`,
+>   `DiagnosticSnapshot`, `error_code_to_str`); shipped v0.4.0.
+> - **RFC 014** — solver outcome/status taxonomy (`SolveStatus`,
+>   `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`), introducing
+>   the **status/error split** — non-convergence at the iteration cap is a status,
+>   not an error (recorded as ADR-018); shipped v0.5.0.
+> - **RFC 001** — six-tier stratified scalar model (`BaseScalar` →
+>   `OrderedScalar` → `FiniteScalar` → `DivisibleScalar` → `MetricScalar` →
+>   `AdvancedNumericalScalar`); the base tier **excludes ordering** (ADR-017, with
+>   §5.1.3 amended accordingly); shipped v0.6.0.
+>
+> **Design-finalized, not yet implemented:**
+> - **RFC 002** — storage-agnostic vector/matrix access contracts. Its design was
+>   finalized in v0.6.1 (architect-review patches: `dimension` naming;
+>   contiguous-only core views with strided views deferred to RFC 004; an optional
+>   contiguous fast path; an explicit access-error mapping over `SolverError`; no
+>   overlapping mutable views). **Implementing it is the next step (v0.7.0) and
+>   completes Milestone 1.**
+>
+> **Status:** Phase 0 (workspace skeleton — five crates plus `xtask`) is complete
+> (v0.3.0); **Milestone 1 (`loeres-core`) is in progress** — RFC 002 implementation
+> remains. 37 core tests pass with `release-gate` green (including the bare-metal
+> `no_std` build). `ROADMAP.md` holds the authoritative live status.
 
 ---
 
@@ -32,15 +62,15 @@ The core design principle is:
 
 > **Share mathematical contracts, not execution assumptions.**
 
-This v0.2 document incorporates the second architectural review, but deliberately converts it into requirements and design constraints rather than accepting API sketches as implementation mandates. Implementation code, exact trait names, and exact solver kernels must be developed in later RFCs.
+This v1 document incorporates the second architectural review, the accepted RFC 001/RFC 003/RFC 014 contracts, and the RFC 002 design discussion. It deliberately keeps requirements at the constraint level: implementation code, exact trait names, and exact solver kernels must still be accepted through RFCs or already-accepted RFC amendments.
 
 ---
 
-## 0.1 v0.2 Change Summary
+## 0.1 v1 Change Summary
 
-Compared with v0.1, this version adds or strengthens the following points:
+Compared with earlier drafts, this version adds or strengthens the following points:
 
-| Area | v0.2 change |
+| Area | v1 disposition |
 |---|---|
 | Design stage discipline | Clarifies that this document defines requirements, not final API implementation. |
 | Scalar design | Replaces the idea of one broad scalar contract with stratified scalar capability requirements. |
@@ -80,7 +110,7 @@ Compared with v0.1, this version adds or strengthens the following points:
 | NG-004 | Full replacement for mature monolithic solvers at v0.x | Loeres is initially an architecture-first Rust library family, not an immediate replacement for Gurobi, HiGHS, Ipopt, or similar mature engines. |
 | NG-005 | Hidden FFI in core | `loeres-core` must never hide calls into C/C++/Fortran numerical engines or platform runtimes. |
 | NG-006 | Allocation convenience in edge | Edge APIs must not introduce `Vec`, `Box`, `String`, `HashMap`, dynamic collections, or heap-based convenience APIs. |
-| NG-007 | Panic as control flow | Solver failure, invalid input, non-convergence, singular matrices, and ill-conditioned problems must be represented as explicit errors, not panics. |
+| NG-007 | Panic as control flow | Solver failure, invalid input, singular matrices, and ill-conditioned problems must be represented as explicit errors, not panics. Non-convergence is a bounded status (RFC 014), likewise never a panic. |
 | NG-008 | Runtime polymorphism in edge baseline | Edge baseline APIs must not require `dyn Trait`, virtual dispatch, plugin registries, or object-safe solver abstractions. |
 | NG-009 | Nightly-only core requirements | The core architecture must not depend on nightly-only Rust features unless a later RFC explicitly accepts the portability cost. |
 | NG-010 | Cryptographic constant-time claim | Loeres v0.x must not claim cryptographic constant-time execution. It may define constant-iteration or timing-stabilized modes with narrower meaning. |
@@ -164,19 +194,22 @@ This applies especially to:
 
 ### 3.5 Explicit Failure Over Hidden Panics
 
-All expected failure modes must be represented by typed errors:
+All expected **failure** modes must be represented by typed errors (`SolverError`), never hidden panics:
 
 - Dimension mismatch.
 - Non-finite input.
 - Invalid input.
-- Non-convergence.
-- Max-iteration reached.
 - Ill-conditioned problem.
 - Singular or near-singular matrix.
 - Workspace too small.
 - Unsupported problem structure.
 - Numerical domain violation.
 - Internal invariant violation.
+
+Non-convergence and reaching the iteration cap are **not** failures. Under the
+RFC 014 status/error split they are bounded solver *statuses*
+(`SolveStatus::NotConverged` with `TerminationReason::IterationCap`), returned in
+`Ok(SolveReport)`, never as `SolverError` variants (ADR-018).
 
 ### 3.6 Typed Workspace Over Hidden Buffers
 
@@ -343,7 +376,7 @@ The scalar model must be stratified:
 | Division | Division must be explicit and checked where numerical domain violations matter. It must not be implicit in the base scalar contract unless justified by RFC. |
 | Square root | Square root must be an optional capability for algorithms that need it. |
 | Powers/transcendentals | These must be optional and solver-specific, not part of the base scalar requirement. |
-| Fixed-point | Fixed-point scalar support is a future design topic, not a v0.2 baseline. |
+| Fixed-point | Fixed-point scalar support is a future design topic, not a current baseline. |
 
 #### Vector and matrix base requirements
 
@@ -408,7 +441,7 @@ Important scope rule:
 
 ### 5.2.3 Suggested Feature Areas
 
-These are allowed design areas, not mandatory v0.2 implementation tasks:
+These are allowed design areas, not mandatory current implementation tasks:
 
 - Dynamic dense vector/matrix adapters.
 - Sparse matrix adapters.
@@ -507,7 +540,7 @@ Server solver breadth must not imply device solver obligations.
 | DEVICE-003 | Must not use async runtimes, OS APIs, logging frameworks, or FFI engines. |
 | DEVICE-004 | Must use bounded iteration loops. |
 | DEVICE-005 | Must expose max-iteration configuration or compile-time constants. |
-| DEVICE-006 | Must return explicit errors for non-convergence. |
+| DEVICE-006 | Must report non-convergence as an explicit bounded status (`SolveStatus::NotConverged`, RFC 014), not as an error and not as a panic. |
 | DEVICE-007 | Must avoid `unwrap`, `expect`, unchecked indexing, and panic-based validation in public solve paths. |
 | DEVICE-008 | Must support caller-owned typed workspaces as the primary workspace model. |
 | DEVICE-009 | Must document memory footprint, iteration bounds, and expected target assumptions. |
@@ -562,7 +595,7 @@ Core traits must not encode server storage or device storage directly.
 | ERR-001 | Error values must be representable without heap allocation. |
 | ERR-002 | Error values must be usable in `no_std` and no-`alloc` contexts. |
 | ERR-003 | Expected solver failures must be errors, not panics. |
-| ERR-004 | Errors must distinguish invalid input, non-finite input, dimension mismatch, non-convergence, singularity, ill-conditioning, workspace shortage, unsupported structure, numerical domain violation, and internal invariant violation. |
+| ERR-004 | Errors must distinguish invalid input, non-finite input, dimension mismatch, singularity, ill-conditioning, workspace shortage, unsupported structure, numerical domain violation, and internal invariant violation. (Non-convergence is a status, not an error — RFC 014.) |
 | ERR-005 | Error display suitable for humans may be added by server crates, but must not be required by core. |
 | ERR-006 | Errors must be stable enough for downstream matching, but v0.x may revise variants through documented breaking changes. |
 
@@ -936,7 +969,14 @@ Requirements:
 
 ## 12. Initial Milestone Scope
 
-### 12.1 Phase 0 — Repository and Policy Foundation
+> **Status (v0.6.1).** The original phase plan below is the scope of record. Live
+> status: **Phase 0 (workspace skeleton) is complete (v0.3.0)**, all core RFCs
+> (001–014) are written, and core implementation is tracked by the roadmap's
+> milestone model — **Milestone 1 (`loeres-core`) is in progress**, with RFC 001,
+> 003, and 014 implemented and RFC 002 implementation remaining (next, v0.7.0).
+> See the document-currency block above and `ROADMAP.md` for authoritative status.
+
+### 12.1 Phase 0 — Repository and Policy Foundation — ✅ complete (v0.3.0)
 
 Deliverables:
 
@@ -1007,7 +1047,7 @@ Acceptance:
 
 ### 12.5 Phase 4 — Implementation Baseline
 
-Implementation begins only after the above design artifacts are accepted.
+Baseline implementation proceeds only for items backed by accepted requirements and RFCs. This phase is now being entered incrementally as Milestone RFCs land; RFC 001, RFC 003, and RFC 014 are already implemented in `loeres-core`, and RFC 002 is the remaining Milestone-1 implementation item.
 
 Possible baseline implementation scope:
 
@@ -1079,8 +1119,8 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | OQ-002 | What is the reference edge target for early determinism claims? |
 | OQ-003 | Is hardware floating point required for the first device solver? |
 | OQ-004 | Is fixed-point support a near-term requirement or a future roadmap topic? |
-| OQ-005 | Which scalar capabilities belong in the first accepted scalar RFC? |
-| OQ-006 | Which vector/matrix kernels are common enough to define as optional core extension traits? |
+| OQ-005 | Which scalar capabilities belong in the first accepted scalar RFC? **(Resolved — RFC 001, v0.6.0.)** The six-tier model, ordering split out of the base tier (ADR-017). |
+| OQ-006 | Which vector/matrix kernels are common enough to define as optional core extension traits? **(Resolved in design — RFC 002, v0.6.1.)** Optional contiguous fast-path traits (`ContiguousVectorAccess` / `ContiguousVectorAccessMut` / `ContiguousMatrixAccess`); heavy kernels stay backend/solver-owned. Implementation lands with RFC 002 (v0.7.0). |
 | OQ-007 | Should raw scratch-slice APIs exist in v0.x, or should the first device API be typed-workspace-only? |
 | OQ-008 | Which server backend should be the first dynamic storage adapter? |
 | OQ-009 | Should optional FFI solvers be included in v0.x or deferred until the Rust-native architecture is stable? |
@@ -1104,13 +1144,14 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | ADR-008 | FFI is forbidden in core/static/device crates. | Accepted |
 | ADR-009 | Device modeling DSLs are out of scope. | Accepted |
 | ADR-010 | Panic-based failure handling is out of scope for solver errors. | Accepted |
-| ADR-011 | Broad scalar traits are rejected; scalar capabilities must be stratified. | Accepted in v0.2 |
-| ADR-012 | Runtime trait-object kernels are rejected for core/device baseline. | Accepted in v0.2 |
-| ADR-013 | Typed workspace is the primary device workspace model. | Accepted in v0.2 |
-| ADR-014 | `no_panic`-style tooling is a release gate, not proof. | Accepted in v0.2 |
-| ADR-015 | Floating-point determinism requires reference-target/profile documentation. | Accepted in v0.2 |
-| ADR-016 | Requirements and RFCs precede API stabilization. | Accepted in v0.2 |
+| ADR-011 | Broad scalar traits are rejected; scalar capabilities must be stratified. | Accepted |
+| ADR-012 | Runtime trait-object kernels are rejected for core/device baseline. | Accepted |
+| ADR-013 | Typed workspace is the primary device workspace model. | Accepted |
+| ADR-014 | `no_panic`-style tooling is a release gate, not proof. | Accepted |
+| ADR-015 | Floating-point determinism requires reference-target/profile documentation. | Accepted |
+| ADR-016 | Requirements and RFCs precede API stabilization. | Accepted |
 | ADR-017 | The base scalar tier excludes ordering; ordering is the separate `OrderedScalar` capability, and metric comparison is `MetricScalar: OrderedScalar`. This keeps storage/access traits free of comparison semantics and lets solver families state their numerical needs explicitly. Requirements §5.1.3 amended accordingly. | Accepted |
+| ADR-018 | Non-convergence is a status, not an error. A bounded solve that does not converge — including reaching the iteration cap — returns `Ok(SolveReport)` with `SolveStatus::NotConverged`; only boundary rejection and fail-safe conditions are `SolverError`. The same condition is never both (RFC 014). | Accepted |
 
 ---
 

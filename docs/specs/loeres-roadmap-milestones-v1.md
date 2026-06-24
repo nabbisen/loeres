@@ -1,10 +1,33 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Draft for Architecture Review  
+Status: Accepted — Milestone 1 (`loeres-core`) in progress (current as of v0.6.1)  
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
+> **Document currency.** Current as of repository release **v0.6.1**; the design is
+> accepted. **Phase 0** (workspace skeleton — five crates plus `xtask`) is complete
+> (v0.3.0). **Milestone 1 (`loeres-core`) is in progress:** RFC 003 (v0.4.0),
+> RFC 014 (v0.5.0), and RFC 001 (v0.6.0) are implemented and in `rfcs/done/`;
+> **RFC 002** is design-finalized (v0.6.1) but **not yet implemented** — its
+> implementation is the next step (**v0.7.0**) and **completes Milestone 1**.
+> Milestone 2 (static backend + device kernel, RFC 004–006) and Milestone 3
+> (dynamic backend + cluster, RFC 007–009) follow. 37 core tests pass with
+> `release-gate` green, including the bare-metal `no_std` build.
+
 ---
+
+## Current v0.6.1 Roadmap Snapshot
+
+| Area | Status | Next action |
+|---|---|---|
+| Phase 0 — repository/governance bootstrap | Complete since v0.3.0 | Maintain gates as RFC 010 evolves. |
+| RFC 003 — allocation-free errors/diagnostics | Implemented since v0.4.0 | Use as fixed error topology for RFC 002 and later solvers. |
+| RFC 014 — solver outcome/status taxonomy | Implemented since v0.5.0 | Use `SolveStatus` / `TerminationReason` / `StepOutcome` in device and cluster reports. |
+| RFC 001 — stratified scalar model | Implemented since v0.6.0 | Continue using `BaseScalar` without ordering and `OrderedScalar` for projection/comparison. |
+| RFC 002 — storage-agnostic access contracts | Design-finalized in v0.6.1, not implemented | Implement in v0.7.0; this closes Milestone 1. |
+| RFC 004–006 — static backend/device path | Not started | Begin only after RFC 002 closeout. |
+| RFC 007–009 — dynamic backend/cluster path | Not started | May begin after Milestone 1; keep zero-bleed checks active. |
+| RFC 010–013 — cross-cutting governance/targets/validation/conformance | Designed as cross-cutting work | Keep aligned with implementation gates and upcoming solver/backend work. |
 
 ## 0. Purpose and Roadmap Principle
 
@@ -19,7 +42,7 @@ Loeres is intentionally split across two execution worlds:
 The roadmap therefore follows the same topological order:
 
 ```text
-Requirements v0.2
+Requirements v1
     |
     v
 External Design v1
@@ -52,13 +75,13 @@ Every technical RFC must move through the following states. A state transition i
 
 | State | Meaning | Allowed next states | Required evidence |
 |---|---|---|---|
-| `Draft` | Initial authoring stage. Open questions are allowed. | `Under Review`, `Superseded` | Problem statement, public boundary impact, affected crates, non-goals. |
-| `Under Review` | Architecture review is active. API and safety implications are evaluated. | `Accepted / Frozen`, `Draft`, `Superseded` | Review comments resolved or explicitly rejected with rationale. |
-| `Accepted / Frozen` | Public contract and constraints are frozen for implementation. | `Implemented`, `Superseded` | Accepted design text, traceability to requirements/external design, zero-bleed impact analysis. |
-| `Implemented` | Code, tests, examples, and verification gates exist. | `Superseded` | CI pass, documentation pass, automated safety checks pass. |
+| `Draft` | Initial authoring stage. Open questions are allowed. | `Proposed`, `Withdrawn` | Problem statement, public boundary impact, affected crates, non-goals. |
+| `Proposed` | Architecture review, acceptance, and implementation planning happen here. A proposed RFC may be review-active or accepted/frozen but not yet implemented. | `Implemented`, `Draft`, `Superseded`, `Withdrawn` | Review comments resolved or explicitly deferred; traceability to requirements/external design; zero-bleed impact analysis where applicable. |
+| `Implemented` | Code, tests, examples, and verification gates exist. | `Superseded` | CI pass, documentation pass, automated safety checks pass, and closeout evidence attached. |
+| `Withdrawn` | The proposal was intentionally abandoned before implementation. | none | Withdrawal rationale and any replacement pointer. |
 | `Superseded` | Replaced by a newer RFC or rendered obsolete. | none | Superseding RFC ID and migration rationale. |
 
-A frozen RFC is a contract. Later RFCs may extend it only through additive specialized traits, wrapper layouts, configuration objects, or new crates. They must not silently loosen earlier safety, memory, or dependency constraints.
+A proposed RFC may become accepted/frozen before code lands, but it remains in `proposed/` until implemented. A frozen RFC is a contract. Later RFCs may extend it only through additive specialized traits, wrapper layouts, configuration objects, or new crates. They must not silently loosen earlier safety, memory, or dependency constraints.
 
 ### 1.2 RFC File Layout
 
@@ -77,7 +100,7 @@ rfcs/
     ...
 ```
 
-The §1.1 lifecycle states map onto these folders: `Draft`, `Under Review`, and `Accepted / Frozen` live in `proposed/`; `Implemented` lives in `done/`; `Superseded` (and any withdrawn RFC) lives in `archive/`.
+The §1.1 lifecycle states map onto these folders: `Draft` may live in optional `draft/` or in `proposed/` depending on repository policy; `Proposed` lives in `proposed/`; `Implemented` lives in `done/`; `Withdrawn` and `Superseded` live in `archive/`.
 
 RFC files use flat, stable, sequential numbering per RFC 000 (`NNN-slug.md`), not a milestone-encoded prefix:
 
@@ -184,7 +207,7 @@ The goal is not to design all future algorithms. The goal is to define the small
 
 Milestone 1 may begin only when:
 
-- Requirements v0.2 or later is accepted.
+- Requirements v1 or later is accepted.
 - External Design v1 or later is accepted for RFC generation.
 - The repository has a minimal workspace skeleton.
 - The RFC lifecycle policy in Section 1 is adopted.
@@ -218,8 +241,8 @@ Required capability families:
 
 #### Key risks to resolve
 
-- Whether `PartialOrd` is sufficient for all base comparisons. *(Resolved in v0.2.0: ordering moved out of `BaseScalar` into `OrderedScalar`; `BaseScalar` requires only `PartialEq`.)*
-- How NaN-like semantics are represented for scalar families that do not have NaN. *(Resolved in v0.2.0: `min` / `max` / `clamp` are NaN-propagating for floats and ordinary total-order extrema for NaN-free families.)*
+- Whether `PartialOrd` is sufficient for all base comparisons. *(Resolved by RFC 001 / v0.6.0: ordering moved out of `BaseScalar` into `OrderedScalar`; `BaseScalar` requires only `PartialEq`.)*
+- How NaN-like semantics are represented for scalar families that do not have NaN. *(Resolved by RFC 001 / v0.6.0: `min` / `max` / `clamp` are NaN-propagating for floats and ordinary total-order extrema for NaN-free families.)*
 - Whether core should define marker traits for scalar categories or method-bearing traits for every category.
 - How to avoid pulling a third-party numeric trait crate into `loeres-core` by default.
 
@@ -244,69 +267,71 @@ Required capability families:
 
 ### 2.4 RFC 002 — Storage-Agnostic Matrix and Vector Access Contracts
 
+#### Current status
+
+Design-finalized in v0.6.1; not yet implemented. Implementation is the next step for v0.7.0 and completes Milestone 1.
+
 #### Scope
 
-Define the public access contracts for vectors, matrices, dimensions, fallible indexing, and borrowed views.
+Define the public access contracts for vectors, matrices, dimensions, fallible indexing, mutable writes, borrowed contiguous views, and optional contiguous fast paths.
 
-This RFC must preserve the external design decision that the core surface is about access, dimensions, and storage-neutral contracts, not heavy linear algebra kernels.
+This RFC preserves the external design decision that the core surface is about access, dimensions, and storage-neutral contracts, not heavy linear algebra kernels. It also incorporates the v0.6.1 design discussion: use `loeres_core::access` for access traits, use `loeres_core::dimension` for dimension types, keep core views contiguous-only, defer strided/submatrix view types to RFC 004, and prohibit overlapping mutable views.
 
-#### Required topics
+#### Finalized topics
 
-- Naming of the module, with `loeres_core::access` preferred over `loeres_core::linalg`.
-- Vector length and matrix shape queries.
-- Fallible element access.
-- Mutable access rules.
-- Borrowed static view lifecycles.
-- Whether row-major, column-major, sparse, or strided layouts are expressed as metadata or backend-specific wrappers.
-- How backend-specific kernels can expose fast paths without forcing them into core.
+- Module naming is `loeres_core::access`; `loeres_core::linalg` is not used for base contracts.
+- Dimension naming and imports use `loeres_core::dimension`, not `dim`.
+- Vector length and matrix shape queries are layout-neutral.
+- Base access is fallible and scalar/storage agnostic.
+- Mutable access must be checked and must not permit overlapping mutable aliases in safe APIs.
+- Core borrowed views are contiguous baseline views only.
+- Strided, row, column, and submatrix views belong to RFC 004 / `loeres-backend-static` advanced view work unless a later RFC explicitly promotes a narrow trait into core.
+- Optional contiguous fast-path traits are allowed so kernels are not forced through per-element `Result` access in tight loops.
+- Error mapping must use the existing `SolverError` topology: invalid dimensions map to `InvalidDimension`; shape disagreement maps to `DimensionMismatch`; out-of-bounds or invalid index-like access maps to an RFC 002-defined policy over existing variants without introducing a new allocation-heavy error payload.
+- Backend-specific kernels may expose fast paths without forcing matrix multiplication, factorization, sparse traversal, or BLAS-like operations into base core traits.
 
 #### Design constraints
 
 - No `dyn Trait` in edge-facing access paths.
 - No core methods that imply heap allocation.
-- No core methods that imply a specific memory layout.
+- No core methods that require one memory layout.
 - No mandatory matrix multiplication, factorization, decomposition, or BLAS-like operation in base access traits.
 - Large fixed-size structures must not be passed by value in device-facing examples.
-
-#### Key risks to resolve
-
-- Trait object compatibility must not drive the design because device-facing code relies on static dispatch.
-- Overly broad access traits may become semver traps.
-- Overly narrow access traits may force each solver to invent incompatible wrappers.
-- Borrowed views must support embedded control loops without requiring copies into library-owned arrays.
+- Base core access traits must be implementable by both static and dynamic backends without dependency edges between them.
 
 #### Implementation sprint outline
 
 | Sprint | Work |
 |---|---|
-| S0 | Freeze module naming and access-vs-linalg boundary. |
+| S0 | Confirm the v0.6.1 design-finalized decisions and freeze access/dimension names. |
 | S1 | Add `access` module skeleton and doc comments. |
-| S2 | Add compile tests for owned and borrowed backend shapes. |
-| S3 | Implement accepted access trait definitions. |
-| S4 | Run no-std, no-alloc, and no-dyn edge API checks. |
-| S5 | Add examples showing dynamic and static backends implementing the same core contracts. |
-| S6 | Close RFC with layout neutrality checklist. |
+| S2 | Add compile tests for owned storage, borrowed contiguous views, mutable access, and forbidden alias patterns where feasible. |
+| S3 | Implement accepted access trait definitions, contiguous view types/traits, and optional contiguous fast-path traits. |
+| S4 | Run no-std, no-alloc, no-dyn, and public API checks. |
+| S5 | Add examples showing dynamic and static backends implementing the same core contracts without importing each other. |
+| S6 | Close RFC 002 and Milestone 1 with layout-neutrality and zero-bleed evidence. |
 
 #### Exit criteria
 
 - Core access contracts are storage-neutral.
-- Borrowed view requirements are clear enough for RFC 004.
+- `loeres_core::access` and `loeres_core::dimension` naming is consistent across docs, code, and examples.
+- Borrowed contiguous view requirements are clear enough for RFC 004.
 - Dynamic backend requirements are clear enough for RFC 007.
+- Optional fast traversal is available without making layout-specific kernels mandatory.
 - No public core API references concrete storage crates.
 
 ### 2.5 RFC 003 — Allocation-Free Error Topology and Formatting Restrictions
 
 #### Scope
 
-Define the public error, status, step outcome, and compact diagnostic categories for `loeres-core`.
+Define the public error and compact diagnostic categories for `loeres-core`. RFC 014 owns terminal solve status, step outcome, and solver report taxonomy.
 
-This RFC is required before solver entrypoints are designed because device and cluster APIs must agree on failure semantics.
+This RFC is required before solver entrypoints are designed because device and cluster APIs must agree on failure/error semantics. Solver progress status is reconciled separately by RFC 014.
 
 #### Required topics
 
 - Public error category enum.
 - Public diagnostic category enum or compact diagnostic code.
-- Public step outcome categories.
 - Semver extensibility policy.
 - Formatting policy.
 - Byte-size budget for device-facing error and diagnostic values.
@@ -333,9 +358,9 @@ This RFC is required before solver entrypoints are designed because device and c
 | Sprint | Work |
 |---|---|
 | S0 | Freeze error category taxonomy and semver policy. |
-| S1 | Add `error`, `diagnostic`, and `status` module skeletons. |
+| S1 | Add `error` and `diagnostic` module skeletons. |
 | S2 | Add compile-time size tests and no-formatting tests. |
-| S3 | Implement accepted error/status definitions and static lookup. |
+| S3 | Implement accepted error/diagnostic definitions and static lookup. |
 | S4 | Run no-std, no-alloc, and size-budget checks. |
 | S5 | Document mapping between failure classes and solver behavior. |
 | S6 | Close RFC with diagnostic bloat checklist. |
@@ -345,13 +370,13 @@ This RFC is required before solver entrypoints are designed because device and c
 - `loeres-core` compiles as core-only `#![no_std]`.
 - Error and diagnostic payload sizes are frozen for the current milestone.
 - No `Display` implementation is present by default.
-- Cluster and device RFCs can depend on the same public failure categories.
+- Cluster and device RFCs can depend on the same public failure categories, while RFC 014 supplies the shared progress/status categories.
 
 ### 2.6 Milestone 1 Exit Criteria
 
 Milestone 1 is complete only when all of the following are true:
 
-- RFC 001, 002, and 003 are `Implemented`.
+- RFC 001, 002, 003, and 014 are `Implemented`.
 - The public core trait and error signatures are reviewed and frozen.
 - `loeres-core` builds with `default-features = false` under the selected `no_std` target profile.
 - Dependency graph checks prove that `loeres-core` has no forbidden direct or transitive dependency.
@@ -379,7 +404,7 @@ The objective is to prove that a useful optimization problem can be represented,
 Milestone 2 may begin only when:
 
 - Milestone 1 is complete.
-- Core scalar/access/error contracts are frozen.
+- Core scalar/access/error and solver-outcome contracts are frozen.
 - Device target profiles are selected for the milestone.
 - The zero-bleed gate is operational for `loeres-core` and can be extended to device crates.
 - A reference device example target exists, even if it initially does not solve a real problem.
@@ -505,7 +530,7 @@ The RFC must choose exactly one baseline policy for v0.x.
 
 #### Scope
 
-Design and implement the first device solver engine. The preferred initial scope is a simple, structured, deterministic convex problem class, such as a dense bounded QP subset or capped first-order method. The RFC must choose the exact baseline.
+Design and implement the first device solver engine. The preferred v0.x baseline is a box/bound-constrained projected first-order kernel or another closed-form-projection family with a bounded loop. General linear-inequality projection (`Ax <= b`) and broad dense QP/IPM scope are out of the first device kernel unless a later RFC explicitly accepts the additional inner-solver complexity.
 
 #### Required topics
 
@@ -610,14 +635,14 @@ Design `loeres-backend-std` dynamic storage adapters for dense and sparse proble
 - Conversion from user input into validated model structures.
 - Backend optionality for `ndarray`, `nalgebra`, sparse crates, or internal representations.
 - Memory allocation failure behavior where applicable.
-- Trusted-input validation state integration.
+- Trusted-input validation state integration, consuming the canonical validation-state model from RFC 012 once accepted.
 
 #### Mandatory constraints
 
 - `loeres-backend-std` may depend on `std` and allocation, but these dependencies must not leak into `loeres-core` or device-facing crates.
 - Dynamic storage adapters must implement the same core access contracts frozen in RFC 002.
 - Large input validation scans must be controllable through explicit validation-state APIs, not implicit global flags.
-- The public API must distinguish unvalidated, validated, and trusted input states if the RFC accepts that model.
+- The public API must distinguish unvalidated, validated, and trusted input states through the RFC 012 canonical model rather than inventing backend-local state categories.
 
 #### Key risks to resolve
 
@@ -828,14 +853,17 @@ Required commands:
 
 | Command | Purpose |
 |---|---|
-| `xtask check-zero-bleed` | Reject illegal dependency edges into core/device-facing crates. |
-| `xtask check-feature-matrix` | Validate public feature combinations and mutually exclusive configurations. |
-| `xtask check-no-std` | Build core/device-facing crates for selected no-std targets. |
-| `xtask check-panic-paths` | Run selected panic-averse analysis for device entrypoints. |
-| `xtask check-size-budget` | Measure binary, stack-relevant type, error, diagnostic, and code-size budgets. |
-| `xtask check-public-api` | Detect forbidden public types in device-facing APIs. |
-| `xtask check-corpus` | Run shared numerical and failure-mode corpus tests. |
-| `xtask release-gate` | Run all gates required for milestone advancement. |
+| `cargo xtask zero-bleed` | Reject illegal dependency edges into core/device-facing crates. |
+| `cargo xtask feature-matrix` | Validate public feature combinations and mutually exclusive configurations. |
+| `cargo xtask no-std` | Build core/device-facing crates for selected no-std targets. |
+| `cargo xtask target-profiles` | Build and check the accepted cluster/device target profiles from RFC 011. |
+| `cargo xtask panic-audit` | Run selected panic-averse analysis for device entrypoints. |
+| `cargo xtask unsafe-audit` | Report or reject unreviewed `unsafe` in governed crates. |
+| `cargo xtask size-budget` | Measure binary, stack-relevant type, error, diagnostic, and code-size budgets. |
+| `cargo xtask check-public-api` | Detect forbidden public types and forbidden `dyn` use in device-facing APIs. |
+| `cargo xtask conformance` | Run shared numerical and failure-mode corpus tests. |
+| `cargo xtask check` | Canonical aggregate release gate for milestone advancement. |
+| `cargo xtask release-gate` | Optional alias for `cargo xtask check` for CI clarity. |
 
 ### 5.5 Dependency-Graph Freezing
 
@@ -922,7 +950,7 @@ A release candidate may be cut only when:
 
 - all implemented RFCs are in the `done/` directory;
 - no accepted RFC is partially implemented without being marked as incomplete;
-- `xtask release-gate` passes;
+- `cargo xtask check` passes; `cargo xtask release-gate` may be used as a CI alias if present;
 - device and cluster examples compile under their intended feature sets;
 - dependency graph checks pass;
 - public API checks pass;
@@ -931,13 +959,13 @@ A release candidate may be cut only when:
 
 ### 5.10 Roadmap Completion Matrix
 
-| Phase | Milestone | Required RFCs | Completion signal |
-|---|---|---|---|
-| Phase 0 | Governance bootstrap | none | RFC lifecycle, repository skeleton, and initial `xtask` exist. |
-| Phase 1 | Core | RFC 001, 002, 003 | Core contracts frozen and no-std verified. |
-| Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. |
-| Phase 3 | Cluster | RFC 007, 008, 009 | Dynamic backend and cluster orchestration pass partial-failure, observability, and dependency isolation checks. |
-| Integration | Cross-layer verification | corpus and `xtask` gates | Compatible cluster/device solvers converge within accepted epsilon and preserve separation. |
+| Phase | Milestone | Required RFCs | Completion signal | Status |
+|---|---|---|---|---|
+| Phase 0 | Governance bootstrap | none | RFC lifecycle, repository skeleton, and initial `xtask` exist. | ✅ complete (v0.3.0) |
+| Phase 1 | Core | RFC 001, 002, 003, 014 | Core contracts frozen and no-std verified. | 🔶 in progress — RFC 001/003/014 implemented; RFC 002 design-finalized and next for v0.7.0; completion after RFC 002 closeout |
+| Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ⬜ not started |
+| Phase 3 | Cluster | RFC 007, 008, 009 | Dynamic backend and cluster orchestration pass partial-failure, observability, and dependency isolation checks. | ⬜ not started |
+| Integration | Cross-layer verification | corpus and `xtask` gates | Compatible cluster/device solvers converge within accepted epsilon and preserve separation. | ⬜ not started |
 
 ---
 
@@ -975,9 +1003,13 @@ RFC 001 Stratified Scalar Capability Model
 
 Cross-cutting RFCs (apply across milestones):
     RFC 010 xtask Verification Governance
+        -> governs release gates, check-public-api, panic/unsafe audits, and aggregate check
     RFC 011 Target Profiles and Deterministic Math
+        -> informs RFC 006 target-scoped device claims and no-std target checks
     RFC 012 Validation State and Trusted Input Policy
+        -> consumed by RFC 007 dynamic adapters and RFC 008 cluster validation policy
     RFC 013 Conformance Corpus and Numerical Parity
+        -> consumed by RFC 006 device kernel tests and RFC 008/cluster parity checks
 ```
 
 ## Appendix B: Milestone Acceptance Checklist

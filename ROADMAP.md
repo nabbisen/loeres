@@ -20,7 +20,7 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.6.1)
+## Current status (v0.6.2)
 
 **Milestone 1 nearly complete — RFC 003, RFC 014, and RFC 001 implemented.**
 `loeres-core` now ships the error/diagnostic topology (RFC 003), the solver
@@ -28,7 +28,7 @@ outcome/status taxonomy (RFC 014), and the six-tier scalar capability model
 (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline
 impls). The base-scalar ordering question is resolved: the architect chose
 **Direction B** (base excludes ordering; ordering is `OrderedScalar`), recorded
-as ADR-017, and Requirements §5.1.3 was amended to match. All gates pass; 36
+as ADR-017, and Requirements §5.1.3 was amended to match. All gates pass; 37
 tests.
 
 ### Next: Milestone 1 remainder — RFC 002 (access)
