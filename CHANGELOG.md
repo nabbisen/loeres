@@ -5,6 +5,35 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.7.1] — 2026-06-27 — Colocated unit-test layout (internal)
+
+A test-organization refactor to match the project's testing guideline: a
+module's unit tests live in a colocated `tests.rs` beside the module, not in a
+centralized `src/tests/` tree. No production code, public API, or behavior
+change; all 62 tests still run (now reported under their module path, e.g.
+`access::tests::…`).
+
+### Changed
+
+- Moved each module's unit tests next to it and declared `#[cfg(test)] mod tests;`
+  in the module:
+  - `src/tests/access.rs` → `src/access/tests.rs`
+  - `src/tests/scalar.rs` → `src/scalar/tests.rs`
+  - `src/tests/error.rs`  → `src/error/tests.rs`  (new `src/error/` dir)
+  - `src/tests/solver.rs` → `src/solver/tests.rs` (new `src/solver/` dir)
+- Removed the central `src/tests.rs` and `src/tests/` and the `mod tests;`
+  declaration in `lib.rs`.
+- `CONTRIBUTING.md` "Tests" section reworded to state the colocated convention
+  explicitly (keep `#[test]` out of the module file; pair `some_module.rs` with
+  `some_module/tests.rs`; escalate to `some_module/tests/(group).rs`; do not
+  centralize).
+
+### Verification
+
+`cargo check`, `clippy -D warnings`, `fmt`, 62 tests, `xtask zero-bleed`,
+`xtask no-std` (bare-metal `thumbv7em-none-eabihf`), and `xtask check-rfcs` all
+pass. `check-rfcs` scans the same core module files (unaffected by the test move).
+
 ## [0.7.0] — 2026-06-27 — RFC 002 storage-agnostic access contracts; Milestone 1 complete
 
 The final Milestone 1 core contract. `loeres` gains the storage-agnostic vector
@@ -694,6 +723,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.7.1]: https://github.com/nabbisen/loeres/releases/tag/v0.7.1
 [0.7.0]: https://github.com/nabbisen/loeres/releases/tag/v0.7.0
 [0.6.4]: https://github.com/nabbisen/loeres/releases/tag/v0.6.4
 [0.6.3]: https://github.com/nabbisen/loeres/releases/tag/v0.6.3

@@ -114,3 +114,6 @@ pub const fn error_code_to_str(err: SolverError) -> &'static str {
         SolverError::InternalInvariantViolation => "internal_invariant_violation",
     }
 }
+
+#[cfg(test)]
+mod tests;

@@ -38,6 +38,3 @@ pub use scalar::{
 pub use solver::{
     AsCoreReport, IterationReport, SolveReport, SolveStatus, StepOutcome, TerminationReason,
 };
-
-#[cfg(test)]
-mod tests;

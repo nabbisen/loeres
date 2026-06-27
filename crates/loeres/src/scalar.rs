@@ -23,6 +23,9 @@ use crate::error::SolverError;
 
 mod primitive;
 
+#[cfg(test)]
+mod tests;
+
 /// Tier 1 — the minimum algebraic vocabulary to represent optimization data.
 ///
 /// Requires only equality (for zero-testing), **not** `PartialOrd` and **not**

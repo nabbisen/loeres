@@ -217,3 +217,6 @@ const _: () = {
     assert!(core::mem::size_of::<IterationReport>() <= 12);
     assert!(core::mem::size_of::<SolveReport>() <= 16);
 };
+
+#[cfg(test)]
+mod tests;

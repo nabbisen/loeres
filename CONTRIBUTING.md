@@ -51,9 +51,13 @@ To propose a design change:
 ## Tests
 
 - Tests validate the **design specifications**, not merely the written code.
-- Place unit tests in a `tests.rs` within `src/`; if it grows large, move the
-  contents into submodules under a `tests/` directory, applying the same
-  line-count splitting as production code.
+- Keep `#[test]` code out of the module file. Place a module's unit tests in a
+  colocated `tests.rs` beside it — `src/some_module.rs` pairs with
+  `src/some_module/tests.rs` (Rust 2018 lets the file and directory coexist) —
+  and declare `#[cfg(test)] mod tests;` in the module. If a `tests.rs` grows
+  large, split it into `src/some_module/tests/(group).rs`, applying the same
+  line-count splitting as production code. Do not centralize tests in a single
+  top-level `src/tests/` tree.
 
 ## License
 

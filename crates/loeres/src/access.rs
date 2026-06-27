@@ -22,6 +22,9 @@
 mod matrix;
 mod vector;
 
+#[cfg(test)]
+mod tests;
+
 pub use matrix::{
     ContiguousMatrixAccess, MatrixAccess, MatrixAccessMut, MatrixView, MatrixViewMut,
 };
