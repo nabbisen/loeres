@@ -1,20 +1,23 @@
 # Loeres External Design Specification v1
 
-Status: Accepted — Milestone 1 (`loeres-core`) in progress (current as of v0.6.1)  
+Status: Accepted — Milestone 1 (`loeres`) in progress (current as of v0.6.3)  
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **Document currency.** Current as of repository release **v0.6.1**; the design is
-> **accepted** (no longer a draft). Implemented in `loeres-core` (`rfcs/done/`):
+> **Document currency.** Current as of repository release **v0.6.3**; the design is
+> **accepted** (no longer a draft). Implemented in `loeres` (`rfcs/done/`):
 > the error/diagnostic topology (RFC 003, v0.4.0); the solver outcome/status
 > taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); and the
 > six-tier scalar model with the base tier **excluding ordering** (RFC 001, v0.6.0
 > — see ED-004 and §2.2). The storage-agnostic access contracts (RFC 002) are
 > **design-finalized but not yet implemented** (see ED-015); implementing them is
 > the next step (**v0.7.0**) and **completes Milestone 1**. Phase 0 (five-crate
-> workspace plus `xtask`) is complete (v0.3.0); **Milestone 1 (`loeres-core`) is in
-> progress**. The roadmap holds the authoritative live status.
+> workspace plus `xtask`) is complete (v0.3.0); **Milestone 1 (`loeres`) is in
+> progress**. The roadmap holds the authoritative live status. No design content
+> has changed since v0.6.1: v0.6.2 resynced the in-repo `docs/specs` mirrors, and
+> v0.6.3 renamed the core crate from `loeres-core` to `loeres` (directory
+> `crates/loeres/`; module layout unchanged).
 
 ---
 
@@ -76,7 +79,7 @@ The v0.1 reviews were treated as design feedback, not implementation orders. The
 |---|---|---|
 | Public error and diagnostic enums should remain semver-extensible | Accepted | Public enum growth can otherwise break downstream exhaustive matches |
 | Error and diagnostic payloads must be size-budgeted | Accepted as an external constraint; exact byte caps deferred to RFC 003 | This affects device ABI and stack pressure, but exact numbers require RFC-level measurement |
-| `loeres_core::linalg` may imply heavy kernels | Accepted by renaming the core module category to `loeres_core::access` | Core exposes storage access contracts, not BLAS-like operations |
+| `loeres::linalg` may imply heavy kernels | Accepted by renaming the core module category to `loeres::access` | Core exposes storage access contracts, not BLAS-like operations |
 | Public validation should avoid repeated O(N) rescans where input is already validated or trusted | Accepted with explicit validation-state policy | This is needed for large cluster workloads and for device loops with prevalidated static state |
 | Device workspace failure may leave scratch memory unusable | Accepted through workspace poisoning semantics | Reuse after a failed solve must be explicit and safe |
 | Device execution configuration should not be const-generic by default | Accepted | Const generics are reserved for dimensions and memory layout to avoid monomorphization bloat |
@@ -123,7 +126,7 @@ loeres/
 │   ├── done/
 │   └── archive/
 ├── crates/
-│   ├── loeres-core/
+│   ├── loeres/
 │   ├── loeres-backend-std/
 │   ├── loeres-backend-static/
 │   ├── loeres-cluster/
@@ -154,7 +157,7 @@ The `xtask/` crate may use `std` because it is a repository automation tool. It 
 
 | Crate | Layer | Environment | Public responsibility | Forbidden from public surface |
 |---|---:|---|---|---|
-| `loeres-core` | 1 | `#![no_std]`, no `alloc` | Mathematical contracts, scalar capability families, vector/matrix access contracts, problem contracts, solver state categories, allocation-free errors | `Vec`, `Box`, `String`, `HashMap`, async runtime types, logging framework types, backend storage types, FFI handles |
+| `loeres` | 1 | `#![no_std]`, no `alloc` | Mathematical contracts, scalar capability families, vector/matrix access contracts, problem contracts, solver state categories, allocation-free errors | `Vec`, `Box`, `String`, `HashMap`, async runtime types, logging framework types, backend storage types, FFI handles |
 | `loeres-backend-std` | 2 | `std` | Dynamic dense/sparse storage adapters, heap-backed model storage, server math adapter modules | Must not be depended on by `loeres-device` or `loeres-backend-static` |
 | `loeres-backend-static` | 2 | `#![no_std]`, no `alloc` | Fixed-size owned storage, borrowed static views, dimension-bearing wrappers, typed workspace storage blocks | `std`, `alloc`, logging frameworks, async runtime types, server adapters, FFI handles |
 | `loeres-cluster` | 3 | `std` | Server-side solving interface, dynamic model construction, batch execution, cancellation, parallelism, observability, optional native gateways | Must not be depended on by edge-facing crates |
@@ -166,7 +169,7 @@ The dependency graph must remain acyclic and environment-separated:
 
 ```mermaid
 graph TD
-    Core[loeres-core\nno_std / no_alloc]
+    Core[loeres\nno_std / no_alloc]
 
     StdBackend[loeres-backend-std\nstd / dynamic allocation]
     StaticBackend[loeres-backend-static\nno_std / no_alloc]
@@ -188,7 +191,7 @@ Forbidden edges:
 graph TD
     Device[loeres-device]
     StaticBackend[loeres-backend-static]
-    Core[loeres-core]
+    Core[loeres]
     Cluster[loeres-cluster]
     StdBackend[loeres-backend-std]
 
@@ -220,7 +223,7 @@ Cluster users normally import:
 
 - dynamic problem builders from `loeres-cluster`;
 - dynamic vector/matrix adapters from `loeres-backend-std`;
-- shared error and status categories from `loeres-core`.
+- shared error and status categories from `loeres`.
 
 #### Device user
 
@@ -234,7 +237,7 @@ Device users normally import:
 
 - fixed-size storage types or views from `loeres-backend-static`;
 - deterministic solver entrypoints from `loeres-device`;
-- shared error and status categories from `loeres-core`.
+- shared error and status categories from `loeres`.
 
 Device users must not need to import `loeres-cluster` or `loeres-backend-std` to solve a fixed-size problem.
 
@@ -242,19 +245,19 @@ Device users must not need to import `loeres-cluster` or `loeres-backend-std` to
 
 The following module families define the public topography. Exact submodule names may change only through RFC review.
 
-#### `loeres-core`
+#### `loeres`
 
 ```text
-loeres_core::scalar      // stratified scalar capability traits
-loeres_core::access      // storage-agnostic vector/matrix access contracts; no heavy kernels
-loeres_core::problem     // LP/QP/SOCP/model interface categories
-loeres_core::solver      // solver status, step status, convergence categories
-loeres_core::error       // allocation-free error topology
-loeres_core::diagnostic  // compact diagnostic code/value categories, no logging output
-loeres_core::dimension   // dimension descriptors and dimension mismatch categories
+loeres::scalar      // stratified scalar capability traits
+loeres::access      // storage-agnostic vector/matrix access contracts; no heavy kernels
+loeres::problem     // LP/QP/SOCP/model interface categories
+loeres::solver      // solver status, step status, convergence categories
+loeres::error       // allocation-free error topology
+loeres::diagnostic  // compact diagnostic code/value categories, no logging output
+loeres::dimension   // dimension descriptors and dimension mismatch categories
 ```
 
-`loeres-core` must be usable by both cluster and device users without feature-selected environment changes. The `access` module name is intentional: it defines shape, indexing, borrowing, and fallible access contracts. It must not be interpreted as a required linear-algebra kernel module.
+`loeres` must be usable by both cluster and device users without feature-selected environment changes. The `access` module name is intentional: it defines shape, indexing, borrowing, and fallible access contracts. It must not be interpreted as a required linear-algebra kernel module.
 
 #### `loeres-backend-std`
 
@@ -306,9 +309,9 @@ loeres_device::diagnostic   // compact no_std diagnostics, no logging framework
 
 ### 1.6 Feature Flag Matrix
 
-Feature flags must not collapse the server/edge boundary. In particular, no feature of `loeres-device`, `loeres-backend-static`, or `loeres-core` may enable `std`, `alloc`, async runtime types, logging framework types, or server numerical backends.
+Feature flags must not collapse the server/edge boundary. In particular, no feature of `loeres-device`, `loeres-backend-static`, or `loeres` may enable `std`, `alloc`, async runtime types, logging framework types, or server numerical backends.
 
-#### 1.6.1 `loeres-core`
+#### 1.6.1 `loeres`
 
 | Feature | Default | Public meaning | Constraints |
 |---|---:|---|---|
@@ -316,7 +319,7 @@ Feature flags must not collapse the server/edge boundary. In particular, no feat
 | `libm` | no | Enables optional no-`std` implementations for advanced scalar capability adapters where needed | Must not enable `std` or `alloc` |
 | `fixed-point-hooks` | no | Exposes integration hooks for fixed-point scalar implementations | Must not select a concrete fixed-point crate by default |
 
-No `loeres-core` feature may change core error layout in a way that breaks device ABI expectations inside the same semver line.
+No `loeres` feature may change core error layout in a way that breaks device ABI expectations inside the same semver line.
 
 #### 1.6.2 `loeres-backend-static`
 
@@ -378,7 +381,7 @@ The following configurations are invalid by design:
 | `loeres-device` depending on `loeres-cluster` | Collapses compile-time environment isolation |
 | `loeres-device` depending on `loeres-backend-std` | Pulls server storage assumptions into edge path |
 | `loeres-backend-static` depending on `loeres-backend-std` | Violates no-`std` / no-`alloc` static backend rule |
-| `loeres-core` depending on any backend crate | Core must define contracts, not storage |
+| `loeres` depending on any backend crate | Core must define contracts, not storage |
 | Any device-facing feature enabling `std` or `alloc` | Violates edge baseline |
 | Device baseline requiring `dyn Trait` | Violates monomorphized zero-cost design goal |
 | `ffi-gateway` on edge crates | Violates edge safety and audit boundary |
@@ -407,7 +410,7 @@ Cluster crates may use `std`, dynamic allocation, threads, async runtimes, and o
 |---|---|---|---|
 | Reference hardware-float MCU | `thumbv7em-none-eabihf` | Primary `no_std` / no-`alloc` edge design-test target | Reference profile for early floating-point behavior documentation |
 | Software-float MCU | `thumbv7em-none-eabi` | Verifies that device code does not assume hardware FPU by accident | Performance may be unsuitable for some solvers |
-| RISC-V embedded candidate | `riscv32imac-unknown-none-elf` | Portability candidate for `loeres-core` and static backend | Solver support may be staged |
+| RISC-V embedded candidate | `riscv32imac-unknown-none-elf` | Portability candidate for `loeres` and static backend | Solver support may be staged |
 | WASM bare target candidate | `wasm32-unknown-unknown` | Optional no-`std` portability smoke target | Not a real-time target by itself |
 
 Device documentation must distinguish:
@@ -425,8 +428,8 @@ The repository must include `xtask` commands or equivalent CI jobs for:
 
 | Check | Required scope |
 |---|---|
-| `no_std` compile check | `loeres-core`, `loeres-backend-static`, `loeres-device` |
-| no-`alloc` dependency check | `loeres-core`, `loeres-backend-static`, `loeres-device` |
+| `no_std` compile check | `loeres`, `loeres-backend-static`, `loeres-device` |
+| no-`alloc` dependency check | `loeres`, `loeres-backend-static`, `loeres-device` |
 | dependency graph check | All crates |
 | forbidden feature check | Edge-facing crates |
 | panic-averse release gate | Device public solve entrypoints |
@@ -441,7 +444,7 @@ The exact tooling is an RFC subject. The external contract is that these checks 
 
 ### 2.1 Core Design Objective
 
-`loeres-core` is the abstract backbone of the ecosystem. It defines the public mathematical vocabulary shared by all crates.
+`loeres` is the abstract backbone of the ecosystem. It defines the public mathematical vocabulary shared by all crates.
 
 It must not know whether a vector is:
 
@@ -455,7 +458,7 @@ It must only know the contracts that such storage must satisfy.
 
 ### 2.2 Stratified Scalar Concept
 
-`loeres-core` must use stratified scalar capabilities rather than a monolithic `Scalar` trait.
+`loeres` must use stratified scalar capabilities rather than a monolithic `Scalar` trait.
 
 The external scalar families are:
 
@@ -488,11 +491,11 @@ Examples:
 | Algorithms requiring division | `BaseScalar + DivisibleScalar` |
 | Interior-point-style barrier families | `BaseScalar + DivisibleScalar + MetricScalar + AdvancedNumericalScalar` |
 
-`loeres-core` must not force every backend to implement `AdvancedNumericalScalar` just because one future algorithm may need it.
+`loeres` must not force every backend to implement `AdvancedNumericalScalar` just because one future algorithm may need it.
 
 ### 2.4 Storage-Agnostic Vector and Matrix Bindings
 
-`loeres-core::access` must define public contracts for vectors and matrices without exposing storage or implying heavy linear-algebra kernels.
+`loeres::access` must define public contracts for vectors and matrices without exposing storage or implying heavy linear-algebra kernels.
 
 The public vector design must cover:
 
@@ -528,11 +531,11 @@ Device-facing APIs must not require:
 - boxed closures;
 - allocator-backed callback chains.
 
-Server-only crates may provide dynamic dispatch as an ergonomic convenience, but this must be isolated to `loeres-cluster` and must not leak into `loeres-core` contracts required by device code.
+Server-only crates may provide dynamic dispatch as an ergonomic convenience, but this must be isolated to `loeres-cluster` and must not leak into `loeres` contracts required by device code.
 
 ### 2.6 Dimension Model
 
-`loeres-core::dimension` must provide public dimension categories that can represent both dynamic and static contexts.
+`loeres::dimension` must provide public dimension categories that can represent both dynamic and static contexts.
 
 The external design requires at least these categories:
 
@@ -549,7 +552,7 @@ Dimension metadata must be representable without allocation.
 
 ### 2.7 Problem Families
 
-`loeres-core::problem` must define public problem-family contracts, but not concrete modeling DSLs.
+`loeres::problem` must define public problem-family contracts, but not concrete modeling DSLs.
 
 Initial public problem families:
 
@@ -564,7 +567,7 @@ Mixed-integer programming, nonlinear symbolic modeling, and expression parsing a
 
 ### 2.8 Error Topology
 
-`loeres-core::error` must expose allocation-free error enums.
+`loeres::error` must expose allocation-free error enums.
 
 The public error topology must cover:
 
@@ -584,13 +587,13 @@ Non-convergence at a bounded iteration cap is **not** a `SolverError`. It is a s
 
 Error values must not require heap allocation, string ownership, backtraces, or formatting support.
 
-Public error enums in `loeres-core` should be semver-extensible. The external design therefore requires public error enums to be designed as non-exhaustive categories unless a later RFC proves that a closed enum is required for device ABI reasons. Downstream users must not be encouraged to rely on exhaustive matching over all future error categories.
+Public error enums in `loeres` should be semver-extensible. The external design therefore requires public error enums to be designed as non-exhaustive categories unless a later RFC proves that a closed enum is required for device ABI reasons. Downstream users must not be encouraged to rely on exhaustive matching over all future error categories.
 
 Error values on device-facing result paths must be size-budgeted. The exact byte-size limit is an RFC 003 decision, but the public design must avoid embedding large diagnostic snapshots directly into common `Result<T, E>` error variants. Large or optional diagnostic detail must live behind explicit diagnostic snapshot types or feature-gated result metadata.
 
 ### 2.9 Diagnostic Topology Without Logging
 
-`loeres-core::diagnostic` may expose compact diagnostic categories that are data-only.
+`loeres::diagnostic` may expose compact diagnostic categories that are data-only.
 
 Examples of allowed diagnostic information:
 
@@ -616,7 +619,7 @@ Public diagnostic enums and compact snapshot categories should also be semver-ex
 
 ### 2.10 Solver State and Step Outcome Categories
 
-`loeres-core::solver` must define public status categories shared by server and device crates.
+`loeres::solver` must define public status categories shared by server and device crates.
 
 Required outcome categories:
 
@@ -693,7 +696,7 @@ sequenceDiagram
     participant User
     participant Cluster as loeres-cluster
     participant StdBackend as loeres-backend-std
-    participant Core as loeres-core
+    participant Core as loeres
 
     User->>Cluster: build dynamic problem
     Cluster->>StdBackend: store dense/sparse data
@@ -752,7 +755,7 @@ Batch solve APIs must use per-item outcome semantics by default. A batch contain
 - input rejection events;
 - timeout and cancellation events.
 
-Observability must be server-only. `loeres-core`, `loeres-backend-static`, and `loeres-device` must not expose public types from `tracing`, `log`, `metrics`, or similar frameworks.
+Observability must be server-only. `loeres`, `loeres-backend-static`, and `loeres-device` must not expose public types from `tracing`, `log`, `metrics`, or similar frameworks.
 
 ### 3.7 FFI Gateway Boundary
 
@@ -762,7 +765,7 @@ Rules:
 
 - FFI must be feature-gated behind `ffi-gateway`.
 - FFI must not be default.
-- FFI must not be reachable from `loeres-core`, `loeres-backend-static`, or `loeres-device`.
+- FFI must not be reachable from `loeres`, `loeres-backend-static`, or `loeres-device`.
 - FFI gateway types must not appear in core problem contracts.
 - FFI results must be normalized into Loeres structured result/error categories at the cluster boundary.
 - FFI safety requirements must be covered by a later RFC before implementation.
@@ -870,7 +873,7 @@ sequenceDiagram
     participant App as Embedded App
     participant Static as loeres-backend-static
     participant Device as loeres-device
-    participant Core as loeres-core
+    participant Core as loeres
 
     App->>Static: declare fixed storage and typed workspace
     App->>Device: configure bounded solver policy
@@ -1130,7 +1133,7 @@ Device must expose only compact data-oriented diagnostics.
 
 ### ED-001: Five-Crate Workspace Is the Public Boundary
 
-Decision: Loeres uses five public crates: `loeres-core`, `loeres-backend-std`, `loeres-backend-static`, `loeres-cluster`, and `loeres-device`.
+Decision: Loeres uses five public crates: `loeres`, `loeres-backend-std`, `loeres-backend-static`, `loeres-cluster`, and `loeres-device`.
 
 Rationale: This makes environment separation visible to downstream developers and enforceable by Cargo dependency direction.
 
@@ -1142,7 +1145,7 @@ Rationale: Runtime mode switches would hide environment assumptions and risk acc
 
 ### ED-003: Core Defines Capability Categories, Not Storage
 
-Decision: `loeres-core` defines scalar, vector, matrix, problem, solver, dimension, error, and diagnostic contracts. It does not define concrete storage.
+Decision: `loeres` defines scalar, vector, matrix, problem, solver, dimension, error, and diagnostic contracts. It does not define concrete storage.
 
 Rationale: Storage belongs to backends. Core must remain shared and no-alloc.
 
@@ -1224,7 +1227,7 @@ treat normal progress as exceptional and bloats the error type.
 
 ### ED-015: Core Owns Access Contracts and Simple Contiguous Views Only
 
-Decision: `loeres-core` owns the storage-agnostic access traits, a simple
+Decision: `loeres` owns the storage-agnostic access traits, a simple
 contiguous row-major view, and an **optional** contiguous fast-path surface.
 Column-major, strided, and sub-matrix views are **not** in core; they belong to
 `loeres-backend-static` (the `static-views` feature, RFC 004) and to the dynamic
@@ -1311,7 +1314,7 @@ This external design is accepted only if the following are true:
 | Defines dependency direction and forbidden edges | Required |
 | Defines feature matrices for all crates | Required |
 | Defines cluster and device target profiles | Required |
-| Keeps `loeres-core` no-`std` and no-`alloc` | Required |
+| Keeps `loeres` no-`std` and no-`alloc` | Required |
 | Keeps device public API no-`std` and no-`alloc` | Required |
 | Avoids baseline `dyn Trait` in edge-facing design | Required |
 | Uses stratified scalar capability categories | Required |
@@ -1338,7 +1341,7 @@ This external design is accepted only if the following are true:
 
 The following questions are intentionally left to RFCs:
 
-1. **(Resolved by RFC 001, v0.6.0.)** The six scalar traits and their method signatures are defined and implemented in `loeres_core::scalar` (with `f32`/`f64` baseline impls); `AdvancedNumericalScalar` is non-baseline for primitives.
+1. **(Resolved by RFC 001, v0.6.0.)** The six scalar traits and their method signatures are defined and implemented in `loeres::scalar` (with `f32`/`f64` baseline impls); `AdvancedNumericalScalar` is non-baseline for primitives.
 2. **(Resolved by RFC 001, v0.6.0.)** Ordering is split into a dedicated `OrderedScalar` tier: `BaseScalar` requires only `PartialEq` (not `PartialOrd`), and `min` / `max` / `clamp` live on `OrderedScalar` with a pinned NaN-propagating contract for floating-point types.
 3. Exact treatment of fixed-point scalar implementations.
 4. Exact representation of static dimensions without relying on unstable generic const expressions.
@@ -1366,4 +1369,4 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-Milestone 1 is almost complete: RFC 001, RFC 003, and RFC 014 are implemented in `loeres-core`; RFC 002's access contracts are design-finalized and are the next implementation step for v0.7.0.
+Milestone 1 is almost complete: RFC 001, RFC 003, and RFC 014 are implemented in `loeres`; RFC 002's access contracts are design-finalized and are the next implementation step for v0.7.0.

@@ -5,6 +5,52 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.6.4] — 2026-06-27 — In-repo spec mirror caught up to v0.6.3 (docs only)
+
+A documentation-currency release that closes the spec divergence opened by the
+v0.6.3 rename. In v0.6.3 the workspace was renamed `loeres-core` → `loeres`
+everywhere except the canonical design specs under `docs/specs/`, which are the
+project owner's apex artifacts and were left for the next canonical revision.
+That revision is now accepted and replaced upstream, so this release mirrors it
+into the repository. No design, contract, code, or public API change; hence a
+patch bump.
+
+### Changed — `docs/specs/` resynced to the accepted v0.6.3 design
+
+The three in-repo specs are mirrored from the canonical design specifications
+(byte-identical). Net effect:
+
+- The `loeres-core` → `loeres` rename (and `loeres_core::` → `loeres::` module
+  paths) now reflected throughout the specs.
+- Currency bumped from v0.6.1 to v0.6.3 framing: Status lines, Document-currency
+  blocks, the requirements §15 status snapshot, and the roadmap snapshot heading.
+- **ADR-019** recorded in the requirements spec: the core contracts crate is
+  named `loeres` (namespace reservation; foundation-crate-as-library-name
+  convention; structural rename only).
+
+No design content changed across v0.6.1 → v0.6.3; the specs' "current as of
+v0.6.3" framing reflects design state, while this repository release carrying
+the mirror is v0.6.4.
+
+### Fixed — lagged narrative version labels
+
+The v0.6.3 rename pass updated crate names but not release labels, leaving two
+markers at v0.6.2. Both corrected to v0.6.4:
+
+- `README.md` — Milestone 1 state callout.
+- `ROADMAP.md` — "Current status" heading.
+
+### Security / threat model
+
+No new data flows, external integrations, or auth logic. Existing controls
+re-verified and remain valid.
+
+### Verification
+
+`cargo check`, `clippy -D warnings`, `fmt --check`, 37 core tests,
+`xtask zero-bleed`, `xtask no-std` (bare-metal `thumbv7em-none-eabihf`), and
+`xtask check-rfcs` all pass; whole-tree currency sweep clean.
+
 ## [0.6.3] — 2026-06-22 — `loeres-core` renamed to `loeres`
 
 Structural rename only. The core crate — the shared mathematical contracts
@@ -570,6 +616,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.6.4]: https://github.com/nabbisen/loeres/releases/tag/v0.6.4
 [0.6.3]: https://github.com/nabbisen/loeres/releases/tag/v0.6.3
 [0.6.2]: https://github.com/nabbisen/loeres/releases/tag/v0.6.2
 [0.6.1]: https://github.com/nabbisen/loeres/releases/tag/v0.6.1

@@ -20,7 +20,7 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.6.2)
+## Current status (v0.6.4)
 
 **Milestone 1 nearly complete — RFC 003, RFC 014, and RFC 001 implemented.**
 `loeres` now ships the error/diagnostic topology (RFC 003), the solver

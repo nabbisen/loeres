@@ -5,16 +5,19 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted — Milestone 1 (`loeres-core`) in progress (current as of v0.6.1)  
+**Status:** Accepted — Milestone 1 (`loeres`) in progress (current as of v0.6.3)  
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Document currency.** This specification is current as of repository release
-> **v0.6.1** and reflects the **accepted** design (no longer a draft). The
+> **v0.6.3** and reflects the **accepted** design (no longer a draft). The
 > architecture and the Milestone-1 contracts are accepted; implementation is in
-> progress.
+> progress. No design content has changed since v0.6.1: v0.6.2 resynced the
+> in-repo `docs/specs` mirrors, and v0.6.3 renamed the core crate from
+> `loeres-core` to `loeres` (directory `crates/loeres/`; public module layout
+> unchanged — see ADR-019).
 >
-> **Implemented** (`loeres-core`, in `rfcs/done/`):
+> **Implemented** (`loeres`, in `rfcs/done/`):
 > - **RFC 003** — allocation-free error/diagnostic topology (`SolverError`,
 >   `DiagnosticSnapshot`, `error_code_to_str`); shipped v0.4.0.
 > - **RFC 014** — solver outcome/status taxonomy (`SolveStatus`,
@@ -35,7 +38,7 @@
 >   completes Milestone 1.**
 >
 > **Status:** Phase 0 (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0); **Milestone 1 (`loeres-core`) is in progress** — RFC 002 implementation
+> (v0.3.0); **Milestone 1 (`loeres`) is in progress** — RFC 002 implementation
 > remains. 37 core tests pass with `release-gate` green (including the bare-metal
 > `no_std` build). `ROADMAP.md` holds the authoritative live status.
 
@@ -52,7 +55,7 @@ Loeres must not become a single runtime that switches between these worlds dynam
 
 The project therefore adopts a library-family architecture:
 
-- `loeres-core`: minimal `#![no_std]`, no-`alloc` mathematical contracts and solver contracts.
+- `loeres`: minimal `#![no_std]`, no-`alloc` mathematical contracts and solver contracts.
 - `loeres-backend-std`: server-side dynamic storage and numerical backend adapters.
 - `loeres-backend-static`: edge-side fixed-size storage and allocation-free numerical primitives.
 - `loeres-cluster`: server/cloud solver engines and orchestration APIs.
@@ -92,7 +95,7 @@ Compared with earlier drafts, this version adds or strengthens the following poi
 | ID | Goal | Requirement |
 |---|---|---|
 | G-001 | Compile-time isolation | Edge-facing crates must compile without `std` and without `alloc`, including transitive dependencies. |
-| G-002 | Zero-cost abstraction | Common solver contracts must be expressible in `loeres-core` without runtime polymorphism, hidden allocation, or storage assumptions. |
+| G-002 | Zero-cost abstraction | Common solver contracts must be expressible in `loeres` without runtime polymorphism, hidden allocation, or storage assumptions. |
 | G-003 | Deterministic edge execution | `loeres-device` must provide bounded-iteration, fixed-memory solver paths suitable for WCET-oriented review. |
 | G-004 | Server throughput | `loeres-cluster` must support dynamic problem sizes, parallelism, async integration, observability, and optional native numerical backends. |
 | G-005 | Explicit solver scope separation | Server solvers may target large, flexible, and dynamic problems; device solvers must target small, structured, bounded problems. |
@@ -108,7 +111,7 @@ Compared with earlier drafts, this version adds or strengthens the following poi
 | NG-002 | Feature parity between server and edge | Edge solvers do not need to match server solver breadth. Edge support is intentionally smaller and more constrained. |
 | NG-003 | Edge modeling DSL | Expression parsing, symbolic modeling, dynamic variable registries, and user-facing modeling languages are forbidden in edge-facing crates. |
 | NG-004 | Full replacement for mature monolithic solvers at v0.x | Loeres is initially an architecture-first Rust library family, not an immediate replacement for Gurobi, HiGHS, Ipopt, or similar mature engines. |
-| NG-005 | Hidden FFI in core | `loeres-core` must never hide calls into C/C++/Fortran numerical engines or platform runtimes. |
+| NG-005 | Hidden FFI in core | `loeres` must never hide calls into C/C++/Fortran numerical engines or platform runtimes. |
 | NG-006 | Allocation convenience in edge | Edge APIs must not introduce `Vec`, `Box`, `String`, `HashMap`, dynamic collections, or heap-based convenience APIs. |
 | NG-007 | Panic as control flow | Solver failure, invalid input, singular matrices, and ill-conditioned problems must be represented as explicit errors, not panics. Non-convergence is a bounded status (RFC 014), likewise never a panic. |
 | NG-008 | Runtime polymorphism in edge baseline | Edge baseline APIs must not require `dyn Trait`, virtual dispatch, plugin registries, or object-safe solver abstractions. |
@@ -167,7 +170,7 @@ A correct Loeres architecture is one where:
 
 ### 3.1 Share Contracts, Not Storage
 
-`loeres-core` defines mathematical contracts: scalar capabilities, vector and matrix access contracts, problem contracts, iteration contracts, convergence contracts, solver state contracts, and error types. It must not define concrete storage such as `Vec`, `ndarray::Array`, `nalgebra::DMatrix`, `heapless::Vec`, or concrete fixed-array wrappers.
+`loeres` defines mathematical contracts: scalar capabilities, vector and matrix access contracts, problem contracts, iteration contracts, convergence contracts, solver state contracts, and error types. It must not define concrete storage such as `Vec`, `ndarray::Array`, `nalgebra::DMatrix`, `heapless::Vec`, or concrete fixed-array wrappers.
 
 Concrete storage belongs in backend crates.
 
@@ -181,7 +184,7 @@ Feature flags may enable optional behavior inside a crate, but they must not blu
 
 Core solver abstractions must prefer generics and associated types over `dyn Trait`. This allows the compiler to monomorphize solver code for concrete storage backends without runtime dispatch overhead.
 
-Trait objects may be acceptable in server-only crates where dynamic orchestration is needed. They are not part of the edge baseline and must not be required by `loeres-core` contracts intended for device use.
+Trait objects may be acceptable in server-only crates where dynamic orchestration is needed. They are not part of the edge baseline and must not be required by `loeres` contracts intended for device use.
 
 ### 3.4 Minimal Base Traits, Optional Capability Traits
 
@@ -239,7 +242,7 @@ loeres/
 ├── docs/
 │   └── src/
 ├── crates/
-│   ├── loeres-core/
+│   ├── loeres/
 │   ├── loeres-backend-std/
 │   ├── loeres-backend-static/
 │   ├── loeres-cluster/
@@ -260,7 +263,7 @@ loeres/
 
 | Crate | Layer | Environment | Responsibility | Forbidden dependencies |
 |---|---:|---|---|---|
-| `loeres-core` | 1 | `no_std`, no `alloc` | Abstract mathematical contracts, problem contracts, solver contracts, scalar capability contracts, errors | `std`, `alloc`, dynamic storage, async, logging, FFI |
+| `loeres` | 1 | `no_std`, no `alloc` | Abstract mathematical contracts, problem contracts, solver contracts, scalar capability contracts, errors | `std`, `alloc`, dynamic storage, async, logging, FFI |
 | `loeres-backend-std` | 2 | `std` | Dynamic matrix/vector storage adapters, dense/sparse server math, optional numerical backend integration | None by policy, but heavy deps must be feature-gated |
 | `loeres-backend-static` | 2 | `no_std`, no `alloc` | Fixed-size vectors/matrices, const-generic storage wrappers, bounded workspaces | `std`, `alloc`, async, logging, FFI |
 | `loeres-cluster` | 3 | `std` | Server solver engines, batching, parallelism, async integration, observability, service-facing APIs | Must not be a dependency of edge crates |
@@ -270,7 +273,7 @@ loeres/
 
 ```mermaid
 graph TD
-    Core[loeres-core\nno_std / no_alloc]
+    Core[loeres\nno_std / no_alloc]
 
     BackendStd[loeres-backend-std\nstd / dynamic allocation]
     BackendStatic[loeres-backend-static\nno_std / no_alloc]
@@ -292,11 +295,11 @@ graph TD
 
 Rules:
 
-1. `loeres-core` depends on no Loeres crate.
-2. `loeres-backend-static` depends on `loeres-core` only, plus approved `no_std`/no-`alloc` dependencies if accepted by RFC.
-3. `loeres-device` depends only on `loeres-core`, `loeres-backend-static`, and approved `no_std`/no-`alloc` dependencies.
-4. `loeres-backend-std` may depend on `loeres-core` and server numerical dependencies.
-5. `loeres-cluster` may depend on `loeres-core` and `loeres-backend-std`.
+1. `loeres` depends on no Loeres crate.
+2. `loeres-backend-static` depends on `loeres` only, plus approved `no_std`/no-`alloc` dependencies if accepted by RFC.
+3. `loeres-device` depends only on `loeres`, `loeres-backend-static`, and approved `no_std`/no-`alloc` dependencies.
+4. `loeres-backend-std` may depend on `loeres` and server numerical dependencies.
+5. `loeres-cluster` may depend on `loeres` and `loeres-backend-std`.
 6. No edge-facing crate may depend on a server-facing crate.
 7. No core-facing contract may require a server-facing type.
 
@@ -307,7 +310,7 @@ The root workspace manifest must make the separation visible. At minimum:
 - All crates must live under `crates/`.
 - Workspace dependency declarations must not accidentally unify server and edge dependencies.
 - Default features must be conservative.
-- `loeres-core` must have no default features that pull optional dependencies.
+- `loeres` must have no default features that pull optional dependencies.
 - `loeres-backend-static` and `loeres-device` must be testable with `--no-default-features`.
 - Server-side feature groups must not be default-enabled by workspace-level convenience.
 
@@ -334,11 +337,11 @@ This is policy guidance, not final `Cargo.toml` syntax.
 
 ## 5. Crate-Level Requirements
 
-## 5.1 `loeres-core`
+## 5.1 `loeres`
 
 ### 5.1.1 Purpose
 
-`loeres-core` is the minimal abstract backbone. It defines contracts that both server and device sides can implement without importing execution assumptions.
+`loeres` is the minimal abstract backbone. It defines contracts that both server and device sides can implement without importing execution assumptions.
 
 ### 5.1.2 Required Properties
 
@@ -403,7 +406,7 @@ The base contracts must not require:
 
 #### Problem-family requirements
 
-`loeres-core` must represent mathematical problem families without committing to storage or execution models.
+`loeres` must represent mathematical problem families without committing to storage or execution models.
 
 Minimum problem families for v0.x planning:
 
@@ -435,7 +438,7 @@ Important scope rule:
 | BSTD-003 | May wrap dynamic dense matrix libraries. |
 | BSTD-004 | May wrap sparse matrix libraries. |
 | BSTD-005 | May provide adapters to BLAS/LAPACK or other native libraries only behind explicit features. |
-| BSTD-006 | Must not be required by `loeres-core`, `loeres-backend-static`, or `loeres-device`. |
+| BSTD-006 | Must not be required by `loeres`, `loeres-backend-static`, or `loeres-device`. |
 | BSTD-007 | Must expose server backend capabilities without changing core contracts. |
 | BSTD-008 | Must document memory and threading assumptions for each optional backend. |
 
@@ -588,7 +591,7 @@ Core traits must not encode server storage or device storage directly.
 
 ### 6.2 Error Requirements
 
-`loeres-core` must define an allocation-free error model. Requirements:
+`loeres` must define an allocation-free error model. Requirements:
 
 | ID | Requirement |
 |---|---|
@@ -784,7 +787,7 @@ Device requirements:
 
 | ID | Requirement |
 |---|---|
-| FFI-001 | `loeres-core` must not use FFI. |
+| FFI-001 | `loeres` must not use FFI. |
 | FFI-002 | `loeres-backend-static` must not use FFI. |
 | FFI-003 | `loeres-device` must not use FFI. |
 | FFI-004 | `loeres-backend-std` may use FFI only behind explicit features. |
@@ -804,10 +807,10 @@ At minimum, CI must include:
 |---|---|
 | CI-001 | `cargo check` for the full workspace on a standard host target. |
 | CI-002 | `cargo test` for server-compatible crates. |
-| CI-003 | `cargo check --no-default-features` for `loeres-core`. |
+| CI-003 | `cargo check --no-default-features` for `loeres`. |
 | CI-004 | `cargo check --no-default-features` for `loeres-backend-static`. |
 | CI-005 | `cargo check --no-default-features` for `loeres-device`. |
-| CI-006 | A real `no_std` target check for `loeres-core`, `loeres-backend-static`, and `loeres-device`. |
+| CI-006 | A real `no_std` target check for `loeres`, `loeres-backend-static`, and `loeres-device`. |
 | CI-007 | Dependency-tree checks that fail if edge-facing crates activate forbidden dependencies. |
 | CI-008 | Feature matrix checks for default and no-default feature combinations. |
 | CI-009 | Formatting and lint checks. |
@@ -817,8 +820,8 @@ At minimum, CI must include:
 
 Edge dependency gates must check at least:
 
-- No `std` activation in `loeres-core`.
-- No `alloc` activation in `loeres-core`.
+- No `std` activation in `loeres`.
+- No `alloc` activation in `loeres`.
 - No `std` activation in `loeres-backend-static`.
 - No `alloc` activation in `loeres-backend-static`.
 - No `std` activation in `loeres-device`.
@@ -919,7 +922,7 @@ Because design must precede implementation, the project must maintain RFCs for m
 
 ### 11.1 Core Features
 
-`loeres-core` requirements:
+`loeres` requirements:
 
 - `default = []` unless a later RFC justifies otherwise.
 - No feature may enable `std`.
@@ -969,10 +972,10 @@ Requirements:
 
 ## 12. Initial Milestone Scope
 
-> **Status (v0.6.1).** The original phase plan below is the scope of record. Live
+> **Status (v0.6.3).** The original phase plan below is the scope of record. Live
 > status: **Phase 0 (workspace skeleton) is complete (v0.3.0)**, all core RFCs
 > (001–014) are written, and core implementation is tracked by the roadmap's
-> milestone model — **Milestone 1 (`loeres-core`) is in progress**, with RFC 001,
+> milestone model — **Milestone 1 (`loeres`) is in progress**, with RFC 001,
 > 003, and 014 implemented and RFC 002 implementation remaining (next, v0.7.0).
 > See the document-currency block above and `ROADMAP.md` for authoritative status.
 
@@ -1047,7 +1050,7 @@ Acceptance:
 
 ### 12.5 Phase 4 — Implementation Baseline
 
-Baseline implementation proceeds only for items backed by accepted requirements and RFCs. This phase is now being entered incrementally as Milestone RFCs land; RFC 001, RFC 003, and RFC 014 are already implemented in `loeres-core`, and RFC 002 is the remaining Milestone-1 implementation item.
+Baseline implementation proceeds only for items backed by accepted requirements and RFCs. This phase is now being entered incrementally as Milestone RFCs land; RFC 001, RFC 003, and RFC 014 are already implemented in `loeres`, and RFC 002 is the remaining Milestone-1 implementation item.
 
 Possible baseline implementation scope:
 
@@ -1090,7 +1093,7 @@ The requirements document is satisfied when:
 | ID | Criterion |
 |---|---|
 | AC-001 | The workspace has separate core, backend-std, backend-static, cluster, and device crates. |
-| AC-002 | `loeres-core` is no-std and no-alloc. |
+| AC-002 | `loeres` is no-std and no-alloc. |
 | AC-003 | `loeres-backend-static` is no-std and no-alloc. |
 | AC-004 | `loeres-device` is no-std and no-alloc. |
 | AC-005 | Edge-facing crates have no dependency path to server-facing crates. |
@@ -1137,7 +1140,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | ADR-001 | Loeres is a library family, not one unified solver crate. | Accepted |
 | ADR-002 | Server and device execution models are separated by crates. | Accepted |
 | ADR-003 | Compile-time isolation is preferred over runtime mode selection. | Accepted |
-| ADR-004 | `loeres-core` is no-std and no-alloc. | Accepted |
+| ADR-004 | `loeres` is no-std and no-alloc. | Accepted |
 | ADR-005 | Edge-facing crates must not depend on server-facing crates. | Accepted |
 | ADR-006 | Device solvers prioritize bounded execution over feature breadth. | Accepted |
 | ADR-007 | Server solvers may prioritize throughput and integration breadth. | Accepted |
@@ -1152,6 +1155,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | ADR-016 | Requirements and RFCs precede API stabilization. | Accepted |
 | ADR-017 | The base scalar tier excludes ordering; ordering is the separate `OrderedScalar` capability, and metric comparison is `MetricScalar: OrderedScalar`. This keeps storage/access traits free of comparison semantics and lets solver families state their numerical needs explicitly. Requirements §5.1.3 amended accordingly. | Accepted |
 | ADR-018 | Non-convergence is a status, not an error. A bounded solve that does not converge — including reaching the iteration cap — returns `Ok(SolveReport)` with `SolveStatus::NotConverged`; only boundary rejection and fail-safe conditions are `SolverError`. The same condition is never both (RFC 014). | Accepted |
+| ADR-019 | The core contracts crate is named `loeres` (not `loeres-core`). It reserves the project namespace on crates.io and follows the convention of naming the foundation crate after the library itself (e.g. `serde`, `tokio`). The crate directory is `crates/loeres/`; the public module layout is unchanged (`loeres::scalar`, `loeres::access`, `loeres::error`, `loeres::diagnostic`, `loeres::solver`). Structural rename only — no contract, trait, or API change (v0.6.3). | Accepted |
 
 ---
 
@@ -1198,7 +1202,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 
 Every RFC that modifies public architecture must answer:
 
-1. Does this affect `loeres-core`?
+1. Does this affect `loeres`?
 2. Does this introduce `std`, `alloc`, FFI, logging, async, or dynamic dispatch?
 3. Does this affect edge-facing crates?
 4. Does this affect workspace memory requirements?

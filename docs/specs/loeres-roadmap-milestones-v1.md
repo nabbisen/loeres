@@ -1,22 +1,25 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted — Milestone 1 (`loeres-core`) in progress (current as of v0.6.1)  
+Status: Accepted — Milestone 1 (`loeres`) in progress (current as of v0.6.3)  
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
-> **Document currency.** Current as of repository release **v0.6.1**; the design is
+> **Document currency.** Current as of repository release **v0.6.3**; the design is
 > accepted. **Phase 0** (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0). **Milestone 1 (`loeres-core`) is in progress:** RFC 003 (v0.4.0),
+> (v0.3.0). **Milestone 1 (`loeres`) is in progress:** RFC 003 (v0.4.0),
 > RFC 014 (v0.5.0), and RFC 001 (v0.6.0) are implemented and in `rfcs/done/`;
 > **RFC 002** is design-finalized (v0.6.1) but **not yet implemented** — its
 > implementation is the next step (**v0.7.0**) and **completes Milestone 1**.
 > Milestone 2 (static backend + device kernel, RFC 004–006) and Milestone 3
 > (dynamic backend + cluster, RFC 007–009) follow. 37 core tests pass with
-> `release-gate` green, including the bare-metal `no_std` build.
+> `release-gate` green, including the bare-metal `no_std` build. No design content
+> has changed since v0.6.1: v0.6.2 resynced the in-repo `docs/specs` mirrors, and
+> v0.6.3 renamed the core crate from `loeres-core` to `loeres` (directory
+> `crates/loeres/`; module layout unchanged).
 
 ---
 
-## Current v0.6.1 Roadmap Snapshot
+## Current v0.6.3 Roadmap Snapshot
 
 | Area | Status | Next action |
 |---|---|---|
@@ -51,7 +54,7 @@ External Design v1
 Phase 0: Repository and governance bootstrap
     |
     v
-Phase 1 / Milestone 1: loeres-core
+Phase 1 / Milestone 1: loeres
     |
     v
 Phase 2 / Milestone 2: loeres-backend-static + loeres-device
@@ -134,7 +137,7 @@ Every RFC must include the following sections:
 
 The Zero-Bleed Review Gate is mandatory for every RFC that touches any of the following crates:
 
-- `loeres-core`
+- `loeres`
 - `loeres-backend-static`
 - `loeres-device`
 - shared examples used by device-facing crates
@@ -144,7 +147,7 @@ The gate must verify:
 
 | Check | Requirement |
 |---|---|
-| Direct dependency check | `loeres-core` must not depend on `std`, `alloc`, `ndarray`, `nalgebra`, `rayon`, `tokio`, `log`, `tracing`, `serde`, or any heap-backed container crate by default. |
+| Direct dependency check | `loeres` must not depend on `std`, `alloc`, `ndarray`, `nalgebra`, `rayon`, `tokio`, `log`, `tracing`, `serde`, or any heap-backed container crate by default. |
 | Transitive dependency check | `loeres-backend-static` and `loeres-device` must not transitively pull `std` or `alloc`. |
 | Feature leakage check | Cluster-only features must not be activatable through device-facing feature sets. |
 | Public signature check | Device-facing public APIs must not expose `Vec`, `String`, `Box`, `Arc`, `HashMap`, async runtime handles, thread-pool handles, or logging/tracing types. |
@@ -160,7 +163,7 @@ Later RFCs must be monotonic with respect to earlier accepted constraints.
 Rules:
 
 1. A later RFC must not add a required method to a frozen core trait unless the earlier RFC explicitly reserved that extension point.
-2. A later RFC must not require `alloc` in `loeres-core`, `loeres-backend-static`, or `loeres-device`.
+2. A later RFC must not require `alloc` in `loeres`, `loeres-backend-static`, or `loeres-device`.
 3. A later RFC must not replace caller-owned device workspace with hidden allocation.
 4. A later RFC must not move cluster-specific orchestration concepts into core.
 5. A later RFC must not require dynamic dispatch in device-facing execution paths.
@@ -199,7 +202,7 @@ Additional rules:
 
 ### 2.1 Milestone Objective
 
-Milestone 1 freezes the mathematical and diagnostic contracts of `loeres-core`. This phase must be completed before device or cluster implementation work depends on the shared traits.
+Milestone 1 freezes the mathematical and diagnostic contracts of `loeres`. This phase must be completed before device or cluster implementation work depends on the shared traits.
 
 The goal is not to design all future algorithms. The goal is to define the smallest stable abstraction surface that both device and cluster crates can implement without importing each other’s execution assumptions.
 
@@ -217,7 +220,7 @@ Milestone 1 may begin only when:
 
 #### Scope
 
-Define the public scalar capability hierarchy for `loeres-core` without forcing algorithms to depend on operations they do not need.
+Define the public scalar capability hierarchy for `loeres` without forcing algorithms to depend on operations they do not need.
 
 Required capability families:
 
@@ -244,14 +247,14 @@ Required capability families:
 - Whether `PartialOrd` is sufficient for all base comparisons. *(Resolved by RFC 001 / v0.6.0: ordering moved out of `BaseScalar` into `OrderedScalar`; `BaseScalar` requires only `PartialEq`.)*
 - How NaN-like semantics are represented for scalar families that do not have NaN. *(Resolved by RFC 001 / v0.6.0: `min` / `max` / `clamp` are NaN-propagating for floats and ordinary total-order extrema for NaN-free families.)*
 - Whether core should define marker traits for scalar categories or method-bearing traits for every category.
-- How to avoid pulling a third-party numeric trait crate into `loeres-core` by default.
+- How to avoid pulling a third-party numeric trait crate into `loeres` by default.
 
 #### Implementation sprint outline
 
 | Sprint | Work |
 |---|---|
 | S0 | Freeze scalar family names and capability boundaries. |
-| S1 | Add module skeleton under `loeres_core::scalar`. |
+| S1 | Add module skeleton under `loeres::scalar`. |
 | S2 | Add compile tests for scalar capability layering. |
 | S3 | Implement minimal trait definitions and primitive scalar adapters only if accepted by the RFC. |
 | S4 | Run no-std and zero-dependency verification. |
@@ -261,7 +264,7 @@ Required capability families:
 #### Exit criteria
 
 - Scalar categories are frozen.
-- `loeres-core` still compiles as `#![no_std]` without `alloc`.
+- `loeres` still compiles as `#![no_std]` without `alloc`.
 - No scalar category creates a dependency from core to device or cluster.
 - Future solver RFCs can state their scalar requirements by capability family.
 
@@ -275,12 +278,12 @@ Design-finalized in v0.6.1; not yet implemented. Implementation is the next step
 
 Define the public access contracts for vectors, matrices, dimensions, fallible indexing, mutable writes, borrowed contiguous views, and optional contiguous fast paths.
 
-This RFC preserves the external design decision that the core surface is about access, dimensions, and storage-neutral contracts, not heavy linear algebra kernels. It also incorporates the v0.6.1 design discussion: use `loeres_core::access` for access traits, use `loeres_core::dimension` for dimension types, keep core views contiguous-only, defer strided/submatrix view types to RFC 004, and prohibit overlapping mutable views.
+This RFC preserves the external design decision that the core surface is about access, dimensions, and storage-neutral contracts, not heavy linear algebra kernels. It also incorporates the v0.6.1 design discussion: use `loeres::access` for access traits, use `loeres::dimension` for dimension types, keep core views contiguous-only, defer strided/submatrix view types to RFC 004, and prohibit overlapping mutable views.
 
 #### Finalized topics
 
-- Module naming is `loeres_core::access`; `loeres_core::linalg` is not used for base contracts.
-- Dimension naming and imports use `loeres_core::dimension`, not `dim`.
+- Module naming is `loeres::access`; `loeres::linalg` is not used for base contracts.
+- Dimension naming and imports use `loeres::dimension`, not `dim`.
 - Vector length and matrix shape queries are layout-neutral.
 - Base access is fallible and scalar/storage agnostic.
 - Mutable access must be checked and must not permit overlapping mutable aliases in safe APIs.
@@ -314,7 +317,7 @@ This RFC preserves the external design decision that the core surface is about a
 #### Exit criteria
 
 - Core access contracts are storage-neutral.
-- `loeres_core::access` and `loeres_core::dimension` naming is consistent across docs, code, and examples.
+- `loeres::access` and `loeres::dimension` naming is consistent across docs, code, and examples.
 - Borrowed contiguous view requirements are clear enough for RFC 004.
 - Dynamic backend requirements are clear enough for RFC 007.
 - Optional fast traversal is available without making layout-specific kernels mandatory.
@@ -324,7 +327,7 @@ This RFC preserves the external design decision that the core surface is about a
 
 #### Scope
 
-Define the public error and compact diagnostic categories for `loeres-core`. RFC 014 owns terminal solve status, step outcome, and solver report taxonomy.
+Define the public error and compact diagnostic categories for `loeres`. RFC 014 owns terminal solve status, step outcome, and solver report taxonomy.
 
 This RFC is required before solver entrypoints are designed because device and cluster APIs must agree on failure/error semantics. Solver progress status is reconciled separately by RFC 014.
 
@@ -367,7 +370,7 @@ This RFC is required before solver entrypoints are designed because device and c
 
 #### Exit criteria
 
-- `loeres-core` compiles as core-only `#![no_std]`.
+- `loeres` compiles as core-only `#![no_std]`.
 - Error and diagnostic payload sizes are frozen for the current milestone.
 - No `Display` implementation is present by default.
 - Cluster and device RFCs can depend on the same public failure categories, while RFC 014 supplies the shared progress/status categories.
@@ -378,8 +381,8 @@ Milestone 1 is complete only when all of the following are true:
 
 - RFC 001, 002, 003, and 014 are `Implemented`.
 - The public core trait and error signatures are reviewed and frozen.
-- `loeres-core` builds with `default-features = false` under the selected `no_std` target profile.
-- Dependency graph checks prove that `loeres-core` has no forbidden direct or transitive dependency.
+- `loeres` builds with `default-features = false` under the selected `no_std` target profile.
+- Dependency graph checks prove that `loeres` has no forbidden direct or transitive dependency.
 - Compile-time tests prove that cluster and device backends can implement the core contracts without importing each other.
 - The roadmap owner accepts that downstream changes must be additive or superseding, not silently mutating frozen core traits.
 
@@ -394,7 +397,7 @@ Milestone 2 creates the device-side execution path:
 ```text
 loeres-device
     -> loeres-backend-static
-        -> loeres-core
+        -> loeres
 ```
 
 The objective is to prove that a useful optimization problem can be represented, validated, solved, and diagnosed without `std`, without `alloc`, without hidden work buffers, and without runtime dependency on cluster infrastructure.
@@ -406,7 +409,7 @@ Milestone 2 may begin only when:
 - Milestone 1 is complete.
 - Core scalar/access/error and solver-outcome contracts are frozen.
 - Device target profiles are selected for the milestone.
-- The zero-bleed gate is operational for `loeres-core` and can be extended to device crates.
+- The zero-bleed gate is operational for `loeres` and can be extended to device crates.
 - A reference device example target exists, even if it initially does not solve a real problem.
 
 ### 3.3 RFC 004 — Const-Generic and Fixed-Size Static Storage Engine
@@ -605,7 +608,7 @@ Milestone 3 creates the cluster-side execution path:
 ```text
 loeres-cluster
     -> loeres-backend-std
-        -> loeres-core
+        -> loeres
 ```
 
 The objective is high-throughput, dynamic problem construction, parallel execution, partial-failure isolation, observability, and optional FFI integration without weakening the core or device constraints.
@@ -639,7 +642,7 @@ Design `loeres-backend-std` dynamic storage adapters for dense and sparse proble
 
 #### Mandatory constraints
 
-- `loeres-backend-std` may depend on `std` and allocation, but these dependencies must not leak into `loeres-core` or device-facing crates.
+- `loeres-backend-std` may depend on `std` and allocation, but these dependencies must not leak into `loeres` or device-facing crates.
 - Dynamic storage adapters must implement the same core access contracts frozen in RFC 002.
 - Large input validation scans must be controllable through explicit validation-state APIs, not implicit global flags.
 - The public API must distinguish unvalidated, validated, and trusted input states through the RFC 012 canonical model rather than inventing backend-local state categories.
@@ -744,8 +747,8 @@ Design optional cluster observability and FFI boundaries.
 
 - Observability is cluster-only by default.
 - FFI is cluster-only and default-off.
-- No FFI type may appear in `loeres-core`, `loeres-backend-static`, or `loeres-device` public APIs.
-- FFI gateways must expose failure as structured `loeres-core` errors or cluster-layer wrapper errors.
+- No FFI type may appear in `loeres`, `loeres-backend-static`, or `loeres-device` public APIs.
+- FFI gateways must expose failure as structured `loeres` errors or cluster-layer wrapper errors.
 - Tenant identifiers, model contents, and numerical diagnostics must not be emitted by default in logs or traces.
 - Metrics must support aggregation without leaking sensitive problem data.
 
@@ -870,12 +873,12 @@ Required commands:
 The dependency graph must be machine-checked. At minimum, the graph policy must encode these illegal edges:
 
 ```text
-loeres-core -> std
-loeres-core -> alloc
-loeres-core -> loeres-backend-std
-loeres-core -> loeres-backend-static
-loeres-core -> loeres-cluster
-loeres-core -> loeres-device
+loeres -> std
+loeres -> alloc
+loeres -> loeres-backend-std
+loeres -> loeres-backend-static
+loeres -> loeres-cluster
+loeres -> loeres-device
 
 loeres-backend-static -> std
 loeres-backend-static -> alloc
@@ -897,7 +900,7 @@ The exact graph representation is an implementation detail, but the policy must 
 
 The public API check must reject forbidden edge-facing public signatures.
 
-Forbidden in `loeres-core`, `loeres-backend-static`, and `loeres-device` baseline public APIs:
+Forbidden in `loeres`, `loeres-backend-static`, and `loeres-device` baseline public APIs:
 
 - `Vec`
 - `String`
@@ -934,8 +937,8 @@ Size verification must include:
 
 | Budget | Applies to | First defined in |
 |---|---|---|
-| Error payload size | `loeres-core` | RFC 003 |
-| Diagnostic payload size | `loeres-core` / device | RFC 003 / RFC 005 |
+| Error payload size | `loeres` | RFC 003 |
+| Diagnostic payload size | `loeres` / device | RFC 003 / RFC 005 |
 | Static storage wrapper overhead | `loeres-backend-static` | RFC 004 |
 | Workspace size | `loeres-device` | RFC 005 / RFC 006 |
 | Device binary size | `loeres-device` examples | RFC 006 |
