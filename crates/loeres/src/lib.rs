@@ -8,10 +8,11 @@
 //! Public module topography (external design §1.5):
 //! `scalar`, `access`, `problem`, `solver`, `error`, `diagnostic`, `dimension`.
 //!
-//! Milestone 1 in progress: the [`scalar`] capability tiers (RFC 001), the
-//! [`error`] and [`diagnostic`] topologies (RFC 003), and the [`solver`]
-//! outcome/status taxonomy (RFC 014) are implemented; the remaining modules are
-//! documented placeholders pending their owning RFCs.
+//! Milestone 1: the [`scalar`] capability tiers (RFC 001), the [`error`] and
+//! [`diagnostic`] topologies (RFC 003), the [`solver`] outcome/status taxonomy
+//! (RFC 014), and the [`access`] / [`dimension`] storage-agnostic contracts
+//! (RFC 002) are implemented; [`problem`] remains a documented placeholder
+//! pending its owning RFC.
 #![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 
@@ -23,7 +24,13 @@ pub mod problem;
 pub mod scalar;
 pub mod solver;
 
+pub use access::{
+    ContiguousMatrixAccess, ContiguousVectorAccess, ContiguousVectorAccessMut, MatrixAccess,
+    MatrixAccessMut, MatrixView, MatrixViewMut, VectorAccess, VectorAccessMut, VectorView,
+    VectorViewMut,
+};
 pub use diagnostic::{DiagnosticCode, DiagnosticSnapshot};
+pub use dimension::{Dim2, DimensionKind};
 pub use error::{SolverError, error_code_to_str};
 pub use scalar::{
     AdvancedNumericalScalar, BaseScalar, DivisibleScalar, FiniteScalar, MetricScalar, OrderedScalar,

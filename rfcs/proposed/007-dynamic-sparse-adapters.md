@@ -21,7 +21,7 @@ This RFC defines the external design for `loeres-backend-std` dense and sparse a
 This RFC depends on:
 
 * [RFC 001](../done/001-stratified-scalar.md);
-* [RFC 002](002-storage-agnostic-contracts.md);
+* [RFC 002](../done/002-storage-agnostic-contracts.md);
 * [RFC 003](../done/003-allocation-free-errors.md).
 
 Dependency rules:

@@ -21,7 +21,7 @@ This RFC defines a static storage engine based on owned arrays, borrowed views, 
 This RFC depends on:
 
 * [RFC 001](../done/001-stratified-scalar.md) for scalar bounds;
-* [RFC 002](002-storage-agnostic-contracts.md) for access traits;
+* [RFC 002](../done/002-storage-agnostic-contracts.md) for access traits;
 * [RFC 003](../done/003-allocation-free-errors.md) for error categories.
 
 Dependency rules:

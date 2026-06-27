@@ -18,7 +18,7 @@ This RFC defines the allocation-free error topology for `loeres`. It forbids `Di
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres`. It is referenced by [RFC 001](001-stratified-scalar.md), [RFC 002](../proposed/002-storage-agnostic-contracts.md), and all later RFCs.
+This RFC touches only `loeres`. It is referenced by [RFC 001](001-stratified-scalar.md), [RFC 002](002-storage-agnostic-contracts.md), and all later RFCs.
 
 Dependency constraints:
 

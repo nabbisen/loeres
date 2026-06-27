@@ -1,6 +1,6 @@
 # RFC 002 — Storage-Agnostic Matrix and Vector Access Contracts
 
-**Status.** Proposed
+**Status.** Implemented (v0.7.0) — `loeres::access` and `loeres::dimension`; decisions A1 (exact-size row-major views), B1 (per-axis 2-D bounds), C1 (domain-split files) accepted in the implementation-decision review.
 **Tracks.** Phase 1 / Milestone 1 — Foundational Core Architecture
 **Touches.** `loeres/src/access.rs`, `loeres/src/dimension.rs`, `loeres/src/lib.rs`, core vector/matrix access namespaces
 
@@ -30,7 +30,7 @@ The public module name is `loeres::access`, not `loeres::linalg`, to avoid sugge
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres`. It depends on [RFC 001](../done/001-stratified-scalar.md) for scalar bounds and [RFC 003](../done/003-allocation-free-errors.md) for error types.
+This RFC touches only `loeres`. It depends on [RFC 001](001-stratified-scalar.md) for scalar bounds and [RFC 003](003-allocation-free-errors.md) for error types.
 
 Dependency alignment:
 
@@ -206,10 +206,16 @@ pub struct MatrixViewMut<'a, S: BaseScalar> {
 }
 ```
 
-Element `(row, col)` maps to `data[row * cols + col]`. Constructors must validate
-that the slice is exactly large enough for the declared dimensions
-(`rows * cols`, with the multiplication checked for overflow). Invalid
-construction returns `SolverError` (see the access-error mapping in §5).
+Element `(row, col)` maps to `data[row * cols + col]`. The constructor validates
+that `rows * cols` can be computed without overflow and that the backing slice
+length is **exactly equal** to that product. Both undersized and oversized
+slices are rejected (decision A1), so a wrong-size backing fails at construction
+rather than silently becoming a prefix window. A caller that wants to view a
+prefix of a larger buffer must explicitly pass `&data[..rows * cols]` after
+computing that prefix safely. On `rows * cols` overflow the constructor returns
+`SolverError::InvalidDimension`; on a length mismatch it returns
+`SolverError::DimensionMismatch { lhs: data.len(), rhs: rows * cols }` (payloads
+checked into `u32`, never truncated — see the access-error mapping in §5).
 
 ```rust
 impl<'a, S: BaseScalar> MatrixView<'a, S> {
@@ -349,7 +355,8 @@ rather than inventing access-specific variants. The mapping is fixed:
 | Declared dimension invalid (e.g. zero where positive is required) | `InvalidDimension` |
 | Shape mismatch between two objects (lengths/shapes that had to agree) | `DimensionMismatch { lhs, rhs }` |
 | Element index out of bounds | `DimensionMismatch { lhs: index, rhs: len }` (the requested index and the valid length) |
-| Backing slice too small / `rows * cols` overflow at view construction | `InvalidDimension` |
+| Row-major view construction: backing slice length ≠ `rows * cols` | `DimensionMismatch { lhs: actual_len, rhs: required }` (decision A1) |
+| Row-major view construction: `rows * cols` overflow | `InvalidDimension` |
 | A dimension or index that does not fit a `u32` diagnostic payload | `InvalidDimension` if it came from caller input; `InternalInvariantViolation` if from library logic |
 
 `DimensionMismatch` and the index payloads are `u32` (RFC 003). Conversions from
@@ -359,6 +366,15 @@ rather than inventing access-specific variants. The mapping is fixed:
 truncated. The choice of `DimensionMismatch { lhs: index, rhs: len }` for an
 out-of-bounds index is deliberate (it preserves both the bad index and the
 bound); a diagnostic consumer distinguishes index-vs-shape mismatches by context.
+
+For two-dimensional access, bounds are checked in **row-then-column** order
+(decision B1). A row violation reports `DimensionMismatch { lhs: row, rhs: rows }`;
+a column violation reports `DimensionMismatch { lhs: col, rhs: cols }`. If both
+are out of range, the row violation is reported first. The payload does not
+encode which axis failed — on a square matrix a row and a column violation may
+produce identical payloads — so the consumer distinguishes the axis from the
+access context. Bounds are checked before any `row * cols + col` arithmetic, so
+an out-of-range coordinate never reaches the offset computation.
 
 ## 6. Verification, Validation, and CI Gates
 

@@ -5,6 +5,84 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.7.0] — 2026-06-27 — RFC 002 storage-agnostic access contracts; Milestone 1 complete
+
+The final Milestone 1 core contract. `loeres` gains the storage-agnostic vector
+and matrix **access** contracts and the **dimension** descriptors, implemented
+from the v0.6.1-patched RFC 002 (B1–B6) plus the implementation-decision review
+(A1/B1/C1). This is a public-API addition; minor bump. Milestone 1 (the `loeres`
+core contracts) is now closed.
+
+### Added — `loeres::dimension`
+
+- **`Dim2`** — a `Copy`, allocation-free row/column pair (`{ rows, cols }`) with
+  a `const fn new`.
+- **`DimensionKind`** — `Static` / `Dynamic` only; no `Borrowed` variant
+  (ownership is not a dimension property, RFC 002 §3.2 / B6). The borrowed core
+  views report `Dynamic`; `Static` is the const-generic backend's (RFC 004).
+
+### Added — `loeres::access`
+
+- **Access traits** (layout-agnostic, fallible): `VectorAccess` /
+  `VectorAccessMut` and `MatrixAccess` / `MatrixAccessMut`. Element access
+  returns `Result<_, SolverError>`; no panics, no layout commitment.
+- **Optional contiguous fast path**: `ContiguousVectorAccess`,
+  `ContiguousVectorAccessMut`, and `ContiguousMatrixAccess` — a kernel branches
+  in once on `Some(slice)` for a tight loop and falls back to per-element access
+  on `None` (scoped for the RFC 006 device kernel).
+- **Borrowed reference views**: `VectorView` / `VectorViewMut`, and a simple
+  contiguous **row-major** `MatrixView` / `MatrixViewMut`. Column-major,
+  strided, and sub-matrix views are deferred to the backends (RFC 004 / 007).
+- Files split by domain (`access/vector.rs`, `access/matrix.rs`) under the
+  `access.rs` root (decision C1).
+
+### Decisions recorded (implementation-decision review)
+
+- **A1 — exact-size row-major views.** `MatrixView::from_row_major` requires
+  `data.len() == rows * cols` exactly (overflow-checked). Both undersized and
+  oversized slices are rejected; a prefix of a larger buffer must be sliced
+  explicitly. Length mismatch → `DimensionMismatch { lhs: actual, rhs: required }`;
+  `rows * cols` overflow → `InvalidDimension`. Chosen as the strict, safer
+  baseline (relaxable later without breaking callers).
+- **B1 — per-axis 2-D bounds.** Bounds checked row-then-column; a row violation
+  reports `{ lhs: row, rhs: rows }`, a column violation `{ lhs: col, rhs: cols }`;
+  both-invalid reports the row first. Coordinates are validated before any
+  `row * cols + col` arithmetic.
+- **B4 — checked `usize` → `u32`.** All index/dimension payloads are converted
+  with `u32::try_from`; an oversized value maps to `InvalidDimension`, never a
+  truncated payload.
+
+### Changed
+
+- RFC 002 moved `proposed/` → `done/` (Status "Implemented (v0.7.0)"); §3.6 and
+  §5.1 wording firmed to the A1/B1 decisions; RFC index and cross-links updated.
+- `ROADMAP.md` and the `README.md` state callout advanced to v0.7.0 / Milestone 1
+  complete. Workspace version `0.6.4` → `0.7.0` (`[workspace.package]` only;
+  internal path-dep requirements are now `version = "0"`).
+- Tests: 37 → 62 (25 spec-driven access tests covering the RFC 002 §6.2 corpus,
+  including too-large rejection, overflow, checked-conversion, per-axis bounds,
+  the square-matrix axis-ambiguity limitation, and the fast-path `None` fallback).
+
+### Security / threat model
+
+The access contracts are pure in-process, safe-Rust slice access — no new data
+flow, FFI, or auth surface. They uphold the existing edge controls:
+`#![forbid(unsafe_code)]`, checked indexing (no `unwrap`/unchecked access in the
+baseline), and no overlapping mutable views in core (B5). Existing controls
+remain valid; no threat-model change required.
+
+### Verification
+
+`cargo check`, `clippy -D warnings`, `fmt`, 62 core tests, `xtask zero-bleed`,
+`xtask no-std` (bare-metal `thumbv7em-none-eabihf` — `loeres::access` compiles
+`#![no_std]` without `alloc`, RFC 002 §6.5), and `xtask check-rfcs` all pass.
+
+> **Note — apex spec currency.** The canonical design specs (`docs/specs/` and
+> the upstream project files) still describe RFC 002 as design-finalized /
+> not-implemented and are dated "as of v0.6.3." They are owner-maintained apex
+> artifacts and are intentionally not edited here; their RFC-002 status and
+> currency will be reconciled in the next canonical revision.
+
 ## [0.6.4] — 2026-06-27 — In-repo spec mirror caught up to v0.6.3 (docs only)
 
 A documentation-currency release that closes the spec divergence opened by the
@@ -616,6 +694,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.7.0]: https://github.com/nabbisen/loeres/releases/tag/v0.7.0
 [0.6.4]: https://github.com/nabbisen/loeres/releases/tag/v0.6.4
 [0.6.3]: https://github.com/nabbisen/loeres/releases/tag/v0.6.3
 [0.6.2]: https://github.com/nabbisen/loeres/releases/tag/v0.6.2

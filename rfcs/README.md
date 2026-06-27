@@ -8,7 +8,6 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 
 | RFC | Title | Phase | Primary crates |
 |---:|---|---|---|
-| [002](proposed/002-storage-agnostic-contracts.md) | Storage-Agnostic Matrix and Vector Access Contracts | Phase 1 / Milestone 1 | `loeres` |
 | [004](proposed/004-static-storage-engine.md) | Const-Generic and Fixed-Size Static Storage Engine | Phase 2 / Milestone 2 | `loeres-backend-static` |
 | [005](proposed/005-typed-workspace-mechanics.md) | Caller-Owned Typed Workspace Mechanics and Poison-Free Reuse | Phase 2 / Milestone 2 | `loeres-device`, `loeres-backend-static` |
 | [006](proposed/006-deterministic-solver-kernel.md) | Baseline Deterministic Device Solver Kernel | Phase 2 / Milestone 2 | `loeres-device` |
@@ -26,6 +25,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 |---:|---|---|---|
 | [000](done/000-rfc-lifecycle-policy.md) | RFC Lifecycle Policy | Implemented | Governs RFC folders, state transitions, numbering, index integrity, and cross-reference hygiene. |
 | [001](done/001-stratified-scalar.md) | Stratified Scalar Capability Model | Implemented (v0.6.0) | `loeres` `scalar` module; six tiers `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline impls. |
+| [002](done/002-storage-agnostic-contracts.md) | Storage-Agnostic Matrix and Vector Access Contracts | Implemented (v0.7.0) | `loeres` `access` / `dimension` modules; `VectorAccess` / `MatrixAccess` (+ mut + contiguous fast path), `VectorView` / `MatrixView`, `Dim2`, `DimensionKind`. Closes Milestone 1. |
 | [003](done/003-allocation-free-errors.md) | Allocation-Free Error Topology and Formatting Restrictions | Implemented (v0.4.0) | `loeres` `error` / `diagnostic` modules; `SolverError`, `DiagnosticSnapshot`, `error_code_to_str`. |
 | [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 
