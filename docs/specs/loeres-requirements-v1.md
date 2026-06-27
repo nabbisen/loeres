@@ -5,17 +5,19 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted — Milestone 1 (`loeres`) in progress (current as of v0.6.3)  
+**Status:** Accepted — Milestone 1 (`loeres`) complete (current as of v0.7.0)  
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Document currency.** This specification is current as of repository release
-> **v0.6.3** and reflects the **accepted** design (no longer a draft). The
-> architecture and the Milestone-1 contracts are accepted; implementation is in
-> progress. No design content has changed since v0.6.1: v0.6.2 resynced the
-> in-repo `docs/specs` mirrors, and v0.6.3 renamed the core crate from
-> `loeres-core` to `loeres` (directory `crates/loeres/`; public module layout
-> unchanged — see ADR-019).
+> **v0.7.0** and reflects the **accepted** design (no longer a draft). The
+> architecture and the Milestone-1 contracts are accepted and **implemented**:
+> RFC 002 (storage-agnostic access) shipped in v0.7.0, closing Milestone 1. No
+> design content has changed since v0.6.1: v0.6.2 resynced the in-repo
+> `docs/specs` mirrors, v0.6.3 renamed the core crate from `loeres-core` to
+> `loeres` (directory `crates/loeres/`; public module layout unchanged — see
+> ADR-019), and v0.7.0 implemented RFC 002 (exact-size row-major views — see
+> ADR-020).
 >
 > **Implemented** (`loeres`, in `rfcs/done/`):
 > - **RFC 003** — allocation-free error/diagnostic topology (`SolverError`,
@@ -29,17 +31,17 @@
 >   `AdvancedNumericalScalar`); the base tier **excludes ordering** (ADR-017, with
 >   §5.1.3 amended accordingly); shipped v0.6.0.
 >
-> **Design-finalized, not yet implemented:**
-> - **RFC 002** — storage-agnostic vector/matrix access contracts. Its design was
+> **Implemented:**
+> - **RFC 002** — storage-agnostic vector/matrix access contracts. Design
 >   finalized in v0.6.1 (architect-review patches: `dimension` naming;
 >   contiguous-only core views with strided views deferred to RFC 004; an optional
 >   contiguous fast path; an explicit access-error mapping over `SolverError`; no
->   overlapping mutable views). **Implementing it is the next step (v0.7.0) and
->   completes Milestone 1.**
+>   overlapping mutable views) and **implemented in v0.7.0** (exact-size row-major
+>   views and per-axis 2-D bounds — see ADR-020), **closing Milestone 1.**
 >
 > **Status:** Phase 0 (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0); **Milestone 1 (`loeres`) is in progress** — RFC 002 implementation
-> remains. 37 core tests pass with `release-gate` green (including the bare-metal
+> (v0.3.0); **Milestone 1 (`loeres`) is complete** — RFC 001/002/003/014 are
+> implemented. 62 core tests pass with `release-gate` green (including the bare-metal
 > `no_std` build). `ROADMAP.md` holds the authoritative live status.
 
 ---
@@ -972,11 +974,11 @@ Requirements:
 
 ## 12. Initial Milestone Scope
 
-> **Status (v0.6.3).** The original phase plan below is the scope of record. Live
+> **Status (v0.7.0).** The original phase plan below is the scope of record. Live
 > status: **Phase 0 (workspace skeleton) is complete (v0.3.0)**, all core RFCs
 > (001–014) are written, and core implementation is tracked by the roadmap's
-> milestone model — **Milestone 1 (`loeres`) is in progress**, with RFC 001,
-> 003, and 014 implemented and RFC 002 implementation remaining (next, v0.7.0).
+> milestone model — **Milestone 1 (`loeres`) is complete**, with RFC 001, 002,
+> 003, and 014 implemented.
 > See the document-currency block above and `ROADMAP.md` for authoritative status.
 
 ### 12.1 Phase 0 — Repository and Policy Foundation — ✅ complete (v0.3.0)
@@ -1050,7 +1052,7 @@ Acceptance:
 
 ### 12.5 Phase 4 — Implementation Baseline
 
-Baseline implementation proceeds only for items backed by accepted requirements and RFCs. This phase is now being entered incrementally as Milestone RFCs land; RFC 001, RFC 003, and RFC 014 are already implemented in `loeres`, and RFC 002 is the remaining Milestone-1 implementation item.
+Baseline implementation proceeds only for items backed by accepted requirements and RFCs. This phase is now being entered incrementally as Milestone RFCs land; RFC 001, RFC 002, RFC 003, and RFC 014 are implemented in `loeres`, completing Milestone 1.
 
 Possible baseline implementation scope:
 
@@ -1123,7 +1125,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | OQ-003 | Is hardware floating point required for the first device solver? |
 | OQ-004 | Is fixed-point support a near-term requirement or a future roadmap topic? |
 | OQ-005 | Which scalar capabilities belong in the first accepted scalar RFC? **(Resolved — RFC 001, v0.6.0.)** The six-tier model, ordering split out of the base tier (ADR-017). |
-| OQ-006 | Which vector/matrix kernels are common enough to define as optional core extension traits? **(Resolved in design — RFC 002, v0.6.1.)** Optional contiguous fast-path traits (`ContiguousVectorAccess` / `ContiguousVectorAccessMut` / `ContiguousMatrixAccess`); heavy kernels stay backend/solver-owned. Implementation lands with RFC 002 (v0.7.0). |
+| OQ-006 | Which vector/matrix kernels are common enough to define as optional core extension traits? **(Resolved in design — RFC 002, v0.6.1.)** Optional contiguous fast-path traits (`ContiguousVectorAccess` / `ContiguousVectorAccessMut` / `ContiguousMatrixAccess`); heavy kernels stay backend/solver-owned. Implemented in RFC 002 (v0.7.0). |
 | OQ-007 | Should raw scratch-slice APIs exist in v0.x, or should the first device API be typed-workspace-only? |
 | OQ-008 | Which server backend should be the first dynamic storage adapter? |
 | OQ-009 | Should optional FFI solvers be included in v0.x or deferred until the Rust-native architecture is stable? |
@@ -1156,6 +1158,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | ADR-017 | The base scalar tier excludes ordering; ordering is the separate `OrderedScalar` capability, and metric comparison is `MetricScalar: OrderedScalar`. This keeps storage/access traits free of comparison semantics and lets solver families state their numerical needs explicitly. Requirements §5.1.3 amended accordingly. | Accepted |
 | ADR-018 | Non-convergence is a status, not an error. A bounded solve that does not converge — including reaching the iteration cap — returns `Ok(SolveReport)` with `SolveStatus::NotConverged`; only boundary rejection and fail-safe conditions are `SolverError`. The same condition is never both (RFC 014). | Accepted |
 | ADR-019 | The core contracts crate is named `loeres` (not `loeres-core`). It reserves the project namespace on crates.io and follows the convention of naming the foundation crate after the library itself (e.g. `serde`, `tokio`). The crate directory is `crates/loeres/`; the public module layout is unchanged (`loeres::scalar`, `loeres::access`, `loeres::error`, `loeres::diagnostic`, `loeres::solver`). Structural rename only — no contract, trait, or API change (v0.6.3). | Accepted |
+| ADR-020 | The borrowed row-major matrix view constructors (`MatrixView::from_row_major` and the mutable variant) validate the backing slice length as **exactly** `rows * cols`, with the product checked for overflow. Both undersized and oversized slices are rejected; a caller viewing a prefix of a larger buffer slices `&data[..rows * cols]` explicitly. A length mismatch maps to `DimensionMismatch { lhs: actual, rhs: required }`; `rows * cols` overflow maps to `InvalidDimension`. Chosen as the strict baseline because the precondition can be relaxed (`==` → `>=`) later without breaking callers, but a lenient rule could not be tightened without a breaking change (RFC 002 implementation-decision review, decision A1; v0.7.0). | Accepted |
 
 ---
 

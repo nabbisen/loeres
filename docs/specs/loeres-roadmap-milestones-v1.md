@@ -1,17 +1,16 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted — Milestone 1 (`loeres`) in progress (current as of v0.6.3)  
+Status: Accepted — Milestone 1 (`loeres`) complete (current as of v0.7.0)  
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
-> **Document currency.** Current as of repository release **v0.6.3**; the design is
+> **Document currency.** Current as of repository release **v0.7.0**; the design is
 > accepted. **Phase 0** (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0). **Milestone 1 (`loeres`) is in progress:** RFC 003 (v0.4.0),
-> RFC 014 (v0.5.0), and RFC 001 (v0.6.0) are implemented and in `rfcs/done/`;
-> **RFC 002** is design-finalized (v0.6.1) but **not yet implemented** — its
-> implementation is the next step (**v0.7.0**) and **completes Milestone 1**.
+> (v0.3.0). **Milestone 1 (`loeres`) is complete:** RFC 003 (v0.4.0),
+> RFC 014 (v0.5.0), RFC 001 (v0.6.0), and **RFC 002** (v0.7.0) are implemented and
+> in `rfcs/done/`; RFC 002 (storage-agnostic access) **closed Milestone 1**.
 > Milestone 2 (static backend + device kernel, RFC 004–006) and Milestone 3
-> (dynamic backend + cluster, RFC 007–009) follow. 37 core tests pass with
+> (dynamic backend + cluster, RFC 007–009) follow. 62 core tests pass with
 > `release-gate` green, including the bare-metal `no_std` build. No design content
 > has changed since v0.6.1: v0.6.2 resynced the in-repo `docs/specs` mirrors, and
 > v0.6.3 renamed the core crate from `loeres-core` to `loeres` (directory
@@ -19,7 +18,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 
 ---
 
-## Current v0.6.3 Roadmap Snapshot
+## Current v0.7.0 Roadmap Snapshot
 
 | Area | Status | Next action |
 |---|---|---|
@@ -27,8 +26,8 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 | RFC 003 — allocation-free errors/diagnostics | Implemented since v0.4.0 | Use as fixed error topology for RFC 002 and later solvers. |
 | RFC 014 — solver outcome/status taxonomy | Implemented since v0.5.0 | Use `SolveStatus` / `TerminationReason` / `StepOutcome` in device and cluster reports. |
 | RFC 001 — stratified scalar model | Implemented since v0.6.0 | Continue using `BaseScalar` without ordering and `OrderedScalar` for projection/comparison. |
-| RFC 002 — storage-agnostic access contracts | Design-finalized in v0.6.1, not implemented | Implement in v0.7.0; this closes Milestone 1. |
-| RFC 004–006 — static backend/device path | Not started | Begin only after RFC 002 closeout. |
+| RFC 002 — storage-agnostic access contracts | Implemented since v0.7.0 | Closed Milestone 1. |
+| RFC 004–006 — static backend/device path | Next (Milestone 2) | Active now that Milestone 1 is closed. |
 | RFC 007–009 — dynamic backend/cluster path | Not started | May begin after Milestone 1; keep zero-bleed checks active. |
 | RFC 010–013 — cross-cutting governance/targets/validation/conformance | Designed as cross-cutting work | Keep aligned with implementation gates and upcoming solver/backend work. |
 
@@ -272,7 +271,7 @@ Required capability families:
 
 #### Current status
 
-Design-finalized in v0.6.1; not yet implemented. Implementation is the next step for v0.7.0 and completes Milestone 1.
+Implemented in v0.7.0; this completed Milestone 1.
 
 #### Scope
 
@@ -965,7 +964,7 @@ A release candidate may be cut only when:
 | Phase | Milestone | Required RFCs | Completion signal | Status |
 |---|---|---|---|---|
 | Phase 0 | Governance bootstrap | none | RFC lifecycle, repository skeleton, and initial `xtask` exist. | ✅ complete (v0.3.0) |
-| Phase 1 | Core | RFC 001, 002, 003, 014 | Core contracts frozen and no-std verified. | 🔶 in progress — RFC 001/003/014 implemented; RFC 002 design-finalized and next for v0.7.0; completion after RFC 002 closeout |
+| Phase 1 | Core | RFC 001, 002, 003, 014 | Core contracts frozen and no-std verified. | ✅ complete — RFC 001/002/003/014 implemented; core contracts frozen and `no_std`-verified (v0.7.0) |
 | Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ⬜ not started |
 | Phase 3 | Cluster | RFC 007, 008, 009 | Dynamic backend and cluster orchestration pass partial-failure, observability, and dependency isolation checks. | ⬜ not started |
 | Integration | Cross-layer verification | corpus and `xtask` gates | Compatible cluster/device solvers converge within accepted epsilon and preserve separation. | ⬜ not started |

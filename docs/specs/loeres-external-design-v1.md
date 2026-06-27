@@ -1,20 +1,19 @@
 # Loeres External Design Specification v1
 
-Status: Accepted — Milestone 1 (`loeres`) in progress (current as of v0.6.3)  
+Status: Accepted — Milestone 1 (`loeres`) complete (current as of v0.7.0)  
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **Document currency.** Current as of repository release **v0.6.3**; the design is
+> **Document currency.** Current as of repository release **v0.7.0**; the design is
 > **accepted** (no longer a draft). Implemented in `loeres` (`rfcs/done/`):
 > the error/diagnostic topology (RFC 003, v0.4.0); the solver outcome/status
-> taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); and the
+> taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); the
 > six-tier scalar model with the base tier **excluding ordering** (RFC 001, v0.6.0
-> — see ED-004 and §2.2). The storage-agnostic access contracts (RFC 002) are
-> **design-finalized but not yet implemented** (see ED-015); implementing them is
-> the next step (**v0.7.0**) and **completes Milestone 1**. Phase 0 (five-crate
-> workspace plus `xtask`) is complete (v0.3.0); **Milestone 1 (`loeres`) is in
-> progress**. The roadmap holds the authoritative live status. No design content
+> — see ED-004 and §2.2); and the storage-agnostic access contracts (RFC 002,
+> v0.7.0 — see ED-015), which **complete Milestone 1**. Phase 0 (five-crate
+> workspace plus `xtask`) is complete (v0.3.0); **Milestone 1 (`loeres`) is
+> complete**. The roadmap holds the authoritative live status. No design content
 > has changed since v0.6.1: v0.6.2 resynced the in-repo `docs/specs` mirrors, and
 > v0.6.3 renamed the core crate from `loeres-core` to `loeres` (directory
 > `crates/loeres/`; module layout unchanged).
@@ -474,7 +473,7 @@ The external scalar families are:
 
 The base scalar family must not require ordering, division, square root, logarithms, exponentials, powers, heap allocation, or string formatting. Ordering, extrema, and `clamp` live on `OrderedScalar`.
 
-This stratification is a public design commitment. Exact trait method names and blanket implementations are Milestone 1 RFC topics.
+This stratification is a public design commitment. Current trait method names and blanket implementations are governed by the implemented Milestone 1 RFCs; future changes require an accepted RFC amendment or superseding RFC.
 
 ### 2.3 Scalar Opt-In Rules
 
@@ -1237,7 +1236,7 @@ no overlapping mutable views. (RFC 002.)
 Rationale: Keeping core to access plus simple contiguous views avoids turning the
 shared contract into a storage-layout RFC, while the optional fast path lets a
 kernel branch once into contiguous storage without making per-element fallible
-access expensive. *(Design finalized in v0.6.1; implementation lands in v0.7.0.)*
+access expensive. *(Design finalized in v0.6.1; implemented in v0.7.0.)*
 
 ---
 
@@ -1345,7 +1344,7 @@ The following questions are intentionally left to RFCs:
 2. **(Resolved by RFC 001, v0.6.0.)** Ordering is split into a dedicated `OrderedScalar` tier: `BaseScalar` requires only `PartialEq` (not `PartialOrd`), and `min` / `max` / `clamp` live on `OrderedScalar` with a pinned NaN-propagating contract for floating-point types.
 3. Exact treatment of fixed-point scalar implementations.
 4. Exact representation of static dimensions without relying on unstable generic const expressions.
-5. **(Resolved in design — RFC 002, v0.6.1; ED-015.)** Core owns simple contiguous row-major views plus an optional contiguous fast path; column-major / strided / sub-matrix views belong to `loeres-backend-static`'s `static-views` feature (RFC 004). Implementation lands in v0.7.0.
+5. **(Resolved in design — RFC 002, v0.6.1; ED-015.)** Core owns simple contiguous row-major views plus an optional contiguous fast path; column-major / strided / sub-matrix views belong to `loeres-backend-static`'s `static-views` feature (RFC 004). Implemented in v0.7.0.
 6. **(Resolved by RFC 003, v0.4.0.)** `DiagnosticSnapshot { code, iteration, primary_index, secondary_index }` is fixed, `Copy`, and compile-time size-budgeted (≤ 16 bytes).
 7. **(Resolved by RFC 003, v0.4.0.)** Public error and diagnostic enums (`SolverError`, `DiagnosticCode`) carry `#[non_exhaustive]`, enforced by the `xtask check-rfcs` source audit.
 8. Exact workspace reset/poison type-state or lifecycle API.
@@ -1369,4 +1368,4 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-Milestone 1 is almost complete: RFC 001, RFC 003, and RFC 014 are implemented in `loeres`; RFC 002's access contracts are design-finalized and are the next implementation step for v0.7.0.
+Milestone 1 is complete: RFC 001, RFC 002, RFC 003, and RFC 014 are implemented in `loeres`.

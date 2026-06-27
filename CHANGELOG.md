@@ -5,6 +5,48 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.7.2] — 2026-06-27 — In-repo spec mirror caught up to v0.7.0 (docs only)
+
+A documentation-currency release that closes the apex-spec lag opened by v0.7.0.
+The in-repo `docs/specs/` mirrors were last synced at v0.6.3 (RFC 002 shown as
+design-finalized / not implemented); the canonical v0.7.0 specs have now been
+reviewed, approved by the project owner, and replaced upstream, so this release
+mirrors them into the repository. No design, contract, code, or public API
+change; patch bump.
+
+### Changed — `docs/specs/` resynced to the approved v0.7.0 design
+
+The three in-repo specs are mirrored byte-identical from the approved canonical
+v0.7.0 set. Net effect:
+
+- RFC 002 moves from "design-finalized, not yet implemented" to **implemented in
+  v0.7.0** across the requirements, external-design, and roadmap mirrors;
+  **Milestone 1 is marked complete**; RFC 004–006 become the next (Milestone 2)
+  work.
+- **ADR-020** now appears in the requirements mirror, recording the exact-size
+  `MatrixView::from_row_major` constructor contract (decision A1).
+- Currency framing advanced from "as of v0.6.3" to "as of v0.7.0"; the v0.6.3
+  crate-rename history (ADR-019) is preserved, not rewritten.
+- The external-design mirror incorporates the two owner-review corrections: a
+  leftover "Milestone 1 (`loeres`) is in progress" in the document-currency block
+  fixed to "complete," and a §2.2 sentence reworded so trait method names are
+  described as governed by the implemented Milestone 1 RFCs (changes via accepted
+  RFC amendment or superseding RFC) rather than as future RFC topics.
+
+As with the v0.6.4 reconciliation, the specs' "as of v0.7.0" framing reflects
+design state, while this repository release carrying the mirror is v0.7.2.
+
+### Security / threat model
+
+No new data flows, external integrations, or auth logic. Existing controls
+re-verified and remain valid.
+
+### Verification
+
+`cargo check`, `clippy -D warnings`, `fmt`, 62 tests, `xtask zero-bleed`,
+`xtask no-std` (bare-metal `thumbv7em-none-eabihf`), and `xtask check-rfcs` all
+pass; the mirrored specs are byte-identical to the approved canonical set.
+
 ## [0.7.1] — 2026-06-27 — Colocated unit-test layout (internal)
 
 A test-organization refactor to match the project's testing guideline: a
@@ -723,6 +765,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.7.2]: https://github.com/nabbisen/loeres/releases/tag/v0.7.2
 [0.7.1]: https://github.com/nabbisen/loeres/releases/tag/v0.7.1
 [0.7.0]: https://github.com/nabbisen/loeres/releases/tag/v0.7.0
 [0.6.4]: https://github.com/nabbisen/loeres/releases/tag/v0.6.4
