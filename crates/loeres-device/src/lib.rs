@@ -9,7 +9,11 @@
 //! Public module topography (external design §1.5):
 //! `problem`, `solve`, `config`, `workspace`, `diagnostic`.
 //!
-//! Phase 0 skeleton: modules are documented placeholders.
+//! Milestone 2 / RFC 005: `config` (runtime `DeviceSolveConfig` / `TimingMode`
+//! policy and structural validation) and `workspace` (the caller-owned
+//! `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` / `WorkspaceFor` lifecycle
+//! contracts) are implemented. `problem`, `solve`, and the concrete solver
+//! workspaces, report types, and kernel remain RFC 006-owned placeholders.
 #![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 

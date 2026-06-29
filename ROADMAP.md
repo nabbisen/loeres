@@ -45,9 +45,19 @@ reporting `DimensionKind::Static`. The implementation-decision pass (D1–D6) wa
 accepted; advanced `static-views` are deferred (RFC 004 §7.2). All gates pass;
 82 tests (62 core + 20 static backend).
 
-The milestone continues with typed workspace mechanics (RFC 005) and the first
-deterministic device solver kernel (RFC 006), on `loeres-backend-static` and
-`loeres-device`. RFC 002's optional contiguous fast path was scoped for the
+The milestone continues with the typed workspace mechanics now done and the
+first deterministic device solver kernel remaining. **RFC 005** is
+**implemented (v0.9.0)**: the two-crate workspace boundary —
+`loeres-backend-static::workspace` (the `WorkspaceFootprint` byte-footprint
+contract, impls behind `owned-arrays`) and `loeres-device::workspace` /
+`config` (the `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` / `WorkspaceFor`
+lifecycle plus `DeviceSolveConfig` / `TimingMode` with structural validation).
+Concrete solver workspaces, problem families, the device report type, and the
+solve kernel remain RFC 006-owned. Only **RFC 006** (the deterministic device
+kernel) now stands between the project and Milestone 2 completion. All gates
+pass; 95 tests (62 core + 22 static backend + 11 device).
+
+RFC 002's optional contiguous fast path was scoped for the
 RFC 006 kernel; the access traits bound only `BaseScalar` except where they
 compare / project / tolerance-check.
 

@@ -22,7 +22,7 @@ The headline consequence is that **non-convergence at the configured iteration c
 
 ## 2. Architectural Context & Dependency Alignment
 
-This RFC touches only `loeres`. It depends on [RFC 003](003-allocation-free-errors.md) for `SolverError` and `DiagnosticSnapshot`. It is consumed by [RFC 005](../proposed/005-typed-workspace-mechanics.md), [RFC 006](../proposed/006-deterministic-solver-kernel.md), [RFC 008](../proposed/008-async-orchestration-budgets.md), and [RFC 013](../proposed/013-conformance-corpus-and-numerical-parity.md). Although numbered 014, it is implemented in Milestone 1 directly after RFC 003, because device and cluster solve entrypoints cannot be designed until the shared outcome vocabulary is frozen.
+This RFC touches only `loeres`. It depends on [RFC 003](003-allocation-free-errors.md) for `SolverError` and `DiagnosticSnapshot`. It is consumed by [RFC 005](005-typed-workspace-mechanics.md), [RFC 006](../proposed/006-deterministic-solver-kernel.md), [RFC 008](../proposed/008-async-orchestration-budgets.md), and [RFC 013](../proposed/013-conformance-corpus-and-numerical-parity.md). Although numbered 014, it is implemented in Milestone 1 directly after RFC 003, because device and cluster solve entrypoints cannot be designed until the shared outcome vocabulary is frozen.
 
 | Crate | Relationship to this RFC |
 |---|---|

@@ -10,6 +10,7 @@ repository.workspace    = true
 
 [features]
 default = []
+owned-arrays = ["loeres-backend-static/owned-arrays"]  # forward owned static arrays for concrete workspaces (RFC 005/006)
 constant-iteration = []   # timing-stabilized fixed iteration-count modes (RFC 006/011)
 diagnostic-snapshot = []  # compact numeric diagnostics via result/state types (RFC 006)
 panic-gate = []           # CI release-gate instrumentation for panic-path detection (RFC 010/011)

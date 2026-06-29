@@ -24,7 +24,7 @@ This RFC depends on:
 * [RFC 002](../done/002-storage-agnostic-contracts.md) for access traits;
 * [RFC 003](../done/003-allocation-free-errors.md) for fail-safe error categories;
 * [RFC 004](../done/004-static-storage-engine.md) for fixed storage;
-* [RFC 005](005-typed-workspace-mechanics.md) for workspace lifecycle.
+* [RFC 005](../done/005-typed-workspace-mechanics.md) for workspace lifecycle.
 
 `loeres-device` must not depend on `loeres-backend-std`, `loeres-cluster`, `std`, `alloc`, threads, async runtimes, logging frameworks, or FFI gateways.
 

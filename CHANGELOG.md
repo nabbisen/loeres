@@ -5,7 +5,60 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.8.0] — 2026-06-29 — Static storage engine (RFC 004); Milestone 2 underway
+## [0.9.0] — 2026-06-29 — Caller-owned typed workspace mechanics (RFC 005)
+
+The second Milestone 2 contract: the two-crate caller-owned workspace boundary,
+all `no_std` / no-`alloc` and verified on `thumbv7em-none-eabihf`. Minor bump:
+an RFC is resolved. Only RFC 006 (the deterministic device kernel) now remains
+in Milestone 2.
+
+This RFC defines the workspace *lifecycle and storage boundary* only. Concrete
+solver workspaces, problem families, the device report type, and the solve
+kernel are deliberately left to RFC 006.
+
+### Added — `loeres-backend-static::workspace` (storage-block footprint)
+
+- `WorkspaceFootprint` — a byte-footprint contract (`footprint_bytes()`), defined
+  in the baseline; impls for the RFC 004 owned arrays (`FixedVector` /
+  `FixedMatrix`) sit behind `owned-arrays`. No wrapper types are introduced — the
+  RFC 004 fixed arrays are themselves the storage blocks — and no `BYTES` constant
+  is added to those types (`size_of`-based, consistent with v0.8.0).
+
+### Added — `loeres-device::workspace` (lifecycle) and `::config` (policy)
+
+- `DeviceWorkspace` — the single essential lifecycle method `reset_for_entry`
+  (overwrite-on-use; no full-buffer zeroing in the correctness path).
+- `DeviceWorkspaceDiagnostic` — an always-available, ungated compact-diagnostic
+  extension returning the core `DiagnosticSnapshot`; the `diagnostic-snapshot`
+  feature governs only richer/optional diagnostics, never this accessor.
+- `WorkspaceFor<P>` — associates a solver family with its `Workspace` type and a
+  `required_workspace_bytes()` footprint (computed from `size_of`).
+- `DeviceSolveConfig<S>` and `TimingMode` — runtime execution policy (not
+  const-generic solver identity). `TimingMode` is `#[non_exhaustive]` with the
+  `ConstantIteration` variant gated behind the `constant-iteration` feature, so
+  unsupported constant-iteration use fails at compile time; downstream matches use
+  a wildcard arm.
+- `DeviceSolveConfig::validate()` — structural validation: rejects
+  `max_iterations == 0`, non-finite tolerance (`NonFiniteInput`), and negative
+  tolerance (`InvalidInput`). **It does not reject zero tolerance** — whether a
+  concrete solver forbids zero is RFC 006's decision (recorded closeout
+  confirmation). Returns a structured `SolverError`; never panics.
+- `loeres-device` gains a forwarded `owned-arrays` feature
+  (`= ["loeres-backend-static/owned-arrays"]`); baseline lifecycle/config compile
+  without it.
+
+### Notes
+
+- Implementation-decision pass (M1–M8) accepted; correction P1 (RFC 014
+  report/status wording) and the five pre-coding patches applied to the RFC.
+- The cross-crate §3 boundary is enforced for free by the dependency graph and
+  zero-bleed; the intra-crate workspace-vs-kernel gate is deferred to RFC 006.
+- RFC 005 moved `proposed/` → `done/` (status *Implemented (v0.9.0)*); RFC index
+  and cross-links updated.
+- 95 tests pass (62 core + 22 static backend + 11 device); full release gate
+  green (check / zero-bleed / no-std / check-rfcs).
+
+
 
 The first Milestone 2 contract. `loeres-backend-static` graduates from a
 documented skeleton to a working static storage engine implementing the RFC 002
@@ -812,6 +865,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.9.0]: https://github.com/nabbisen/loeres/releases/tag/v0.9.0
 [0.8.0]: https://github.com/nabbisen/loeres/releases/tag/v0.8.0
 [0.7.2]: https://github.com/nabbisen/loeres/releases/tag/v0.7.2
 [0.7.1]: https://github.com/nabbisen/loeres/releases/tag/v0.7.1
