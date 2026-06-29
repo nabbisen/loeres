@@ -108,6 +108,22 @@ fn dense_matrix_mutable_write() {
 }
 
 #[test]
+fn dense_vector_rejects_empty() {
+    assert_eq!(
+        DenseVector::<f64>::from_vec(vec![]).unwrap_err(),
+        SolverError::InvalidDimension
+    );
+    // Empty is rejected as zero-dimension even when the limit would admit it.
+    let opts = DenseIngestOptions {
+        max_elements: Some(0),
+    };
+    assert_eq!(
+        DenseVector::<f64>::from_vec_with_options(vec![], opts).unwrap_err(),
+        SolverError::InvalidDimension
+    );
+}
+
+#[test]
 fn dense_memory_limit() {
     let opts = DenseIngestOptions {
         max_elements: Some(2),

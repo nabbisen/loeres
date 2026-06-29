@@ -97,9 +97,33 @@ fn sparse_rejects_zero_dimensions() {
 }
 
 #[test]
+fn sparse_rejects_overflow_rows() {
+    // `rows + 1` would overflow `usize`; rejected before any allocation.
+    assert_eq!(
+        SparseMatrix::<f64>::from_triplets(usize::MAX, 1, &[], SparseIngestOptions::default())
+            .unwrap_err(),
+        SolverError::InvalidDimension
+    );
+}
+
+#[test]
+fn sparse_max_rows_limit() {
+    let opts = SparseIngestOptions {
+        max_entries: None,
+        max_rows: Some(3),
+    };
+    // rows = 5 exceeds max_rows = 3 -> rejected before allocation
+    let err = SparseMatrix::from_triplets(5, 2, &[(0, 0, 1.0)], opts).unwrap_err();
+    assert_eq!(err, SolverError::InvalidInput);
+    // rows = 3 is within the cap
+    assert!(SparseMatrix::from_triplets(3, 2, &[(0, 0, 1.0)], opts).is_ok());
+}
+
+#[test]
 fn sparse_memory_limit() {
     let opts = SparseIngestOptions {
         max_entries: Some(1),
+        max_rows: None,
     };
     let err = SparseMatrix::from_triplets(2, 2, &[(0, 0, 1.0), (1, 1, 2.0)], opts).unwrap_err();
     assert_eq!(err, SolverError::InvalidInput);

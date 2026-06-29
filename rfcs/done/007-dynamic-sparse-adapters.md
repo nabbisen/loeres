@@ -2,7 +2,7 @@
 
 **Status.** Implemented (v0.11.0). Storage-first dynamic dense/sparse adapters in `loeres-backend-std`; canonical validation-state ownership deferred to RFC 012.
 **Tracks.** Phase 3 / Milestone 3 — Dynamic Infrastructure and Cloud Cluster
-**Touches.** `loeres-backend-std/src/dense.rs` (+ `dense/ingest.rs`), `loeres-backend-std/src/sparse.rs` (+ `sparse/ingest.rs`), `loeres-backend-std/src/lib.rs`
+**Touches.** `loeres-backend-std/src/dense.rs`, `loeres-backend-std/src/sparse.rs`, `loeres-backend-std/src/internal.rs`, `loeres-backend-std/src/lib.rs` (ingestion implemented as inline constructors per F1; no separate `ingest` submodules in the as-built v0.11.0).
 
 ---
 
@@ -136,27 +136,27 @@ Concrete third-party types must be hidden behind Loeres wrapper types unless a f
 
 ### 3.5 Allocation-minimizing ingestion
 
-Ingestion constructors (in `dense::ingest` / `sparse::ingest`) support direct construction from incoming payloads with minimal copying. The copy/ownership strategy is:
+Ingestion is implemented as constructors on the storage types (F1 allows
+constructors/builders inside `dense` / `sparse`; the as-built v0.11.0 places them
+inline in `dense.rs` / `sparse.rs` rather than separate `ingest` submodules).
+They construct directly from incoming payloads with minimal copying.
+
+The copy/ownership strategy below is a **non-public design note**, not a public
+API. The implemented public surface is the constructors (`from_vec`,
+`from_row_major_vec`, `from_triplets`, and `_with_options` variants) plus the
+ingest-options structs; the strategy enums are not exported.
 
 ```rust
-pub enum DenseIngestPolicy {
-    BorrowThenCopyOnce,
-    TakeOwnership,
-    ValidateThenTakeOwnership,
-}
-
-pub enum SparseIngestPolicy {
-    TripletStream,
-    CompressedOwned,
-    ValidateThenCompress,
-}
+// Conceptual strategy only — not a public type.
+// Dense:  BorrowThenCopyOnce | TakeOwnership | ValidateThenTakeOwnership
+// Sparse: TripletStream | CompressedOwned | ValidateThenCompress
 ```
 
 The target is a bounded, layout-level allocation count for final storage, not one allocation per row or per element. Dense storage is one flat allocation. CSR sparse storage may use a small fixed number of final buffers such as `row_ptr`, `col_idx`, and `values`.
 
 Coordinate validation and duplicate detection may require sorting / temporary preparation, but ingestion must avoid per-entry heap churn and must not allocate final storage after a known limit failure (the `max_elements` / `max_entries` check precedes final-storage allocation).
 
-**Memory-limit options (F8).** Because the dynamic storage layer is where heap allocation happens, ingestion owns a local pre-allocation memory limit rather than deferring all of it to the cluster RFCs:
+**Memory-limit options (F8).** Because the dynamic storage layer is where heap allocation happens, ingestion owns a local pre-allocation memory limit rather than deferring all of it to the cluster RFCs. These are the implemented public structs:
 
 ```rust
 pub struct DenseIngestOptions {
@@ -165,10 +165,11 @@ pub struct DenseIngestOptions {
 
 pub struct SparseIngestOptions {
     pub max_entries: Option<usize>,
+    pub max_rows: Option<usize>,
 }
 ```
 
-When `Some(limit)` is set, ingestion checks the payload size **before** allocating final storage and returns `SolverError::InvalidInput` if it would be exceeded; `None` imposes no limit. Cluster RFCs (008/009) may later pass service-level policy into these options; RFC 007 provides the local enforcement hook. No new error variant is introduced.
+When `Some(limit)` is set, ingestion checks the payload size **before** allocating final storage and returns `SolverError::InvalidInput` if it would be exceeded; `None` imposes no limit. `DenseIngestOptions::max_elements` bounds the final element count (`len`, or `rows * cols`). For sparse, `max_entries` bounds the stored-entry count (`col_idx` / `values`) and `max_rows` bounds the caller's logical `rows` (the CSR `row_ptr` buffer, which `max_entries` does not cover). Sparse construction applies the checks in this order, all before any allocation: (1) `rows == 0` / `cols == 0` → `InvalidDimension`; (2) `rows + 1` overflow (checked add) → `InvalidDimension`; (3) `rows > max_rows` → `InvalidInput`; (4) `triplets.len() > max_entries` → `InvalidInput`. The CSR buffers are then built with `Vec::try_reserve_exact` as defense-in-depth, mapping an unexpected capacity failure to `SolverError::Overflow`. Cluster RFCs (008/009) may later pass service-level policy into these options; RFC 007 provides the local enforcement hook. No new error variant is introduced.
 
 ### 3.6 Validation state and scalar bounds
 

@@ -9,11 +9,17 @@ use loeres::{BaseScalar, Dim2, DimensionKind, FiniteScalar, MatrixAccess, Solver
 
 use crate::internal::dimension_mismatch;
 
-/// Pre-allocation memory limit for sparse ingestion (RFC 007 §3.5).
+/// Pre-allocation memory limits for sparse ingestion (RFC 007 §3.5).
+///
+/// `max_entries` bounds the stored-entry count (the `col_idx` / `values`
+/// buffers); `max_rows` bounds the caller's logical `rows` (the CSR `row_ptr`
+/// buffer, which `max_entries` does not cover).
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct SparseIngestOptions {
     /// Maximum stored-entry count accepted, or `None` for no limit.
     pub max_entries: Option<usize>,
+    /// Maximum logical row count accepted, or `None` for no limit.
+    pub max_rows: Option<usize>,
 }
 
 /// A dynamically sized, heap-backed CSR sparse matrix.
@@ -43,7 +49,16 @@ impl<S: BaseScalar> SparseMatrix<S> {
         if rows == 0 || cols == 0 {
             return Err(SolverError::InvalidDimension);
         }
-        // Memory limit first: avoid even temporary preparation on a known failure.
+        // CSR `row_ptr` has `rows + 1` entries; reject a `rows` that would
+        // overflow that length before any allocation (RFC 007 guardrail 6).
+        let row_ptr_len = rows.checked_add(1).ok_or(SolverError::InvalidDimension)?;
+        // Pre-allocation policy caps (checked before any preparation or storage):
+        // `max_rows` bounds the `row_ptr` buffer, `max_entries` the entry buffers.
+        if let Some(max) = options.max_rows {
+            if rows > max {
+                return Err(SolverError::InvalidInput);
+            }
+        }
         if let Some(max) = options.max_entries {
             if triplets.len() > max {
                 return Err(SolverError::InvalidInput);
@@ -67,8 +82,13 @@ impl<S: BaseScalar> SparseMatrix<S> {
             }
         }
 
-        // Final storage: one buffer each for row_ptr, col_idx, values.
-        let mut row_ptr = vec![0usize; rows + 1];
+        // Final storage: fallible allocation for each CSR buffer as
+        // defense-in-depth; an unexpected capacity failure maps to `Overflow`.
+        let mut row_ptr: Vec<usize> = Vec::new();
+        row_ptr
+            .try_reserve_exact(row_ptr_len)
+            .map_err(|_| SolverError::Overflow)?;
+        row_ptr.resize(row_ptr_len, 0usize);
         for &(row, _, _) in &entries {
             row_ptr[row + 1] += 1;
         }
@@ -77,8 +97,14 @@ impl<S: BaseScalar> SparseMatrix<S> {
             acc += *slot;
             *slot = acc;
         }
-        let mut col_idx = Vec::with_capacity(entries.len());
-        let mut values = Vec::with_capacity(entries.len());
+        let mut col_idx: Vec<usize> = Vec::new();
+        col_idx
+            .try_reserve_exact(entries.len())
+            .map_err(|_| SolverError::Overflow)?;
+        let mut values: Vec<S> = Vec::new();
+        values
+            .try_reserve_exact(entries.len())
+            .map_err(|_| SolverError::Overflow)?;
         for (_, col, value) in entries {
             col_idx.push(col);
             values.push(value);

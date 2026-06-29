@@ -5,6 +5,55 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.11.1] — 2026-06-30 — RFC 007 closeout corrections (construction hardening)
+
+A corrective patch over v0.11.0, addressing the RFC 007 implementation review.
+The dynamic storage constructors now fail closed on degenerate dimensions the
+construction contract always intended to reject; one additive field is added to
+`SparseIngestOptions`. No other public-type change.
+
+### Fixed — dense construction (`loeres-backend-std::dense`)
+
+- `DenseVector::from_vec` / `from_vec_with_options` reject an empty vector with
+  `SolverError::InvalidDimension` (zero length), checked **before** the memory
+  limit so `max_elements: Some(0)` still rejects empty rather than admitting it.
+
+### Fixed — sparse construction (`loeres-backend-std::sparse`)
+
+- `SparseMatrix::from_triplets` guards the CSR `row_ptr` length with
+  `rows.checked_add(1)` → `InvalidDimension`, rejecting an extreme `rows` before
+  any allocation (previously `rows + 1` could overflow).
+- The three CSR buffers (`row_ptr`, `col_idx`, `values`) are built with
+  `Vec::try_reserve_exact` as defense-in-depth; an unexpected capacity failure
+  maps to `SolverError::Overflow` instead of aborting.
+
+### Added — sparse row-dimension limit (`SparseIngestOptions::max_rows`)
+
+- `SparseIngestOptions` gains `max_rows: Option<usize>` (additive; `Default` is
+  `None`). `max_entries` bounds the stored-entry buffers; `max_rows` bounds the
+  logical `rows` (the `row_ptr` buffer that `max_entries` does not cover).
+  `from_triplets` rejects `rows > max_rows` with `InvalidInput` before
+  allocation. Check order, all pre-allocation: zero dimensions →
+  `InvalidDimension`; `rows + 1` overflow → `InvalidDimension`; `max_rows` →
+  `InvalidInput`; `max_entries` → `InvalidInput`.
+
+### Documentation
+
+- `DenseIngestOptions::max_elements` documented as a final element-count limit
+  (`len`, or `rows * cols`).
+- RFC 007 (done) §3.5 reconciled with the implemented ingestion API: the
+  `DenseIngestPolicy` / `SparseIngestPolicy` sketches are marked non-public
+  design notes, and the Touches list reflects the as-built inline constructors
+  and `internal.rs`.
+- `crates/loeres-backend-std/README.md` updated from the Phase-0 placeholder to
+  the v0.11.0+ public surface.
+
+### Verification
+
+- 139 tests (3 new dynamic-backend regressions: empty-vector rejection,
+  extreme-row rejection, `max_rows` overrun). All gates pass — check, zero-bleed,
+  no-std (`thumbv7em-none-eabihf`), check-rfcs, panic-audit.
+
 ## [0.11.0] — 2026-06-30 — RFC 007 dynamic dense/sparse storage adapters (Milestone 3 opens)
 
 RFC 007 is implemented, opening Milestone 3 with the server-side dynamic storage
@@ -1044,6 +1093,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.11.1]: https://github.com/nabbisen/loeres/releases/tag/v0.11.1
 [0.11.0]: https://github.com/nabbisen/loeres/releases/tag/v0.11.0
 [0.10.2]: https://github.com/nabbisen/loeres/releases/tag/v0.10.2
 [0.10.1]: https://github.com/nabbisen/loeres/releases/tag/v0.10.1

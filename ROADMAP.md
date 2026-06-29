@@ -87,8 +87,12 @@ limits → `InvalidInput`). The RFC is deliberately **storage-first**: it define
 no canonical validation-state type. That ownership stays with RFC 012, which is
 sequenced next — **before** RFC 008/009 depend on validated/trusted-input
 semantics. The implementation-decision pass (I1–I10, I3 CSR / I7 minimal
-extension) and the storage-first split are recorded in RFC 007. All gates pass;
-136 tests (62 core + 22 static backend + 32 device + 20 dynamic backend).
+extension) and the storage-first split are recorded in RFC 007. v0.11.1 hardened
+construction: empty `DenseVector` and extreme-`rows` `SparseMatrix` fail closed
+(`InvalidDimension`), an additive `SparseIngestOptions::max_rows` cap bounds the
+CSR `row_ptr` buffer, and the sparse buffers use `try_reserve_exact`
+defense-in-depth. All gates pass; 139 tests (62 core + 22 static backend + 32
+device + 23 dynamic backend).
 
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 

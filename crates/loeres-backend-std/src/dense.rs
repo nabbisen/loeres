@@ -12,9 +12,12 @@ use loeres::{
 use crate::internal::dimension_mismatch;
 
 /// Pre-allocation memory limit for dense ingestion (RFC 007 §3.5).
+///
+/// `max_elements` bounds the **final element count** of the constructed adapter
+/// (`len` for a vector, `rows * cols` for a matrix), not the raw payload length.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq)]
 pub struct DenseIngestOptions {
-    /// Maximum element count accepted, or `None` for no limit.
+    /// Maximum final element count accepted, or `None` for no limit.
     pub max_elements: Option<usize>,
 }
 
@@ -31,11 +34,15 @@ impl<S: loeres::BaseScalar> DenseVector<S> {
     }
 
     /// Build from an owned `Vec<S>`, rejecting payloads over `max_elements`
-    /// with `SolverError::InvalidInput`.
+    /// with `SolverError::InvalidInput`. An empty vector is rejected with
+    /// `SolverError::InvalidDimension` (zero length), checked before the limit.
     pub fn from_vec_with_options(
         data: Vec<S>,
         options: DenseIngestOptions,
     ) -> Result<Self, SolverError> {
+        if data.is_empty() {
+            return Err(SolverError::InvalidDimension);
+        }
         if let Some(max) = options.max_elements {
             if data.len() > max {
                 return Err(SolverError::InvalidInput);
