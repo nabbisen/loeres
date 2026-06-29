@@ -1,22 +1,26 @@
 # Loeres External Design Specification v1
 
-Status: Accepted — Milestone 1 (`loeres`) complete (current as of v0.7.0)  
+Status: Accepted — Milestone 2 (static backend + device) complete (current as of v0.10.1)  
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **Document currency.** Current as of repository release **v0.7.0**; the design is
+> **Document currency.** Current as of repository release **v0.10.1**; the design is
 > **accepted** (no longer a draft). Implemented in `loeres` (`rfcs/done/`):
 > the error/diagnostic topology (RFC 003, v0.4.0); the solver outcome/status
 > taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); the
 > six-tier scalar model with the base tier **excluding ordering** (RFC 001, v0.6.0
 > — see ED-004 and §2.2); and the storage-agnostic access contracts (RFC 002,
-> v0.7.0 — see ED-015), which **complete Milestone 1**. Phase 0 (five-crate
-> workspace plus `xtask`) is complete (v0.3.0); **Milestone 1 (`loeres`) is
-> complete**. The roadmap holds the authoritative live status. No design content
-> has changed since v0.6.1: v0.6.2 resynced the in-repo `docs/specs` mirrors, and
-> v0.6.3 renamed the core crate from `loeres-core` to `loeres` (directory
-> `crates/loeres/`; module layout unchanged).
+> v0.7.0 — see ED-015), which **complete Milestone 1**. **Milestone 2 (static
+> backend + device) is complete:** the const-generic fixed-size static storage
+> engine (RFC 004, v0.8.0 — `loeres-backend-static` `FixedVector` / `FixedMatrix`
+> and contiguous static views); the caller-owned typed workspace mechanics
+> (RFC 005, v0.9.0 — `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` /
+> `WorkspaceFor`, `DeviceSolveConfig` / `TimingMode`, and `WorkspaceFootprint`);
+> and the baseline deterministic device kernel (RFC 006, v0.10.0, hardened
+> v0.10.1 — the box/bound-constrained projected first-order solver). Phase 0
+> (five-crate workspace plus `xtask`) is complete (v0.3.0). The roadmap holds the
+> authoritative live status.
 
 ---
 
@@ -34,7 +38,7 @@ The central design rule is:
 
 This document therefore fixes public boundaries and crate topography before implementation-level RFCs begin.
 
-This v1 document incorporates the reasonable public-boundary consequences from two architecture reviews of the earlier external design. It absorbs semver-safe error extensibility, workspace poisoning semantics, runtime configuration placement, cluster batch partial-failure semantics, validation-state policy, and static-view feature clarification. It intentionally does not freeze private solver algorithms or exact trait method bodies.
+This v1 document incorporates the reasonable public-boundary consequences from two architecture reviews of the earlier external design. It absorbs semver-safe error extensibility, explicit workspace lifecycle semantics, runtime configuration placement, cluster batch partial-failure semantics, validation-state policy, and static-view feature clarification. It intentionally does not freeze private solver algorithms or exact trait method bodies.
 
 ### 0.1 Normative Language
 
@@ -80,7 +84,7 @@ The v0.1 reviews were treated as design feedback, not implementation orders. The
 | Error and diagnostic payloads must be size-budgeted | Accepted as an external constraint; exact byte caps deferred to RFC 003 | This affects device ABI and stack pressure, but exact numbers require RFC-level measurement |
 | `loeres::linalg` may imply heavy kernels | Accepted by renaming the core module category to `loeres::access` | Core exposes storage access contracts, not BLAS-like operations |
 | Public validation should avoid repeated O(N) rescans where input is already validated or trusted | Accepted with explicit validation-state policy | This is needed for large cluster workloads and for device loops with prevalidated static state |
-| Device workspace failure may leave scratch memory unusable | Accepted through workspace poisoning semantics | Reuse after a failed solve must be explicit and safe |
+| Device workspace failure state must be explicit | Accepted through workspace lifecycle semantics | Reuse after success, failure, or non-convergence must be governed by a documented lifecycle and verified by tests |
 | Device execution configuration should not be const-generic by default | Accepted | Const generics are reserved for dimensions and memory layout to avoid monomorphization bloat |
 | Cluster batch solve must support per-item failure | Accepted | One bad model must not collapse an entire multi-tenant batch by default |
 | `static-views` feature overlaps with baseline borrowed-view wording | Accepted and clarified | Baseline contiguous views and advanced strided/submatrix views are separate concepts |
@@ -336,11 +340,21 @@ No `loeres` feature may change core error layout in a way that breaks device ABI
 | Feature | Default | Public meaning | Constraints |
 |---|---:|---|---|
 | _none_ | yes | Minimal deterministic solve entrypoints | No `std`, no `alloc` |
+| `owned-arrays` | no | Forwards `loeres-backend-static/owned-arrays`; gates the concrete projected first-order kernel surface (`problem` / `solve`), whose primal and gradient work vectors are `FixedVector<S, N>` | No heap allocation |
 | `constant-iteration` | no | Exposes timing-stabilized solve modes that run a configured iteration count even after convergence has been detected | Must not claim cryptographic constant time |
 | `diagnostic-snapshot` | no | Exposes compact numeric diagnostic output through result/state types | No strings, no logging framework |
 | `panic-gate` | no | Enables release-gate instrumentation or attributes used by CI to detect panicking paths | Must be treated as tooling gate, not formal proof |
 
 `constant-iteration` changes timing behavior and may change energy/runtime cost. It must be opt-in.
+
+> **Implemented (Milestone 2).** As of v0.10.1 the `loeres-backend-static` and
+> `loeres-device` module families above are implemented: `array` / `view` /
+> `workspace` / `dimension` (RFC 004/005) and `problem` / `solve` / `config` /
+> `workspace` / `diagnostic` (RFC 005/006). The kernel surface (`problem` / `solve`)
+> compiles under `owned-arrays`; `constant-iteration` gates the `TimingMode::ConstantIteration`
+> variant. `static-views`, the richer `diagnostic-snapshot` content, and `panic-gate`
+> instrumentation remain available for later RFCs (the `panic-audit` gate is already
+> implemented in `xtask`, independent of the `panic-gate` feature).
 
 #### 1.6.4 `loeres-backend-std`
 
@@ -861,6 +875,14 @@ These names are illustrative. The external requirement is that both owned and bo
 
 Borrowed views must preserve the no-alloc rule.
 
+> **Implemented (RFC 004, v0.8.0).** `loeres-backend-static` provides owned
+> `FixedVector<S, N>` and `FixedMatrix<S, R, C>` (scalar-first parameter order;
+> `repr(transparent)`; const-assert `N > 0` / `R, C > 0`) behind the `owned-arrays`
+> feature, and baseline contiguous static views over caller-owned memory — all
+> implementing the RFC 002 access contracts and reporting `DimensionKind::Static`.
+> The exact-size row-major matrix-view constructor contract is ADR-020. Advanced
+> strided / sub-matrix `static-views` are deferred (RFC 004 §7.2).
+
 ### 4.4 Caller-Owned Typed Workspace Paradigm
 
 Device solvers must not allocate hidden scratch memory.
@@ -878,9 +900,9 @@ sequenceDiagram
     App->>Device: configure bounded solver policy
     App->>Device: pass problem + &mut workspace + config
     Device->>Core: validate problem contracts and dimensions
-    Device->>Device: execute bounded public solve path
+    Device->>Device: reset workspace on entry, then execute bounded public solve path
     Device-->>App: result + compact diagnostics
-    App->>Static: reset/reuse workspace explicitly
+    App->>Device: reuse same workspace on next solve call
 ```
 
 The public workspace design must include:
@@ -890,26 +912,37 @@ The public workspace design must include:
 | Solver-specific type | Workspace type must correspond to a solver family/problem family |
 | Caller ownership | Caller constructs and owns the workspace |
 | Unique mutable borrow | Solve entrypoint receives workspace by unique mutable reference |
-| Explicit reset | Reuse must require explicit reset or documented initialization lifecycle |
-| Poison state | Any failed solve may mark the workspace as needing reset before reuse |
+| Lifecycle normalization | Reuse must be governed by reset-on-entry, type-state, or a documented initialization lifecycle |
+| Failure-state rule | Any failure-state effect must be explicit; baseline solvers may choose reset-required, always-reusable, or type-state semantics by RFC |
 | Size visibility | Workspace memory footprint must be visible through type, associated metadata, or documentation |
 | No mid-flight allocation | Solver must not allocate additional hidden buffers |
 
 Raw scratch-buffer APIs may exist only as secondary low-level APIs. They must fail immediately with `WorkspaceTooSmall` or equivalent if the buffer does not satisfy the required layout.
 
-Workspace poisoning semantics are part of the public device contract. Unless a solver family explicitly documents a stronger guarantee, any solve returning `Err` must be assumed to have left the workspace in a reset-required state. The next solve call must not rely on partially mutated workspace contents. The public lifecycle must therefore expose one of the following design patterns by RFC:
+Workspace lifecycle semantics are part of the public device contract. A solver must not silently reuse partially mutated scratch state without a documented initialization rule. The public lifecycle must therefore expose one of the following design patterns by RFC:
 
-- a reset method that transitions the workspace back to a ready state;
-- a type-state style ready/poisoned workspace distinction;
-- or a documented initialization lifecycle proving that every solve fully overwrites all mutable workspace regions before use.
+- a reset method that transitions or normalizes the workspace before use;
+- a type-state style ready/dirty workspace distinction;
+- or a documented initialization lifecycle proving that every solve fully overwrites all mutable workspace regions before reading them.
 
-The default external expectation is conservative: after error, reset before reuse.
+The baseline selected by RFC 005 is the always-reusable pattern: the solve path normalizes required scratch state at entry, so callers do not perform a separate reset step after success, error, or non-convergence.
+
+> **Implemented (RFC 005, v0.9.0).** The selected baseline is the **always-reusable**
+> pattern (the third option above): `DeviceWorkspace::reset_for_entry` normalizes the
+> workspace at the start of every solve (overwrite-on-use), so the workspace is
+> reusable after success, after error, and after non-convergence with no separate
+> caller reset step. The lifecycle is `DeviceWorkspace` (reset) plus the
+> always-available `DeviceWorkspaceDiagnostic` (compact `DiagnosticSnapshot`), with
+> `WorkspaceFor<P>` associating a problem family with its workspace type and
+> `required_workspace_bytes` footprint. Size visibility is by `size_of` /
+> `required_workspace_bytes` (RFC 006 §7.1). This is verified by reuse-after-error
+> and reuse-after-non-convergence tests.
 
 ### 4.5 Deterministic Entrypoints
 
 `loeres-device::solve` must expose deterministic entrypoint categories.
 
-Required public configuration categories:
+The external configuration category space includes:
 
 | Configuration category | Meaning |
 |---|---|
@@ -920,7 +953,18 @@ Required public configuration categories:
 | `InputValidationPolicy` | Boundary validation settings |
 | `DiagnosticPolicy` | Compact diagnostics on/off or detail level |
 
-Device solve configuration values such as maximum iteration count, tolerance thresholds, condition thresholds, timing mode, and diagnostic level should be runtime configuration fields rather than type-level const generics. Const generics are reserved primarily for dimensions, memory layout, and workspace sizing. This avoids compiling separate solver machine code for every ordinary policy value while still preserving static memory bounds.
+Device solve configuration values such as maximum iteration count, tolerance thresholds, condition thresholds, timing mode, and diagnostic level, when present, should be runtime configuration fields rather than type-level const generics. Const generics are reserved primarily for dimensions, memory layout, and workspace sizing. This avoids compiling separate solver machine code for every ordinary policy value while still preserving static memory bounds.
+
+> **Implemented (RFC 005, v0.9.0).** The baseline runtime config is
+> `DeviceSolveConfig<S> { max_iterations: u32, tolerance: S, timing_mode: TimingMode }`
+> with a structural `validate` (rejects `max_iterations == 0`, non-finite tolerance,
+> and negative tolerance; zero tolerance is allowed). The `MaxIterations`,
+> `TolerancePolicy` (single tolerance), and `TimingMode` categories above are
+> realized; `ConditionPolicy`, `InputValidationPolicy`, and `DiagnosticPolicy` are
+> **not** part of the v0.10.1 baseline — diagnostics flow through the workspace's
+> `DeviceWorkspaceDiagnostic` accessor rather than a config policy, and boundary
+> validation is the problem's `validate_boundary` plus kernel-side fail-safe checks
+> (RFC 006). These remain available for a later config-extending RFC.
 
 Device solve entrypoints must:
 
@@ -931,6 +975,15 @@ Device solve entrypoints must:
 - avoid required dynamic dispatch;
 - avoid background execution;
 - avoid server observability hooks.
+
+> **Implemented (RFC 006, v0.10.0/v0.10.1).** `loeres-device::solve` exposes
+> `solve_projected_first_order(problem, &mut x, &mut workspace, config) -> Result<DeviceSolveReport, SolverError>`
+> for the box/bound-constrained projected first-order baseline (behind `owned-arrays`):
+> it validates config, problem boundary, step scale, and iterate/gradient/bound
+> finiteness before the loop, respects `max_iterations`, returns structured
+> `SolverError` for expected failures, and reports non-convergence as an `Ok` status
+> (`DeviceSolveReport` over the RFC 014 `SolveReport`). No hidden allocation, no
+> required dynamic dispatch, no background execution.
 
 ### 4.6 Timing Modes
 
@@ -943,6 +996,13 @@ Device timing behavior must be explicit.
 | Validation-only rejection path | Invalid input exits before calculation loop | Must return structured rejection error |
 
 Constant-iteration mode is useful for timing stabilization and side-channel reduction, but it is not a proof of constant-time execution.
+
+> **Implemented (RFC 005, v0.9.0).** Realized as `TimingMode` (`#[non_exhaustive]`):
+> `EarlyExitAllowed` (early-exit bounded mode) is always available;
+> `ConstantIteration` (records convergence internally but runs the full configured
+> count) is gated behind the `constant-iteration` feature. The validation-only
+> rejection path is the pre-loop config / boundary / fail-safe validation in the
+> RFC 006 kernel, which returns a structured `SolverError`.
 
 ### 4.7 Device Diagnostics Without Logging
 
@@ -996,7 +1056,7 @@ The intended device UX is:
 4. Configure max iterations, tolerance policy, and timing mode.
 5. Call a deterministic solve entrypoint with `&mut workspace`.
 6. Receive structured result and compact diagnostics.
-7. If the solve succeeds, reuse the workspace only according to its documented lifecycle. If the solve fails, reset the workspace before the next solve unless the selected solver explicitly guarantees automatic recovery.
+7. Reuse the workspace according to its documented lifecycle. In the v0.10.1 baseline, the next solve normalizes scratch state on entry, so no separate caller reset is required after success, error, or non-convergence.
 
 Illustrative flow:
 
@@ -1190,11 +1250,11 @@ Decision: Public error and diagnostic enums should be non-exhaustive unless an R
 
 Rationale: The solver family will grow. New public error categories should not force downstream users to rewrite exhaustive matches in ordinary semver-compatible releases.
 
-### ED-011: Device Workspace Failure Is Reset-Required by Default
+### ED-011: Device Workspace Failure Semantics Are Explicit
 
-Decision: A failed device solve may poison the caller-owned workspace. The default public rule is reset-before-reuse after failure.
+Decision: Device workspace reuse must be governed by an explicit lifecycle. A solver RFC may choose reset-required, always-reusable, or type-state semantics, but it must document and test the chosen behavior. The Milestone 2 baseline chosen by RFC 005 is always-reusable: `reset_for_entry` normalizes required scratch state at solve entry, so no separate caller reset is required after success, error, or non-convergence.
 
-Rationale: Solver internals may partially mutate scratch regions before detecting singularity, ill-conditioning, or numerical-domain violations. Reuse must be explicit and safe.
+Rationale: Solver internals may partially mutate scratch regions before detecting singularity, ill-conditioning, or numerical-domain violations. Reuse must be explicit and safe; the current device baseline achieves this by overwrite-on-use normalization and reuse-after-failure tests.
 
 ### ED-012: Device Policy Values Are Runtime Configuration, Not Type-Level Solver Identity
 
@@ -1287,11 +1347,13 @@ graph TD
 
 ### 7.2 Milestone 2: Static Backend and Device Interface
 
-| RFC | Scope |
-|---|---|
-| RFC 004 | Const-generic owned storage, borrowed views, dimension markers, stable Rust limitations |
-| RFC 005 | Typed workspace lifecycle, sizing visibility, reset/poison semantics, low-level raw scratch fallback rules |
-| RFC 006 | First device solver family, deterministic entrypoint categories, runtime policy configuration, timing modes, panic-averse gate plan |
+**Complete (v0.10.1).** RFC 004/005/006 are implemented and in `rfcs/done/`.
+
+| RFC | Scope | Status |
+|---|---|---|
+| RFC 004 | Const-generic owned storage, borrowed views, dimension markers, stable Rust limitations | Implemented (v0.8.0) — `FixedVector` / `FixedMatrix` (`owned-arrays`) + contiguous static views; ADR-020 |
+| RFC 005 | Typed workspace lifecycle, sizing visibility, reset/poison semantics, low-level raw scratch fallback rules | Implemented (v0.9.0) — `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` / `WorkspaceFor`, `DeviceSolveConfig` / `TimingMode`, `WorkspaceFootprint`; always-reusable policy |
+| RFC 006 | First device solver family, deterministic entrypoint categories, runtime policy configuration, timing modes, panic-averse gate plan | Implemented (v0.10.0, hardened v0.10.1) — box/bound projected first-order kernel; `panic-audit` gate |
 
 ### 7.3 Milestone 3: Dynamic Backend and Cluster Interface
 

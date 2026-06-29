@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.10.1 — Milestone 2 complete: the deterministic device kernel landed.** The final Milestone 2 contract, RFC 006, adds `loeres-device`'s baseline box/bound-constrained projected first-order solver: a `ProjectedFirstOrderProblem` first-order-oracle contract, the bounded-iteration `solve_projected_first_order` kernel (`x <- clamp(x - alpha * grad, lo, hi)`, iterate-change convergence), the caller-owned `ProjectedFirstOrderWorkspace` scratch, and a `DeviceSolveReport` outcome wrapping the RFC 014 core `SolveReport` via `AsCoreReport` — non-convergence at the iteration cap is an `Ok` status, never a `SolverError`. Behind `owned-arrays`, all `no_std`/no-`alloc`, verified on a bare-metal target. v0.10.1 adds fail-safe step-scale and non-finite validation, a `panic-audit` gate, and RFC 006 closeout corrections. With RFC 004, 005, and 006 implemented, **Milestone 2 is complete.**
+> **v0.11.0 — Milestone 3 opens: dynamic server-side storage adapters.** RFC 007 lands `loeres-backend-std`'s dynamic dense and sparse storage. Dense: row-major `Vec`-backed `DenseVector`/`DenseMatrix` implementing the full RFC 002 access surface — reads, mutable writes (`VectorAccessMut`/`MatrixAccessMut`), and contiguous fast paths (`as_contiguous`/`as_contiguous_mut`/`as_row_major`). Sparse: a CSR `SparseMatrix` whose `MatrixAccess::get` returns implicit zero for in-bounds unstored entries, with a `try_get_stored` extension distinguishing a stored zero from an implicit one, plus `nnz`. Triplet ingestion rejects duplicate coordinates and enforces optional pre-allocation memory limits (`DenseIngestOptions`/`SparseIngestOptions`); `validate_finite` helpers scan stored values for non-finite entries. Construction errors map precisely — zero/overflow extents to `InvalidDimension`, length/coordinate disagreements to `DimensionMismatch`, duplicates/limits to `InvalidInput`. The adapters are deliberately storage-first: canonical validation-state ownership is deferred to RFC 012, the next contract in the Milestone 3 sequence. All server-side `std`, zero-bleed-clean — no dynamic type leaks into core or device.
 
 Build and verify from source:
 
@@ -71,7 +71,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`014`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`014`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

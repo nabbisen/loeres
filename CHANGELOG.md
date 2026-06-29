@@ -5,6 +5,90 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.11.0] — 2026-06-30 — RFC 007 dynamic dense/sparse storage adapters (Milestone 3 opens)
+
+RFC 007 is implemented, opening Milestone 3 with the server-side dynamic storage
+foundation in `loeres-backend-std`. The RFC is **storage-first**: it defines no
+canonical validation-state type — that ownership is deferred to RFC 012, which is
+sequenced next, ahead of RFC 008/009. All server-side `std`; zero-bleed-clean
+(no dynamic type leaks into `loeres` core or `loeres-device`).
+
+### Added — dynamic dense adapters (`loeres-backend-std::dense`, feature `dense`, default)
+
+- `DenseVector<S>` (row-major `Vec<S>`) implements `VectorAccess`,
+  `VectorAccessMut`, `ContiguousVectorAccess`, and `ContiguousVectorAccessMut`;
+  `DenseMatrix<S>` (`{ rows, cols, data: Vec<S> }`, row-major) implements
+  `MatrixAccess`, `MatrixAccessMut`, and `ContiguousMatrixAccess`. Both report
+  `DimensionKind::Dynamic`. RFC 002 provides no `ContiguousMatrixAccessMut`, and
+  none is invented.
+- Constructors `from_vec` / `from_row_major_vec`, plus `_with_options` variants
+  taking `DenseIngestOptions { max_elements: Option<usize> }`.
+- `validate_finite() -> Result<(), SolverError>` (bound `S: FiniteScalar`) — a
+  plain finite scan returning `NonFiniteInput` on the first non-finite element;
+  no validation-state wrapper (RFC 012-owned).
+
+### Added — dynamic sparse adapter (`loeres-backend-std::sparse`, feature `sparse`)
+
+- `SparseMatrix<S>` in compressed-sparse-row (CSR) layout. `MatrixAccess::get`
+  returns implicit zero (`S::zero()`) for in-bounds unstored entries;
+  out-of-bounds returns `DimensionMismatch`. The
+  `try_get_stored(row, col) -> Result<Option<S>, SolverError>` extension
+  distinguishes a stored zero from an implicit one; `nnz()` reports the stored
+  count.
+- `from_triplets` ingestion with `SparseIngestOptions { max_entries: Option<usize> }`:
+  rejects zero dimensions (`InvalidDimension`), over-limit payloads
+  (`InvalidInput`, checked before final-storage allocation), out-of-bounds
+  coordinates (`DimensionMismatch`), and duplicate `(row, col)` coordinates
+  (`InvalidInput`, post-sort detection; no combine policy in the baseline).
+- `validate_finite()` scans stored values only; absent entries are implicit zero
+  and need no scan.
+
+### Added — construction error mapping and internal helper
+
+- A precise construction-error mapping: zero or overflowing extents →
+  `InvalidDimension`; row-major length and sparse coordinate disagreements →
+  `DimensionMismatch { lhs, rhs }` under a checked `u32` payload-fallback rule
+  (both values fit `u32` → payload; otherwise `InvalidDimension`; never a
+  truncating cast); duplicate and memory-limit failures → `InvalidInput`.
+- `pub(crate) internal::dimension_mismatch` implementing the fallback rule,
+  shared by the dense and sparse adapters (compiled only when at least one of the
+  two features is enabled).
+
+### Notes
+
+- Features: `dense` (default) and `sparse` gate their modules; `serde`,
+  `adapter-ndarray`, `adapter-nalgebra`, and `native-linalg` remain off by
+  default and inert pending later RFCs. `view` / `batch` / `adapter` remain
+  placeholders.
+- `SparseVector` is out of scope for the baseline (deferred). Mutable sparse
+  editing and efficient sparse traversal are deferred to extension APIs / later
+  RFCs.
+- RFC 007 moved `rfcs/proposed/ → rfcs/done/`; the RFC index and cross-links were
+  updated accordingly. Tests: 136 total (20 new dynamic-backend tests). All gates
+  pass — check, zero-bleed, no-std (`thumbv7em-none-eabihf`), check-rfcs, and
+  panic-audit.
+
+## [0.10.2] — 2026-06-29 — Apex `docs/specs` mirror resync (Milestone 2 currency)
+
+Documentation-only release. No code, API, or gate behavior changes.
+
+The in-repo apex specification mirrors under `docs/specs/` are resynced from the
+owner-approved canonical specifications, advancing their currency from v0.7.0 /
+Milestone-1 to **v0.10.1 / Milestone-2-complete**:
+
+- `docs/specs/loeres-requirements-v1.md`
+- `docs/specs/loeres-external-design-v1.md`
+- `docs/specs/loeres-roadmap-milestones-v1.md`
+
+The refreshed specs record Milestone 2 as complete (RFC 004 static storage,
+v0.8.0; RFC 005 typed workspace mechanics, v0.9.0; RFC 006 baseline device
+kernel, v0.10.0, hardened v0.10.1), the always-reusable workspace lifecycle, the
+`loeres-device` `owned-arrays` feature gate, and the implemented `panic-audit`
+gate. The External Design carries the owner's review patches reconciling the
+workspace-lifecycle and configuration-category wording to the v0.10.1 baseline
+(including ED-011, "Device Workspace Failure Semantics Are Explicit"). Mirrored
+verbatim from the approved canonical artifacts.
+
 ## [0.10.1] — 2026-06-29 — RFC 006 fail-safe hardening and closeout corrections
 
 A corrective patch over v0.10.0, addressing the RFC 006 implementation review.
@@ -960,6 +1044,8 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.11.0]: https://github.com/nabbisen/loeres/releases/tag/v0.11.0
+[0.10.2]: https://github.com/nabbisen/loeres/releases/tag/v0.10.2
 [0.10.1]: https://github.com/nabbisen/loeres/releases/tag/v0.10.1
 [0.10.0]: https://github.com/nabbisen/loeres/releases/tag/v0.10.0
 [0.9.0]: https://github.com/nabbisen/loeres/releases/tag/v0.9.0

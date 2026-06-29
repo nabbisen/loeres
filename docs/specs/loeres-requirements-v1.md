@@ -5,15 +5,16 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted — Milestone 1 (`loeres`) complete (current as of v0.7.0)  
+**Status:** Accepted — Milestone 2 (static backend + device) complete (current as of v0.10.1)  
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Document currency.** This specification is current as of repository release
-> **v0.7.0** and reflects the **accepted** design (no longer a draft). The
-> architecture and the Milestone-1 contracts are accepted and **implemented**:
-> RFC 002 (storage-agnostic access) shipped in v0.7.0, closing Milestone 1. No
-> design content has changed since v0.6.1: v0.6.2 resynced the in-repo
+> **v0.10.1** and reflects the **accepted** design (no longer a draft). The
+> architecture and the Milestone-1 and Milestone-2 contracts are accepted and
+> **implemented**: RFC 002 (storage-agnostic access) shipped in v0.7.0, closing
+> Milestone 1; RFC 004 (v0.8.0), RFC 005 (v0.9.0), and RFC 006 (v0.10.0, hardened
+> v0.10.1) closed Milestone 2. Earlier housekeeping: v0.6.2 resynced the in-repo
 > `docs/specs` mirrors, v0.6.3 renamed the core crate from `loeres-core` to
 > `loeres` (directory `crates/loeres/`; public module layout unchanged — see
 > ADR-019), and v0.7.0 implemented RFC 002 (exact-size row-major views — see
@@ -39,10 +40,30 @@
 >   overlapping mutable views) and **implemented in v0.7.0** (exact-size row-major
 >   views and per-axis 2-D bounds — see ADR-020), **closing Milestone 1.**
 >
+> **Implemented** (Milestone 2 — `loeres-backend-static` / `loeres-device`, in `rfcs/done/`):
+> - **RFC 004** — const-generic fixed-size static storage engine: owned
+>   `FixedVector` / `FixedMatrix` (`owned-arrays`) and baseline contiguous static
+>   views over caller-owned memory, with const-assert dimension invariants and the
+>   RFC 002 access traits reporting `DimensionKind::Static` (exact-size row-major
+>   matrix view constructor — ADR-020); shipped v0.8.0.
+> - **RFC 005** — caller-owned typed workspace mechanics: the
+>   `WorkspaceFootprint` sizing contract plus the `DeviceWorkspace` /
+>   `DeviceWorkspaceDiagnostic` / `WorkspaceFor` lifecycle and `DeviceSolveConfig`
+>   / `TimingMode` policy. Poisoning policy: always-reusable (overwrite-on-use
+>   `reset_for_entry`); shipped v0.9.0.
+> - **RFC 006** — baseline deterministic device kernel: the box/bound-constrained
+>   projected first-order solver (`ProjectedFirstOrderProblem`,
+>   `solve_projected_first_order`, `ProjectedFirstOrderWorkspace`,
+>   `DeviceSolveReport` over the RFC 014 `SolveReport`); non-convergence at the cap
+>   is a status, not an error. Shipped v0.10.0, with fail-safe validation and the
+>   `panic-audit` gate added in v0.10.1.
+>
 > **Status:** Phase 0 (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0); **Milestone 1 (`loeres`) is complete** — RFC 001/002/003/014 are
-> implemented. 62 core tests pass with `release-gate` green (including the bare-metal
-> `no_std` build). `ROADMAP.md` holds the authoritative live status.
+> (v0.3.0); **Milestone 1 (`loeres`) and Milestone 2 (static backend + device) are
+> complete** — RFC 001/002/003/014 and RFC 004/005/006 are implemented. 116 tests
+> pass with `release-gate` green (now including the `panic-audit` gate, across the
+> bare-metal `no_std` build and all feature combinations). `ROADMAP.md` holds the
+> authoritative live status.
 
 ---
 
@@ -576,6 +597,8 @@ Edge solver scope must exclude by default:
 - Thread pools.
 - Async runtime usage.
 
+**Implemented (v0.10.0; hardened v0.10.1).** RFC 006 satisfies the device baseline with a box/bound-constrained projected first-order kernel (a bounded first-order method within this scope): `ProjectedFirstOrderProblem` / `solve_projected_first_order` / `ProjectedFirstOrderWorkspace` / `DeviceSolveReport`. DEVICE-001..013 hold for the baseline — non-convergence is a status (DEVICE-006), the kernel avoids `unwrap` / `expect` / unchecked indexing (DEVICE-007, mechanically checked by the `panic-audit` gate), the caller-owned typed workspace is the primary model (DEVICE-008), and footprint / iteration / target assumptions are documented (DEVICE-009, RFC 006 §7.1; determinism is target-scoped per DEVICE-013). An optional constant-iteration mode is available behind `constant-iteration` (STEP-005). Small dense QP and broader structured families remain future RFCs.
+
 ---
 
 ## 6. API Design Requirements
@@ -647,6 +670,8 @@ Solvers must make workspace needs explicit.
 | WS-006 | Workspace memory footprint must be documented for each device solver. |
 | WS-007 | Workspace reuse must have explicit reset or initialization semantics. |
 | WS-008 | Server solvers may allocate dynamically but should provide diagnostics or controls for large allocations. |
+
+**Implemented (v0.9.0).** RFC 005 satisfies WS-001..007 for the device path: no hidden buffers (WS-001); caller-owned workspace passed by `&mut` (WS-002); `DeviceWorkspace` typed workspaces as the primary model (WS-003); `WorkspaceFor::required_workspace_bytes` sizing, with `DeviceSolveConfig::validate` and boundary validation failing before solve side effects (WS-005); documented footprint (WS-006, RFC 006 §7.1); and explicit `reset_for_entry` reset/initialization semantics (WS-007, always-reusable overwrite-on-use).
 
 ### 6.6 Solver Step and Solve-Loop Requirements
 
@@ -1033,6 +1058,8 @@ Acceptance:
 - Public APIs use borrowed large structures.
 - Workspace memory is reviewable.
 - Determinism claims are tied to documented target assumptions.
+
+**Implemented (Milestone 2, v0.8.0–v0.10.1):** static storage wrappers (RFC 004), the typed workspace model (RFC 005), and the first device solver family plus panic/determinism gates (RFC 006, including the implemented `panic-audit` gate). The reference floating-point profile remains RFC 011-owned (target profiles); device determinism is documented as target-scoped.
 
 ### 12.4 Phase 3 — Std Backend and Cluster Design
 

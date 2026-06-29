@@ -70,7 +70,28 @@ and gradient via fixed-size slices; bounds via the contiguous slice with a
 per-element fallback); the access traits bound only `BaseScalar` except where
 they compare / project / tolerance-check.
 
+### In progress: Milestone 3 — dynamic backend & cluster (RFC 007 →)
+
+Milestone 3 opens with the server-side dynamic storage foundation. **RFC 007** is
+now **implemented (v0.11.0)**: `loeres-backend-std` gains dynamic dense and
+sparse storage adapters — row-major `Vec`-backed `DenseVector` / `DenseMatrix`
+implementing the full RFC 002 access surface (reads, mutable writes, and the
+contiguous fast paths), and a CSR `SparseMatrix` with implicit-zero
+`MatrixAccess::get`, a `try_get_stored` stored-vs-implicit extension, and `nnz`.
+Triplet ingestion rejects duplicate coordinates and enforces optional
+pre-allocation memory limits (`DenseIngestOptions` / `SparseIngestOptions`);
+`validate_finite` helpers scan stored values. Construction errors map precisely
+(zero/overflow extents → `InvalidDimension`; length/coordinate disagreements →
+`DimensionMismatch` under a checked `u32` payload-fallback rule; duplicates /
+limits → `InvalidInput`). The RFC is deliberately **storage-first**: it defines
+no canonical validation-state type. That ownership stays with RFC 012, which is
+sequenced next — **before** RFC 008/009 depend on validated/trusted-input
+semantics. The implementation-decision pass (I1–I10, I3 CSR / I7 minimal
+extension) and the storage-first split are recorded in RFC 007. All gates pass;
+136 tests (62 core + 22 static backend + 32 device + 20 dynamic backend).
+
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 
 1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2). **Resolved — implemented (v0.10.0); Milestone 2 complete.**
-2. RFCs 007 / 008 / 012 — validation-state reconciliation (Milestone 3).
+2. RFC 007 — dynamic dense/sparse storage adapters (Milestone 3). **Resolved — implemented (v0.11.0) storage-first; canonical validation-state ownership deferred to RFC 012.**
+3. RFC 012 — validation-state and trusted-input policy (Milestone 3, **next**), sequenced ahead of RFC 008/009; then RFCs 008 / 009 consume the core-owned validation-state model.

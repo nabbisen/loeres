@@ -1,35 +1,37 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted — Milestone 1 (`loeres`) complete (current as of v0.7.0)  
+Status: Accepted — Milestone 2 (static backend + device) complete (current as of v0.10.1)  
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
-> **Document currency.** Current as of repository release **v0.7.0**; the design is
+> **Document currency.** Current as of repository release **v0.10.1**; the design is
 > accepted. **Phase 0** (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0). **Milestone 1 (`loeres`) is complete:** RFC 003 (v0.4.0),
-> RFC 014 (v0.5.0), RFC 001 (v0.6.0), and **RFC 002** (v0.7.0) are implemented and
-> in `rfcs/done/`; RFC 002 (storage-agnostic access) **closed Milestone 1**.
-> Milestone 2 (static backend + device kernel, RFC 004–006) and Milestone 3
-> (dynamic backend + cluster, RFC 007–009) follow. 62 core tests pass with
-> `release-gate` green, including the bare-metal `no_std` build. No design content
-> has changed since v0.6.1: v0.6.2 resynced the in-repo `docs/specs` mirrors, and
-> v0.6.3 renamed the core crate from `loeres-core` to `loeres` (directory
-> `crates/loeres/`; module layout unchanged).
+> (v0.3.0). **Milestone 1 (`loeres`) is complete:** RFC 003 (v0.4.0), RFC 014
+> (v0.5.0), RFC 001 (v0.6.0), and RFC 002 (v0.7.0). **Milestone 2 (static backend +
+> device) is complete:** RFC 004 (v0.8.0 — const-generic fixed-size static storage),
+> RFC 005 (v0.9.0 — caller-owned typed workspace mechanics), and RFC 006 (v0.10.0 —
+> baseline deterministic device kernel; fail-safe hardening and closeout corrections
+> in v0.10.1) are implemented and in `rfcs/done/`. Milestone 3 (dynamic backend +
+> cluster, RFC 007–009) follows. 116 tests pass with `release-gate` green — now
+> including the implemented `panic-audit` gate — across the bare-metal `no_std`
+> build and all feature combinations.
 
 ---
 
-## Current v0.7.0 Roadmap Snapshot
+## Current v0.10.1 Roadmap Snapshot
 
 | Area | Status | Next action |
 |---|---|---|
 | Phase 0 — repository/governance bootstrap | Complete since v0.3.0 | Maintain gates as RFC 010 evolves. |
-| RFC 003 — allocation-free errors/diagnostics | Implemented since v0.4.0 | Use as fixed error topology for RFC 002 and later solvers. |
-| RFC 014 — solver outcome/status taxonomy | Implemented since v0.5.0 | Use `SolveStatus` / `TerminationReason` / `StepOutcome` in device and cluster reports. |
-| RFC 001 — stratified scalar model | Implemented since v0.6.0 | Continue using `BaseScalar` without ordering and `OrderedScalar` for projection/comparison. |
-| RFC 002 — storage-agnostic access contracts | Implemented since v0.7.0 | Closed Milestone 1. |
-| RFC 004–006 — static backend/device path | Next (Milestone 2) | Active now that Milestone 1 is closed. |
-| RFC 007–009 — dynamic backend/cluster path | Not started | May begin after Milestone 1; keep zero-bleed checks active. |
-| RFC 010–013 — cross-cutting governance/targets/validation/conformance | Designed as cross-cutting work | Keep aligned with implementation gates and upcoming solver/backend work. |
+| RFC 003 — allocation-free errors/diagnostics | Implemented since v0.4.0 | Fixed error topology for all solvers. |
+| RFC 014 — solver outcome/status taxonomy | Implemented since v0.5.0 | `SolveStatus` / `TerminationReason` / `StepOutcome` / `SolveReport` used by device reports. |
+| RFC 001 — stratified scalar model | Implemented since v0.6.0 | `BaseScalar` without ordering; `OrderedScalar`+ for projection/comparison. |
+| RFC 002 — storage-agnostic access contracts | Implemented since v0.7.0 | Closed Milestone 1; contiguous fast path consumed by the RFC 006 kernel. |
+| RFC 004 — const-generic fixed-size static storage | Implemented since v0.8.0 | `FixedVector`/`FixedMatrix` (`owned-arrays`) + contiguous static views. |
+| RFC 005 — caller-owned typed workspace mechanics | Implemented since v0.9.0 | `WorkspaceFootprint`; `DeviceWorkspace`/`DeviceWorkspaceDiagnostic`/`WorkspaceFor`; `DeviceSolveConfig`/`TimingMode`. |
+| RFC 006 — baseline deterministic device kernel | Implemented since v0.10.0 (hardened v0.10.1) | `ProjectedFirstOrderProblem`, `solve_projected_first_order`, `DeviceSolveReport`. **Closed Milestone 2.** |
+| RFC 007–009 — dynamic backend/cluster path | Next (Milestone 3) | **Unblocked** now that Milestone 2 is closed; keep zero-bleed active. |
+| RFC 010–013 — cross-cutting governance/targets/validation/conformance | Designed as cross-cutting work | `panic-audit` now implemented (RFC 006 §6.2); `size-budget` remains RFC 010/011-owned. |
 
 ## 0. Purpose and Roadmap Principle
 
@@ -413,6 +415,8 @@ Milestone 2 may begin only when:
 
 ### 3.3 RFC 004 — Const-Generic and Fixed-Size Static Storage Engine
 
+**Status: Implemented (v0.8.0).** `loeres-backend-static` provides owned `FixedVector<S, N>` / `FixedMatrix<S, R, C>` behind the `owned-arrays` feature (`repr(transparent)` over `[S; N]` / `[S; R*C]`, const-assert `N > 0` and `R, C > 0` dimension invariants, MSRV-validated on 1.85.0), plus baseline contiguous static views over caller-owned memory — all implementing the RFC 002 access contracts and reporting `DimensionKind::Static`. ADR-020 fixed the exact-size row-major matrix-view constructor contract. No external crate dependency; the fallback flattened-slice layout was accepted but not needed. Advanced strided / sub-matrix `static-views` were deferred (RFC 004 §7.2).
+
 #### Scope
 
 Design `loeres-backend-static` public storage wrappers and views for stack-allocated or caller-owned memory.
@@ -465,6 +469,8 @@ Design `loeres-backend-static` public storage wrappers and views for stack-alloc
 - Fallback layout strategy is accepted, even if not immediately used.
 
 ### 3.4 RFC 005 — Caller-Owned Typed Workspace Mechanics and Poisoning Semantics
+
+**Status: Implemented (v0.9.0).** Two-crate workspace boundary. `loeres-backend-static::workspace` exposes the `WorkspaceFootprint` byte-footprint contract (impls behind `owned-arrays`). `loeres-device::workspace` adds the caller-owned lifecycle: `DeviceWorkspace` (`reset_for_entry`, overwrite-on-use), `DeviceWorkspaceDiagnostic` (always-available compact `DiagnosticSnapshot`, ungated), and `WorkspaceFor<P>` (associated workspace type + `required_workspace_bytes` sizing). `loeres-device::config` adds runtime `DeviceSolveConfig` / `TimingMode` (`#[non_exhaustive]`; `ConstantIteration` behind `constant-iteration`) with structural validation. **Poisoning policy chosen: always-reusable (option 2)** — `reset_for_entry` normalizes the workspace on entry (overwrite-on-use), so it is reusable after both success and failure with no separate reset step.
 
 #### Scope
 
@@ -530,6 +536,8 @@ The RFC must choose exactly one baseline policy for v0.x.
 
 ### 3.5 RFC 006 — Baseline Deterministic Solver Engine
 
+**Status: Implemented (v0.10.0; hardened v0.10.1).** The baseline is a box/bound-constrained projected first-order kernel. `loeres-device::problem` defines `ProjectedFirstOrderProblem<S, N>` (first-order oracle plus static box bounds, distinct read-only `Bounds` associated type); `loeres-device::solve` defines `solve_projected_first_order` (bounded-iteration `x <- clamp(x - α·∇f(x), lo, hi)` with iterate-change convergence), the caller-owned `ProjectedFirstOrderWorkspace<S, N>` gradient scratch, and `DeviceSolveReport` wrapping the RFC 014 `SolveReport` via `AsCoreReport`. Non-convergence at the cap is an `Ok` status, never a `SolverError`. The kernel surface is gated behind `owned-arrays`; the scalar bound is `S: FiniteScalar + MetricScalar` (problem-provided step scale, no internal division). v0.10.1 added fail-safe validation (step scale finite and strictly positive; non-finite iterate / gradient / bounds rejected) and an implemented `panic-audit` gate in `release-gate`. Determinism is documented as target-scoped; size and footprint evidence is in RFC 006 §7.1.
+
 #### Scope
 
 Design and implement the first device solver engine. The preferred v0.x baseline is a box/bound-constrained projected first-order kernel or another closed-form-projection family with a bounded loop. General linear-inequality projection (`Ax <= b`) and broad dense QP/IPM scope are out of the first device kernel unless a later RFC explicitly accepts the additional inner-solver complexity.
@@ -586,6 +594,8 @@ Design and implement the first device solver engine. The preferred v0.x baseline
 
 ### 3.6 Milestone 2 Exit Criteria
 
+**Outcome (v0.10.1): met.** All criteria are satisfied — RFC 004/005/006 are `Implemented`; `loeres-backend-static` and `loeres-device` build with no `std` or `alloc` (verified on `thumbv7em-none-eabihf`); the zero-bleed gate proves no illegal edge; the device kernel solves a box-constrained projected-gradient problem end-to-end under test; panic-path analysis runs via the implemented `panic-audit` gate in `release-gate`; workspace footprint (`8N + 16` bytes for `f64`) and report/diagnostic sizes are measured and recorded (RFC 006 §7.1); workspace reuse after success, failure, and non-convergence is tested. Automated per-symbol binary-size budgeting remains the `size-budget` gate's scope (RFC 010/011).
+
 Milestone 2 is complete only when:
 
 - RFC 004, 005, and 006 are `Implemented`.
@@ -622,6 +632,8 @@ Milestone 3 may begin when:
 - The zero-bleed gate exists so cluster additions cannot leak backward into core/device crates.
 
 Milestone 3 does not strictly require Milestone 2 implementation to be complete, but any shared test corpus or parity requirement that depends on device behavior cannot be closed until Milestone 2 provides a compatible baseline solver.
+
+**As of v0.10.1, Milestone 2 is complete**, so the device-side baseline (the RFC 006 projected first-order kernel) is available as the parity reference; the device-dependent parity corpus is unblocked.
 
 ### 4.3 RFC 007 — Heap-Allocated and Sparse Storage Adapters
 
@@ -930,6 +942,8 @@ Required checks:
 - selected panic-analysis tooling run under the release profile used for size and target checks;
 - manual review of any `unsafe` code if it is ever introduced.
 
+**As of v0.10.1**, the `unwrap` / `expect` / `panic!` / `todo!` / `unimplemented!` / logging-macro checks are mechanically enforced for the `no_std` production crates (`loeres`, `loeres-backend-static`, `loeres-device`, excluding tests) by the implemented `cargo xtask panic-audit` gate, which runs inside `release-gate` (RFC 006 §6.2).
+
 ### 5.8 Size and Monomorphization Verification
 
 Size verification must include:
@@ -965,7 +979,7 @@ A release candidate may be cut only when:
 |---|---|---|---|---|
 | Phase 0 | Governance bootstrap | none | RFC lifecycle, repository skeleton, and initial `xtask` exist. | ✅ complete (v0.3.0) |
 | Phase 1 | Core | RFC 001, 002, 003, 014 | Core contracts frozen and no-std verified. | ✅ complete — RFC 001/002/003/014 implemented; core contracts frozen and `no_std`-verified (v0.7.0) |
-| Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ⬜ not started |
+| Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ✅ complete — RFC 004 (v0.8.0) / 005 (v0.9.0) / 006 (v0.10.0, hardened v0.10.1); kernel runs on `thumbv7em-none-eabihf` under test; zero-bleed, `no-std`, and `panic-audit` gates pass; footprint evidence recorded (RFC 006 §7.1) |
 | Phase 3 | Cluster | RFC 007, 008, 009 | Dynamic backend and cluster orchestration pass partial-failure, observability, and dependency isolation checks. | ⬜ not started |
 | Integration | Cross-layer verification | corpus and `xtask` gates | Compatible cluster/device solvers converge within accepted epsilon and preserve separation. | ⬜ not started |
 
