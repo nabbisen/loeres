@@ -13,7 +13,7 @@ members = [
 # Member crates are unpublished in the Phase 0 skeleton (no public API yet);
 # the repository release tag is the source of version truth (see CHANGELOG.md).
 [workspace.package]
-version = "0.7.2"
+version = "0.8.0"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"

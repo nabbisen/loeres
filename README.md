@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.7.0 — Milestone 1 complete.** `loeres` ships the error/diagnostic topology (RFC 003), the solver outcome/status taxonomy (RFC 014), the six-tier scalar capability model (RFC 001 — `BaseScalar` … `AdvancedNumericalScalar`, with `f32`/`f64` baseline impls; ordering is the opt-in `OrderedScalar` tier), and the storage-agnostic access contracts (RFC 002 — `VectorAccess` / `MatrixAccess` with mutable and contiguous fast-path variants, the borrowed `VectorView` / `MatrixView` reference views, `Dim2`, and `DimensionKind`). All verified `no_std`/no-`alloc` on a bare-metal target. Next: the static backend and first device kernel (Milestone 2, RFC 004–006).
+> **v0.8.0 — Milestone 2 underway.** Building on the Milestone 1 core (the error/diagnostic topology RFC 003, the solver outcome/status taxonomy RFC 014, the six-tier scalar model RFC 001, and the storage-agnostic access contracts RFC 002), `loeres-backend-static` now provides the static storage engine (RFC 004): owned `FixedVector` / `FixedMatrix` (feature `owned-arrays`) and baseline contiguous static views over caller-owned memory, with compile-time dimension invariants and the RFC 002 access + contiguous fast-path traits reporting `DimensionKind::Static`. All verified `no_std`/no-`alloc` on a bare-metal target. Next in Milestone 2: typed workspace mechanics (RFC 005) and the first deterministic device kernel (RFC 006).
 
 Build and verify from source:
 
@@ -71,7 +71,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`003`/`014`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`014`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

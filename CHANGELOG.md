@@ -5,7 +5,54 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.7.2] — 2026-06-27 — In-repo spec mirror caught up to v0.7.0 (docs only)
+## [0.8.0] — 2026-06-29 — Static storage engine (RFC 004); Milestone 2 underway
+
+The first Milestone 2 contract. `loeres-backend-static` graduates from a
+documented skeleton to a working static storage engine implementing the RFC 002
+access surface, all `no_std` / no-`alloc` and verified on the bare-metal
+`thumbv7em-none-eabihf` target. Minor bump: an RFC is resolved.
+
+The const-assertion pattern used for the compile-time dimension invariants was
+validated against the pinned MSRV (1.85.0, edition 2024) before the public
+constructor signatures were frozen — a valid construction compiles, a mismatched
+one fails with `error[E0080]` — so the `const fn -> Self` constructors carry no
+runtime-`Result` fallback (RFC 004 §8.1).
+
+### Added — `loeres-backend-static` static storage (feature-gated)
+
+- `dimension` (baseline): re-exports `Dim2` / `DimensionKind`, the `STATIC_KIND`
+  marker and `static_dim2` descriptor, plus the shared bounds-checked access
+  primitives that the owned arrays and static views delegate to, using the
+  RFC 002 §5.1 / ADR-020 error mapping (per-axis 2-D bounds, no silent
+  `usize`→`u32` truncation, overflow failed closed as
+  `InternalInvariantViolation`).
+- `array` (feature `owned-arrays`): `FixedVector<S, N>` and
+  `FixedMatrix<S, R, C, N>`, `#[repr(transparent)]` owned wrappers with
+  compile-time dimension invariants (`N > 0`; `N == R*C` and `R,C > 0`),
+  footprint constants (`ELEMENTS`, plus `ROWS` / `COLS` for matrices), and the
+  RFC 002 access, mutable, and contiguous fast-path traits. Both report
+  `DimensionKind::Static`.
+- `view` (baseline): `StaticVectorView` / `StaticVectorViewMut` /
+  `StaticMatrixView` / `StaticMatrixViewMut` — const-sized contiguous views over
+  caller-owned `&[S; N]` / `&mut [S; N]` (peripheral buffers, DMA regions,
+  RTOS-owned state). They implement the access traits **directly** — not as
+  wrappers around the core `Dynamic`-reporting views — and report `Static`.
+
+### Notes
+
+- Implementation-decision pass (D1–D6) accepted: core-mirroring constructor
+  names (`from_array` / `from_row_major_array`; `from_array_ref` / `_mut`;
+  `from_row_major_ref` / `_mut`), `ELEMENTS` / `ROWS` / `COLS` footprint
+  constants, module-level feature gating, no `trybuild` dev-dependency (the
+  compile-fail property is documented and MSRV-validated), single `array.rs`
+  (133 ELOC), and advanced `static-views` deferred (RFC 004 §7.2).
+- RFC 004 moved `proposed/` → `done/` (status *Implemented (v0.8.0)*); RFC index
+  and cross-links updated. A stale README enumeration of `rfcs/done/` (omitting
+  `002` since v0.7.0) was corrected while adding `004`.
+- 82 tests pass (62 core + 20 static backend); full release gate green
+  (check / zero-bleed / no-std / check-rfcs).
+
+
 
 A documentation-currency release that closes the apex-spec lag opened by v0.7.0.
 The in-repo `docs/specs/` mirrors were last synced at v0.6.3 (RFC 002 shown as
@@ -765,6 +812,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.8.0]: https://github.com/nabbisen/loeres/releases/tag/v0.8.0
 [0.7.2]: https://github.com/nabbisen/loeres/releases/tag/v0.7.2
 [0.7.1]: https://github.com/nabbisen/loeres/releases/tag/v0.7.1
 [0.7.0]: https://github.com/nabbisen/loeres/releases/tag/v0.7.0

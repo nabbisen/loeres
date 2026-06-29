@@ -33,12 +33,21 @@ base-scalar ordering question is resolved: the architect chose **Direction B**
 (base excludes ordering; ordering is `OrderedScalar`), recorded as ADR-017, and
 Requirements §5.1.3 was amended to match. All gates pass; 62 tests.
 
-### Next: Milestone 2 — static backend + device kernel (RFC 004–006)
+### In progress: Milestone 2 — static backend + device kernel (RFC 004–006)
 
-Milestone 1 (`loeres` core contracts) is closed. The path continues with the
-static storage engine (RFC 004), typed workspace mechanics (RFC 005), and the
-first deterministic device solver kernel (RFC 006), all on `loeres-backend-static`
-and `loeres-device`. RFC 002's optional contiguous fast path was scoped for the
+Milestone 1 (`loeres` core contracts) is closed. Milestone 2 is underway. The
+static storage engine (**RFC 004**) is now **implemented (v0.8.0)**:
+`loeres-backend-static` provides owned `FixedVector` / `FixedMatrix` (feature
+`owned-arrays`) and the baseline contiguous static views over caller-owned
+memory, with compile-time dimension invariants (const-assertion pattern
+MSRV-validated on 1.85.0) and the RFC 002 access + contiguous fast-path traits
+reporting `DimensionKind::Static`. The implementation-decision pass (D1–D6) was
+accepted; advanced `static-views` are deferred (RFC 004 §7.2). All gates pass;
+82 tests (62 core + 20 static backend).
+
+The milestone continues with typed workspace mechanics (RFC 005) and the first
+deterministic device solver kernel (RFC 006), on `loeres-backend-static` and
+`loeres-device`. RFC 002's optional contiguous fast path was scoped for the
 RFC 006 kernel; the access traits bound only `BaseScalar` except where they
 compare / project / tolerance-check.
 

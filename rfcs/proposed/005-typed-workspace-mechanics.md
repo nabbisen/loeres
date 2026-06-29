@@ -22,7 +22,7 @@ This RFC depends on:
 
 * [RFC 001](../done/001-stratified-scalar.md) for scalar capabilities;
 * [RFC 003](../done/003-allocation-free-errors.md) for `WorkspaceTooSmall` and numerical errors;
-* [RFC 004](004-static-storage-engine.md) for static storage primitives.
+* [RFC 004](../done/004-static-storage-engine.md) for static storage primitives.
 
 Dependency rules:
 
