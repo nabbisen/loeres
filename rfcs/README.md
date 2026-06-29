@@ -12,7 +12,6 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | [009](proposed/009-observability-ffi-gateways.md) | Observability, Metrics, and FFI Gateway Interfacing | Phase 3 / Milestone 3 | `loeres-cluster`, `loeres-backend-std` |
 | [010](proposed/010-xtask-verification-governance.md) | xtask Verification Governance | Cross-cutting / Verification | `xtask`, CI, all crates |
 | [011](proposed/011-target-profiles-and-deterministic-math.md) | Target Profiles and Deterministic Math Policy | Cross-cutting / Target Profiles | `loeres-device`, `loeres-backend-static`, `xtask` |
-| [012](proposed/012-validation-state-and-trusted-input-policy.md) | Validation State and Trusted Input Policy | Cross-cutting / Validation | `loeres`, all solve entrypoints |
 | [013](proposed/013-conformance-corpus-and-numerical-parity.md) | Conformance Corpus and Numerical Parity Policy | Cross-cutting / Conformance | `conformance`, `xtask`, device/cluster examples |
 
 ## Done RFCs
@@ -27,6 +26,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | [005](done/005-typed-workspace-mechanics.md) | Caller-Owned Typed Workspace Mechanics and Poison-Free Reuse | Implemented (v0.9.0) | `loeres-backend-static::workspace` footprint contract + `loeres-device` workspace lifecycle (`DeviceWorkspace`/`DeviceWorkspaceDiagnostic`/`WorkspaceFor`) and `config` (`DeviceSolveConfig`/`TimingMode`). Concrete workspaces/kernel deferred to RFC 006. |
 | [006](done/006-deterministic-solver-kernel.md) | Baseline Deterministic Device Solver Kernel | Implemented (v0.10.0) | `loeres-device` `problem`/`solve`; box/bound-constrained projected first-order kernel (`ProjectedFirstOrderProblem`, `solve_projected_first_order`, `DeviceSolveReport`, `ProjectedFirstOrderWorkspace`) behind `owned-arrays`, outcomes via RFC 014 `SolveReport` + `AsCoreReport`. Completes Milestone 2. |
 | [007](done/007-dynamic-sparse-adapters.md) | Dynamic Dense and Sparse Storage Adapters | Implemented (v0.11.0) | `loeres-backend-std` `dense`/`sparse`; row-major `Vec`-backed `DenseVector`/`DenseMatrix` (full RFC 002 mutable + contiguous traits) and a CSR `SparseMatrix` (implicit-zero `get`, `try_get_stored`, `nnz`), triplet ingestion with duplicate rejection + memory-limit options, `validate_finite` helpers. Canonical validation state deferred to RFC 012. Opens Milestone 3. |
+| [012](done/012-validation-state-and-trusted-input-policy.md) | Validation State and Trusted Input Policy | Implemented (v0.12.0) | `loeres` `validation` module; `ValidationScope` (coverage bitset), `FiniteCoverage`, `TrustKind`, `TrustToken`, `ValidationCoverage`, `TrustedByCaller`, `ValidationState`. Core-first vocabulary; cluster trusted-pipeline / caching deferred to RFC 008, shared conformance corpus to RFC 013. |
 | [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 
 ## Archived RFCs

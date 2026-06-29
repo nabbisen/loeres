@@ -6,7 +6,8 @@
 //! halves implement these same contracts without importing each other.
 //!
 //! Public module topography (external design §1.5):
-//! `scalar`, `access`, `problem`, `solver`, `error`, `diagnostic`, `dimension`.
+//! `scalar`, `access`, `problem`, `solver`, `error`, `diagnostic`, `dimension`,
+//! `validation`.
 //!
 //! Milestone 1: the [`scalar`] capability tiers (RFC 001), the [`error`] and
 //! [`diagnostic`] topologies (RFC 003), the [`solver`] outcome/status taxonomy
@@ -23,6 +24,7 @@ pub mod error;
 pub mod problem;
 pub mod scalar;
 pub mod solver;
+pub mod validation;
 
 pub use access::{
     ContiguousMatrixAccess, ContiguousVectorAccess, ContiguousVectorAccessMut, MatrixAccess,
@@ -37,4 +39,8 @@ pub use scalar::{
 };
 pub use solver::{
     AsCoreReport, IterationReport, SolveReport, SolveStatus, StepOutcome, TerminationReason,
+};
+pub use validation::{
+    FiniteCoverage, TrustKind, TrustToken, TrustedByCaller, ValidationCoverage, ValidationScope,
+    ValidationState,
 };

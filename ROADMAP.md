@@ -94,8 +94,24 @@ CSR `row_ptr` buffer, and the sparse buffers use `try_reserve_exact`
 defense-in-depth. All gates pass; 139 tests (62 core + 22 static backend + 32
 device + 23 dynamic backend).
 
+**RFC 012** is now **implemented (v0.12.0)**: the core-first validation-state
+vocabulary in `loeres::validation` — `ValidationScope` (a `repr(transparent)`
+coverage bitset with a release-local `ALL`), `FiniteCoverage`
+(`Checked` / `NotApplicable`), a `#[non_exhaustive]` `TrustKind`, `TrustToken`,
+the `ValidationCoverage` recording descriptor, `TrustedByCaller` evidence, and
+the `ValidationState` category enum. RFC 012 owns only the representation (I9):
+it runs no scans and changes no shipped solver signature — backends remain the
+validators and record their outcome here, while structural validity stays a
+construction precondition (RFC 004 / 007). Finite-not-applicable is kept distinct
+from a missing-capability *unavailable* (rejected, not validated). Cluster
+trusted-pipeline / caching are deferred to RFC 008, the shared conformance corpus
+to RFC 013. The implementation-decision pass (I1–I11) is recorded in RFC 012. All
+gates pass; 147 tests (70 core + 22 static backend + 32 device + 23 dynamic
+backend).
+
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 
 1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2). **Resolved — implemented (v0.10.0); Milestone 2 complete.**
 2. RFC 007 — dynamic dense/sparse storage adapters (Milestone 3). **Resolved — implemented (v0.11.0) storage-first; canonical validation-state ownership deferred to RFC 012.**
-3. RFC 012 — validation-state and trusted-input policy (Milestone 3, **next**), sequenced ahead of RFC 008/009; then RFCs 008 / 009 consume the core-owned validation-state model.
+3. RFC 012 — validation-state and trusted-input policy (Milestone 3). **Resolved — implemented (v0.12.0) core-first; cluster trusted-pipeline / caching deferred to RFC 008, conformance corpus to RFC 013.**
+4. RFCs 008 / 009 — async orchestration and observability (Milestone 3, **next**); RFC 008 consumes the RFC 012 validation vocabulary for cluster ingestion and trusted-pipeline mechanics.

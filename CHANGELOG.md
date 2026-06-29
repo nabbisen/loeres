@@ -5,6 +5,51 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.12.0] — 2026-06-30 — RFC 012 core validation-state vocabulary
+
+RFC 012 is implemented as a **core-first** addition: the `loeres::validation`
+vocabulary describing *what input validation has been performed*. RFC 012 owns
+only the representation — it runs no scans and changes no shipped solver
+signature; backends remain the validators and record their outcome in these
+types. Structural validity stays a construction precondition (RFC 004 / 007). All
+core types are `no_std` / no-`alloc`. No new `SolverError` category; no
+device / backend / cluster signature change.
+
+### Added — `loeres::validation` (re-exported at the `loeres` root)
+
+- `ValidationScope` — a `#[repr(transparent)]` `u8` coverage bitset with consts
+  `EMPTY`, `FINITE`, `PROBLEM_CONFIG`, `PRELOOP`, and a release-local `ALL`
+  (composed from the current bits, not a forever claim), plus `const fn`
+  `empty` / `contains` / `union` / `intersect` and `BitOr` / `BitAnd`
+  conveniences. Structural dimensions / bounds are construction-owned and are not
+  bits here.
+- `FiniteCoverage::{Checked, NotApplicable}` — finite-coverage for a `Validated`
+  state. `NotApplicable` is permitted only for domains explicitly
+  non-finite-incapable; a missing `FiniteScalar` capability is *unavailable*
+  (rejected), not `NotApplicable`.
+- `TrustKind` — a `#[non_exhaustive]` enum with `CallerAssertion` (RFC 008
+  pipeline-trust categories added later).
+- `TrustToken(u32)` — a compact numeric audit token (`new` / `value`).
+- `ValidationCoverage { scope, finite }` — the recording descriptor for
+  `Validated`; `const fn new` records coverage *after* the owning backend/solver
+  ran the checks (not a proof-producing function).
+- `TrustedByCaller { scope, kind, token, label }` — caller-assertion evidence;
+  the asserted scope is visible in the value.
+- `ValidationState::{Unvalidated, Validated(ValidationCoverage), Trusted(TrustedByCaller)}`
+  — the state category enum.
+
+### Notes
+
+- Deferred by design: cluster trusted-pipeline mechanics, validation caching,
+  model identity, and mutation epochs are RFC 008-owned; the shared conformance
+  corpus and `xtask conformance` fixtures are RFC 013-owned. RFC 006's shipped
+  `solve_projected_first_order` signature is unchanged (F3c — its existing inline
+  checks satisfy the contract internally).
+- RFC 012 moved `rfcs/proposed/ → rfcs/done/`; the RFC index and cross-links were
+  updated accordingly. Tests: 147 total (8 new validation-vocabulary tests). All
+  gates pass — check, zero-bleed, no-std (`thumbv7em-none-eabihf`), check-rfcs,
+  panic-audit.
+
 ## [0.11.1] — 2026-06-30 — RFC 007 closeout corrections (construction hardening)
 
 A corrective patch over v0.11.0, addressing the RFC 007 implementation review.
@@ -1093,6 +1138,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.12.0]: https://github.com/nabbisen/loeres/releases/tag/v0.12.0
 [0.11.1]: https://github.com/nabbisen/loeres/releases/tag/v0.11.1
 [0.11.0]: https://github.com/nabbisen/loeres/releases/tag/v0.11.0
 [0.10.2]: https://github.com/nabbisen/loeres/releases/tag/v0.10.2

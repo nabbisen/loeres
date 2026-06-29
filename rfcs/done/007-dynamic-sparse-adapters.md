@@ -36,7 +36,7 @@ Dependency rules:
 
 `loeres-backend-std` is server-facing only.
 
-**Validation-state ownership (F3).** This RFC is **storage-first**. Canonical validation-state and trusted-input types are owned by [RFC 012](../proposed/012-validation-state-and-trusted-input-policy.md) and live in `loeres` core; RFC 007 does **not** define them. RFC 007 provides only ordinary construction checks (dimension, duplicate, memory-limit). Sequencing: RFC 007 lands the dynamic storage foundation; RFC 012 follows and integrates shared validation-state markers into backend-std / cluster APIs **before** RFC 008 relies on validated/trusted-input semantics.
+**Validation-state ownership (F3).** This RFC is **storage-first**. Canonical validation-state and trusted-input types are owned by [RFC 012](012-validation-state-and-trusted-input-policy.md) and live in `loeres` core; RFC 007 does **not** define them. RFC 007 provides only ordinary construction checks (dimension, duplicate, memory-limit). Sequencing: RFC 007 lands the dynamic storage foundation; RFC 012 follows and integrates shared validation-state markers into backend-std / cluster APIs **before** RFC 008 relies on validated/trusted-input semantics.
 
 ## 3. Concrete Technical Specification
 
