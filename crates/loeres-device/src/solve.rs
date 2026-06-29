@@ -25,6 +25,14 @@ mod owned {
     use crate::problem::ProjectedFirstOrderProblem;
     use crate::workspace::{DeviceWorkspace, DeviceWorkspaceDiagnostic};
 
+    /// Checked `usize -> u32` for dimension error payloads (B1).
+    ///
+    /// Mirrors `loeres_backend_static::dimension::dim_u32`: never truncates;
+    /// returns [`SolverError::InvalidDimension`] if the extent exceeds `u32`.
+    fn dim_u32(value: usize) -> Result<u32, SolverError> {
+        u32::try_from(value).map_err(|_| SolverError::InvalidDimension)
+    }
+
     /// Device-side solve outcome.
     ///
     /// A thin wrapper over the RFC 014 core [`SolveReport`] (RFC 006 §3.5):
@@ -120,15 +128,20 @@ mod owned {
     /// One projected gradient-descent coordinate update.
     ///
     /// Returns the projected value `clamp(xi - alpha * gi, loi, hii)` and the
-    /// magnitude of the change `|projected - xi|`.
-    #[inline]
-    fn project_one<S>(xi: S, gi: S, loi: S, hii: S, alpha: S) -> (S, S)
+    /// magnitude of the change `|projected - xi|`. Rejects non-finite gradient or
+    /// bound coordinates (B3); with finite `xi`, `gi`, `alpha`, and bounds the
+    /// `clamp`-projected result and change are finite, so no result-overflow path
+    /// is reachable.
+    fn project_one<S>(xi: S, gi: S, loi: S, hii: S, alpha: S) -> Result<(S, S), SolverError>
     where
         S: FiniteScalar + MetricScalar,
     {
+        if !gi.is_finite() || !loi.is_finite() || !hii.is_finite() {
+            return Err(SolverError::NonFiniteInput);
+        }
         let projected = xi.sub(alpha.mul(gi)).clamp(loi, hii);
         let change = projected.sub(xi).abs();
-        (projected, change)
+        Ok((projected, change))
     }
 
     /// Apply one projected gradient step over the whole iterate, returning the
@@ -155,14 +168,14 @@ mod owned {
         // can disagree.
         if lo.len() != n {
             return Err(SolverError::DimensionMismatch {
-                lhs: n as u32,
-                rhs: lo.len() as u32,
+                lhs: dim_u32(n)?,
+                rhs: dim_u32(lo.len())?,
             });
         }
         if hi.len() != n {
             return Err(SolverError::DimensionMismatch {
-                lhs: n as u32,
-                rhs: hi.len() as u32,
+                lhs: dim_u32(n)?,
+                rhs: dim_u32(hi.len())?,
             });
         }
 
@@ -172,13 +185,20 @@ mod owned {
 
         match (lo.as_contiguous(), hi.as_contiguous()) {
             (Some(lo_slice), Some(hi_slice)) => {
+                // Defensive (M1): a correct `ContiguousVectorAccess` returns a
+                // slice of length `len()`, already checked equal to `n`. Guard
+                // against a non-conforming third-party `Bounds` impl rather than
+                // letting `zip` silently skip tail coordinates.
+                if lo_slice.len() != n || hi_slice.len() != n {
+                    return Err(SolverError::InternalInvariantViolation);
+                }
                 for (((xi, &gi), &loi), &hii) in x_slice
                     .iter_mut()
                     .zip(grad_slice)
                     .zip(lo_slice)
                     .zip(hi_slice)
                 {
-                    let (projected, change) = project_one(*xi, gi, loi, hii, alpha);
+                    let (projected, change) = project_one(*xi, gi, loi, hii, alpha)?;
                     *xi = projected;
                     max_change = max_change.max(change);
                 }
@@ -187,7 +207,7 @@ mod owned {
                 for (i, (xi, &gi)) in x_slice.iter_mut().zip(grad_slice).enumerate() {
                     let loi = lo.get(i)?;
                     let hii = hi.get(i)?;
-                    let (projected, change) = project_one(*xi, gi, loi, hii, alpha);
+                    let (projected, change) = project_one(*xi, gi, loi, hii, alpha)?;
                     *xi = projected;
                     max_change = max_change.max(change);
                 }
@@ -229,6 +249,24 @@ mod owned {
         problem.validate_boundary()?;
 
         let alpha = problem.step_scale();
+        // B2: the problem-provided step scale must be finite and strictly
+        // positive. A zero scale produces zero iterate change (false
+        // convergence); a negative scale inverts the descent direction.
+        if !alpha.is_finite() {
+            return Err(SolverError::NonFiniteInput);
+        }
+        if alpha <= S::zero() {
+            return Err(SolverError::InvalidInput);
+        }
+        // B3: reject a non-finite initial iterate up front. Gradient and bound
+        // coordinates are checked per step in `project_one`; with those finite
+        // and `alpha` finite, the projected iterate stays finite by induction.
+        for xi in x.as_slice() {
+            if !xi.is_finite() {
+                return Err(SolverError::NonFiniteInput);
+            }
+        }
+
         let tolerance = config.tolerance;
         let max_iterations = config.max_iterations;
         // In-crate exhaustive match: `TimingMode` is `#[non_exhaustive]` only for

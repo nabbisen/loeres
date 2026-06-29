@@ -1,103 +1,14 @@
 //! Tests for the baseline projected first-order kernel (RFC 006).
 
 use super::{DeviceSolveReport, ProjectedFirstOrderWorkspace, solve_projected_first_order};
-use crate::config::{DeviceSolveConfig, TimingMode};
+use crate::config::TimingMode;
 use crate::problem::ProjectedFirstOrderProblem;
 use crate::workspace::{DeviceWorkspaceDiagnostic, WorkspaceFor};
 use loeres::{AsCoreReport, DiagnosticSnapshot, SolveStatus, SolverError, TerminationReason};
 use loeres_backend_static::array::FixedVector;
 
-/// `f(x) = 0.5 * sum (x_i - target_i)^2`, box-constrained. Gradient is
-/// `x - target`; projected gradient descent converges to the projection of
-/// `target` onto the box.
-struct Quadratic<const N: usize> {
-    target: FixedVector<f64, N>,
-    lo: FixedVector<f64, N>,
-    hi: FixedVector<f64, N>,
-    alpha: f64,
-}
-
-impl<const N: usize> ProjectedFirstOrderProblem<f64, N> for Quadratic<N> {
-    type Bounds = FixedVector<f64, N>;
-
-    fn validate_boundary(&self) -> Result<(), SolverError> {
-        for (l, h) in self.lo.as_slice().iter().zip(self.hi.as_slice()) {
-            if !l.is_finite() || !h.is_finite() {
-                return Err(SolverError::NonFiniteInput);
-            }
-            if *l > *h {
-                return Err(SolverError::InvalidInput);
-            }
-        }
-        Ok(())
-    }
-
-    fn lower_bound(&self) -> &FixedVector<f64, N> {
-        &self.lo
-    }
-
-    fn upper_bound(&self) -> &FixedVector<f64, N> {
-        &self.hi
-    }
-
-    fn step_scale(&self) -> f64 {
-        self.alpha
-    }
-
-    fn gradient_at(
-        &self,
-        x: &FixedVector<f64, N>,
-        grad: &mut FixedVector<f64, N>,
-    ) -> Result<(), SolverError> {
-        for ((g, &xi), &ti) in grad
-            .as_mut_slice()
-            .iter_mut()
-            .zip(x.as_slice())
-            .zip(self.target.as_slice())
-        {
-            *g = xi - ti;
-        }
-        Ok(())
-    }
-
-    fn objective_at(&self, x: &FixedVector<f64, N>) -> Result<f64, SolverError> {
-        let mut acc = 0.0;
-        for (&xi, &ti) in x.as_slice().iter().zip(self.target.as_slice()) {
-            let d = xi - ti;
-            acc += 0.5 * d * d;
-        }
-        Ok(acc)
-    }
-}
-
-impl<const N: usize> WorkspaceFor<Quadratic<N>> for Quadratic<N> {
-    type Workspace = ProjectedFirstOrderWorkspace<f64, N>;
-
-    fn required_workspace_bytes() -> usize {
-        core::mem::size_of::<ProjectedFirstOrderWorkspace<f64, N>>()
-    }
-}
-
-fn quad2() -> Quadratic<2> {
-    Quadratic {
-        target: FixedVector::from_array([0.5, -0.5]),
-        lo: FixedVector::from_array([-1.0, -1.0]),
-        hi: FixedVector::from_array([1.0, 1.0]),
-        alpha: 0.5,
-    }
-}
-
-fn workspace<const N: usize>() -> ProjectedFirstOrderWorkspace<f64, N> {
-    ProjectedFirstOrderWorkspace::new(FixedVector::from_array([0.0; N]))
-}
-
-fn config(max_iterations: u32, tolerance: f64, timing_mode: TimingMode) -> DeviceSolveConfig<f64> {
-    DeviceSolveConfig {
-        max_iterations,
-        tolerance,
-        timing_mode,
-    }
-}
+mod fixtures;
+use fixtures::*;
 
 #[test]
 fn converges_early_within_box() {
@@ -178,43 +89,6 @@ fn non_finite_tolerance_rejected() {
 
     let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
     assert_eq!(err, SolverError::NonFiniteInput);
-}
-
-/// `N = 3` work vectors but `Bounds` of length 2 — `validate_boundary` is
-/// deliberately lax so the kernel's own defensive dimension check fires.
-struct Mismatch {
-    lo: FixedVector<f64, 2>,
-    hi: FixedVector<f64, 2>,
-}
-
-impl ProjectedFirstOrderProblem<f64, 3> for Mismatch {
-    type Bounds = FixedVector<f64, 2>;
-
-    fn validate_boundary(&self) -> Result<(), SolverError> {
-        Ok(())
-    }
-    fn lower_bound(&self) -> &FixedVector<f64, 2> {
-        &self.lo
-    }
-    fn upper_bound(&self) -> &FixedVector<f64, 2> {
-        &self.hi
-    }
-    fn step_scale(&self) -> f64 {
-        0.5
-    }
-    fn gradient_at(
-        &self,
-        _x: &FixedVector<f64, 3>,
-        grad: &mut FixedVector<f64, 3>,
-    ) -> Result<(), SolverError> {
-        for g in grad.as_mut_slice().iter_mut() {
-            *g = 0.0;
-        }
-        Ok(())
-    }
-    fn objective_at(&self, _x: &FixedVector<f64, 3>) -> Result<f64, SolverError> {
-        Ok(0.0)
-    }
 }
 
 #[test]
@@ -331,4 +205,82 @@ fn constant_iteration_reports_non_convergence_at_cap() {
     assert_eq!(report.status(), SolveStatus::NotConverged);
     assert_eq!(report.core().termination(), TerminationReason::IterationCap);
     assert_eq!(report.iterations_executed(), 2);
+}
+
+// --- v0.10.1 fail-safe validation (B2 / B3 / M4) ---
+
+#[test]
+fn zero_step_scale_rejected() {
+    let problem = quad2_with_alpha(0.0);
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::InvalidInput);
+}
+
+#[test]
+fn negative_step_scale_rejected() {
+    let problem = quad2_with_alpha(-0.5);
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::InvalidInput);
+}
+
+#[test]
+fn nan_step_scale_rejected() {
+    let problem = quad2_with_alpha(f64::NAN);
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::NonFiniteInput);
+}
+
+#[test]
+fn infinite_step_scale_rejected() {
+    let problem = quad2_with_alpha(f64::INFINITY);
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::NonFiniteInput);
+}
+
+#[test]
+fn non_finite_initial_x_rejected() {
+    let problem = quad2();
+    let mut x = FixedVector::from_array([f64::NAN, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::NonFiniteInput);
+}
+
+#[test]
+fn non_finite_gradient_output_rejected() {
+    let problem = NanGradient {
+        lo: FixedVector::from_array([-1.0, -1.0]),
+        hi: FixedVector::from_array([1.0, 1.0]),
+    };
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::NonFiniteInput);
+}
+
+#[test]
+fn non_finite_bound_rejected_by_kernel() {
+    let problem = LaxNanBounds {
+        lo: FixedVector::from_array([f64::NAN, -1.0]),
+        hi: FixedVector::from_array([1.0, 1.0]),
+    };
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(100, 1e-9, TimingMode::EarlyExitAllowed);
+    let err = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap_err();
+    assert_eq!(err, SolverError::NonFiniteInput);
 }

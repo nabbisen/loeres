@@ -1,6 +1,6 @@
 # RFC 006 — Baseline Deterministic Device Solver Kernel
 
-**Status.** Implemented (v0.10.0) — baseline box/bound-constrained projected first-order kernel. `ProjectedFirstOrderProblem` (problem.rs) + `DeviceSolveReport` / `ProjectedFirstOrderWorkspace` / `solve_projected_first_order` (solve.rs), behind `loeres-device` feature `owned-arrays`; outcomes via RFC 014 `SolveReport` + `AsCoreReport`. Implementation-decision pass I1–I10 applied (see §7).
+**Status.** Implemented (v0.10.0; fail-safe hardening + closeout corrections in v0.10.1) — baseline box/bound-constrained projected first-order kernel. `ProjectedFirstOrderProblem` (problem.rs) + `DeviceSolveReport` / `ProjectedFirstOrderWorkspace` / `solve_projected_first_order` (solve.rs), behind `loeres-device` feature `owned-arrays`; outcomes via RFC 014 `SolveReport` + `AsCoreReport`. Implementation-decision pass I1–I10 applied (see §7).
 **Tracks.** Phase 2 / Milestone 2 — Static Backend and Real-Time Kernel
 **Touches.** `loeres-device/src/problem.rs`, `loeres-device/src/solve.rs`, `loeres-device/src/diagnostic.rs`, `loeres-device/src/lib.rs`
 
@@ -71,31 +71,33 @@ No `#[inline]` is placed on these bodiless declarations (F5); implementors place
 
 ### 3.3 Solve entrypoint and scalar bounds
 
-The workspace is bound to the problem **at the type level** through RFC 005's `WorkspaceFor<P>`, so the wrong workspace for a problem is not constructible (RFC 005 §11.6). Design sketch (exact generic shape settled in the implementation-decision pass):
+The workspace is bound to the problem **at the type level** by the shared scalar `S` and const dimension `N`: the entrypoint takes a concrete `ProjectedFirstOrderWorkspace<S, N>`, so a workspace of the wrong dimension for the iterate is a compile error. RFC 005's `WorkspaceFor<P>` remains the **sizing/reporting** contract (`required_workspace_bytes`), implemented by the concrete problem family; it is not the entrypoint binding mechanism, because an opaque `<F as WorkspaceFor<P>>::Workspace` would prevent the kernel from reaching the gradient scratch. Implemented signature:
 
 ```rust
-pub fn solve_projected_first_order<P, F, S>(
+pub fn solve_projected_first_order<P, S, const N: usize>(
     problem: &P,
-    workspace: &mut <F as WorkspaceFor<P>>::Workspace,
+    x: &mut FixedVector<S, N>,
+    workspace: &mut ProjectedFirstOrderWorkspace<S, N>,
     config: &DeviceSolveConfig<S>,
 ) -> Result<DeviceSolveReport, SolverError>
 where
-    P: ProjectedFirstOrderProblem<S>,
-    F: WorkspaceFor<P>,
+    P: ProjectedFirstOrderProblem<S, N>,
     S: FiniteScalar + MetricScalar,
 {
-    // public design pattern only:
     // 1. workspace.reset_for_entry()      (RFC 005 lifecycle)
     // 2. config.validate()                (RFC 005 structural validation)
     // 3. problem.validate_boundary()
-    // 4. for k in 0..config.max_iterations { projected gradient step }
-    // 5. map step outcomes -> SolveReport (RFC 014 §3.5) -> DeviceSolveReport
+    // 4. validate step scale (finite, > 0) and initial iterate (finite)
+    // 5. for k in 0..config.max_iterations { projected gradient step }
+    // 6. map step outcomes -> SolveReport (RFC 014 §3.5) -> DeviceSolveReport
 }
 ```
 
+`x` is the explicit in/out iterate (I2); the workspace is pure gradient scratch.
+
 `config.max_iterations` is a runtime field, not a const generic.
 
-**Scalar bounds (F7).** The baseline projected step is `x_{k+1} = clamp(x_k - α·∇f(x_k), lo, hi)`, using `BaseScalar::{sub, mul}`, `OrderedScalar::clamp`, and `MetricScalar::{abs, lte_tolerance}` for the convergence test. With these operations the kernel needs only **`S: FiniteScalar + MetricScalar`** (each carries `BaseScalar`; neither implies the other). `DivisibleScalar` is added **only if** the accepted step rule divides inside the solver (a step scale, reciprocal, relative tolerance, or normalization). Whether the step size `α` is supplied (problem- or config-provided) or computed — which determines both the `DivisibleScalar` requirement and any `DeviceSolveConfig` interaction with RFC 005 — is an implementation-decision-pass item.
+**Scalar bounds (F7).** The baseline projected step is `x_{k+1} = clamp(x_k - α·∇f(x_k), lo, hi)`, using `BaseScalar::{sub, mul}`, `OrderedScalar::clamp`, and `MetricScalar::{abs, lte_tolerance}` for the convergence test. `DivisibleScalar` is added **only if** the step rule divides inside the solver. The step scale `α` is **problem-provided** (`step_scale`) and validated finite and strictly positive before the loop; the kernel performs no division, so the bound stays **`S: FiniteScalar + MetricScalar`** (each carries `BaseScalar`; neither implies the other) and `DeviceSolveConfig` (RFC 005) is unchanged.
 
 ### 3.4 Timing modes
 
@@ -154,7 +156,7 @@ The report must remain allocation-free and size-budgeted, and must project lossl
 | Overflow | checked arithmetic where applicable, `SolverError::Overflow` |
 | Ill-conditioned / invalid bounds | `SolverError::IllConditioned` / `SolverError::InvalidInput` |
 | Iteration non-convergence | `Ok(SolveReport)` with `SolveStatus::NotConverged` (RFC 014 §3.5); never a `SolverError` |
-| Workspace mismatch | type-level binding via `WorkspaceFor<P>` (§3.3) |
+| Workspace mismatch | type-level binding via shared `S, N` and `ProjectedFirstOrderWorkspace<S, N>` (§3.3); `WorkspaceFor<P>` is the sizing contract |
 
 No `unwrap`, `expect`, panic-based assertion, or unchecked index is accepted in the kernel path.
 
@@ -164,7 +166,7 @@ This is the kernel RFC 002 scoped its contiguous fast path for. The hot loop rea
 
 ### 3.8 Concrete workspace ownership
 
-The concrete projected-first-order workspace type is RFC 006-owned (per the RFC 005 §3 boundary), built on RFC 004 fixed storage, implementing the RFC 005 `DeviceWorkspace` lifecycle, and associated with the problem family through `WorkspaceFor<P>`. Its exact scratch shape and module placement (`problem` vs `solve`) are implementation-decision-pass items.
+The concrete projected-first-order workspace type is RFC 006-owned (per the RFC 005 §3 boundary), built on RFC 004 fixed storage, implementing the RFC 005 `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` lifecycle. It is `ProjectedFirstOrderWorkspace<S, N>` in `solve`, holding the gradient scratch; the entrypoint binds it concretely by shared `S, N`. `WorkspaceFor<P>` is implemented by the problem family as the sizing contract (`required_workspace_bytes`), not the entrypoint binding.
 
 ## 4. Rust Systems-Level Nuances & Memory Safety
 
@@ -229,7 +231,7 @@ The same problem corpus must run against the cluster path when RFC 007 and RFC 0
 RFC 006 may move to `done/` only when:
 
 1. the baseline device solver is a bounded-iteration box/bound-constrained projected first-order kernel;
-2. it uses a caller-owned typed workspace bound to the problem through `WorkspaceFor<P>`;
+2. it uses a caller-owned typed gradient-scratch workspace bound concretely by shared `S, N` (`ProjectedFirstOrderWorkspace<S, N>`), with `WorkspaceFor<P>` as the sizing contract;
 3. it passes the panic-aversion audits;
 4. it compiles without `std` or `alloc`;
 5. it passes the adversarial numerical tests;
@@ -259,3 +261,14 @@ Departures from earlier sketches, recorded for review:
 2. **Concrete work vectors.** The primal and gradient are `FixedVector<S, N>` (the device static storage), not fully generic over `ContiguousVectorAccess`. The read-only `Bounds` stay a distinct associated type, so the bounds-vs-work distinction (I3) holds; full work-vector genericity is a later extension.
 3. **Fast-path scope (refines §3.7).** Primal and gradient always use fixed-size slices; bounds use the contiguous slice when available and fall back to per-element `get()` otherwise.
 4. **`objective_at` reporting-only.** Present in the contract (§3.2) but not called by the iterate-change driver, since `DeviceSolveReport` carries no objective field; it is covered by a direct test and is the natural hook for future objective-based criteria.
+
+### 7.1 Measured evidence (v0.10.1, §6.4)
+
+Size and timing evidence for the first implemented kernel:
+
+- **Workspace footprint.** `ProjectedFirstOrderWorkspace<S, N>` is `8N + 16` bytes for `S = f64` (measured: `N = 2 → 32`, `N = 4 → 48`, `N = 8 → 80`): the `FixedVector<f64, N>` gradient scratch plus a 12-byte `DiagnosticSnapshot` with 4 bytes alignment padding. `DeviceSolveReport` is 12 bytes. The footprint is queryable at compile time through `WorkspaceFor::required_workspace_bytes`.
+- **Iteration cap.** The test corpus uses caps up to 200; the 2-D box-quadratic at `α = 0.5` converges in roughly 30 iterations (the `0.5^k` contraction reaching `1e-9`).
+- **Per-iteration cost.** One oracle gradient evaluation plus one `O(N)` projection pass; total work is bounded by `max_iterations × O(N)`, and is exactly `max_iterations` passes under `ConstantIteration` (deterministic).
+- **Binary size.** The optimized `thumbv7em-none-eabihf` `loeres-device` rlib (`owned-arrays`) is ~73 KiB *including archive metadata and symbols* — a rough upper-bound proxy, not a per-symbol code contribution.
+
+The `panic-audit` gate (RFC 006 §6.2) is implemented in `xtask` and runs in `release-gate`, scanning the `no_std` production crates for `unwrap` / `expect` / `panic!` / `todo!` / `unimplemented!` / logging macros (tests excluded). Automated per-symbol binary-size budgeting and reference-target wall-clock timing remain the `size-budget` gate's scope, owned by RFC 010 (xtask verification governance) / RFC 011 (target profiles).

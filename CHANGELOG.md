@@ -5,6 +5,48 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.10.1] — 2026-06-29 — RFC 006 fail-safe hardening and closeout corrections
+
+A corrective patch over v0.10.0, addressing the RFC 006 implementation review.
+No API contract change: the kernel now fails closed on inputs the fail-safe
+design always intended to reject, and the closeout artifacts/gates are brought
+into line. All `no_std` / no-`alloc`, verified on `thumbv7em-none-eabihf`.
+
+### Fixed — kernel fail-safe validation (`loeres-device::solve`)
+
+- The step scale `step_scale()` is validated before the loop: non-finite →
+  `NonFiniteInput`, `<= 0` → `InvalidInput`. A zero scale produced zero iterate
+  change (false `Converged`); a negative scale inverted the descent direction.
+- The initial iterate is checked finite up front; each gradient and bound
+  coordinate is checked finite per step (`NonFiniteInput`). With finite inputs
+  and a finite positive scale, the `clamp`-projected iterate is provably finite,
+  so a buggy oracle that returns `Ok(())` after writing NaN is now rejected
+  rather than silently mutating the iterate.
+- Dimension-mismatch payloads use a checked `usize -> u32` conversion
+  (`InvalidDimension` on overflow), matching the `loeres` / `loeres-backend-static`
+  convention; the previous truncating `as u32` casts are gone.
+- Defensive guard: a `ContiguousVectorAccess` bound whose returned slice length
+  disagrees with `len()` now yields `InternalInvariantViolation` rather than a
+  silently short `zip`.
+
+### Added — verification
+
+- `xtask panic-audit` is implemented and wired into `release-gate`: it scans the
+  `no_std` production crates (`loeres`, `loeres-backend-static`, `loeres-device`,
+  excluding `tests.rs`) for `unwrap` / `expect` / `panic!` / `todo!` /
+  `unimplemented!` and logging macros on code lines (RFC 006 §6.2).
+- Tests for zero / negative / NaN / infinite step scale, non-finite initial
+  iterate, non-finite gradient output, and a kernel-side non-finite bound check.
+
+### Changed — documentation
+
+- RFC 006 normative text (§3.3, the error/recovery table, §3.8, §6.6 acceptance)
+  now describes the concrete `ProjectedFirstOrderWorkspace<S, N>` binding by
+  shared `S, N`, with `WorkspaceFor<P>` as the sizing contract — removing the
+  contradiction with §7. A new §7.1 records measured size/footprint evidence.
+- `loeres-device` crate docs updated: RFC 006 is implemented (v0.10.0), not a
+  placeholder.
+
 ## [0.10.0] — 2026-06-29 — Baseline deterministic device solver kernel (RFC 006)
 
 The final Milestone 2 contract, and the first solver kernel in the library: a
@@ -918,6 +960,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.10.1]: https://github.com/nabbisen/loeres/releases/tag/v0.10.1
 [0.10.0]: https://github.com/nabbisen/loeres/releases/tag/v0.10.0
 [0.9.0]: https://github.com/nabbisen/loeres/releases/tag/v0.9.0
 [0.8.0]: https://github.com/nabbisen/loeres/releases/tag/v0.8.0

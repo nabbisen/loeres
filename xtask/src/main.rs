@@ -26,10 +26,10 @@ const IMPLEMENTED: &[&str] = &[
     "check",
     "check-rfcs",
     "release-gate",
+    "panic-audit",
 ];
 const SCAFFOLD: &[&str] = &[
     "feature-matrix",
-    "panic-audit",
     "size-budget",
     "check-public-api",
     "target-profiles",
@@ -46,6 +46,7 @@ fn main() -> ExitCode {
         Some("check") => checks::basic::run(),
         Some("check-rfcs") => checks::check_rfcs::run(),
         Some("release-gate") => checks::release_gate::run(),
+        Some("panic-audit") => checks::panic_audit::run(),
         Some(other) if SCAFFOLD.contains(&other) => checks::stubs::run(other),
         Some(other) => {
             eprintln!("xtask: unknown command `{other}`");
