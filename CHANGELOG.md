@@ -5,6 +5,59 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.10.0] — 2026-06-29 — Baseline deterministic device solver kernel (RFC 006)
+
+The final Milestone 2 contract, and the first solver kernel in the library: a
+bounded-iteration box/bound-constrained projected first-order solver for
+`loeres-device`, all `no_std` / no-`alloc` and verified on `thumbv7em-none-eabihf`.
+Minor bump: an RFC is resolved. **With RFC 004, 005, and 006 implemented,
+Milestone 2 is complete.**
+
+The kernel reports outcomes through the RFC 014 core `SolveReport`: non-convergence
+at the iteration cap is an `Ok(DeviceSolveReport)` with status `NotConverged` and
+termination `IterationCap`, never a `SolverError`. Errors are reserved for invalid
+configuration, invalid bounds, dimension mismatch, and oracle failures.
+
+The kernel surface lands behind the `owned-arrays` feature, since the primal and
+gradient work vectors are RFC 004 `FixedVector<S, N>`.
+
+### Added — `loeres-device::problem` (problem contract)
+
+- `ProjectedFirstOrderProblem<S, N>` — a box/bound-constrained first-order-oracle
+  contract: a read-only `Bounds` associated type (distinct from the work vectors),
+  `validate_boundary`, `lower_bound` / `upper_bound`, a problem-provided
+  `step_scale` (no internal division, keeping the bound at
+  `FiniteScalar + MetricScalar`), `gradient_at`, and a reporting-only
+  `objective_at`.
+
+### Added — `loeres-device::solve` (kernel, report, workspace)
+
+- `solve_projected_first_order` — the bounded-iteration kernel. Validates the
+  config and problem boundary before the loop, then iterates
+  `x <- clamp(x - alpha * grad f(x), lo, hi)` until the largest coordinate change
+  is within `tolerance`. `x` is an explicit in/out parameter; the workspace is pure
+  gradient scratch. Panic-averse (no indexing or unwrap; RFC 002 contiguous fast
+  path with per-element fallback for bounds).
+- `DeviceSolveReport` — a thin wrapper over the core `SolveReport`, re-exposing
+  `status` / `iterations_executed` and implementing `AsCoreReport`.
+- `ProjectedFirstOrderWorkspace<S, N>` — caller-owned gradient scratch, type-pinned
+  to the iterate and problem by the shared `N`; implements `DeviceWorkspace` and
+  `DeviceWorkspaceDiagnostic`. `WorkspaceFor<P>` remains the RFC 005 sizing
+  contract, implemented by the concrete problem family.
+
+### Timing modes
+
+- `EarlyExitAllowed` returns as soon as the criterion is met (`converged_early`) or
+  at the cap (`not_converged_cap`). Under `constant-iteration`, `ConstantIteration`
+  always runs the full `max_iterations`, reporting `converged_at_cap` /
+  `not_converged_cap` with `iterations_executed == max_iterations`.
+
+### Notes
+
+- RFC 006 moves `proposed/ -> done/`; its `§7` records the implementation-decision
+  pass (I1–I10) and the departures (concrete workspace binding, concrete work
+  vectors, fast-path scope, reporting-only objective).
+
 ## [0.9.0] — 2026-06-29 — Caller-owned typed workspace mechanics (RFC 005)
 
 The second Milestone 2 contract: the two-crate caller-owned workspace boundary,
@@ -865,6 +918,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.10.0]: https://github.com/nabbisen/loeres/releases/tag/v0.10.0
 [0.9.0]: https://github.com/nabbisen/loeres/releases/tag/v0.9.0
 [0.8.0]: https://github.com/nabbisen/loeres/releases/tag/v0.8.0
 [0.7.2]: https://github.com/nabbisen/loeres/releases/tag/v0.7.2

@@ -33,7 +33,7 @@ base-scalar ordering question is resolved: the architect chose **Direction B**
 (base excludes ordering; ordering is `OrderedScalar`), recorded as ADR-017, and
 Requirements §5.1.3 was amended to match. All gates pass; 62 tests.
 
-### In progress: Milestone 2 — static backend + device kernel (RFC 004–006)
+### Complete: Milestone 2 — static backend + device kernel (RFC 004–006)
 
 Milestone 1 (`loeres` core contracts) is closed. Milestone 2 is underway. The
 static storage engine (**RFC 004**) is now **implemented (v0.8.0)**:
@@ -53,15 +53,24 @@ contract, impls behind `owned-arrays`) and `loeres-device::workspace` /
 `config` (the `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` / `WorkspaceFor`
 lifecycle plus `DeviceSolveConfig` / `TimingMode` with structural validation).
 Concrete solver workspaces, problem families, the device report type, and the
-solve kernel remain RFC 006-owned. Only **RFC 006** (the deterministic device
-kernel) now stands between the project and Milestone 2 completion. All gates
-pass; 95 tests (62 core + 22 static backend + 11 device).
+solve kernel were RFC 006-owned. **RFC 006** is now **implemented (v0.10.0)**:
+the baseline box/bound-constrained projected first-order device kernel —
+`loeres-device::problem` (`ProjectedFirstOrderProblem`, a first-order-oracle +
+box-bounds contract) and `loeres-device::solve` (the bounded-iteration
+`solve_projected_first_order` kernel, the `DeviceSolveReport` outcome wrapping
+the RFC 014 `SolveReport` via `AsCoreReport`, and the caller-owned
+`ProjectedFirstOrderWorkspace` scratch), behind `owned-arrays`. Non-convergence
+at the cap is an `Ok` status, never an error; the implementation-decision pass
+(I1–I10) and departures are recorded in RFC 006 §7. **With RFC 004, 005, and 006
+implemented, Milestone 2 is complete.** All gates pass; 109 tests (62 core + 22
+static backend + 25 device).
 
-RFC 002's optional contiguous fast path was scoped for the
-RFC 006 kernel; the access traits bound only `BaseScalar` except where they
-compare / project / tolerance-check.
+RFC 002's optional contiguous fast path was used by the RFC 006 kernel (primal
+and gradient via fixed-size slices; bounds via the contiguous slice with a
+per-element fallback); the access traits bound only `BaseScalar` except where
+they compare / project / tolerance-check.
 
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 
-1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2).
+1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2). **Resolved — implemented (v0.10.0); Milestone 2 complete.**
 2. RFCs 007 / 008 / 012 — validation-state reconciliation (Milestone 3).

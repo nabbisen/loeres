@@ -8,7 +8,6 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 
 | RFC | Title | Phase | Primary crates |
 |---:|---|---|---|
-| [006](proposed/006-deterministic-solver-kernel.md) | Baseline Deterministic Device Solver Kernel | Phase 2 / Milestone 2 | `loeres-device` |
 | [007](proposed/007-dynamic-sparse-adapters.md) | Dynamic Dense and Sparse Storage Adapters | Phase 3 / Milestone 3 | `loeres-backend-std` |
 | [008](proposed/008-async-orchestration-budgets.md) | Async Orchestration and Monomorphization Budgets | Phase 3 / Milestone 3 | `loeres-cluster` |
 | [009](proposed/009-observability-ffi-gateways.md) | Observability, Metrics, and FFI Gateway Interfacing | Phase 3 / Milestone 3 | `loeres-cluster`, `loeres-backend-std` |
@@ -27,6 +26,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | [003](done/003-allocation-free-errors.md) | Allocation-Free Error Topology and Formatting Restrictions | Implemented (v0.4.0) | `loeres` `error` / `diagnostic` modules; `SolverError`, `DiagnosticSnapshot`, `error_code_to_str`. |
 | [004](done/004-static-storage-engine.md) | Const-Generic and Fixed-Size Static Storage Engine | Implemented (v0.8.0) | `loeres-backend-static` `dimension`/`array`/`view`; owned `FixedVector`/`FixedMatrix` (`owned-arrays`) + baseline contiguous static views, const-assert dimension invariants, RFC 002 traits reporting `Static`. Advanced `static-views` deferred (§7.2). |
 | [005](done/005-typed-workspace-mechanics.md) | Caller-Owned Typed Workspace Mechanics and Poison-Free Reuse | Implemented (v0.9.0) | `loeres-backend-static::workspace` footprint contract + `loeres-device` workspace lifecycle (`DeviceWorkspace`/`DeviceWorkspaceDiagnostic`/`WorkspaceFor`) and `config` (`DeviceSolveConfig`/`TimingMode`). Concrete workspaces/kernel deferred to RFC 006. |
+| [006](done/006-deterministic-solver-kernel.md) | Baseline Deterministic Device Solver Kernel | Implemented (v0.10.0) | `loeres-device` `problem`/`solve`; box/bound-constrained projected first-order kernel (`ProjectedFirstOrderProblem`, `solve_projected_first_order`, `DeviceSolveReport`, `ProjectedFirstOrderWorkspace`) behind `owned-arrays`, outcomes via RFC 014 `SolveReport` + `AsCoreReport`. Completes Milestone 2. |
 | [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 
 ## Archived RFCs

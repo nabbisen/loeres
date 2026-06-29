@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.9.0 — Milestone 2, workspace mechanics landed.** Building on the Milestone 1 core and the RFC 004 static storage engine, RFC 005 adds the two-crate caller-owned workspace boundary: `loeres-backend-static::workspace` exposes a `WorkspaceFootprint` byte-footprint contract (impls behind `owned-arrays`), and `loeres-device` adds the `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` / `WorkspaceFor` lifecycle (poison-free, caller-owned, reset-on-entry) plus runtime `DeviceSolveConfig` / `TimingMode` configuration with structural validation. All `no_std`/no-`alloc`, verified on a bare-metal target. Concrete solver workspaces and the deterministic kernel are next — RFC 006, the final Milestone 2 contract.
+> **v0.10.0 — Milestone 2 complete: the deterministic device kernel landed.** The final Milestone 2 contract, RFC 006, adds `loeres-device`'s baseline box/bound-constrained projected first-order solver: a `ProjectedFirstOrderProblem` first-order-oracle contract, the bounded-iteration `solve_projected_first_order` kernel (`x <- clamp(x - alpha * grad, lo, hi)`, iterate-change convergence), the caller-owned `ProjectedFirstOrderWorkspace` scratch, and a `DeviceSolveReport` outcome wrapping the RFC 014 core `SolveReport` via `AsCoreReport` — non-convergence at the iteration cap is an `Ok` status, never a `SolverError`. Behind `owned-arrays`, all `no_std`/no-`alloc`, verified on a bare-metal target. With RFC 004, 005, and 006 implemented, **Milestone 2 is complete.**
 
 Build and verify from source:
 
@@ -71,7 +71,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`014`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`014`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).
