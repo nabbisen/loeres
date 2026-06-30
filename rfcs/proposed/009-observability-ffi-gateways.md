@@ -22,7 +22,7 @@ This RFC depends on:
 
 * [RFC 003](../done/003-allocation-free-errors.md) for shared error categories;
 * [RFC 007](../done/007-dynamic-sparse-adapters.md) for dynamic backend wrappers;
-* [RFC 008](008-async-orchestration-budgets.md) for orchestration boundaries.
+* [RFC 008](../done/008-async-orchestration-budgets.md) for orchestration boundaries.
 
 Dependency rules:
 

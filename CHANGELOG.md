@@ -5,6 +5,56 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.13.0] — 2026-06-30 — RFC 008 cluster orchestration infrastructure
+
+RFC 008 is implemented as an **orchestration-first** `loeres-cluster` slice: the
+cluster orchestration machinery and contracts — **not** a production numerical
+cluster solver. No std-side solver kernel exists yet (core exposes only the RFC
+014 outcome vocabulary; the RFC 006 device kernel is edge-only and unreachable
+from cluster), so `ClusterJob` is the stable dispatch seam where a future kernel
+plugs in, and the machinery is validated against deterministic in-crate test jobs
+that exercise orchestration behavior, **not** numerical correctness.
+
+### Added — orchestration foundation (`loeres-cluster` `batch` / `runtime` / `solve`)
+
+- `batch`: the per-item outcome contract — `BatchItemOutcome` (`Solved` /
+  `Failed` / `Cancelled` / `Panicked`), `ClusterSolution` (`#[non_exhaustive]`,
+  `DenseVector` variant), `BatchSolveReport`, and an explicit-count `BatchSummary`
+  (`solved_converged` / `solved_not_converged` / `failed` / `cancelled` /
+  `panicked`) so callers need not scan the outcome vector. The status/error split
+  holds: a bounded-terminus non-convergence is `Solved` carrying
+  `SolveStatus::NotConverged`, never `Failed`.
+- `runtime`: `ClusterSolveConfig`, `BatchExecutionPolicy`, a reserved-but-inert
+  `DispatchPolicy` (no `AutoByBudget` until RFC 010 supplies a metric),
+  `ClusterValidationPolicy` consuming the RFC 012 vocabulary (`ValidateAllInputs`
+  / `RespectBackendValidationState` / `TrustedByCaller`, with a `MissingCoverage`
+  rejection that does not silently trust missing coverage), the cluster-owned
+  `ClusterCancellationToken` (`Arc<AtomicBool>`; `cancel()` stores `Release`,
+  `is_cancelled()` loads `Acquire`; cooperative, not preemptive), and a small
+  `#[non_exhaustive]` `ClusterError` (`InvalidConfig` / `ExecutorInit` /
+  `Shutdown`).
+- `solve`: the `ClusterJob` hybrid-dispatch seam, `ClusterExecutionContext`,
+  `solve_batch`, and (behind `async-tokio`) `solve_batch_async`. An empty batch is
+  valid and returns an empty report. A contained worker panic is `Panicked` only
+  under `panic = "unwind"`; under `panic = "abort"` the process aborts and no
+  containment is promised. An inner `SolverError::Cancelled` is normalized to
+  `BatchItemOutcome::Cancelled`.
+
+### Features
+
+- New optional, default-off feature gates `parallel-rayon` (a bounded Rayon worker
+  pool) and `async-tokio` (Tokio blocking offload). The baseline synchronous batch
+  path is unconditional and runtime-agnostic — no Tokio or Rayon type appears in
+  the baseline public surface. The vestigial `sync` / `batch` skeleton features are
+  removed.
+
+### Verification
+
+- 178 tests (30 new cluster tests covering summary tallying, cancellation /
+  timeout / panic isolation, the inner-cancel normalization, the validation-policy
+  arms, and sequential/parallel/async parity). All gates pass — check, zero-bleed,
+  no-std (`thumbv7em-none-eabihf`), check-rfcs, panic-audit.
+
 ## [0.12.1] — 2026-06-30 — RFC 012 coherence hardening and doc cleanup
 
 A corrective patch over v0.12.0 addressing the RFC 012 implementation review,
@@ -1167,6 +1217,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.13.0]: https://github.com/nabbisen/loeres/releases/tag/v0.13.0
 [0.12.1]: https://github.com/nabbisen/loeres/releases/tag/v0.12.1
 [0.12.0]: https://github.com/nabbisen/loeres/releases/tag/v0.12.0
 [0.11.1]: https://github.com/nabbisen/loeres/releases/tag/v0.11.1
