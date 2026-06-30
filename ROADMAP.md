@@ -105,9 +105,11 @@ validators and record their outcome here, while structural validity stays a
 construction precondition (RFC 004 / 007). Finite-not-applicable is kept distinct
 from a missing-capability *unavailable* (rejected, not validated). Cluster
 trusted-pipeline / caching are deferred to RFC 008, the shared conformance corpus
-to RFC 013. The implementation-decision pass (I1–I11) is recorded in RFC 012. All
-gates pass; 147 tests (70 core + 22 static backend + 32 device + 23 dynamic
-backend).
+to RFC 013. The implementation-decision pass (I1–I11) is recorded in RFC 012
+(§7). v0.12.1 made `ValidationCoverage` coherent by construction (private fields,
+scope normalized to always include `FINITE`, accessors) so the scope bit and the
+`finite` field cannot contradict before RFC 008 consumes them. All gates pass;
+148 tests (71 core + 22 static backend + 32 device + 23 dynamic backend).
 
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 

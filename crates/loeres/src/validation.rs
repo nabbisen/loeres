@@ -115,19 +115,42 @@ impl TrustToken {
 /// A *recording* descriptor, not a proof: construct it only after the owning
 /// backend / solver has actually run the relevant checks, or when an invariant
 /// is explicitly not applicable.
+///
+/// Coherent by construction: every `ValidationCoverage` addresses finite
+/// coverage (via [`finite`](ValidationCoverage::finite)), so [`new`] normalizes
+/// the scope to always include [`ValidationScope::FINITE`]; the scope bit and
+/// the `finite` field can never contradict. Fields are private so the invariant
+/// cannot be bypassed by a struct literal — read via the accessors.
+///
+/// [`new`]: ValidationCoverage::new
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct ValidationCoverage {
-    /// Which coverage dimensions were addressed.
-    pub scope: ValidationScope,
-    /// Finite-value coverage.
-    pub finite: FiniteCoverage,
+    scope: ValidationScope,
+    finite: FiniteCoverage,
 }
 
 impl ValidationCoverage {
     /// Record coverage. Callers construct this only after the relevant checks
     /// have actually run, or when the invariant is explicitly not applicable.
+    ///
+    /// `scope` is normalized to include [`ValidationScope::FINITE`] (finite is
+    /// always addressed — by `finite`); the remaining scope bits record whether
+    /// the other invariants were addressed.
     pub const fn new(scope: ValidationScope, finite: FiniteCoverage) -> Self {
-        Self { scope, finite }
+        Self {
+            scope: scope.union(ValidationScope::FINITE),
+            finite,
+        }
+    }
+
+    /// The coverage scope (always includes [`ValidationScope::FINITE`]).
+    pub const fn scope(self) -> ValidationScope {
+        self.scope
+    }
+
+    /// How the finite invariant was addressed.
+    pub const fn finite(self) -> FiniteCoverage {
+        self.finite
     }
 }
 

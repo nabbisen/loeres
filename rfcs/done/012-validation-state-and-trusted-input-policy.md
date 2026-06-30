@@ -86,6 +86,7 @@ Both `Validated` and `TrustedByCaller` carry an allocation-free **coverage descr
 
 - a **scope bitset** — a transparent integer newtype (`ValidationScope(u8)`) with one bit per coverage dimension: finite values, problem/config pairing, and solver-family pre-loop invariants. An `ALL` constant denotes *all validation dimensions known to this RFC's surface / release* (R1) — not a forever-complete claim; later RFCs adding dimensions redefine `ALL` for their release. (Structural dimensions / bounds are construction-owned and are not bits here.)
 - a **finite-coverage variant** — `FiniteCoverage::{Checked, NotApplicable}` (§3.7) — so a `Validated` value is never ambiguous about whether a finite scan ran. Trusted bypass and unavailable are not `FiniteCoverage` variants (§3.7).
+- the `Validated` descriptor `ValidationCoverage` pairs the scope bitset with the finite-coverage variant. It is **coherent by construction (v0.12.1, R1)**: every `ValidationCoverage` addresses finite coverage via its `finite` field, so its constructor normalizes the scope to always include `ValidationScope::FINITE`, and its fields are private (read via `scope()` / `finite()` accessors) so a struct literal cannot create a scope/`finite` contradiction.
 - for `TrustedByCaller`: a `#[non_exhaustive]` `TrustKind` enum carrying `CallerAssertion` only — RFC 008 pipeline-trust categories are added later, not reserved as a concrete variant now (R2) — plus a compact **numeric audit token** (an integer category, not a string).
 - an optional `&'static str` label, only where a static tag is useful; never an owned `String`.
 
@@ -154,3 +155,21 @@ Acceptance gates are **RFC-012-local** (F5). The shared cross-backend validation
 6. The core types build under `no_std` / no-`alloc` (verified on `thumbv7em-none-eabihf`); documentation warns that trusted states transfer responsibility and do not prove correctness.
 
 Cluster cache-invalidation tests and the device-workspace-no-mutation conformance fixtures are deferred to their owning RFCs (008 / 013); the device no-partial-mutation property itself is already upheld by RFC 006's pre-iteration checks and is restated in §3.6.
+
+## 7. Implementation-Decision Closeout (I1–I11)
+
+The implementation-decision pass that gated coding, as built in v0.12.0 (with the v0.12.1 R1 hardening):
+
+- **I1 — module / re-export.** `loeres::validation`, a single `validation.rs` with colocated `validation/tests.rs`; the public vocabulary is re-exported at the `loeres` root.
+- **I2 — `ValidationScope`.** `#[repr(transparent)] struct ValidationScope(u8)` with consts `EMPTY` / `FINITE` / `PROBLEM_CONFIG` / `PRELOOP` and a release-local `ALL`; `const fn` `empty` / `contains` / `union` / `intersect`, plus `BitOr` / `BitAnd` conveniences.
+- **I3 — `FiniteCoverage`.** Exactly `{ Checked, NotApplicable }`.
+- **I4 — `TrustKind`.** `#[non_exhaustive] enum TrustKind { CallerAssertion }`.
+- **I5 — `TrustToken`.** `#[repr(transparent)] struct TrustToken(u32)` with `new` / `value`.
+- **I6 — `ValidationCoverage`.** The `Validated` descriptor pairing `scope` and `finite`. v0.12.1 (R1): private fields with `scope()` / `finite()` accessors and a scope-normalizing `new` (always includes `FINITE`) — coherent by construction.
+- **I7 — `TrustedByCaller`.** Standalone evidence `{ scope, kind, token, label: Option<&'static str> }` with a `caller_assertion` constructor; the asserted scope is visible.
+- **I8 — `ValidationState`.** `{ Unvalidated, Validated(ValidationCoverage), Trusted(TrustedByCaller) }`.
+- **I9 — no-scan rule.** Representation-only constructors; no model scanning, no `Validated<P>` wrapper, no shipped device/backend signature change. Backends remain the validators and record their outcome here.
+- **I10 — derives / no-alloc.** All types `Copy` + `Debug` + `Eq` + `PartialEq`; no heap-bearing fields; `no_std` / no-`alloc`, `forbid(unsafe_code)`.
+- **I11 — tests.** RFC-012-local only (scope ops, `ALL` composition, coverage constructor + normalization, finite distinctness, trusted construction, state variants); no backend / cluster / conformance flows.
+
+No new `SolverError` category was introduced (§5); cluster trusted-pipeline / caching remain RFC 008-owned and the shared conformance corpus RFC 013-owned.

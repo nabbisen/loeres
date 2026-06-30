@@ -60,10 +60,21 @@ fn trust_token_roundtrip() {
 #[test]
 fn coverage_records_scope_and_finite() {
     let c = ValidationCoverage::new(ValidationScope::ALL, FiniteCoverage::Checked);
-    assert_eq!(c.scope, ValidationScope::ALL);
-    assert_eq!(c.finite, FiniteCoverage::Checked);
+    assert_eq!(c.scope(), ValidationScope::ALL);
+    assert_eq!(c.finite(), FiniteCoverage::Checked);
     let na = ValidationCoverage::new(ValidationScope::PRELOOP, FiniteCoverage::NotApplicable);
-    assert_eq!(na.finite, FiniteCoverage::NotApplicable);
+    assert_eq!(na.finite(), FiniteCoverage::NotApplicable);
+}
+
+#[test]
+fn coverage_normalizes_finite_into_scope() {
+    // Even a scope without FINITE is normalized to include it, so the scope bit
+    // and the `finite` field can never contradict.
+    let c = ValidationCoverage::new(ValidationScope::PRELOOP, FiniteCoverage::Checked);
+    assert!(c.scope().contains(ValidationScope::FINITE));
+    assert!(c.scope().contains(ValidationScope::PRELOOP));
+    let na = ValidationCoverage::new(ValidationScope::empty(), FiniteCoverage::NotApplicable);
+    assert!(na.scope().contains(ValidationScope::FINITE));
 }
 
 #[test]
@@ -94,7 +105,7 @@ fn state_variants() {
     assert_ne!(unval, val);
     assert_ne!(val, trusted);
     match val {
-        ValidationState::Validated(c) => assert_eq!(c.finite, FiniteCoverage::Checked),
+        ValidationState::Validated(c) => assert_eq!(c.finite(), FiniteCoverage::Checked),
         _ => panic!("expected Validated"),
     }
 }

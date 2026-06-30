@@ -5,6 +5,35 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.12.1] — 2026-06-30 — RFC 012 coherence hardening and doc cleanup
+
+A corrective patch over v0.12.0 addressing the RFC 012 implementation review,
+before RFC 008 consumes the validation vocabulary. No new types.
+
+### Changed — `ValidationCoverage` coherent by construction (`loeres::validation`)
+
+- `ValidationCoverage` fields are now private, read via `scope()` / `finite()`
+  accessors, and `new(scope, finite)` normalizes the scope to always include
+  `ValidationScope::FINITE`. Every `ValidationCoverage` addresses finite coverage
+  (via `finite`), so the scope bit and the `finite` field can no longer
+  contradict (e.g. `finite: Checked` with a scope lacking `FINITE`), and a struct
+  literal can no longer bypass the invariant. (Source-incompatible only for code
+  reading the fields directly; the type shipped in v0.12.0 and has no external
+  consumers yet.)
+
+### Documentation
+
+- `crates/loeres/README.md` updated from the Phase-0 placeholder to the v0.12.0+
+  implemented core surface (`scalar`, `access` / `dimension`, `error` /
+  `diagnostic`, `solver`, `validation`).
+- RFC 012 (done) gains a §7 implementation-decision closeout recording I1–I11,
+  and §3.4 documents the `ValidationCoverage` coherence rule.
+
+### Verification
+
+- 148 tests (1 new: scope-normalization coherence). All gates pass — check,
+  zero-bleed, no-std (`thumbv7em-none-eabihf`), check-rfcs, panic-audit.
+
 ## [0.12.0] — 2026-06-30 — RFC 012 core validation-state vocabulary
 
 RFC 012 is implemented as a **core-first** addition: the `loeres::validation`
@@ -1138,6 +1167,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.12.1]: https://github.com/nabbisen/loeres/releases/tag/v0.12.1
 [0.12.0]: https://github.com/nabbisen/loeres/releases/tag/v0.12.0
 [0.11.1]: https://github.com/nabbisen/loeres/releases/tag/v0.11.1
 [0.11.0]: https://github.com/nabbisen/loeres/releases/tag/v0.11.0

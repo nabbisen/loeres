@@ -4,25 +4,25 @@ version = 4
 
 [[package]]
 name = "loeres"
-version = "0.12.0"
+version = "0.12.1"
 
 [[package]]
 name = "loeres-backend-static"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-backend-std"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-cluster"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "loeres",
  "loeres-backend-std",
@@ -30,7 +30,7 @@ dependencies = [
 
 [[package]]
 name = "loeres-device"
-version = "0.12.0"
+version = "0.12.1"
 dependencies = [
  "loeres",
  "loeres-backend-static",
@@ -38,4 +38,4 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.12.0"
+version = "0.12.1"
