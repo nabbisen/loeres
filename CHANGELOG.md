@@ -5,6 +5,50 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.14.0] — 2026-06-30 — RFC 016: std-side projected first-order cluster kernel
+
+The first production std-side numerical kernel for `loeres-cluster`, resolving RFC 016 and
+graduating cluster orchestration from deterministic test jobs to real solving.
+
+### Added
+
+- **`loeres-cluster::model`** — the typed projected first-order surface: the
+  `ClusterProjectedFirstOrderProblem<S>` first-order oracle over box bounds, the reusable
+  single-scratch `ClusterProjectedFirstOrderWorkspace<S>`, the `ProjectedFirstOrderConfig<S>`
+  numeric configuration (`max_iterations`, `tolerance`), and the two-field
+  `ProjectedFirstOrderSolveRecord` (`report` plus a `{ checked: ValidationCoverage,
+  trust: Option<TrustedByCaller> }` validation ledger).
+- **`loeres-cluster::solve::projected_first_order`** — the kernel:
+  `solve_projected_first_order_dyn` (typed in/out-iterate entrypoint) and the
+  `ClusterProjectedFirstOrderJob` adapter erasing a solve onto the RFC 008 `ClusterJob` seam
+  (a `&self`-safe template cloning the initial iterate and allocating a local workspace per
+  run). Dynamic box/bound-constrained projected first-order over `DenseVector`, the
+  dynamic-storage analog of the RFC 006 device kernel.
+
+### Behavior
+
+- Step-norm convergence `max_i |x_next[i] − x[i]| ≤ tolerance`, aligned with RFC 006.
+  Iteration counting mirrors RFC 006: `converged_early(executed)` on the converging step
+  (first-step / `max_iterations == 1` → `converged_early(1)`), `not_converged_cap(max_iterations)`
+  at the cap. Non-convergence is a *solved* `NotConverged` item, never `Failed`.
+- Validation (RFC 012): structural checks (dimension/bound shape, finite `lo ≤ hi`,
+  `step_scale` finite and `> 0`, config) always run; policy-governed `FINITE` scans of bounds
+  and the initial iterate may be skipped under `TrustedByCaller`. Hot-loop finiteness checks
+  are never skippable — an in-loop non-finite gradient, bound, or candidate maps to
+  `NumericalDomain` even under trust, so a trusted solve never yields `Solved` over NaN/Inf.
+  The record's `checked.finite()` is recorded as `NotApplicable` (not fabricated as `Checked`)
+  when the finite scan was trusted away — an evidence-integrity refinement noted in RFC 016 §7.
+
+### Internal
+
+- `loeres-cluster` `model` and `solve::projected_first_order` populated (previously a
+  placeholder); `lib.rs` / `solve.rs` scope notes updated. Trusted-pipeline / model-identity
+  caching over this typed surface is deferred to RFC 015. `cargo fmt` / clippy / workspace
+  tests / `xtask release-gate` (check / zero-bleed / no-std `thumbv7em-none-eabihf` /
+  check-rfcs / panic-audit) green on both the working tree and a clean extraction. 198 tests
+  (71 core + 22 static backend + 32 device + 23 dynamic backend + 50 cluster). Zero-bleed
+  holds: the kernel is server-only and unreachable from edge crates.
+
 ## [0.13.3] — 2026-06-30 — Apex requirements/roadmap currency sync + workspace dependency centralization
 
 A documentation- and build-metadata patch: no code, contract, or public-surface change.
@@ -1311,6 +1355,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.14.0]: https://github.com/nabbisen/loeres/releases/tag/v0.14.0
 [0.13.3]: https://github.com/nabbisen/loeres/releases/tag/v0.13.3
 [0.13.2]: https://github.com/nabbisen/loeres/releases/tag/v0.13.2
 [0.13.1]: https://github.com/nabbisen/loeres/releases/tag/v0.13.1

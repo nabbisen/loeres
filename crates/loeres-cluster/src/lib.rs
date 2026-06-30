@@ -16,12 +16,12 @@
 //! barrier ([`ClusterJob`](solve::ClusterJob)). It consumes the RFC 012
 //! validation vocabulary at the orchestration boundary.
 //!
-//! Scope note: this is cluster orchestration **infrastructure**, not a
-//! production numerical cluster solver. No std-side solver kernel exists yet;
-//! `ClusterJob` is the stable seam where one plugs in later, and the machinery
-//! is validated against deterministic test jobs (orchestration behavior, not
-//! numerical correctness). `model`, `observe`, and `gateway` remain placeholders
-//! owned by later RFCs.
+//! RFC 016 (v0.14.0) adds the first std-side numerical kernel: a dynamic
+//! box/bound-constrained projected first-order solver over `DenseVector`
+//! ([`model`] types plus [`solve_projected_first_order_dyn`](solve::solve_projected_first_order_dyn)
+//! and its [`ClusterProjectedFirstOrderJob`](solve::ClusterProjectedFirstOrderJob)
+//! adapter), plugged into the `ClusterJob` seam. `observe` and `gateway` remain
+//! placeholders owned by later RFCs.
 
 pub mod batch;
 pub mod gateway;
@@ -31,11 +31,18 @@ pub mod runtime;
 pub mod solve;
 
 pub use batch::{BatchItemOutcome, BatchSolveReport, BatchSummary, ClusterSolution};
+pub use model::{
+    ClusterProjectedFirstOrderProblem, ClusterProjectedFirstOrderWorkspace,
+    ProjectedFirstOrderConfig, ProjectedFirstOrderSolveRecord,
+};
 pub use runtime::{
     BatchExecutionPolicy, ClusterCancellationToken, ClusterError, ClusterSolveConfig,
     ClusterValidationPolicy, DispatchPolicy, MissingCoverage,
 };
-pub use solve::{ClusterExecutionContext, ClusterJob, solve_batch};
+pub use solve::{
+    ClusterExecutionContext, ClusterJob, ClusterProjectedFirstOrderJob, solve_batch,
+    solve_projected_first_order_dyn,
+};
 
 #[cfg(feature = "async-tokio")]
 pub use solve::solve_batch_async;

@@ -1,11 +1,11 @@
 //! Public solve entrypoints and the hybrid dispatch barrier (RFC 008 §3.3 / §3.5).
 //!
-//! [`ClusterJob`] is the stable seam where a future std-side numerical kernel
-//! plugs in. In v0.13.0 there is no production kernel for dynamic storage (core
-//! exposes only the outcome vocabulary; the device solver is edge-only), so the
-//! orchestration machinery here is exercised by deterministic test jobs. A job
-//! produces a per-item [`BatchItemOutcome`]; solver-domain failures belong in
-//! that outcome, never in a top-level [`ClusterError`].
+//! [`ClusterJob`] is the stable seam where a std-side numerical kernel plugs in.
+//! RFC 016 adds the first such kernel — [`solve_projected_first_order_dyn`] and
+//! its [`ClusterProjectedFirstOrderJob`] adapter — alongside the orchestration
+//! machinery (still exercised by deterministic test jobs for orchestration
+//! behavior). A job produces a per-item [`BatchItemOutcome`]; solver-domain
+//! failures belong in that outcome, never in a top-level [`ClusterError`].
 
 use crate::batch::{BatchItemOutcome, BatchSolveReport};
 use crate::runtime::executor;
@@ -146,6 +146,9 @@ where
         .await
         .map_err(|_| ClusterError::Shutdown)?
 }
+
+mod projected_first_order;
+pub use projected_first_order::{ClusterProjectedFirstOrderJob, solve_projected_first_order_dyn};
 
 #[cfg(test)]
 mod tests;
