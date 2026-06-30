@@ -5,6 +5,36 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.13.3] — 2026-06-30 — Apex requirements/roadmap currency sync + workspace dependency centralization
+
+A documentation- and build-metadata patch: no code, contract, or public-surface change.
+
+### Documentation
+
+- `docs/specs/loeres-requirements-v1.md` and `docs/specs/loeres-roadmap-milestones-v1.md`
+  advanced from "current as of v0.10.1" (Milestone 2) to the **v0.13.1** design baseline,
+  completing the apex trio (external-design was synced in v0.13.2). Both now record
+  Milestone 3 in progress with RFC 007 (dynamic dense/sparse), RFC 012 (validation-state
+  vocabulary), and RFC 008 (cluster orchestration foundation, orchestration-first); the
+  requirements §5.2 / §5.4 / §12.4 implementation annotations and the roadmap snapshot
+  table are updated accordingly. The cluster annotation states explicitly that RFC 008
+  does **not** implement FFI / `gateway` (that remains an RFC 009-owned future boundary),
+  and the docs use count-free green-gate wording to reduce churn.
+
+### Build
+
+- Centralized the `rayon` and `tokio` dependency versions in the root
+  `[workspace.dependencies]`; `crates/loeres-cluster/Cargo.toml` now inherits them via
+  `{ workspace = true, optional = true }`. No member crate carries a specific external
+  dependency version. The resolved dependency graph and feature set are unchanged
+  (tokio 1.x with `rt`, rayon 1.x).
+
+### Verification
+
+- 180 tests; all gates pass — check, zero-bleed, no-std (`thumbv7em-none-eabihf`),
+  check-rfcs, panic-audit — on both the working tree and a clean extraction; the optional
+  `parallel-rayon` / `async-tokio` backends build and test as before.
+
 ## [0.13.2] — 2026-06-30 — Apex external-design currency sync (RFC 008)
 
 A documentation-only patch: no code, contract, or public-surface change. It mirrors the
@@ -1281,6 +1311,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.13.3]: https://github.com/nabbisen/loeres/releases/tag/v0.13.3
 [0.13.2]: https://github.com/nabbisen/loeres/releases/tag/v0.13.2
 [0.13.1]: https://github.com/nabbisen/loeres/releases/tag/v0.13.1
 [0.13.0]: https://github.com/nabbisen/loeres/releases/tag/v0.13.0

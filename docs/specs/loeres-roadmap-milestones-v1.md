@@ -1,24 +1,31 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted — Milestone 2 (static backend + device) complete (current as of v0.10.1)  
+Status: Accepted — Milestone 3 in progress (dynamic backend, validation vocabulary, cluster orchestration) (current as of v0.13.1)  
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
-> **Document currency.** Current as of repository release **v0.10.1**; the design is
+> **Document currency.** Current as of repository release **v0.13.1**; the design is
 > accepted. **Phase 0** (workspace skeleton — five crates plus `xtask`) is complete
 > (v0.3.0). **Milestone 1 (`loeres`) is complete:** RFC 003 (v0.4.0), RFC 014
 > (v0.5.0), RFC 001 (v0.6.0), and RFC 002 (v0.7.0). **Milestone 2 (static backend +
 > device) is complete:** RFC 004 (v0.8.0 — const-generic fixed-size static storage),
 > RFC 005 (v0.9.0 — caller-owned typed workspace mechanics), and RFC 006 (v0.10.0 —
 > baseline deterministic device kernel; fail-safe hardening and closeout corrections
-> in v0.10.1) are implemented and in `rfcs/done/`. Milestone 3 (dynamic backend +
-> cluster, RFC 007–009) follows. 116 tests pass with `release-gate` green — now
-> including the implemented `panic-audit` gate — across the bare-metal `no_std`
-> build and all feature combinations.
+> in v0.10.1) are implemented and in `rfcs/done/`. **Milestone 3 (dynamic backend +
+> cluster) is in progress:** RFC 007 (v0.11.0 — dynamic dense/sparse storage
+> adapters; construction hardening in v0.11.1), RFC 012 (v0.12.0 — core
+> validation-state vocabulary; coherence hardening in v0.12.1), and RFC 008 (v0.13.0
+> — cluster orchestration foundation, orchestration-first; review corrections in
+> v0.13.1, apex external-design currency sync in v0.13.2) are implemented and in
+> `rfcs/done/`; RFC 009 (observability/gateway) and RFC 010 (xtask size-budget
+> governance) follow. The cluster slice is orchestration infrastructure, not a
+> production numerical cluster solver — no std-side kernel exists yet. The test
+> suite and `release-gate` are green — the `panic-audit` gate across the bare-metal
+> `no_std` build and all feature combinations.
 
 ---
 
-## Current v0.10.1 Roadmap Snapshot
+## Current v0.13.1 Roadmap Snapshot
 
 | Area | Status | Next action |
 |---|---|---|
@@ -30,8 +37,11 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 | RFC 004 — const-generic fixed-size static storage | Implemented since v0.8.0 | `FixedVector`/`FixedMatrix` (`owned-arrays`) + contiguous static views. |
 | RFC 005 — caller-owned typed workspace mechanics | Implemented since v0.9.0 | `WorkspaceFootprint`; `DeviceWorkspace`/`DeviceWorkspaceDiagnostic`/`WorkspaceFor`; `DeviceSolveConfig`/`TimingMode`. |
 | RFC 006 — baseline deterministic device kernel | Implemented since v0.10.0 (hardened v0.10.1) | `ProjectedFirstOrderProblem`, `solve_projected_first_order`, `DeviceSolveReport`. **Closed Milestone 2.** |
-| RFC 007–009 — dynamic backend/cluster path | Next (Milestone 3) | **Unblocked** now that Milestone 2 is closed; keep zero-bleed active. |
-| RFC 010–013 — cross-cutting governance/targets/validation/conformance | Designed as cross-cutting work | `panic-audit` now implemented (RFC 006 §6.2); `size-budget` remains RFC 010/011-owned. |
+| RFC 007 — dynamic dense/sparse storage adapters | Implemented since v0.11.0 (hardened v0.11.1) | `loeres-backend-std` `dense`/`sparse` over the RFC 002 access contracts; opened Milestone 3. |
+| RFC 012 — core validation-state vocabulary | Implemented since v0.12.0 (hardened v0.12.1) | `loeres::validation`: scope/coverage/trust/recorded-state; consumed by the cluster validation policy. |
+| RFC 008 — cluster orchestration foundation | Implemented since v0.13.0 (corrected v0.13.1; apex sync v0.13.2) | `loeres-cluster` `batch`/`runtime`/`solve`: per-item batch contract, cancellation/executor, the `ClusterJob` seam. Orchestration infrastructure, not a production cluster solver; no std-side kernel yet. |
+| RFC 009 — observability and FFI gateway | Next (Milestone 3) | Follows the orchestration foundation; populates `observe`/`gateway`; keep zero-bleed active. |
+| RFC 010/011/013 — governance / targets / conformance | Cross-cutting; in progress | `panic-audit` implemented (RFC 006 §6.2); `size-budget` remains RFC 010-owned (activates `DispatchPolicy`); RFC 011 target profiles and RFC 013 conformance corpus pending. |
 
 ## 0. Purpose and Roadmap Principle
 

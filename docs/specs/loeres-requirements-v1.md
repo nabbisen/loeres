@@ -5,16 +5,18 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted — Milestone 2 (static backend + device) complete (current as of v0.10.1)  
+**Status:** Accepted — Milestone 3 in progress (dynamic backend, validation vocabulary, cluster orchestration) (current as of v0.13.1)  
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Document currency.** This specification is current as of repository release
-> **v0.10.1** and reflects the **accepted** design (no longer a draft). The
+> **v0.13.1** and reflects the **accepted** design (no longer a draft). The
 > architecture and the Milestone-1 and Milestone-2 contracts are accepted and
 > **implemented**: RFC 002 (storage-agnostic access) shipped in v0.7.0, closing
 > Milestone 1; RFC 004 (v0.8.0), RFC 005 (v0.9.0), and RFC 006 (v0.10.0, hardened
-> v0.10.1) closed Milestone 2. Earlier housekeeping: v0.6.2 resynced the in-repo
+> v0.10.1) closed Milestone 2. **Milestone 3 (dynamic backend + cluster) is in
+> progress** with RFC 007 (v0.11.x), RFC 012 (v0.12.x), and RFC 008 (v0.13.x)
+> implemented (see the Milestone-3 list below). Earlier housekeeping: v0.6.2 resynced the in-repo
 > `docs/specs` mirrors, v0.6.3 renamed the core crate from `loeres-core` to
 > `loeres` (directory `crates/loeres/`; public module layout unchanged — see
 > ADR-019), and v0.7.0 implemented RFC 002 (exact-size row-major views — see
@@ -58,12 +60,30 @@
 >   is a status, not an error. Shipped v0.10.0, with fail-safe validation and the
 >   `panic-audit` gate added in v0.10.1.
 >
+> **Implemented** (Milestone 3 — `loeres-backend-std` / `loeres` / `loeres-cluster`, in `rfcs/done/`):
+> - **RFC 007** — dynamic dense/sparse storage adapters: `loeres-backend-std`
+>   `dense` / `sparse` over the RFC 002 access contracts, without changing core
+>   contracts; shipped v0.11.0, with construction hardening in v0.11.1.
+> - **RFC 012** — core validation-state vocabulary (`loeres::validation`:
+>   `ValidationScope`, `FiniteCoverage`, `TrustKind`, `TrustToken`,
+>   `ValidationCoverage`, `TrustedByCaller`, `ValidationState`); shipped v0.12.0,
+>   with coherence hardening in v0.12.1.
+> - **RFC 008** — cluster orchestration foundation (orchestration-first):
+>   `loeres-cluster` `batch` / `runtime` / `solve` — the per-item batch contract,
+>   a runtime-agnostic config / cancellation / executor layer (`parallel-rayon` /
+>   `async-tokio` gated), and the `ClusterJob` dispatch seam, consuming the RFC 012
+>   vocabulary. Orchestration infrastructure, not a production numerical cluster
+>   solver — no std-side kernel exists yet. Shipped v0.13.0, corrected v0.13.1; the
+>   apex external-design currency was synced in v0.13.2.
+>
 > **Status:** Phase 0 (workspace skeleton — five crates plus `xtask`) is complete
 > (v0.3.0); **Milestone 1 (`loeres`) and Milestone 2 (static backend + device) are
-> complete** — RFC 001/002/003/014 and RFC 004/005/006 are implemented. 116 tests
-> pass with `release-gate` green (now including the `panic-audit` gate, across the
-> bare-metal `no_std` build and all feature combinations). `ROADMAP.md` holds the
-> authoritative live status.
+> complete**, and **Milestone 3 (dynamic backend + cluster) is in progress** —
+> RFC 001/002/003/014, RFC 004/005/006, and RFC 007/012/008 are implemented;
+> RFC 009 (observability/gateway) and RFC 010 (xtask size-budget governance)
+> follow. The test suite and `release-gate` are green (the `panic-audit` gate,
+> across the bare-metal `no_std` build and all feature combinations). `ROADMAP.md`
+> holds the authoritative live status.
 
 ---
 
@@ -478,6 +498,8 @@ These are allowed design areas, not mandatory current implementation tasks:
 - Conversion between server storage formats.
 - Diagnostic support for allocations and numerical conditioning.
 
+**Implemented (v0.11.0; hardened v0.11.1).** RFC 007 satisfies the dynamic-storage subset of BSTD-001..004/007 with `loeres-backend-std` dynamic dense and sparse adapters (`dense` / `sparse`) over the RFC 002 access contracts, exposed without changing core contracts (BSTD-007). The remaining suggested areas (BLAS/LAPACK, SIMD, multi-threaded kernels) remain future, feature-gated work.
+
 ## 5.3 `loeres-backend-static`
 
 ### 5.3.1 Purpose
@@ -550,6 +572,8 @@ Server-side solvers may target:
 - Batch and streaming optimization workflows.
 
 Server solver breadth must not imply device solver obligations.
+
+**Implemented (v0.13.0; corrected v0.13.1).** RFC 008 satisfies the orchestration subset of CLUSTER-001..007/010 with the orchestration-first cluster slice (`loeres-cluster` `batch` / `runtime` / `solve`): heap/`std` (CLUSTER-001/002), optional async (`async-tokio`) and multi-threaded (`parallel-rayon`) execution (CLUSTER-003/004), an explicit cooperative `ClusterCancellationToken` and timeout budget (CLUSTER-006), and per-item typed outcomes rather than service panics — `BatchItemOutcome` / `ClusterError` (CLUSTER-010). RFC 008 does not populate `gateway` or implement FFI integration; `ffi-gateway` remains a future, audited, feature-gated boundary (CLUSTER-008) owned by RFC 009 / a later gateway RFC. This is orchestration infrastructure: the server solver families of §5.4.3 remain future RFCs — no std-side numerical kernel exists yet, and `ClusterJob` is the seam where one attaches. RFC 012 (v0.12.0, hardened v0.12.1) supplies the validation-state vocabulary that the cluster validation policy consumes.
 
 ## 5.5 `loeres-device`
 
@@ -1076,6 +1100,8 @@ Acceptance:
 - Server features do not leak into edge crates.
 - Server memory behavior is documented.
 - FFI is feature-gated and documented.
+
+**Implemented (Milestone 3, v0.11.0–v0.13.2):** RFC 007 dynamic dense/sparse storage adapters (v0.11.x); RFC 012 core validation-state vocabulary (v0.12.x); and RFC 008 the cluster orchestration foundation (v0.13.x — orchestration-first: `batch` / `runtime` / `solve`, cancellation/budget, and the `ClusterJob` seam, covering the dynamic-storage, batch, and async/cancellation deliverables). Observability and native-backend integration (RFC 009) and a production std-side numerical kernel remain follow-on work; the apex external-design currency was synced in v0.13.2.
 
 ### 12.5 Phase 4 — Implementation Baseline
 

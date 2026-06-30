@@ -23,5 +23,5 @@ ffi-gateway = []   # audited, opt-in native/legacy solver gateway (RFC 009)
 [dependencies]
 loeres = { workspace = true }
 loeres-backend-std = { workspace = true }
-rayon = { version = "1", optional = true }
-tokio = { version = "1", optional = true, default-features = false, features = ["rt"] }
+rayon = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
