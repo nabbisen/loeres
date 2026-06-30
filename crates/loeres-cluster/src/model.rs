@@ -9,7 +9,7 @@
 //!
 //! Server-only (`loeres-cluster`); never reachable from edge crates (zero-bleed).
 
-use loeres::validation::{TrustedByCaller, ValidationCoverage};
+use loeres::validation::{TrustedByCaller, ValidationScope};
 use loeres::{ContiguousVectorAccessMut, FiniteScalar, MetricScalar, SolveReport, SolverError};
 use loeres_backend_std::DenseVector;
 
@@ -18,6 +18,14 @@ use loeres_backend_std::DenseVector;
 /// Mirrors the RFC 006 `ProjectedFirstOrderProblem` contract for runtime sizes.
 /// `validate_boundary` is an optional problem-specific hook run *in addition to*
 /// the kernel-enforced universal checks (it does not own dimension/bound safety).
+///
+/// **Stability invariants (N1).** For the duration of a single solve, `dimension()`,
+/// `bounds()`, and `step_scale()` must return stable values, and `gradient_at`
+/// must write all `dimension()` gradient entries. The kernel validates structure
+/// once before the loop and re-checks bound/gradient/candidate finiteness every
+/// iteration, but it does not re-check finite `lo <= hi` per iteration; an
+/// implementation that uses interior mutability to change bounds mid-solve
+/// violates this contract.
 pub trait ClusterProjectedFirstOrderProblem<S>
 where
     S: FiniteScalar + MetricScalar,
@@ -28,7 +36,8 @@ where
     /// Lower/upper box bounds for projection.
     fn bounds(&self) -> (&DenseVector<S>, &DenseVector<S>);
 
-    /// Gradient `∇f(x)` written into `grad` — the hot-loop oracle.
+    /// Gradient `∇f(x)` written into `grad` (all `dimension()` entries) — the
+    /// hot-loop oracle.
     fn gradient_at(&self, x: &DenseVector<S>, grad: &mut DenseVector<S>)
     -> Result<(), SolverError>;
 
@@ -120,20 +129,40 @@ impl<S: FiniteScalar + MetricScalar> ProjectedFirstOrderConfig<S> {
     }
 }
 
-/// Typed solve outcome: the terminal report plus the validation evidence.
+/// How the kernel's finite invariant was discharged this run (RFC 016 §7,
+/// v0.14.1). The three states are named directly so the record never misencodes
+/// a trusted-away scan as `FiniteCoverage::NotApplicable` (which RFC 012 reserves
+/// for finite-incapable domains) nor as `Checked` (which would claim a scan that
+/// did not run). Trust evidence stays RFC 012's `TrustedByCaller`.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum ProjectedFirstOrderFiniteEvidence {
+    /// The kernel ran the finite scans (bounds + initial iterate) and they passed.
+    Scanned,
+    /// The caller transferred responsibility for finiteness (RFC 012 evidence);
+    /// the pre-loop finite scans for the asserted scope were skipped. The
+    /// non-skippable hot-loop finiteness checks still ran.
+    Trusted(TrustedByCaller),
+    /// Reserved: non-finite values are impossible by the scalar's domain/type
+    /// contract. Not produced by this `f64` / `FiniteScalar` kernel in v1.
+    DomainInapplicable,
+}
+
+/// Typed solve outcome: the terminal report plus honest validation evidence
+/// (RFC 016 §7, v0.14.1).
 ///
-/// `checked` records what the kernel actually verified this run (always the
-/// structural `PROBLEM_CONFIG` scope; `FINITE` when scanned). `trust` records a
-/// caller responsibility transfer, if any. RFC 012 vocabulary only; RFC 015
-/// decides later what is cacheable (C1).
+/// `checked_scope` always includes `PROBLEM_CONFIG` (the universal structural
+/// checks that always run), and includes `FINITE` only when the kernel actually
+/// scanned it. `finite` names how the finite invariant was discharged; caller
+/// trust lives inside `finite` as RFC 012's `TrustedByCaller`, so there is no
+/// parallel trust model. RFC 015 decides later what is cacheable.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedFirstOrderSolveRecord {
     /// Terminal report (RFC 014).
     pub report: SolveReport,
-    /// Coverage the kernel verified this run.
-    pub checked: ValidationCoverage,
-    /// Caller trust transfer, if any.
-    pub trust: Option<TrustedByCaller>,
+    /// Structural/finite scopes the kernel verified this run.
+    pub checked_scope: ValidationScope,
+    /// How the finite invariant was discharged.
+    pub finite: ProjectedFirstOrderFiniteEvidence,
 }
 
 #[cfg(test)]

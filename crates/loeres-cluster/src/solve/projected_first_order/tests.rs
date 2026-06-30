@@ -75,8 +75,8 @@ fn converges_to_unconstrained_optimum() {
     assert!(rec.report.status().is_converged());
     assert!((x.get(0).unwrap() - 3.0).abs() < 1e-6);
     assert!((x.get(1).unwrap() + 2.0).abs() < 1e-6);
-    assert_eq!(rec.checked.finite(), FiniteCoverage::Checked);
-    assert!(rec.trust.is_none());
+    assert_eq!(rec.finite, ProjectedFirstOrderFiniteEvidence::Scanned);
+    assert!(rec.checked_scope.contains(ValidationScope::FINITE));
 }
 
 #[test]
@@ -269,7 +269,7 @@ fn cancellation_before_loop_returns_cancelled() {
 }
 
 #[test]
-fn trusted_finite_records_not_applicable_and_trust() {
+fn trusted_finite_records_trusted_evidence() {
     let p = Quadratic {
         weights: vec![1.0],
         centers: vec![2.0],
@@ -289,8 +289,13 @@ fn trusted_finite_records_not_applicable_and_trust() {
         &ctx(ClusterValidationPolicy::TrustedByCaller(trust)),
     )
     .unwrap();
-    assert_eq!(rec.checked.finite(), FiniteCoverage::NotApplicable);
-    assert!(rec.trust.is_some());
+    assert!(matches!(
+        rec.finite,
+        ProjectedFirstOrderFiniteEvidence::Trusted(_)
+    ));
+    // FINITE was trusted away, not scanned: checked_scope must not claim it.
+    assert!(!rec.checked_scope.contains(ValidationScope::FINITE));
 }
 
+mod error_mapping;
 mod orchestration;

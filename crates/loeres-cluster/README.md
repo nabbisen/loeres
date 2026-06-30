@@ -5,16 +5,14 @@ Server-side solving: dynamic models, batch with per-item failure isolation, orch
 - **Environment:** `std`
 - **Depends on:** `loeres`, `loeres-backend-std`
 - **Status:** RFC 008 (v0.13.0) populates the orchestration foundation in `batch`,
-  `runtime`, and `solve`. `model`, `observe`, and `gateway` remain placeholders owned
-  by later RFCs.
+  `runtime`, and `solve`; RFC 016 (v0.14.0) adds the first std-side numerical kernel in
+  `model` and `solve`. `observe` and `gateway` remain placeholders owned by later RFCs.
 
-## What's implemented (RFC 008, v0.13.0)
+## What's implemented
 
-Cluster orchestration **infrastructure — not a production numerical cluster solver.**
-There is no std-side solver kernel yet (the core crate exposes only the solve-outcome
-vocabulary, and the device kernel is edge-only and unreachable here), so `ClusterJob` is
-the stable seam where a future kernel attaches, and the machinery is exercised by
-deterministic test jobs that validate orchestration behavior, not numerical correctness.
+RFC 008 (v0.13.0) delivered the orchestration foundation; RFC 016 (v0.14.0) added the
+first production std-side numerical kernel plugged into the `ClusterJob` seam, so the
+cluster now does real solving (not only orchestration of deterministic test jobs).
 
 - `batch` — the per-item outcome contract: `BatchItemOutcome` (`Solved` / `Failed` /
   `Cancelled` / `Panicked`, preserving the RFC 014 status/error split — a non-converged
@@ -26,6 +24,24 @@ deterministic test jobs that validate orchestration behavior, not numerical corr
   evidence), the cluster-owned `ClusterCancellationToken`, and a small `ClusterError`.
 - `solve` — the `ClusterJob` hybrid-dispatch seam, `ClusterExecutionContext`,
   `solve_batch`, and (behind `async-tokio`) `solve_batch_async`.
+
+### RFC 016 (v0.14.0) — std-side projected first-order kernel
+
+- `model` — the typed problem surface: `ClusterProjectedFirstOrderProblem` (first-order
+  oracle over box bounds), the reusable single-scratch `ClusterProjectedFirstOrderWorkspace`,
+  `ProjectedFirstOrderConfig`, and `ProjectedFirstOrderSolveRecord` (the terminal report
+  plus honest validation evidence: a `checked_scope` and a `ProjectedFirstOrderFiniteEvidence`
+  naming whether finiteness was `Scanned`, `Trusted(..)`, or `DomainInapplicable`).
+- `solve` — `solve_projected_first_order_dyn` (typed in/out-iterate entrypoint) and the
+  `&self`-safe `ClusterProjectedFirstOrderJob` adapter onto `ClusterJob`. Dynamic
+  box/bound-constrained projected first-order over `DenseVector`, step-norm convergence
+  aligned with RFC 006; non-convergence at the cap is a *solved* `NotConverged`, never a
+  failure; in-loop non-finite maps to `NumericalDomain` even under trust.
+
+Validation note: `ClusterValidationPolicy::ValidateAllInputs` and, in v1,
+`RespectBackendValidationState` both **scan inputs here** — there is no provided/cached
+backend-state channel yet (that is RFC 015-owned). `TrustedByCaller` skips the pre-loop
+finite scans for the asserted scope but never the hot-loop finiteness checks.
 
 ## Features
 

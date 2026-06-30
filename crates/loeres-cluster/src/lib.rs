@@ -33,7 +33,7 @@ pub mod solve;
 pub use batch::{BatchItemOutcome, BatchSolveReport, BatchSummary, ClusterSolution};
 pub use model::{
     ClusterProjectedFirstOrderProblem, ClusterProjectedFirstOrderWorkspace,
-    ProjectedFirstOrderConfig, ProjectedFirstOrderSolveRecord,
+    ProjectedFirstOrderConfig, ProjectedFirstOrderFiniteEvidence, ProjectedFirstOrderSolveRecord,
 };
 pub use runtime::{
     BatchExecutionPolicy, ClusterCancellationToken, ClusterError, ClusterSolveConfig,

@@ -8,7 +8,7 @@
 //! here (the first real `ValidateAllInputs` scan path) while
 //! `ClusterValidationPolicy::resolve` stays pure.
 
-use loeres::validation::{FiniteCoverage, ValidationCoverage, ValidationScope};
+use loeres::validation::ValidationScope;
 use loeres::{
     ContiguousVectorAccess, ContiguousVectorAccessMut, FiniteScalar, MetricScalar, SolveReport,
     SolverError, VectorAccess,
@@ -18,7 +18,7 @@ use loeres_backend_std::DenseVector;
 use crate::batch::{BatchItemOutcome, ClusterSolution};
 use crate::model::{
     ClusterProjectedFirstOrderProblem, ClusterProjectedFirstOrderWorkspace,
-    ProjectedFirstOrderConfig, ProjectedFirstOrderSolveRecord,
+    ProjectedFirstOrderConfig, ProjectedFirstOrderFiniteEvidence, ProjectedFirstOrderSolveRecord,
 };
 use crate::runtime::ClusterValidationPolicy;
 use crate::solve::{ClusterExecutionContext, ClusterJob};
@@ -132,12 +132,21 @@ where
     }
 
     // (b) Finite-value scans — policy-governed (C2: step_scale is structural above).
-    let (finite_trusted, trust) = match ctx.validation_policy() {
-        ClusterValidationPolicy::TrustedByCaller(t) => {
-            (t.scope.contains(ValidationScope::FINITE), Some(t))
+    let finite_evidence = match ctx.validation_policy() {
+        ClusterValidationPolicy::TrustedByCaller(t)
+            if t.scope.contains(ValidationScope::FINITE) =>
+        {
+            ProjectedFirstOrderFiniteEvidence::Trusted(t)
         }
-        _ => (false, None),
+        // RespectBackendValidationState has no provided-state channel in v1, so it
+        // scans here / fills missing coverage here (B2; provided/cached state is
+        // RFC 015-owned). ValidateAllInputs likewise scans. Either way: Scanned.
+        _ => ProjectedFirstOrderFiniteEvidence::Scanned,
     };
+    let finite_trusted = matches!(
+        finite_evidence,
+        ProjectedFirstOrderFiniteEvidence::Trusted(_)
+    );
     {
         let (lo, hi) = problem.bounds();
         if !finite_trusted {
@@ -160,12 +169,13 @@ where
     // Problem-specific hook (F3), after the universal checks.
     problem.validate_boundary()?;
 
-    let finite = if finite_trusted {
-        FiniteCoverage::NotApplicable
+    // checked_scope: PROBLEM_CONFIG always (universal checks ran); FINITE only when
+    // the kernel actually scanned it. The finite-discharge mode is in finite_evidence.
+    let checked_scope = if finite_trusted {
+        ValidationScope::PROBLEM_CONFIG
     } else {
-        FiniteCoverage::Checked
+        ValidationScope::PROBLEM_CONFIG.union(ValidationScope::FINITE)
     };
-    let checked = ValidationCoverage::new(ValidationScope::PROBLEM_CONFIG, finite);
 
     // Iteration (C4 single-scratch in-place; C5 counting mirrors RFC 006).
     let mut executed: u32 = 0;
@@ -183,15 +193,15 @@ where
         if change.lte_tolerance(config.tolerance) {
             return Ok(ProjectedFirstOrderSolveRecord {
                 report: SolveReport::converged_early(executed),
-                checked,
-                trust,
+                checked_scope,
+                finite: finite_evidence,
             });
         }
     }
     Ok(ProjectedFirstOrderSolveRecord {
         report: SolveReport::not_converged_cap(config.max_iterations),
-        checked,
-        trust,
+        checked_scope,
+        finite: finite_evidence,
     })
 }
 

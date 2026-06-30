@@ -5,6 +5,55 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.14.1] — 2026-06-30 — RFC 016 implementation-review corrections (B1–B4, N1–N3)
+
+A corrective patch addressing the v0.14.0 implementation review, before RFC 015 builds on
+the typed kernel surface. The numerical loop is unchanged; the public solve-record shape
+changes (a contract refinement).
+
+### Changed (validation evidence — B1)
+
+- **`ProjectedFirstOrderSolveRecord` is reshaped** from `{ report, checked: ValidationCoverage,
+  trust: Option<TrustedByCaller> }` to `{ report, checked_scope: ValidationScope,
+  finite: ProjectedFirstOrderFiniteEvidence }`. The new `ProjectedFirstOrderFiniteEvidence`
+  enum (`Scanned` / `Trusted(TrustedByCaller)` / `DomainInapplicable`) names the finite-discharge
+  state directly. v0.14.0 recorded a trusted-away `f64` scan as `FiniteCoverage::NotApplicable`,
+  which RFC 012 reserves for finite-*incapable* domains — a misencoding (and a single
+  `ValidationCoverage` cannot express mixed checked-`PROBLEM_CONFIG` + trusted-`FINITE`).
+  `checked_scope` now carries `FINITE` only when actually scanned; caller trust lives inside
+  the `Trusted(..)` variant. The `f64` kernel emits only `Scanned` or `Trusted`;
+  `DomainInapplicable` is reserved.
+
+### Documentation
+
+- **`RespectBackendValidationState` honesty (B2).** RFC 016 §3.5/§3.6 and the crate README now
+  state that v1 has **no provided/cached backend-state channel** (`ClusterExecutionContext`
+  carries only the policy): this policy **scans here / fills missing coverage here**, behaving
+  like `ValidateAllInputs` for this kernel. Consuming provided/cached evidence — model identity,
+  cached state, mutation epochs — is **RFC 015-owned**. No channel was added (it would
+  pre-commit a shape RFC 015 must own).
+- **`crates/loeres-cluster/README.md` (B3)** updated for RFC 016: it no longer claims
+  `model` is a placeholder or that no std-side kernel exists; it now describes the typed kernel
+  surface and the v1 validation behavior.
+- **Apex specs deferral (B4).** The `docs/specs/loeres-external-design-v1.md`,
+  `loeres-requirements-v1.md`, and `loeres-roadmap-milestones-v1.md` trio remains at the
+  **v0.13.1 design baseline** and still predates the std-side kernel; refreshing the apex trio
+  for RFC 016 is a separate, post-sign-off pass and is **not** included here.
+- **Oracle-stability invariants (N1)** documented on `ClusterProjectedFirstOrderProblem`:
+  `dimension()` / `bounds()` / `step_scale()` are stable for the duration of a solve and
+  `gradient_at` writes all `dimension()` entries.
+- **`DimensionMismatch` convention (N3)** stated in RFC 016 §3.7: `lhs = expected`
+  (`problem.dimension()`), `rhs = actual` length, mirroring the RFC 006 device kernel.
+
+### Tests (N2)
+
+- Added pre-loop error-mapping tests: non-finite initial `x` / bound under `ValidateAllInputs`
+  (→ `NonFiniteInput`), non-finite bound under `TrustedByCaller` (→ `NumericalDomain`),
+  non-finite `step_scale` (→ `NonFiniteInput`), non-positive `step_scale` (→ `InvalidInput`),
+  and the `RespectBackendValidationState` scan-here path. 204 tests total
+  (71 core + 22 static backend + 32 device + 23 dynamic backend + 56 cluster); all five gates
+  green on both the working tree and a clean extraction.
+
 ## [0.14.0] — 2026-06-30 — RFC 016: std-side projected first-order cluster kernel
 
 The first production std-side numerical kernel for `loeres-cluster`, resolving RFC 016 and
@@ -1355,6 +1404,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.14.1]: https://github.com/nabbisen/loeres/releases/tag/v0.14.1
 [0.14.0]: https://github.com/nabbisen/loeres/releases/tag/v0.14.0
 [0.13.3]: https://github.com/nabbisen/loeres/releases/tag/v0.13.3
 [0.13.2]: https://github.com/nabbisen/loeres/releases/tag/v0.13.2

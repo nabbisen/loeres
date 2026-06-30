@@ -35,25 +35,25 @@ checksum = "91622ff5e7162018101f2fea40d6ebf4a78bbe5a49736a2020649edf9693679e"
 
 [[package]]
 name = "loeres"
-version = "0.14.0"
+version = "0.14.1"
 
 [[package]]
 name = "loeres-backend-static"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-backend-std"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-cluster"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "loeres",
  "loeres-backend-std",
@@ -63,7 +63,7 @@ dependencies = [
 
 [[package]]
 name = "loeres-device"
-version = "0.14.0"
+version = "0.14.1"
 dependencies = [
  "loeres",
  "loeres-backend-static",
@@ -106,4 +106,4 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.14.0"
+version = "0.14.1"

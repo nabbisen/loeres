@@ -91,15 +91,22 @@ Scratch is allocated once at construction and reused via `reset_for_entry()`; **
 The dynamic analog of RFC 006 §3.3 (no const `N`; runtime dimension match). The entrypoint mutates the iterate in place and returns a small typed record (F2) so the validation outcome is surfaced for RFC 015 without changing `SolveReport` or `BatchItemOutcome`:
 
 ```rust
+/// How the kernel's finite invariant was discharged (v0.14.1). Named states so the
+/// record never misencodes a trusted-away scan as FiniteCoverage::NotApplicable
+/// (reserved by RFC 012 for finite-incapable domains) nor as Checked.
+pub enum ProjectedFirstOrderFiniteEvidence {
+    Scanned,                  // the kernel ran the finite scans and they passed
+    Trusted(TrustedByCaller), // caller transferred finiteness responsibility (RFC 012)
+    DomainInapplicable,       // reserved; non-finite impossible by domain (unused by f64 in v1)
+}
+
 pub struct ProjectedFirstOrderSolveRecord {
     pub report: SolveReport,
-    /// What the kernel actually checked this run (always includes the structural
-    /// PROBLEM_CONFIG scope; includes FINITE when scanned).
-    pub checked: ValidationCoverage,
-    /// Caller responsibility transfer, if any (FINITE scope under TrustedByCaller,
-    /// or a provided Trusted state carried forward). RFC 012 vocabulary; no
-    /// parallel trust model. RFC 015 decides later what is cacheable.
-    pub trust: Option<TrustedByCaller>,
+    /// PROBLEM_CONFIG always (universal checks ran); FINITE only when actually scanned.
+    pub checked_scope: ValidationScope,
+    /// How the finite invariant was discharged; caller trust lives inside the
+    /// Trusted(..) variant (no parallel trust model). RFC 015 decides what is cacheable.
+    pub finite: ProjectedFirstOrderFiniteEvidence,
 }
 
 pub fn solve_projected_first_order_dyn<P, S>(
@@ -119,7 +126,7 @@ where
     // 4. kernel-enforced universal/structural checks (§3.5(a), F3):
     //      dimension > 0; x/workspace/lo/hi lengths == dimension;
     //      lo <= hi elementwise; step_scale finite & > 0
-    // 5. policy-governed finite scans (§3.5(b)) -> (checked: ValidationCoverage, trust: Option<TrustedByCaller>)
+    // 5. policy-governed finite scans (§3.5(b)) -> (checked_scope: ValidationScope, finite: ProjectedFirstOrderFiniteEvidence)
     // 6. problem.validate_boundary()                                     (problem-specific hook)
     // 7. executed = 0
     //    while executed < config.max_iterations {
@@ -134,9 +141,9 @@ where
     //            x[i] = cand;                                  // in place
     //        }
     //        executed += 1;
-    //        if step <= config.tolerance { return Ok({ converged_early(executed), checked, trust }) }  (C5)
+    //        if step <= config.tolerance { return Ok({ converged_early(executed), checked_scope, finite }) }  (C5)
     //    }
-    // 8. return Ok({ not_converged_cap(config.max_iterations), checked, trust })                       (C5)
+    // 8. return Ok({ not_converged_cap(config.max_iterations), checked_scope, finite })                     (C5)
 }
 ```
 
@@ -153,6 +160,8 @@ RFC 008's orchestration `ClusterSolveConfig` is **not** reused for numeric field
 
 **Iteration counting & report mapping (C5).** Mirrors RFC 006's early-exit path exactly. `executed` counts completed projected steps, incremented *after* each step (including the converging one). Convergence (`step <= tolerance`) returns `SolveReport::converged_early(executed)` immediately — first-step convergence is `converged_early(1)`, and `max_iterations == 1` with convergence on that step is also `converged_early(1)` (**not** `converged_at_cap`). Reaching the cap without convergence returns `not_converged_cap(max_iterations)`. v1 has no constant-iteration mode (so `converged_at_cap` is unused) and introduces no stall detector (so `not_converged_stalled` is unused); both remain available to later modes.
 
+> **Evidence representation (v0.14.1, implementation-review B1).** A single `ValidationCoverage` cannot honestly carry mixed checked-`PROBLEM_CONFIG` + trusted-`FINITE` evidence: `ValidationCoverage::new` forces the `FINITE` scope bit on and demands a `Checked`/`NotApplicable` value, neither true under trust (`Checked` claims a scan that did not run; `NotApplicable` asserts a domain property false for `f64`). The named `ProjectedFirstOrderFiniteEvidence` enum plus a raw `checked_scope` represents the three finite-discharge states directly while keeping RFC 012 vocabulary (`ValidationScope`, `TrustedByCaller`).
+
 ### 3.5 Validation scan path (first real `ValidateAllInputs`)
 
 RFC 016 is the first place `ClusterValidationPolicy` drives **real scans** (RFC 008 made `resolve()` *pure* in B1 — it reasons over recorded evidence and never fabricates). Validation has two layers.
@@ -167,11 +176,11 @@ RFC 016 is the first place `ClusterValidationPolicy` drives **real scans** (RFC 
 These are **structural** (`PROBLEM_CONFIG` scope) and run even under `TrustedByCaller` — trust never licenses a dimension/config mismatch, and (until RFC 015 supplies model identity + epochs) a detached or cached `ValidationState` is **never** treated as proof that the current mutable `x` / workspace / config still agree.
 
 **(b) Finite-value scans — policy-governed (`FINITE` scope).** The pre-loop finiteness scans of bounds and the initial iterate are the part a caller may legitimately skip:
-* **`ValidateAllInputs`** — run `lo` / `hi` / initial `x` finiteness scans; record `checked = ValidationCoverage::new(PROBLEM_CONFIG ∪ FINITE, Checked)`, `trust = None`.
-* **`RespectBackendValidationState`** — consume the provided `ValidationState`; the **required coverage** for this kernel is `FINITE` (bounds + initial-iterate finiteness only — `step_scale` finiteness is validated structurally under `PROBLEM_CONFIG` and is never skippable, C2) plus `PROBLEM_CONFIG` (the structural checks of (a), which always run regardless); perform any required-but-missing `FINITE` scan here (never fabricate); reject only if a required scan is impossible. `checked` records the structural coverage plus any verified or freshly-scanned `FINITE` coverage; a provided `Trusted(..)` assertion is carried forward into `trust`.
-* **`TrustedByCaller`** — skip the `FINITE` scans for the asserted scope, recording `checked = ValidationCoverage::new(PROBLEM_CONFIG, Checked)` and `trust = Some(..)`; the structural checks of (a) still run, and **runtime numerical-domain failures still surface** in the loop (§3.4 F4) as `NumericalDomain` — trust must never yield a `Solved` report over NaN/Inf state.
+* **`ValidateAllInputs`** — run `lo` / `hi` / initial `x` finiteness scans; record `checked_scope = PROBLEM_CONFIG ∪ FINITE`, `finite = Scanned`.
+* **`RespectBackendValidationState`** — in v1 this **scans here / fills missing coverage here**, behaving like `ValidateAllInputs` for this kernel (`checked_scope = PROBLEM_CONFIG ∪ FINITE`, `finite = Scanned`). There is **no provided/cached backend-state channel** in the v0.14 entrypoint (`ClusterExecutionContext` carries only the policy, not a `ValidationState`); consuming backend-provided or cached evidence — model identity, cached state, mutation epochs, the provided-evidence channel — is **RFC 015-owned** (B2). `step_scale` finiteness remains a structural `PROBLEM_CONFIG` check that always runs (C2).
+* **`TrustedByCaller`** — when the asserted scope covers `FINITE`, skip the pre-loop `FINITE` scans, recording `checked_scope = PROBLEM_CONFIG` and `finite = Trusted(..)`; the structural checks of (a) still run, and **runtime numerical-domain failures still surface** in the loop (§3.4 F4) as `NumericalDomain` — trust must never yield a `Solved` report over NaN/Inf state. (An assertion not covering `FINITE` falls through to scanning: `finite = Scanned`.)
 
-`PRELOOP` is **not** used as a separate scope here (it would be ambiguous against `PROBLEM_CONFIG`). The kernel-checked coverage and any caller trust transfer are returned in `ProjectedFirstOrderSolveRecord.{checked, trust}` (§3.4, C1) — the concrete surfacing channel RFC 015 will cache against model identity. A single `ValidationState` is deliberately not used, because one run can mix kernel-checked `PROBLEM_CONFIG` with caller-trusted `FINITE`.
+`PRELOOP` is **not** used as a separate scope here (it would be ambiguous against `PROBLEM_CONFIG`). The kernel-checked scope and the finite-discharge evidence are returned in `ProjectedFirstOrderSolveRecord.{checked_scope, finite}` (§3.4) — the concrete surfacing channel RFC 015 will cache against model identity. A single `ValidationState`/`ValidationCoverage` is deliberately not used, because one run can mix kernel-checked `PROBLEM_CONFIG` with caller-trusted `FINITE`, which the named `ProjectedFirstOrderFiniteEvidence` represents honestly (v0.14.1, B1).
 
 ### 3.6 Outcome mapping & the `ClusterJob` adapter
 
@@ -193,7 +202,7 @@ Frozen, using existing `SolverError` variants only:
 | Condition | `SolverError` |
 |---|---|
 | zero dimension / zero workspace / zero vector length | `InvalidDimension` |
-| dimension disagreement (`x` / workspace / bounds vs. `problem.dimension()`) | `DimensionMismatch { lhs, rhs }`, with checked `usize → u32`; on cast overflow fall back to `InvalidDimension` |
+| dimension disagreement (`x` / workspace / bounds vs. `problem.dimension()`) | `DimensionMismatch { lhs, rhs }` with `lhs = expected` (`problem.dimension()`) and `rhs = actual` length, mirroring the RFC 006 device kernel (N3); checked `usize → u32`, cast overflow → `InvalidDimension` |
 | invalid box bounds (`lo > hi`, finite) | `InvalidInput` |
 | non-finite pre-loop input (bounds / initial `x` / `step_scale`) under a scanning policy | `NonFiniteInput` |
 | `max_iterations == 0` | `InvalidInput` |
@@ -240,7 +249,7 @@ Unlike RFC 008 (orchestration-only), RFC 016 has real math: convergence to known
 Not-converged-at-cap returns `Solved { NotConverged }` (never `Failed`); fail-safe errors return `Failed`; observed cancellation returns `Cancelled`; a problem whose oracle yields a non-finite gradient returns `Failed { NumericalDomain }` **even under `TrustedByCaller`** (hot-loop checks are not skippable); `lo > hi` returns `Failed { InvalidInput }`; iteration counting follows §3.4 (C5) — first-step or `max_iterations == 1` convergence is `converged_early(1)`, cap exhaustion is `not_converged_cap(max_iterations)`.
 
 ### 6.3 Validation-policy scans
-`ValidateAllInputs` returns `ValidationState::Validated(..)` only after real scans; `RespectBackendValidationState` performs missing `FINITE` scans without fabricating; `TrustedByCaller` returns `Trusted(..)`, the structural checks of §3.5(a) still run, and hot-loop non-finite detection still surfaces `NumericalDomain`. The returned `ProjectedFirstOrderSolveRecord.{checked, trust}` carries the outcome; `resolve()` stays pure.
+`ValidateAllInputs` and (in v1) `RespectBackendValidationState` both run real `FINITE` scans here and record `finite = Scanned` (no provided-state channel yet; RFC 015-owned); `TrustedByCaller` over `FINITE` records `finite = Trusted(..)`, the structural checks of §3.5(a) still run, and hot-loop non-finite detection still surfaces `NumericalDomain`. The returned `ProjectedFirstOrderSolveRecord.{checked_scope, finite}` carries the outcome; `resolve()` stays pure.
 
 ### 6.4 Orchestration integration
 The `ClusterJob` adapter runs through `solve_batch` (sequential and `parallel-rayon` parity): mixed converged / not-converged / failed / cancelled batches yield the correct `BatchSummary`; mid-solve cancellation surfaces as `Cancelled`; the adapter allocates per run with no shared `&self` mutation.
@@ -272,10 +281,10 @@ The implementation-decision memo (I1–I10) settled the narrow items the reconci
 * **Iteration counting (I3/C5).** Mirrors RFC 006: `executed` incremented after each step; `converged_early(executed)` on `step ≤ tolerance` (first-step / `max_iterations == 1` → `converged_early(1)`); `not_converged_cap(max_iterations)` at the cap. `converged_at_cap` / `not_converged_stalled` unused in v1.
 * **Checked cast (I7).** A local `dim_u32(usize) -> Result<u32, SolverError>` helper in the kernel module; overflow → `InvalidDimension`.
 * **Reference problems (I8/D4).** An in-crate separable quadratic with a closed-form box-clamped optimum anchors the numerical-correctness suite, with NaN-gradient, `lo > hi`, dimension-mismatch, and cancellation fixtures. No public reference problem ships.
-* **Validation placement (I9).** A single kernel-prep path runs the always-on structural checks plus the policy-governed `FINITE` scans and produces `(checked, trust)`; `ClusterValidationPolicy::resolve` is untouched and stays pure.
+* **Validation placement (I9).** A single kernel-prep path runs the always-on structural checks plus the policy-governed `FINITE` scans and produces `(checked_scope, finite)`; `ClusterValidationPolicy::resolve` is untouched and stays pure.
 
 ### 7.2 Refinements surfaced during coding
 
 * **`S: Clone` is redundant (F8).** `BaseScalar: Copy`, so `DenseVector<S>: Clone` holds via `Copy` and the adapter's per-run `initial.clone()` is a `Copy`. The erased-adapter bound set is `FiniteScalar + MetricScalar + Send + Sync + 'static` — no separate `Clone`.
-* **`checked.finite()` under `TrustedByCaller` is `NotApplicable`, not `Checked`.** The reconciliation text (§3.5) wrote `ValidationCoverage::new(PROBLEM_CONFIG, Checked)` for the trusted arm. But `ValidationCoverage::new` normalizes the *scope* to always include the `FINITE` bit, while the separate `finite: FiniteCoverage` field records *how* finiteness was addressed. Recording `Checked` when the kernel did **not** scan finiteness (it was trusted) would fabricate validation evidence — a violation of the evidence-integrity rule (never synthesize coverage that was not produced). The kernel therefore records `finite = NotApplicable` under trust, with the responsibility transfer carried in `trust = Some(..)`; `Checked` is recorded only when the kernel actually ran the scans. A unit test pins this.
+* **Validation-evidence representation (corrected in v0.14.1).** v0.14.0 shipped a two-field record `{ checked: ValidationCoverage, trust }` and, under trust, recorded `checked.finite() = NotApplicable`. The implementation review (B1) correctly flagged this as a second misencoding: RFC 012 reserves `FiniteCoverage::NotApplicable` for finite-*incapable* domains, so using it for an `f64` scan that was merely *trusted away* asserts a false domain property — `Checked` and `NotApplicable` are **both** wrong for the trusted-`f64` case, and a single `ValidationCoverage` cannot express mixed checked-`PROBLEM_CONFIG` + trusted-`FINITE` evidence. **v0.14.1** replaces the record with `{ checked_scope: ValidationScope, finite: ProjectedFirstOrderFiniteEvidence }` (§3.4): `checked_scope` carries `FINITE` only when actually scanned, and `finite` names the discharge state (`Scanned` / `Trusted(..)` / `DomainInapplicable`). The `f64` kernel emits only `Scanned` or `Trusted`; `DomainInapplicable` is reserved. Tests pin both the scanned and trusted records.
 * **Structural ordering form.** The finite `lo > hi` check is written `l.is_finite() && h.is_finite() && l > h` (equivalent to `!(l <= h)` for finite operands, and clippy-clean under `neg_cmp_op_on_partial_ord`); non-finite bounds fall through to the `FINITE` scan (`NonFiniteInput`) or, under trust, to the hot-loop candidate check (`NumericalDomain`), per C3.
