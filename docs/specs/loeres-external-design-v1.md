@@ -1,11 +1,11 @@
 # Loeres External Design Specification v1
 
-Status: Accepted — Milestone 2 (static backend + device) complete (current as of v0.10.1)  
+Status: Accepted — Milestone 3 in progress (dynamic backend, validation vocabulary, cluster orchestration) (current as of v0.13.1)  
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **Document currency.** Current as of repository release **v0.10.1**; the design is
+> **Document currency.** Current as of repository release **v0.13.1**; the design is
 > **accepted** (no longer a draft). Implemented in `loeres` (`rfcs/done/`):
 > the error/diagnostic topology (RFC 003, v0.4.0); the solver outcome/status
 > taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); the
@@ -18,9 +18,20 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > (RFC 005, v0.9.0 — `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` /
 > `WorkspaceFor`, `DeviceSolveConfig` / `TimingMode`, and `WorkspaceFootprint`);
 > and the baseline deterministic device kernel (RFC 006, v0.10.0, hardened
-> v0.10.1 — the box/bound-constrained projected first-order solver). Phase 0
-> (five-crate workspace plus `xtask`) is complete (v0.3.0). The roadmap holds the
-> authoritative live status.
+> v0.10.1 — the box/bound-constrained projected first-order solver). **Milestone 3
+> (dynamic backend + cluster) is in progress:** the dynamic dense/sparse storage
+> adapters (RFC 007, v0.11.0, hardened v0.11.1 — `loeres-backend-std` `dense` /
+> `sparse`); the core validation-state vocabulary (RFC 012, v0.12.0, hardened
+> v0.12.1 — `loeres::validation`: `ValidationScope`, `FiniteCoverage`, `TrustKind`,
+> `TrustToken`, `ValidationCoverage`, `TrustedByCaller`, `ValidationState`); and the
+> cluster orchestration foundation (RFC 008, v0.13.0, corrected v0.13.1 —
+> `loeres-cluster` `batch` / `runtime` / `solve`: the per-item batch contract,
+> a runtime-agnostic config / cancellation / executor layer, and the `ClusterJob`
+> dispatch seam). The cluster slice is orchestration **infrastructure, not a
+> production numerical cluster solver**: no std-side solver kernel exists yet and
+> the dynamic model builders of §3.2 are not yet shipped — `ClusterJob` is the seam
+> where a kernel attaches. Phase 0 (five-crate workspace plus `xtask`) is complete
+> (v0.3.0). The roadmap holds the authoritative live status.
 
 ---
 
@@ -218,7 +229,7 @@ The intended downstream import model is:
 
 ```toml
 [dependencies]
-loeres-cluster = { version = "0.x", features = ["batch", "parallel-rayon"] }
+loeres-cluster = { version = "0.x", features = ["parallel-rayon"] }
 loeres-backend-std = { version = "0.x", features = ["dense"] }
 ```
 
@@ -255,6 +266,7 @@ loeres::scalar      // stratified scalar capability traits
 loeres::access      // storage-agnostic vector/matrix access contracts; no heavy kernels
 loeres::problem     // LP/QP/SOCP/model interface categories
 loeres::solver      // solver status, step status, convergence categories
+loeres::validation  // validation-state vocabulary: coverage scope, trust, recorded state
 loeres::error       // allocation-free error topology
 loeres::diagnostic  // compact diagnostic code/value categories, no logging output
 loeres::dimension   // dimension descriptors and dimension mismatch categories
@@ -288,12 +300,12 @@ The static backend may provide both owned fixed arrays and borrowed views. Borro
 #### `loeres-cluster`
 
 ```text
-loeres_cluster::model       // dynamic model construction UX
-loeres_cluster::solve       // sync solve entrypoints
-loeres_cluster::batch       // batch and service-oriented APIs
-loeres_cluster::runtime     // execution config, cancellation, timeout, parallelism
-loeres_cluster::observe     // tracing/metrics/logging integration points
-loeres_cluster::gateway     // optional FFI/native solver gateways
+loeres_cluster::model       // dynamic model construction UX (planned; not yet populated)
+loeres_cluster::solve       // solve/batch entrypoints + the ClusterJob dispatch seam (RFC 008)
+loeres_cluster::batch       // per-item batch outcome contract (RFC 008)
+loeres_cluster::runtime     // execution config, cancellation, timeout, parallelism, validation policy (RFC 008)
+loeres_cluster::observe     // tracing/metrics/logging integration points (planned; RFC 009)
+loeres_cluster::gateway     // optional FFI/native solver gateways (planned; RFC 009)
 ```
 
 `loeres-cluster` is allowed to be ergonomic, dynamic, and integration-rich.
@@ -374,16 +386,14 @@ Adapter features may coexist unless a later RFC records an incompatibility.
 
 | Feature | Default | Public meaning | Constraints |
 |---|---:|---|---|
-| `sync` | yes | Synchronous server solve APIs | Server-only |
-| `batch` | yes | Batch solve orchestration APIs | Server-only |
-| `parallel-rayon` | no | Parallel execution controls and thread-pool integration | Server-only |
-| `async-tokio` | no | Async orchestration handles and cancellation integration | Server-only |
+| `parallel-rayon` | no | Rayon-backed parallel batch execution (internal; no Rayon type in the public surface) | Server-only |
+| `async-tokio` | no | Tokio-backed async solve entrypoint `solve_batch_async` (internal; no Tokio type in the public surface) | Server-only |
 | `observability-tracing` | no | `tracing` span integration | Server-only |
 | `observability-metrics` | no | Metrics sink integration | Server-only |
 | `serde` | no | Model/config serialization | Server-only |
 | `ffi-gateway` | no | Explicit opt-in gateway to native or legacy solvers | Server-only; audited boundary required |
 
-`ffi-gateway` must never be a default feature.
+The baseline synchronous batch path is **unconditional** — there are no named `sync` / `batch` features (RFC 008 / D6). `ffi-gateway` must never be a default feature.
 
 ### 1.7 Mutually Exclusive Configurations
 
@@ -654,6 +664,8 @@ The exact form may be enum-based or struct-based by RFC. It must remain allocati
 ---
 
 ## 3. Cluster Developer Interface
+
+As of RFC 008 (v0.13.x), the shipped cluster surface covers the orchestration contracts (`BatchItemOutcome`, `BatchSolveReport`, `BatchSummary`, `ClusterSolution`, `ClusterJob`, `ClusterSolveConfig`, `ClusterCancellationToken`, `ClusterValidationPolicy`, `ClusterError`, `solve_batch`). The dynamic model builders (§3.2) and a production std-side solver kernel remain planned surfaces; the categories named below are design targets, not all of which are populated yet.
 
 ### 3.1 Cluster Design Objective
 

@@ -5,6 +5,32 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.13.2] — 2026-06-30 — Apex external-design currency sync (RFC 008)
+
+A documentation-only patch: no code, contract, or public-surface change. It mirrors the
+approved RFC 008 apex external-design refresh into the spec, bringing that document
+current from v0.10.1 (Milestone 2) to **v0.13.1**.
+
+### Documentation
+
+- `docs/specs/loeres-external-design-v1.md` advanced from "current as of v0.10.1" to
+  **v0.13.1**: the document-currency block now records the Milestone-3 releases (RFC 007
+  dynamic dense/sparse, RFC 012 validation vocabulary, RFC 008 cluster orchestration —
+  with the "infrastructure, not a production solver" caveat); `loeres::validation` is added
+  to the `loeres` module topography; the `loeres-cluster` topography is annotated for
+  populated (`solve` / `batch` / `runtime`) vs planned (`model` / `observe` / `gateway`)
+  modules; the `loeres-cluster` feature matrix drops the removed `sync` / `batch` features
+  (baseline batch execution is unconditional; only `parallel-rayon` / `async-tokio` are
+  gated); the cluster import example drops the nonexistent `batch` feature; and §3 gains a
+  note distinguishing the shipped orchestration contracts from the still-planned model
+  builders and std-side kernel. The currency marker tracks the design baseline (v0.13.1);
+  this v0.13.2 release only packages the mirrored document.
+
+### Verification
+
+- 180 tests unchanged (documentation-only release). All gates pass — check, zero-bleed,
+  no-std (`thumbv7em-none-eabihf`), check-rfcs, panic-audit.
+
 ## [0.13.1] — 2026-06-30 — RFC 008 implementation-review corrections
 
 A corrective patch over v0.13.0 addressing the RFC 008 implementation review
@@ -1255,6 +1281,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.13.2]: https://github.com/nabbisen/loeres/releases/tag/v0.13.2
 [0.13.1]: https://github.com/nabbisen/loeres/releases/tag/v0.13.1
 [0.13.0]: https://github.com/nabbisen/loeres/releases/tag/v0.13.0
 [0.12.1]: https://github.com/nabbisen/loeres/releases/tag/v0.12.1
