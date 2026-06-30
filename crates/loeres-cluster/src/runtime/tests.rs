@@ -33,10 +33,14 @@ fn parallel_falls_back_to_sequential_without_feature() {
 }
 
 #[test]
-fn validate_all_inputs_records_coverage_including_finite() {
+fn validate_all_inputs_passes_recorded_coverage() {
     let policy = ClusterValidationPolicy::ValidateAllInputs;
+    let provided = ValidationState::Validated(ValidationCoverage::new(
+        ValidationScope::ALL,
+        FiniteCoverage::Checked,
+    ));
     let resolved = policy
-        .resolve(ValidationScope::PROBLEM_CONFIG, None)
+        .resolve(ValidationScope::PROBLEM_CONFIG, Some(provided))
         .unwrap();
     match resolved {
         ValidationState::Validated(cov) => {
@@ -46,6 +50,30 @@ fn validate_all_inputs_records_coverage_including_finite() {
         }
         other => panic!("expected Validated, got {other:?}"),
     }
+}
+
+#[test]
+fn validate_all_inputs_rejects_absent_validation() {
+    // The resolver runs no scans; with nothing recorded it must reject rather
+    // than fabricate a Validated state (B1).
+    let policy = ClusterValidationPolicy::ValidateAllInputs;
+    let err = policy
+        .resolve(ValidationScope::PROBLEM_CONFIG, None)
+        .unwrap_err();
+    assert_eq!(err.covered, ValidationScope::EMPTY);
+}
+
+#[test]
+fn validate_all_inputs_rejects_trust_in_lieu_of_validation() {
+    let trust = TrustedByCaller::caller_assertion(ValidationScope::ALL, TrustToken::new(3), None);
+    let policy = ClusterValidationPolicy::ValidateAllInputs;
+    let err = policy
+        .resolve(
+            ValidationScope::PROBLEM_CONFIG,
+            Some(ValidationState::Trusted(trust)),
+        )
+        .unwrap_err();
+    assert_eq!(err.required, ValidationScope::PROBLEM_CONFIG);
 }
 
 #[test]

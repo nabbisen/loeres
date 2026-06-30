@@ -48,7 +48,9 @@ impl ClusterExecutionContext {
         self.cancel.is_cancelled()
     }
 
-    /// How often (in items) to poll cancellation; `0` means every item.
+    /// A hint for job-internal cancellation polling; `0` means "poll as often as
+    /// practical". The executor checks cancellation at every item boundary
+    /// independently of this value.
     #[must_use]
     pub fn poll_interval(&self) -> u32 {
         self.poll_interval
@@ -98,17 +100,28 @@ where
         config.cancellation_poll_interval,
         config.validation_policy,
     );
+    // Resolve the wall-clock deadline once, up front. An extreme timeout that
+    // would overflow `Instant` is a configuration error, not a panic (B5).
+    let deadline = match config.timeout {
+        Some(t) => match std::time::Instant::now().checked_add(t) {
+            Some(d) => Some(d),
+            None => return Err(ClusterError::InvalidConfig),
+        },
+        None => None,
+    };
     match config.effective_execution() {
         BatchExecutionPolicy::Sequential => {
-            Ok(executor::execute_sequential(&jobs, &ctx, &cancel, &config))
+            Ok(executor::execute_sequential(&jobs, &ctx, &cancel, deadline))
         }
         #[cfg(feature = "parallel-rayon")]
-        BatchExecutionPolicy::Parallel => executor::execute_parallel(&jobs, &ctx, &cancel, &config),
+        BatchExecutionPolicy::Parallel => {
+            executor::execute_parallel(&jobs, &ctx, &cancel, deadline, config.max_parallelism)
+        }
         // `effective_execution` only yields `Parallel` when `parallel-rayon` is
         // enabled; this arm keeps the match exhaustive otherwise.
         #[cfg(not(feature = "parallel-rayon"))]
         BatchExecutionPolicy::Parallel => {
-            Ok(executor::execute_sequential(&jobs, &ctx, &cancel, &config))
+            Ok(executor::execute_sequential(&jobs, &ctx, &cancel, deadline))
         }
     }
 }

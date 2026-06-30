@@ -50,7 +50,7 @@ The intended downstream import model (specified in the external design, §1.4) i
 
 ```toml
 # Cluster / server user
-loeres-cluster        = { version = "0.x", features = ["batch", "parallel-rayon"] }
+loeres-cluster        = { version = "0.x", features = ["parallel-rayon"] }
 loeres-backend-std    = { version = "0.x", features = ["dense"] }
 
 # Device / edge user

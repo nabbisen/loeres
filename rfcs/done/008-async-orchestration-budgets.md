@@ -4,6 +4,21 @@
 **Tracks.** Phase 3 / Milestone 3 — Dynamic Infrastructure and Cloud Cluster
 **Touches.** `loeres-cluster/src/batch.rs` (`BatchSolveReport` / `BatchItemOutcome` / `ClusterSolution`), `loeres-cluster/src/runtime.rs` (cancellation token, runtime config, worker/timeout policy, executor coordination — internal submodules `runtime::cancel` / `runtime::executor` permitted), `loeres-cluster/src/solve.rs` (public solve/batch entrypoints + the dispatch barrier). `observe` / `gateway` / `model` untouched by this RFC.
 
+## Implementation decisions and departures (shipped)
+
+This RFC shipped in v0.13.0 under the orchestration-first decision freeze (D1–D10) and three tightening corrections (T1–T3); B1 below is a v0.13.1 correction. Where the design-pass sketches further down differ from the shipped API, **the shipped API governs**:
+
+* **D1.** v0.13.0 is orchestration machinery + contracts, exercised by deterministic test jobs; there is no production std-side solver kernel. `ClusterJob` is the seam where a future kernel attaches.
+* **D2.** `ClusterSolution` is a `#[non_exhaustive]` enum with a single `DenseVector` variant.
+* **D3.** `BatchItemOutcome::Failed` carries `error: SolverError` only — no `DiagnosticSnapshot`.
+* **D4 / T1.** `ClusterError` is `#[non_exhaustive]` with `InvalidConfig` / `ExecutorInit` / `Shutdown`. An empty batch is **valid** and returns an empty `BatchSolveReport` — there is no `EmptyBatch` variant.
+* **D6.** The baseline synchronous batch path is **unconditional**; there are no named `sync` / `batch` features. Only `parallel-rayon` and `async-tokio` are gated, both off by default, and no Tokio/Rayon type appears in the baseline public surface.
+* **T2.** `Panicked` is produced only under `panic = "unwind"`; under `panic = "abort"` the process aborts and containment is not promised.
+* **T3.** `DispatchPolicy` has no `AutoByBudget` variant; it is a reserved-but-inert knob until RFC 010 supplies a size-budget metric.
+* **B1 (v0.13.1).** `ClusterValidationPolicy::resolve` is pure policy/evidence resolution: it runs **no** validation scans and never fabricates a `Validated` state. `ValidateAllInputs` requires the validating job to supply recorded coverage (and rejects a trust assertion offered in lieu of validation).
+
+The size-budget gate is deferred to RFC 010; trusted-pipeline / caching and the std-side kernel to a follow-on cluster RFC.
+
 ---
 
 ### Extended Metadata
@@ -62,7 +77,6 @@ pub struct ClusterSolveConfig {
 pub enum DispatchPolicy {
     PreferGenericKernels,
     PreferHybridDispatch,
-    AutoByBudget,
 }
 ```
 
@@ -121,7 +135,7 @@ A model that runs to its bounded terminus without converging is `Solved { report
 
 A top-level `Err` (a `ClusterError`) is reserved for orchestration-level failures such as executor initialization failure, invalid global configuration, or complete runtime shutdown (§3.5).
 
-(Whether `Failed` should also carry a `DiagnosticSnapshot` alongside `error` is an implementation-decision item.)
+(`Failed` carries `error` only — no `DiagnosticSnapshot`; resolved as decision D3.)
 
 ### 3.3 Hybrid dispatch barrier
 
@@ -167,13 +181,13 @@ pub async fn solve_batch_async<S>(
 
 Feature posture:
 
-* baseline (`sync` / `batch`): server-`std` but runtime-light; synchronous batch execution;
+* baseline (unconditional — no named `sync` / `batch` feature): server-`std`, runtime-light synchronous batch execution;
 * `parallel-rayon`: Rayon-backed parallel execution as a feature-gated internal;
 * `async-tokio`: Tokio integration helpers as a feature-gated internal.
 
 Tokio and Rayon types must not appear in the stable public surface unless a function or module is *explicitly* Tokio-named. `Rayon` work must not block the async runtime's core scheduler threads: blocking CPU work is scheduled through a dedicated pool or a `spawn_blocking` equivalent, confined behind the feature-gated internals.
 
-`ClusterError` is the cluster-owned orchestration-failure type returned in the top-level `Err` (§3.2): executor initialization failure, invalid global configuration, or complete runtime shutdown. Its exact variants are an implementation-decision item.
+`ClusterError` is the cluster-owned orchestration-failure type returned in the top-level `Err` (§3.2): executor initialization failure (`ExecutorInit`), invalid global configuration (`InvalidConfig`), or complete runtime shutdown (`Shutdown`). Resolved as decision D4; `#[non_exhaustive]`.
 
 ### 3.6 Cancellation semantics
 

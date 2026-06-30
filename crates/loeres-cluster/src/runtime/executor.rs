@@ -14,7 +14,7 @@ use std::time::Instant;
 use loeres::SolverError;
 
 use crate::batch::{BatchItemOutcome, BatchSolveReport};
-use crate::runtime::{ClusterCancellationToken, ClusterSolveConfig};
+use crate::runtime::ClusterCancellationToken;
 use crate::solve::{ClusterExecutionContext, ClusterJob};
 
 /// Map an inner `SolverError::Cancelled` to the batch `Cancelled` variant so the
@@ -55,9 +55,8 @@ pub(crate) fn execute_sequential<S>(
     jobs: &[Box<dyn ClusterJob<S>>],
     ctx: &ClusterExecutionContext,
     cancel: &ClusterCancellationToken,
-    config: &ClusterSolveConfig,
+    deadline: Option<Instant>,
 ) -> BatchSolveReport<S> {
-    let deadline = config.timeout.map(|t| Instant::now() + t);
     let outcomes = jobs
         .iter()
         .map(|job| run_item(job.as_ref(), ctx, cancel, deadline))
@@ -75,16 +74,16 @@ pub(crate) fn execute_parallel<S>(
     jobs: &[Box<dyn ClusterJob<S>>],
     ctx: &ClusterExecutionContext,
     cancel: &ClusterCancellationToken,
-    config: &ClusterSolveConfig,
+    deadline: Option<Instant>,
+    max_parallelism: usize,
 ) -> Result<BatchSolveReport<S>, crate::runtime::ClusterError>
 where
     S: Send,
 {
     use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
-    let deadline = config.timeout.map(|t| Instant::now() + t);
     let pool = rayon::ThreadPoolBuilder::new()
-        .num_threads(config.max_parallelism)
+        .num_threads(max_parallelism)
         .build()
         .map_err(|_| crate::runtime::ClusterError::ExecutorInit)?;
     let outcomes = pool.install(|| {

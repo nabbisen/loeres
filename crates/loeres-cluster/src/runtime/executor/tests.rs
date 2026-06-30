@@ -1,10 +1,10 @@
 use super::*;
 use crate::batch::ClusterSolution;
-use crate::runtime::{ClusterCancellationToken, ClusterSolveConfig, ClusterValidationPolicy};
+use crate::runtime::{ClusterCancellationToken, ClusterValidationPolicy};
 use crate::solve::{ClusterExecutionContext, ClusterJob};
 use loeres::{SolveReport, SolverError};
 use loeres_backend_std::DenseVector;
-use std::time::Duration;
+use std::time::Instant;
 
 struct FixedJob(BatchItemOutcome<f64>);
 impl ClusterJob<f64> for FixedJob {
@@ -35,7 +35,7 @@ fn solved() -> BatchItemOutcome<f64> {
 fn panic_is_contained_as_panicked() {
     let token = ClusterCancellationToken::new();
     let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(PanicJob)];
-    let report = execute_sequential(&jobs, &ctx(&token), &token, &ClusterSolveConfig::default());
+    let report = execute_sequential(&jobs, &ctx(&token), &token, None);
     assert!(matches!(report.outcomes[0], BatchItemOutcome::Panicked));
     assert_eq!(report.summary.panicked, 1);
 }
@@ -46,7 +46,7 @@ fn pre_cancelled_token_yields_all_cancelled() {
     token.cancel();
     let jobs: Vec<Box<dyn ClusterJob<f64>>> =
         vec![Box::new(FixedJob(solved())), Box::new(FixedJob(solved()))];
-    let report = execute_sequential(&jobs, &ctx(&token), &token, &ClusterSolveConfig::default());
+    let report = execute_sequential(&jobs, &ctx(&token), &token, None);
     assert_eq!(report.summary.cancelled, 2);
 }
 
@@ -56,7 +56,7 @@ fn inner_solver_cancelled_is_normalized_to_cancelled() {
     let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(FixedJob(BatchItemOutcome::Failed {
         error: SolverError::Cancelled,
     }))];
-    let report = execute_sequential(&jobs, &ctx(&token), &token, &ClusterSolveConfig::default());
+    let report = execute_sequential(&jobs, &ctx(&token), &token, None);
     assert!(matches!(report.outcomes[0], BatchItemOutcome::Cancelled));
     assert_eq!(report.summary.failed, 0);
 }
@@ -67,7 +67,7 @@ fn other_solver_error_stays_failed() {
     let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(FixedJob(BatchItemOutcome::Failed {
         error: SolverError::SingularMatrix,
     }))];
-    let report = execute_sequential(&jobs, &ctx(&token), &token, &ClusterSolveConfig::default());
+    let report = execute_sequential(&jobs, &ctx(&token), &token, None);
     assert!(matches!(
         report.outcomes[0],
         BatchItemOutcome::Failed { .. }
@@ -75,13 +75,10 @@ fn other_solver_error_stays_failed() {
 }
 
 #[test]
-fn elapsed_timeout_cancels_items() {
+fn elapsed_deadline_cancels_items() {
+    // A deadline already in the past cancels items at the boundary.
     let token = ClusterCancellationToken::new();
-    let config = ClusterSolveConfig {
-        timeout: Some(Duration::ZERO),
-        ..ClusterSolveConfig::default()
-    };
     let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(FixedJob(solved()))];
-    let report = execute_sequential(&jobs, &ctx(&token), &token, &config);
+    let report = execute_sequential(&jobs, &ctx(&token), &token, Some(Instant::now()));
     assert!(matches!(report.outcomes[0], BatchItemOutcome::Cancelled));
 }

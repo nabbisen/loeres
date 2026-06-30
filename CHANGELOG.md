@@ -5,6 +5,44 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.13.1] — 2026-06-30 — RFC 008 implementation-review corrections
+
+A corrective patch over v0.13.0 addressing the RFC 008 implementation review
+(B1–B6). No new public types; the orchestration contracts are unchanged.
+
+### Changed
+
+- `ClusterValidationPolicy::resolve` is now **pure policy/evidence resolution**: it
+  runs no validation scans and never fabricates a `ValidationState::Validated`.
+  `ValidateAllInputs` requires the validating job to supply recorded coverage (and
+  rejects a trust assertion offered in lieu of validation); `RespectBackendValidationState`
+  accepts a provided validated *or* trusted state. Docs no longer imply the cluster
+  boundary performs scans no code can perform yet. (B1)
+- Timeout deadlines are computed with `Instant::checked_add`; an extreme timeout that
+  would overflow `Instant` now returns `ClusterError::InvalidConfig` instead of risking a
+  panic. (B5)
+
+### Documentation
+
+- Root `README.md` quick-start no longer references a nonexistent `batch` feature; the
+  cluster baseline is unconditional, only `parallel-rayon` is shown. (B2)
+- `crates/loeres-cluster/README.md` updated from the Phase-0 skeleton note to the
+  populated `batch` / `runtime` / `solve` surface, stating there is still no production
+  std-side numerical kernel. (B3)
+- DONE RFC 008 body reconciled with the shipped API: the `DispatchPolicy::AutoByBudget`
+  sketch (removed by T3), the `DiagnosticSnapshot` open-question (resolved by D3), and the
+  `sync` / `batch` feature-name posture (resolved by D6) are corrected, and an
+  "Implementation decisions and departures" section records D1–D10 / T1–T3 / B1. (B4)
+- `cancellation_poll_interval` and `ClusterExecutionContext::poll_interval` are documented
+  as a hint for job-internal polling; the executor always checks cancellation and the
+  timeout deadline at every item boundary. (B6)
+
+### Verification
+
+- 180 tests (2 net new cluster tests around the tightened `ValidateAllInputs` semantics).
+  All gates pass — check, zero-bleed, no-std (`thumbv7em-none-eabihf`), check-rfcs,
+  panic-audit.
+
 ## [0.13.0] — 2026-06-30 — RFC 008 cluster orchestration infrastructure
 
 RFC 008 is implemented as an **orchestration-first** `loeres-cluster` slice: the
@@ -1217,6 +1255,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.13.1]: https://github.com/nabbisen/loeres/releases/tag/v0.13.1
 [0.13.0]: https://github.com/nabbisen/loeres/releases/tag/v0.13.0
 [0.12.1]: https://github.com/nabbisen/loeres/releases/tag/v0.12.1
 [0.12.0]: https://github.com/nabbisen/loeres/releases/tag/v0.12.0

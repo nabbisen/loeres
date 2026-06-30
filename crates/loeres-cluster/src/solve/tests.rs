@@ -1,7 +1,7 @@
 use super::*;
 use crate::batch::ClusterSolution;
 use crate::runtime::{BatchExecutionPolicy, ClusterValidationPolicy};
-use loeres::validation::{ValidationScope, ValidationState};
+use loeres::validation::{FiniteCoverage, ValidationCoverage, ValidationScope, ValidationState};
 use loeres::{SolveReport, SolverError};
 use loeres_backend_std::DenseVector;
 
@@ -174,7 +174,12 @@ fn validate_all_inputs_policy_admits_item() {
     };
     let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(ValidatingJob {
         required: ValidationScope::PROBLEM_CONFIG,
-        provided: None,
+        // The validating job ran its scan and recorded coverage; the resolver
+        // verifies (it does not scan).
+        provided: Some(ValidationState::Validated(ValidationCoverage::new(
+            ValidationScope::PROBLEM_CONFIG,
+            FiniteCoverage::Checked,
+        ))),
     })];
     let report = solve_batch(jobs, config, ClusterCancellationToken::new()).unwrap();
     assert_eq!(report.summary.solved_converged, 1);
