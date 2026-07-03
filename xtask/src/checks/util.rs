@@ -13,6 +13,27 @@ pub fn cargo(args: &[&str]) -> bool {
         .unwrap_or(false)
 }
 
+/// Run a cargo subcommand with extra environment variables.
+pub fn cargo_with_env(args: &[String], envs: &[(&str, String)]) -> bool {
+    eprintln!("  $ {}", cargo_display(args, envs));
+    let mut cmd = Command::new(env!("CARGO"));
+    cmd.args(args);
+    for (key, value) in envs {
+        cmd.env(key, value);
+    }
+    cmd.status().map(|s| s.success()).unwrap_or(false)
+}
+
+fn cargo_display(args: &[String], envs: &[(&str, String)]) -> String {
+    let mut parts = Vec::new();
+    for (key, value) in envs {
+        parts.push(format!("{key}={value}"));
+    }
+    parts.push("cargo".to_owned());
+    parts.extend(args.iter().cloned());
+    parts.join(" ")
+}
+
 /// Capture stdout of a cargo subcommand (used by the dependency-graph scan).
 pub fn cargo_stdout(args: &[&str]) -> Option<String> {
     let out = Command::new(env!("CARGO")).args(args).output().ok()?;

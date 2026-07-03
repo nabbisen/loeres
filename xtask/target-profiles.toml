@@ -1,0 +1,86 @@
+schema_version = 1
+
+[[profiles]]
+name = "cluster-linux-host"
+class = "mandatory"
+environment = "cluster"
+target = "host"
+package = "loeres-cluster"
+command = "check"
+default_features = true
+features = ["all"]
+panic_strategy = "target-default"
+fpu = "host"
+scalar_family = "host"
+size_budget_group = "cluster-host"
+conformance_group = "cluster-reference-smoke"
+
+[[profiles]]
+name = "device-thumbv7em-hardfloat"
+class = "mandatory"
+environment = "device"
+target = "thumbv7em-none-eabihf"
+package = "loeres-device"
+command = "build"
+default_features = false
+features = []
+panic_strategy = "abort"
+fpu = "hardware-single"
+scalar_family = "float"
+size_budget_group = "device-reference"
+conformance_group = "device-reference-smoke"
+rustflags = ["-C", "panic=abort"]
+
+[[profiles]]
+name = "device-thumbv7em-softfloat"
+class = "advisory-installed"
+environment = "device"
+target = "thumbv7em-none-eabi"
+package = "loeres-device"
+command = "check"
+default_features = false
+features = []
+panic_strategy = "abort"
+fpu = "software"
+scalar_family = "float"
+size_budget_group = "device-advisory"
+conformance_group = "device-advisory"
+rustflags = ["-C", "panic=abort"]
+
+[[profiles]]
+name = "device-riscv32-advisory"
+class = "advisory-installed"
+environment = "device"
+target = "riscv32imac-unknown-none-elf"
+package = "loeres"
+command = "check"
+default_features = false
+features = []
+panic_strategy = "abort"
+fpu = "none"
+scalar_family = "float"
+size_budget_group = "device-advisory"
+conformance_group = "device-advisory"
+rustflags = ["-C", "panic=abort"]
+
+[[profiles]]
+name = "wasm32-no-threads"
+class = "documented-only"
+environment = "portability"
+target = "wasm32-unknown-unknown"
+panic_strategy = "target-default"
+fpu = "none"
+scalar_family = "float"
+size_budget_group = "portability-wasm"
+conformance_group = "portability-documented"
+
+[[profiles]]
+name = "cluster-linux-aarch64"
+class = "documented-only"
+environment = "cluster"
+target = "aarch64-unknown-linux-gnu"
+panic_strategy = "target-default"
+fpu = "host"
+scalar_family = "host"
+size_budget_group = "cluster-aarch64"
+conformance_group = "cluster-advisory"

@@ -5,6 +5,33 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.17.0] — 2026-07-03 — RFC 011: target profiles and deterministic math policy
+
+RFC 011 is implemented as a target-profile governance release. Runtime crate APIs
+are unchanged.
+
+### Added
+
+- Added `xtask/target-profiles.toml`, the schema-versioned target-profile
+  manifest consumed by `cargo xtask target-profiles`.
+- `cargo xtask target-profiles` is now manifest-driven and validates schema
+  version, unique profile names, enum values, buildable profile fields, and
+  documented-only metadata.
+- The command records `rustc -vV` host metadata and reports profile evidence by
+  class: mandatory, advisory-installed, and documented-only.
+- Mandatory profiles are enforced now: `cluster-linux-host` and
+  `device-thumbv7em-hardfloat`.
+- Device hard-float builds are invoked with manifest rustflags
+  `-C panic=abort`; the command prints the applied flags without claiming formal
+  panic absence.
+- `device-thumbv7em-softfloat` and `device-riscv32-advisory` are advisory when
+  their targets are installed; missing optional targets report advisory
+  unavailable and do not fail the standard aggregate gate.
+- `wasm32-no-threads` and `cluster-linux-aarch64` are documented-only in
+  v0.17.0.
+- Target-profile output emits RFC 013 conformance groups as metadata only;
+  fixtures remain RFC 013-owned.
+
 ## [0.16.1] — 2026-07-03 — RFC 010 review hardening
 
 This patch tightens the v0.16.0 verification-governance contract. Runtime crate
@@ -1507,6 +1534,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.17.0]: https://github.com/nabbisen/loeres/releases/tag/v0.17.0
 [0.16.1]: https://github.com/nabbisen/loeres/releases/tag/v0.16.1
 [0.16.0]: https://github.com/nabbisen/loeres/releases/tag/v0.16.0
 [0.15.0]: https://github.com/nabbisen/loeres/releases/tag/v0.15.0

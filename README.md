@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.16.1 — Cross-layer verification governance hardening.** RFC 010 now labels aggregate gate results as enforced, advisory/reporting, or owner-RFC hooks. `cargo xtask check` remains the canonical aggregate release gate, with `cargo xtask release-gate` kept as an alias. Size-budget output is an advisory baseline until owner RFCs freeze thresholds, and `conformance` reports a not-enforced RFC 013 hook while no corpus exists. Runtime crate APIs are unchanged from v0.15.0.
+> **v0.17.0 — Target-profile manifest and deterministic-claim policy.** RFC 011 lands `xtask/target-profiles.toml` and a manifest-driven `cargo xtask target-profiles` gate. The command separates mandatory profiles (`cluster-linux-host`, `device-thumbv7em-hardfloat`), advisory-installed profiles, and documented-only profiles, prints applied device rustflags (`-C panic=abort`), and emits RFC 013 conformance groups as metadata only. Runtime crate APIs are unchanged.
 
 Build and verify from source:
 
@@ -70,7 +70,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`012`/`014`/`016`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`011`/`012`/`014`/`016`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

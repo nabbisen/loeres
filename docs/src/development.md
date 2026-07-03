@@ -40,6 +40,12 @@ The aggregate summary labels commands as enforced, advisory/reporting, or
 owner-RFC hooks; threshold-less baselines and missing future corpora are not
 reported as enforced verification passes.
 
+RFC 011 makes `target-profiles` manifest-driven through
+`xtask/target-profiles.toml`. Mandatory profiles fail the aggregate on missing
+targets or failed commands; advisory-installed profiles report unavailable when
+optional targets are not installed; documented-only profiles are listed without
+compilation.
+
 ## Workflow
 
 Development is **design-first**: requirement / RFC → external design → internal
