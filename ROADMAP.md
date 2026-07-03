@@ -121,6 +121,8 @@ scope normalized to always include `FINITE`, accessors) so the scope bit and the
 
 **RFC 011** is now **implemented (v0.17.0)**: target-profile governance is manifest-driven through `xtask/target-profiles.toml`. `cargo xtask target-profiles` validates schema version, unique profile names, required metadata, profile classes, and buildable-vs-documented-only fields; records `rustc -vV` host metadata; enforces `cluster-linux-host` and `device-thumbv7em-hardfloat`; reports optional installed targets as advisory; lists `wasm32-no-threads` and `cluster-linux-aarch64` as documented-only; and emits RFC 013 conformance groups as metadata only. Device hard-float builds are invoked with manifest rustflags `-C panic=abort`, without claiming formal panic absence. Runtime crate APIs are unchanged.
 
+**RFC 013** is now **implemented (v0.18.0)**: the repository has an enforced `conformance/` smoke corpus and `cargo xtask conformance` now runs real parity checks instead of reporting a pending hook. The smoke suite covers the shared projected-first-order family over a dimension-2 diagonal box quadratic problem with converged, iteration-cap, and invalid-bound fixtures. The runner materializes fixtures host-side through `xtask`, calls the real RFC 006 device solver and RFC 016 cluster solver, compares status/error categories and solution vectors with tolerances, and reports objective/residual categories explicitly as `not-applicable` for this slice. Runtime crates do not parse fixtures and runtime APIs are unchanged.
+
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 
 1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2). **Resolved — implemented (v0.10.0); Milestone 2 complete.**
@@ -131,3 +133,4 @@ scope normalized to always include `FINITE`, accessors) so the scope bit and the
 6. RFC 009 — observability, metrics, and FFI gateway interfacing (Milestone 3). **Resolved — implemented (v0.15.0); metadata-only observability and safe mock gateway boundary, with concrete native adapters deferred to adapter-specific follow-up design.**
 7. RFC 010 — xtask verification governance. **Resolved — implemented (v0.16.1); `cargo xtask check` is the aggregate gate, with enforced/advisory/hook result classes for target/profile/API/size/unsafe/link/conformance checks.**
 8. RFC 011 — target profiles and deterministic math policy. **Resolved — implemented (v0.17.0); manifest-driven target-profile checks with mandatory/advisory/documented-only evidence classes.**
+9. RFC 013 — conformance corpus and numerical parity policy. **Resolved — implemented (v0.18.0); enforced smoke corpus for device/cluster projected-first-order parity, with extended/adversarial placeholders staged.**

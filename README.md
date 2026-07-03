@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.17.0 — Target-profile manifest and deterministic-claim policy.** RFC 011 lands `xtask/target-profiles.toml` and a manifest-driven `cargo xtask target-profiles` gate. The command separates mandatory profiles (`cluster-linux-host`, `device-thumbv7em-hardfloat`), advisory-installed profiles, and documented-only profiles, prints applied device rustflags (`-C panic=abort`), and emits RFC 013 conformance groups as metadata only. Runtime crate APIs are unchanged.
+> **v0.18.0 — Enforced conformance smoke corpus.** RFC 013 lands `conformance/` and promotes `cargo xtask conformance` to an enforced smoke gate. The default suite compares the real device and cluster projected-first-order solvers on a dimension-2 diagonal box quadratic corpus, including converged, not-converged, and structured-error fixtures. Runtime crate APIs are unchanged.
 
 Build and verify from source:
 
@@ -70,7 +70,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`011`/`012`/`014`/`016`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`011`/`012`/`013`/`014`/`016`); proposed work lives under [`rfcs/proposed/`](rfcs/proposed/) when active. See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

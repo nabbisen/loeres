@@ -6,9 +6,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 
 ## Proposed RFCs
 
-| RFC | Title | Phase | Primary crates |
-|---:|---|---|---|
-| [013](proposed/013-conformance-corpus-and-numerical-parity.md) | Conformance Corpus and Numerical Parity Policy | Cross-cutting / Conformance | `conformance`, `xtask`, device/cluster examples |
+None.
 
 ## Done RFCs
 
@@ -27,6 +25,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | [010](done/010-xtask-verification-governance.md) | xtask Verification Governance | Implemented (v0.16.1) | `xtask` command namespace and aggregate gate: `check` / `release-gate`, RFC lifecycle/link checks, zero-bleed, no-std, feature matrix, interim target profiles, public API scan including cluster runtime-leak checks, panic audit, advisory size-budget reporting, unsafe audit, RFC 013 conformance hook, and local link audit. |
 | [011](done/011-target-profiles-and-deterministic-math.md) | Target Profiles and Deterministic Math Policy | Implemented (v0.17.0) | `xtask/target-profiles.toml` and manifest-driven `cargo xtask target-profiles`; mandatory `cluster-linux-host` and `device-thumbv7em-hardfloat`, advisory-installed device portability profiles, documented-only WASM/aarch64 profiles, manifest rustflags for device `panic=abort`, and RFC 013 conformance-group metadata. |
 | [012](done/012-validation-state-and-trusted-input-policy.md) | Validation State and Trusted Input Policy | Implemented (v0.12.0) | `loeres` `validation` module; `ValidationScope` (coverage bitset), `FiniteCoverage`, `TrustKind`, `TrustToken`, `ValidationCoverage`, `TrustedByCaller`, `ValidationState`. Core-first vocabulary; cluster trusted-pipeline / caching deferred to RFC 008, shared conformance corpus to RFC 013. |
+| [013](done/013-conformance-corpus-and-numerical-parity.md) | Conformance Corpus and Numerical Parity Policy | Implemented (v0.18.0) | `conformance/` smoke fixtures and `cargo xtask conformance`; enforced device/cluster parity for the dimension-2 projected-first-order diagonal box quadratic family, with extended/adversarial placeholders staged. |
 | [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 | [016](done/016-std-side-projected-first-order-cluster-kernel.md) | Std-Side Projected First-Order Cluster Kernel | Implemented (v0.14.0) | `loeres-cluster` `model`/`solve`; first std-side numerical kernel — dynamic box/bound-constrained projected first-order over `DenseVector` (`ClusterProjectedFirstOrderProblem`, `ClusterProjectedFirstOrderWorkspace`, `ProjectedFirstOrderConfig`, `solve_projected_first_order_dyn`, `ClusterProjectedFirstOrderJob`), step-norm convergence aligned with RFC 006, two-field `ProjectedFirstOrderSolveRecord` (`checked`/`trust`), plugged into the RFC 008 `ClusterJob` seam. Trusted-pipeline/caching deferred to RFC 015. |
 

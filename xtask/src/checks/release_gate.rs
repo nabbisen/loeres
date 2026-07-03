@@ -22,7 +22,7 @@ pub fn run(name: &str) -> bool {
         ("panic-audit", GateKind::Enforced, panic_audit::run()),
         ("size-budget", GateKind::Advisory, size_budget::run()),
         ("unsafe-audit", GateKind::Enforced, unsafe_audit::run()),
-        ("conformance", GateKind::Hook, conformance::run()),
+        ("conformance", GateKind::Enforced, conformance::run(&[])),
         ("link-audit", GateKind::Enforced, link_audit::run()),
     ];
     let ok = results.iter().all(|(_, _, r)| *r);
@@ -38,7 +38,6 @@ pub fn run(name: &str) -> bool {
 enum GateKind {
     Enforced,
     Advisory,
-    Hook,
 }
 
 impl GateKind {
@@ -48,8 +47,6 @@ impl GateKind {
             (Self::Enforced, false) => "FAIL",
             (Self::Advisory, true) => "advisory baseline reported",
             (Self::Advisory, false) => "FAIL",
-            (Self::Hook, true) => "not-enforced hook ready",
-            (Self::Hook, false) => "FAIL",
         }
     }
 }

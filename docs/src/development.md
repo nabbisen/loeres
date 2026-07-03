@@ -46,6 +46,11 @@ targets or failed commands; advisory-installed profiles report unavailable when
 optional targets are not installed; documented-only profiles are listed without
 compilation.
 
+RFC 013 makes the default `conformance` path enforced. `cargo xtask
+conformance` runs the smoke corpus under `conformance/smoke/`, comparing the
+real device and cluster projected-first-order solvers. `extended` and
+`adversarial` remain placeholder suites until populated by later work.
+
 ## Workflow
 
 Development is **design-first**: requirement / RFC → external design → internal

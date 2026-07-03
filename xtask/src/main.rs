@@ -28,8 +28,9 @@ const IMPLEMENTED: &[&str] = &[
 ];
 
 fn main() -> ExitCode {
-    let cmd = std::env::args().nth(1);
-    let ok = match cmd.as_deref() {
+    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    let cmd = args.first().map(String::as_str);
+    let ok = match cmd {
         Some("check") => checks::release_gate::run("check"),
         Some("release-gate") => checks::release_gate::run("release-gate"),
         Some("zero-bleed") => checks::zero_bleed::run(),
@@ -41,7 +42,7 @@ fn main() -> ExitCode {
         Some("check-public-api") => checks::public_api::run(),
         Some("size-budget") => checks::size_budget::run(),
         Some("unsafe-audit") => checks::unsafe_audit::run(),
-        Some("conformance") => checks::conformance::run(),
+        Some("conformance") => checks::conformance::run(&args[1..]),
         Some("link-audit") => checks::link_audit::run(),
         Some(other) => {
             eprintln!("xtask: unknown command `{other}`");
@@ -61,7 +62,7 @@ fn main() -> ExitCode {
 }
 
 fn usage() {
-    eprintln!("usage: cargo xtask <command>\n");
+    eprintln!("usage: cargo xtask <command> [args]\n");
     eprintln!("implemented:");
     for c in IMPLEMENTED {
         eprintln!("  {c}");

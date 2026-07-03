@@ -13,7 +13,7 @@ members = [
 # Member crates are unpublished in the Phase 0 skeleton (no public API yet);
 # the repository release tag is the source of version truth (see CHANGELOG.md).
 [workspace.package]
-version = "0.17.0"
+version = "0.18.0"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
@@ -31,4 +31,6 @@ loeres-device               = { version = "0", path = "crates/loeres-device" }
 # Shared external dependencies. Versions are centralized here; members write
 # `dep = { workspace = true, optional = true }` and add crate-specific features only.
 rayon                       = { version = "1" }
+serde                       = { version = "1", features = ["derive"] }
 tokio                       = { version = "1", default-features = false, features = ["rt"] }
+toml                        = { version = "0.8" }

@@ -5,6 +5,27 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.18.0] — 2026-07-03 — RFC 013: conformance corpus and numerical parity
+
+RFC 013 is implemented as a conformance-corpus release. Runtime crate APIs are
+unchanged.
+
+### Added
+
+- Added `conformance/README.md`, enforced smoke fixtures, and placeholder
+  `extended/` / `adversarial/` suite documentation.
+- `cargo xtask conformance` now loads the smoke corpus, materializes
+  dimension-2 diagonal box quadratic fixtures, and compares the real device and
+  cluster projected-first-order solver paths.
+- The smoke suite includes converged, iteration-cap/not-converged, and
+  invalid-bound structured-error fixtures.
+- Conformance output reports per-fixture and per-category results:
+  `status_match`, `solution_within_tolerance`, `expected_failure_match`,
+  `objective_within_tolerance`, and `residual_within_tolerance`.
+- `cargo xtask check` / `release-gate` now treats default conformance as an
+  enforced gate; extended and adversarial placeholder suites remain explicit
+  `NOT-ENFORCED` reports until populated.
+
 ## [0.17.0] — 2026-07-03 — RFC 011: target profiles and deterministic math policy
 
 RFC 011 is implemented as a target-profile governance release. Runtime crate APIs
@@ -1534,6 +1555,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.18.0]: https://github.com/nabbisen/loeres/releases/tag/v0.18.0
 [0.17.0]: https://github.com/nabbisen/loeres/releases/tag/v0.17.0
 [0.16.1]: https://github.com/nabbisen/loeres/releases/tag/v0.16.1
 [0.16.0]: https://github.com/nabbisen/loeres/releases/tag/v0.16.0

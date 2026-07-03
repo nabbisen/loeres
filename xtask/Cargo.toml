@@ -10,3 +10,10 @@ repository.workspace    = true
 publish = false
 
 [dependencies]
+loeres = { workspace = true }
+loeres-backend-static = { workspace = true, features = ["owned-arrays"] }
+loeres-backend-std = { workspace = true }
+loeres-cluster = { workspace = true }
+loeres-device = { workspace = true, features = ["owned-arrays"] }
+serde = { workspace = true }
+toml = { workspace = true }

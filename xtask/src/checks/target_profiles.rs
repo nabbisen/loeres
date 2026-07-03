@@ -48,7 +48,7 @@ pub fn run() -> bool {
         eprintln!("    scalar_family: {}", profile.scalar_family);
         eprintln!("    size_budget_group: {}", profile.size_budget_group);
         eprintln!(
-            "    conformance_group: {} (metadata only; RFC 013 owns fixtures)",
+            "    conformance_group: {} (metadata; cargo xtask conformance owns fixture execution)",
             profile.conformance_group
         );
         if !profile.rustflags.is_empty() {
@@ -81,7 +81,7 @@ pub fn run() -> bool {
                 }
             }
             ProfileClass::DocumentedOnly => {
-                eprintln!("    result: documented-only (not compiled by v0.17.0 local xtask)");
+                eprintln!("    result: documented-only (not compiled by local xtask)");
                 summary.documented_total += 1;
             }
         }
@@ -188,7 +188,7 @@ impl Summary {
             self.advisory_total
         );
         eprintln!("    documented-only: {} listed", self.documented_total);
-        eprintln!("    conformance groups: metadata only; RFC 013 owns fixtures");
+        eprintln!("    conformance groups: metadata; fixture execution lives in conformance");
     }
 }
 
