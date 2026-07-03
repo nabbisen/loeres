@@ -8,7 +8,6 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 
 | RFC | Title | Phase | Primary crates |
 |---:|---|---|---|
-| [010](proposed/010-xtask-verification-governance.md) | xtask Verification Governance | Cross-cutting / Verification | `xtask`, CI, all crates |
 | [011](proposed/011-target-profiles-and-deterministic-math.md) | Target Profiles and Deterministic Math Policy | Cross-cutting / Target Profiles | `loeres-device`, `loeres-backend-static`, `xtask` |
 | [013](proposed/013-conformance-corpus-and-numerical-parity.md) | Conformance Corpus and Numerical Parity Policy | Cross-cutting / Conformance | `conformance`, `xtask`, device/cluster examples |
 
@@ -26,6 +25,7 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 | [007](done/007-dynamic-sparse-adapters.md) | Dynamic Dense and Sparse Storage Adapters | Implemented (v0.11.0) | `loeres-backend-std` `dense`/`sparse`; row-major `Vec`-backed `DenseVector`/`DenseMatrix` (full RFC 002 mutable + contiguous traits) and a CSR `SparseMatrix` (implicit-zero `get`, `try_get_stored`, `nnz`), triplet ingestion with duplicate rejection + memory-limit options, `validate_finite` helpers. Canonical validation state deferred to RFC 012. Opens Milestone 3. |
 | [008](done/008-async-orchestration-budgets.md) | Async Orchestration and Monomorphization Budgets | Implemented (v0.13.0) | `loeres-cluster` `batch`/`runtime`/`solve`; orchestration-first slice — per-item batch contract (`BatchSolveReport`/`BatchItemOutcome`/`BatchSummary`/`ClusterSolution`), runtime-agnostic config/cancellation/executor layer (`ClusterSolveConfig`, `ClusterCancellationToken`, `parallel-rayon`/`async-tokio` gated), and the `ClusterJob` hybrid-dispatch seam; consumes the RFC 012 validation vocabulary (`ClusterValidationPolicy`). Orchestration machinery exercised by deterministic test jobs — not a production cluster solver; std-side kernel + trusted-pipeline/caching deferred to a follow-on RFC, the size-budget gate to RFC 010. |
 | [009](done/009-observability-ffi-gateways.md) | Observability, Metrics, and FFI Gateway Interfacing | Implemented (v0.15.0) | `loeres-cluster` `observe`/`gateway`; metadata-only telemetry categories, bounded labels, total `SolverError`/`BatchItemOutcome` classifiers, explicit observer sinks, `observe_batch_report`, `solve_batch_observed`, safe gateway boundary categories, and a pure Rust `MockGatewayJob`. No concrete native solver adapter ships in this RFC. |
+| [010](done/010-xtask-verification-governance.md) | xtask Verification Governance | Implemented (v0.16.0) | `xtask` command namespace and aggregate gate: `check` / `release-gate`, RFC lifecycle/link checks, zero-bleed, no-std, feature matrix, target profiles, public API scan, panic audit, size-budget reporting, unsafe audit, conformance hook, and link audit. |
 | [012](done/012-validation-state-and-trusted-input-policy.md) | Validation State and Trusted Input Policy | Implemented (v0.12.0) | `loeres` `validation` module; `ValidationScope` (coverage bitset), `FiniteCoverage`, `TrustKind`, `TrustToken`, `ValidationCoverage`, `TrustedByCaller`, `ValidationState`. Core-first vocabulary; cluster trusted-pipeline / caching deferred to RFC 008, shared conformance corpus to RFC 013. |
 | [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 | [016](done/016-std-side-projected-first-order-cluster-kernel.md) | Std-Side Projected First-Order Cluster Kernel | Implemented (v0.14.0) | `loeres-cluster` `model`/`solve`; first std-side numerical kernel — dynamic box/bound-constrained projected first-order over `DenseVector` (`ClusterProjectedFirstOrderProblem`, `ClusterProjectedFirstOrderWorkspace`, `ProjectedFirstOrderConfig`, `solve_projected_first_order_dyn`, `ClusterProjectedFirstOrderJob`), step-norm convergence aligned with RFC 006, two-field `ProjectedFirstOrderSolveRecord` (`checked`/`trust`), plugged into the RFC 008 `ClusterJob` seam. Trusted-pipeline/caching deferred to RFC 015. |
@@ -38,6 +38,6 @@ None yet.
 
 1. `Status.` must match the folder state.
 2. All relative RFC links must resolve after moving.
-3. `xtask check-rfcs` must validate dependency boundaries and folder-status symmetry.
+3. `xtask check-rfcs` must validate RFC lifecycle state, index coverage, and relative links.
 4. `xtask zero-bleed` must reject any transitive `std` or `alloc` edge into `loeres`, `loeres-backend-static`, or `loeres-device` baseline builds.
 5. Numerical parity tests must compare equivalent problem instances across device and cluster paths within `epsilon = 1e-5`, not by bitwise identity.

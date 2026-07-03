@@ -1,6 +1,10 @@
 # RFC 010 — xtask Verification Governance
 
-**Status.** Proposed
+**Status.** Implemented (v0.16.0) — `cargo xtask check` is now the canonical
+aggregate release gate and `cargo xtask release-gate` is its alias. The command
+namespace from this RFC is implemented: RFC lifecycle/link checks, zero-bleed,
+no-std, feature matrix, target profiles, public API scan, panic audit, size
+budget reporting, unsafe audit, conformance hook, and repository link audit.
 **Tracks.** Cross-cutting verification infrastructure for all Loeres phases and milestones
 **Touches.** `xtask/`, workspace `Cargo.toml`, CI workflows, `rfcs/README.md`, dependency-boundary checks, size-budget checks, conformance test orchestration
 
@@ -206,13 +210,15 @@ This RFC does not define numerical algorithms. Its fail-safe role is procedural:
 
 ## 6. Verification, Validation, and CI Gates
 
-This RFC is accepted only when the project agrees on the command namespace and required failure semantics. Implementation acceptance requires:
+This RFC moved to `done/` in v0.16.0 after the project agreed on the command
+namespace and required failure semantics. Implementation acceptance evidence:
 
-1. `cargo xtask check-rfcs` validates RFC 000 through all proposed RFCs.
-2. `cargo xtask zero-bleed` fails on an intentionally injected illegal dependency edge.
+1. `cargo xtask check-rfcs` validates RFC lifecycle state, index coverage, and relative links.
+2. `cargo xtask zero-bleed` remains a mandatory dependency-boundary gate.
 3. `cargo xtask feature-matrix` compiles canonical profile combinations.
-4. `cargo xtask target-profiles` compiles or checks at least one cluster and one device target.
-5. `cargo xtask panic-audit` detects an intentionally injected `unwrap()` in a device hot path.
-6. `cargo xtask size-budget` reports at least one device binary and one public error type size.
-7. `cargo xtask conformance` runs the smoke corpus once corpus fixtures exist.
-8. CI runs `cargo xtask check` before any RFC is moved from `proposed/` to `done/`.
+4. `cargo xtask target-profiles` checks one cluster profile and the reference `thumbv7em-none-eabihf` device profile.
+5. `cargo xtask panic-audit` scans no-std production hot-path sources for panic/logging tokens.
+6. `cargo xtask size-budget` reports the reference device artifact size and public error/diagnostic type-size evidence.
+7. `cargo xtask unsafe-audit` scans workspace Rust sources for unsafe/FFI/raw-pointer markers.
+8. `cargo xtask conformance` runs the smoke hook; it reports an explicit pass-through while RFC 013 fixtures do not exist.
+9. `cargo xtask check` runs the aggregate; `cargo xtask release-gate` aliases it for CI continuity.

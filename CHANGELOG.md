@@ -5,6 +5,38 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.16.0] — 2026-07-03 — RFC 010: xtask verification governance
+
+RFC 010 is implemented as a verification-governance release. Runtime crate APIs are
+unchanged from v0.15.0.
+
+### Added
+
+- `cargo xtask check` is now the canonical aggregate release gate; `cargo xtask
+  release-gate` remains an alias for CI continuity.
+- Implemented the RFC 010 command namespace: `check-rfcs`, `zero-bleed`, `no-std`,
+  `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
+  `size-budget`, `unsafe-audit`, `conformance`, and `link-audit`.
+- `check-rfcs` now validates RFC filename shape, unique RFC numbers, folder/status
+  consistency, RFC index coverage, and relative RFC links.
+- `check-public-api` scans edge-facing public API source for forbidden heap/std/dyn
+  types and forbidden non-convergence error taxonomy.
+- `feature-matrix`, `target-profiles`, and `size-budget` compile/report the current
+  canonical profiles and reference device artifact size.
+- `unsafe-audit` scans workspace Rust sources for unsafe/FFI/raw-pointer markers.
+- `conformance` is wired as the RFC 013 smoke-corpus hook and reports an explicit
+  pass-through while no corpus fixtures exist.
+
+### Verification
+
+- Observed green on the working tree: `cargo fmt --all --check`,
+  `cargo clippy --workspace --all-features --all-targets -- -D warnings`,
+  `cargo test --workspace --all-features`, `cargo xtask check`, and
+  `cargo xtask release-gate`.
+- Observed green on a clean copy under `.git-exclude/clean-rfc010-v0160/`:
+  `cargo xtask check` (rerun outside the sandbox after the first attempt hit
+  the known linker temporary-file restriction).
+
 ## [0.15.0] — 2026-07-03 — RFC 009: observability and gateway boundary
 
 RFC 009 is implemented for `loeres-cluster`, adding cluster-only metadata observability
@@ -1453,6 +1485,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.16.0]: https://github.com/nabbisen/loeres/releases/tag/v0.16.0
 [0.15.0]: https://github.com/nabbisen/loeres/releases/tag/v0.15.0
 [0.14.1]: https://github.com/nabbisen/loeres/releases/tag/v0.14.1
 [0.14.0]: https://github.com/nabbisen/loeres/releases/tag/v0.14.0

@@ -35,15 +35,14 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.15.0 — Milestone 3: cluster observability and gateway boundary.** RFC 009 lands the cluster-only observability and safe gateway slice. `loeres-cluster::observe` now exposes metadata-only telemetry categories, redacted static labels, pure `SolverError` / `BatchItemOutcome` classifiers, explicit `SolveObserver` sinks, `observe_batch_report`, and the non-invasive `solve_batch_observed` wrapper. `loeres-cluster::gateway` now exposes bounded gateway categories plus a pure Rust `MockGatewayJob` that exercises status/error mapping and adapter-side thread-safety rejection without linking native code. RFC 008's `ClusterJob` seam and RFC 014's status/error split remain unchanged; non-convergence is still a solved status, `ClusterError` remains batch-level, and no concrete native solver adapter ships in RFC 009. Edge crates remain `no_std` / no-`alloc`, verified on a bare-metal target; observability, metrics, tracing, gateway, Tokio, Rayon, and native-solver concerns do not bleed into them.
+> **v0.16.0 — Cross-layer verification governance.** RFC 010 lands the first-class `xtask` verification contract. `cargo xtask check` is now the canonical aggregate release gate, with `cargo xtask release-gate` kept as an alias for CI continuity. The implemented command namespace covers RFC lifecycle/link integrity, zero-bleed dependency boundaries, no-std device builds, canonical feature profiles, target profiles, public API scanning for edge crates, panic-path scanning, size-budget reporting, unsafe/FFI scanning, a conformance hook for RFC 013 fixtures, and repository link auditing. The runtime crate APIs are unchanged from v0.15.0.
 
 Build and verify from source:
 
 ```sh
 # toolchain, components, and the bare-metal target come from rust-toolchain.toml
 cargo check --workspace --all-features
-cargo xtask zero-bleed   # no server <-> edge dependency bleed
-cargo xtask no-std       # edge crates build for thumbv7em-none-eabihf
+cargo xtask check        # aggregate verification gate
 ```
 
 The intended downstream import model (specified in the external design, §1.4) is environment-selected by crate choice:
@@ -71,7 +70,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`012`/`014`/`016`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`012`/`014`/`016`); the rest are under [`rfcs/proposed/`](rfcs/proposed/). See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

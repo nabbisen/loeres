@@ -29,12 +29,13 @@ cargo clippy --workspace --all-features -- -D warnings
 ```sh
 cargo xtask zero-bleed     # no forbidden server <-> edge dependency edge exists
 cargo xtask no-std         # edge crates build for thumbv7em-none-eabihf (no std/alloc)
-cargo xtask check          # cargo check across the workspace
-cargo xtask release-gate   # every gate implemented at the current milestone
+cargo xtask check          # canonical aggregate release gate
+cargo xtask release-gate   # alias for cargo xtask check
 ```
 
-Further gates (`panic-audit`, `size-budget`, `check-public-api`, …) are
-registered as scaffolds and implemented in later milestones per RFC 010.
+RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
+`check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
+`size-budget`, `unsafe-audit`, `conformance`, and `link-audit`.
 
 ## Workflow
 

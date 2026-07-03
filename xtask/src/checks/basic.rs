@@ -1,10 +1,10 @@
-//! `check` — type-check the whole workspace on the host target.
+//! Host workspace type-check used by the aggregate gate.
 
 use super::util::cargo;
 
 pub fn run() -> bool {
-    eprintln!("[check] cargo check --workspace --all-features");
+    eprintln!("[host-check] cargo check --workspace --all-features");
     let ok = cargo(&["check", "--workspace", "--all-features"]);
-    eprintln!("[check] {}", if ok { "PASS" } else { "FAIL" });
+    eprintln!("[host-check] {}", if ok { "PASS" } else { "FAIL" });
     ok
 }
