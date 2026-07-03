@@ -5,6 +5,28 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.16.1] — 2026-07-03 — RFC 010 review hardening
+
+This patch tightens the v0.16.0 verification-governance contract. Runtime crate
+APIs are unchanged.
+
+### Changed
+
+- RFC 010 now classifies aggregate gate results as enforced,
+  advisory/reporting, or owner-RFC hooks.
+- `cargo xtask check` / `release-gate` summaries label `size-budget` as an
+  advisory baseline and `conformance` as a not-enforced RFC 013 hook while no
+  corpus exists.
+- `size-budget` output labels enforced, advisory, and unavailable measurements;
+  unavailable required measurements fail the command.
+- `feature-matrix` treats `cluster-ffi` as conditional on the `ffi-gateway`
+  feature existing, while preserving explicit opt-in and non-default behavior.
+- `target-profiles` documents and reports RFC 010's interim host/device
+  profiles, with full taxonomy still owned by RFC 011.
+- `check-public-api` now also scans `loeres-cluster` public signatures for
+  accidental Tokio/Rayon runtime-type leaks.
+- RFC 010 now specifies local relative repository Markdown link auditing.
+
 ## [0.16.0] — 2026-07-03 — RFC 010: xtask verification governance
 
 RFC 010 is implemented as a verification-governance release. Runtime crate APIs are
@@ -1485,6 +1507,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.16.1]: https://github.com/nabbisen/loeres/releases/tag/v0.16.1
 [0.16.0]: https://github.com/nabbisen/loeres/releases/tag/v0.16.0
 [0.15.0]: https://github.com/nabbisen/loeres/releases/tag/v0.15.0
 [0.14.1]: https://github.com/nabbisen/loeres/releases/tag/v0.14.1

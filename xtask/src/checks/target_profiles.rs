@@ -1,11 +1,12 @@
-//! `target-profiles` — build/check named target profiles (RFC 010/RFC 011).
+//! `target-profiles` — build/check RFC 010 interim target profiles.
 
 use super::util::{cargo, command_stdout};
 
 const DEVICE_TARGET: &str = "thumbv7em-none-eabihf";
 
 pub fn run() -> bool {
-    eprintln!("[target-profiles] checking host and reference device profiles");
+    eprintln!("[target-profiles] checking RFC 010 interim target profiles");
+    eprintln!("  note: RFC 011 may expand or rename the full profile taxonomy");
     if let Some(version) = command_stdout("rustc", &["--version"]) {
         eprintln!("  rustc: {}", version.trim());
     }

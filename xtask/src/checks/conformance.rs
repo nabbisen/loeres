@@ -3,11 +3,11 @@
 use std::path::Path;
 
 pub fn run() -> bool {
-    eprintln!("[conformance] smoke corpus");
+    eprintln!("[conformance] smoke corpus hook");
     if !Path::new("conformance").exists() {
-        eprintln!("  no conformance corpus exists yet; RFC 013 owns fixtures");
-        eprintln!("  result: PASS (no fixtures to run)");
-        eprintln!("[conformance] PASS");
+        eprintln!("  not-enforced: no conformance corpus exists yet; RFC 013 owns fixtures");
+        eprintln!("  result: hook ready, pending RFC 013 corpus");
+        eprintln!("[conformance] NOT-ENFORCED");
         return true;
     }
     let smoke = Path::new("conformance/smoke");

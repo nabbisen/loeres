@@ -1,10 +1,14 @@
 # RFC 010 — xtask Verification Governance
 
-**Status.** Implemented (v0.16.0) — `cargo xtask check` is now the canonical
+**Status.** Implemented (v0.16.1) — `cargo xtask check` is now the canonical
 aggregate release gate and `cargo xtask release-gate` is its alias. The command
-namespace from this RFC is implemented: RFC lifecycle/link checks, zero-bleed,
-no-std, feature matrix, target profiles, public API scan, panic audit, size
-budget reporting, unsafe audit, conformance hook, and repository link audit.
+namespace from this RFC is implemented and classified as enforced checks,
+advisory/reporting baselines, or owner-RFC hooks. RFC lifecycle/link checks,
+zero-bleed, no-std, the current feature matrix, interim target profiles, public
+API scanning, panic audit, unsafe audit, and local repository link audit are
+enforced now. Size-budget measurements are an advisory/reporting baseline until
+owner RFCs freeze numerical thresholds. `conformance` is a command contract and
+smoke hook pending the RFC 013 shared corpus.
 **Tracks.** Cross-cutting verification infrastructure for all Loeres phases and milestones
 **Touches.** `xtask/`, workspace `Cargo.toml`, CI workflows, `rfcs/README.md`, dependency-boundary checks, size-budget checks, conformance test orchestration
 
@@ -103,13 +107,21 @@ Dev-dependencies may use `std` only when the target being compiled is a host-sid
 | `static-min` | `loeres-backend-static` builds without `std` or `alloc` |
 | `device-min` | `loeres-device` builds without `std`, `alloc`, threads, logging frameworks, or heap-backed collections |
 | `cluster-default` | `loeres-cluster` builds with approved `std` integrations |
-| `cluster-ffi` | FFI gateway builds only when explicitly enabled |
+| `cluster-ffi` | Conditional profile: checked when an explicit `ffi-gateway` feature exists; never a default feature |
 
 The command must fail on mutually exclusive feature combinations rather than silently choosing precedence.
 
 ### 3.5 Target-profile checks
 
-`cargo xtask target-profiles` must build or check the target profiles defined by RFC 011. At minimum, it must include one host cluster target and one reference device target.
+`cargo xtask target-profiles` must build or check RFC 010's interim target
+profiles:
+
+* one host cluster profile using `loeres-cluster --all-features`;
+* one reference no-std device profile using `loeres-device --no-default-features`
+  for `thumbv7em-none-eabihf`.
+
+RFC 011 may expand, rename, or formalize the full target taxonomy later. RFC 010
+does not claim that the RFC 011 target profile set is already implemented.
 
 The command must record:
 
@@ -135,7 +147,17 @@ The command may not claim formal proof. Its output must say whether the configur
 
 ### 3.7 Size-budget checks
 
-`cargo xtask size-budget` must measure and compare:
+`cargo xtask size-budget` must report measurements in one of three classes:
+
+* **enforced** — a measurement compared against a concrete budget in this
+  command or by a compile-time assertion that this command builds;
+* **advisory** — a measurement recorded as a baseline while the owner RFC has
+  not frozen a threshold;
+* **unavailable** — a required measurement could not be produced because a
+  build artifact or tool is missing; unavailable required measurements fail the
+  command.
+
+Over time, the command must measure and compare:
 
 * `.text` size;
 * `.rodata` size;
@@ -143,7 +165,10 @@ The command may not claim formal proof. Its output must say whether the configur
 * device artifact binary size;
 * cluster monomorphization growth when multiple scalar/backend combinations are enabled.
 
-The exact byte budgets are owned by RFC 003, RFC 006, RFC 008, and RFC 011. This RFC defines only the existence and common reporting format of the checker.
+The exact byte budgets are owned by RFC 003, RFC 006, RFC 008, and RFC 011. This
+RFC defines the existence and common reporting format of the checker. A
+threshold-less advisory report must not be presented in aggregate output as an
+enforced budget comparison.
 
 ### 3.8 Unsafe audit checks
 
@@ -154,13 +179,19 @@ Each occurrence must be classified:
 * forbidden in core/device baseline;
 * allowed only in `loeres-backend-std` adapter internals;
 * allowed only in explicit FFI gateway modules;
+* host-tooling-only (`xtask`, build scripts, or other non-runtime tooling);
 * test-only.
 
 Every allowed unsafe occurrence must link to an RFC section that justifies it.
 
 ### 3.9 Conformance orchestration
 
-`cargo xtask conformance` must run the shared corpus defined by RFC 013. It must compare equivalent problem instances across device and cluster paths using tolerance-based convergence criteria, not bitwise equality.
+`cargo xtask conformance` is the command contract for the shared corpus defined
+by RFC 013. In v0.16.1 it is implemented as a smoke hook and reports
+`not-enforced: pending RFC 013` when the corpus is absent. RFC 013 owns
+promotion to an enforcing corpus gate. Once promoted, it must compare equivalent
+problem instances across device and cluster paths using tolerance-based
+convergence criteria, not bitwise equality.
 
 The command must support:
 
@@ -184,6 +215,26 @@ It must additionally reject (RFC 014):
 * any device-facing terminal status category not derivable from `loeres::solver::SolveStatus`.
 
 The scanner is source-level at first; it need not be perfect in v0.x, but it must be mandatory and part of the aggregate `check`. An `xtask/public-api-allowlist.toml` (or equivalent) may exempt a signature, but every entry must cite an accepted RFC ID; entries without a valid RFC reference fail the check.
+
+It must also scan the baseline `loeres-cluster` public surface for accidental
+runtime-leak types. Tokio/Rayon handles, runtime objects, thread-pool builders,
+and equivalent feature-specific runtime implementation types must not appear in
+baseline public signatures unless an accepted RFC explicitly allowlists the
+exposure.
+
+Every allowlist entry must include an RFC ID, reason, owner, and review date or
+revalidation milestone. Stale entries must fail or warn during
+`check-public-api`.
+
+### 3.11 Repository link audit
+
+`cargo xtask link-audit` must scan repository Markdown files for local relative
+links that resolve within the checkout. It covers README, changelog, roadmap,
+RFC, and documentation Markdown files while excluding `.git`, `.git-exclude`,
+and `target`.
+
+Local relative links are the mandatory CI gate. External URLs are out of scope
+for the mandatory gate and may be added later as advisory-only output.
 
 ## 4. Rust Systems-Level Nuances & Memory Safety
 
@@ -211,14 +262,17 @@ This RFC does not define numerical algorithms. Its fail-safe role is procedural:
 ## 6. Verification, Validation, and CI Gates
 
 This RFC moved to `done/` in v0.16.0 after the project agreed on the command
-namespace and required failure semantics. Implementation acceptance evidence:
+namespace and required failure semantics. v0.16.1 tightens the command contract
+so placeholder and threshold-less checks are not presented as enforced
+verification passes. Implementation acceptance evidence:
 
-1. `cargo xtask check-rfcs` validates RFC lifecycle state, index coverage, and relative links.
-2. `cargo xtask zero-bleed` remains a mandatory dependency-boundary gate.
-3. `cargo xtask feature-matrix` compiles canonical profile combinations.
-4. `cargo xtask target-profiles` checks one cluster profile and the reference `thumbv7em-none-eabihf` device profile.
-5. `cargo xtask panic-audit` scans no-std production hot-path sources for panic/logging tokens.
-6. `cargo xtask size-budget` reports the reference device artifact size and public error/diagnostic type-size evidence.
-7. `cargo xtask unsafe-audit` scans workspace Rust sources for unsafe/FFI/raw-pointer markers.
-8. `cargo xtask conformance` runs the smoke hook; it reports an explicit pass-through while RFC 013 fixtures do not exist.
-9. `cargo xtask check` runs the aggregate; `cargo xtask release-gate` aliases it for CI continuity.
+1. Enforced: `cargo xtask check-rfcs` validates RFC lifecycle state, index coverage, and relative links.
+2. Enforced: `cargo xtask zero-bleed` remains a mandatory dependency-boundary gate.
+3. Enforced: `cargo xtask feature-matrix` compiles current canonical profile combinations and conditionally checks `cluster-ffi` only when `ffi-gateway` exists.
+4. Enforced: `cargo xtask target-profiles` checks RFC 010's interim host cluster profile and the reference `thumbv7em-none-eabihf` device profile.
+5. Enforced: `cargo xtask panic-audit` scans no-std production hot-path sources for panic/logging tokens.
+6. Advisory/reporting: `cargo xtask size-budget` reports the reference device artifact size and public error/diagnostic type-size evidence, labels threshold-less measurements as advisory, and fails if a required measurement is unavailable.
+7. Enforced: `cargo xtask unsafe-audit` scans workspace Rust sources for unsafe/FFI/raw-pointer markers.
+8. Hook, not enforced yet: `cargo xtask conformance` runs the smoke hook and reports `not-enforced: pending RFC 013` while RFC 013 fixtures do not exist.
+9. Enforced: `cargo xtask link-audit` checks local relative repository Markdown links.
+10. Aggregate: `cargo xtask check` runs the aggregate with enforced/advisory/hook summary labels; `cargo xtask release-gate` aliases it for CI continuity.

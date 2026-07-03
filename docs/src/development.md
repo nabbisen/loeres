@@ -36,6 +36,9 @@ cargo xtask release-gate   # alias for cargo xtask check
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
 `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
 `size-budget`, `unsafe-audit`, `conformance`, and `link-audit`.
+The aggregate summary labels commands as enforced, advisory/reporting, or
+owner-RFC hooks; threshold-less baselines and missing future corpora are not
+reported as enforced verification passes.
 
 ## Workflow
 

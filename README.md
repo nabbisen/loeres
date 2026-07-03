@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.16.0 — Cross-layer verification governance.** RFC 010 lands the first-class `xtask` verification contract. `cargo xtask check` is now the canonical aggregate release gate, with `cargo xtask release-gate` kept as an alias for CI continuity. The implemented command namespace covers RFC lifecycle/link integrity, zero-bleed dependency boundaries, no-std device builds, canonical feature profiles, target profiles, public API scanning for edge crates, panic-path scanning, size-budget reporting, unsafe/FFI scanning, a conformance hook for RFC 013 fixtures, and repository link auditing. The runtime crate APIs are unchanged from v0.15.0.
+> **v0.16.1 — Cross-layer verification governance hardening.** RFC 010 now labels aggregate gate results as enforced, advisory/reporting, or owner-RFC hooks. `cargo xtask check` remains the canonical aggregate release gate, with `cargo xtask release-gate` kept as an alias. Size-budget output is an advisory baseline until owner RFCs freeze thresholds, and `conformance` reports a not-enforced RFC 013 hook while no corpus exists. Runtime crate APIs are unchanged from v0.15.0.
 
 Build and verify from source:
 
