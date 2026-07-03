@@ -5,6 +5,55 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.15.0] — 2026-07-03 — RFC 009: observability and gateway boundary
+
+RFC 009 is implemented for `loeres-cluster`, adding cluster-only metadata observability
+and the safe gateway boundary while keeping edge crates untouched.
+
+### Added
+
+- **`loeres-cluster::observe`** — bounded, metadata-only telemetry categories
+  (`SolverFamilyId`, `ProblemClassId`, `DimensionBucket`, `IterationsBucket`,
+  `ElapsedBucket`, `OutcomeKind`), `SolveTelemetryEvent`, `SolveObservationContext`,
+  `SolveObserver`, and `NoopObserver`.
+- **Pure classifiers** — `outcome_kind_from_solver_error` is total over the current
+  `SolverError` variants and fails closed to `InternalError` for future unclassified
+  variants; `outcome_kind_from_item` preserves the RFC 014 status/error split so
+  non-convergence remains a solved status.
+- **Observed batch helpers** — `observe_batch_report`, `observe_batch_report_with_metadata`,
+  `telemetry_event_from_item`, and the thin `solve_batch_observed` wrapper. The wrapper
+  forwards the caller's `ClusterCancellationToken`, leaves `ClusterJob` and
+  `ClusterSolveConfig` unchanged, and emits no per-item event for batch-level
+  `ClusterError`.
+- **`loeres-cluster::gateway`** — safe gateway boundary categories
+  (`GatewayBackendKind`, `GatewayThreadSafety`, `GatewayFailureKind`), the
+  `solver_error_from_gateway_failure` mapping, and a pure Rust `MockGatewayJob` /
+  `MockGatewayResponse` for exercising gateway status/error behavior.
+
+### Security and boundary behavior
+
+- Telemetry fields and labels are redacted by construction: bounded enums and static
+  labels only, with no raw vectors, matrices, dimensions, objective values, residuals,
+  final solution values, paths, tenant IDs, request IDs, caller strings, or
+  `TrustedByCaller` labels.
+- `ClusterError` remains batch-level and outside `OutcomeKind`; `OrchestrationFailure`
+  is not a per-item outcome.
+- Gateway thread-safety is adapter-side in v1. The mock gateway rejects unwrapped
+  `SingleThreadOnly` construction; orchestrator scheduling by gateway class is not added.
+- RFC 009 ships no concrete native solver adapter, no modeling DSL, no trusted validation
+  cache, and no tracing/metrics/native dependency.
+
+### Verification
+
+- Added observability and gateway tests, bringing the workspace to 216 tests
+  (71 core + 22 static backend + 32 device + 23 dynamic backend + 68 cluster).
+- Observed green on the working tree: `cargo fmt --all --check`,
+  `cargo clippy --workspace --all-features --all-targets -- -D warnings`,
+  `cargo test --workspace --all-features`, and `cargo xtask release-gate`.
+- Observed green on a clean copy under `.git-exclude/clean-rfc009-v0150/`:
+  `cargo xtask release-gate` (rerun outside the sandbox after the first attempt hit
+  the known linker temporary-file restriction).
+
 ## [0.14.1] — 2026-06-30 — RFC 016 implementation-review corrections (B1–B4, N1–N3)
 
 A corrective patch addressing the v0.14.0 implementation review, before RFC 015 builds on
@@ -1404,6 +1453,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.15.0]: https://github.com/nabbisen/loeres/releases/tag/v0.15.0
 [0.14.1]: https://github.com/nabbisen/loeres/releases/tag/v0.14.1
 [0.14.0]: https://github.com/nabbisen/loeres/releases/tag/v0.14.0
 [0.13.3]: https://github.com/nabbisen/loeres/releases/tag/v0.13.3

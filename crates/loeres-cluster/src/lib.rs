@@ -20,8 +20,8 @@
 //! box/bound-constrained projected first-order solver over `DenseVector`
 //! ([`model`] types plus [`solve_projected_first_order_dyn`](solve::solve_projected_first_order_dyn)
 //! and its [`ClusterProjectedFirstOrderJob`](solve::ClusterProjectedFirstOrderJob)
-//! adapter), plugged into the `ClusterJob` seam. `observe` and `gateway` remain
-//! placeholders owned by later RFCs.
+//! adapter), plugged into the `ClusterJob` seam. RFC 009 adds cluster-only
+//! metadata observability and the safe gateway boundary.
 
 pub mod batch;
 pub mod gateway;
@@ -31,9 +31,19 @@ pub mod runtime;
 pub mod solve;
 
 pub use batch::{BatchItemOutcome, BatchSolveReport, BatchSummary, ClusterSolution};
+pub use gateway::{
+    GatewayBackendKind, GatewayFailureKind, GatewayThreadSafety, MockGatewayJob,
+    MockGatewayResponse, solver_error_from_gateway_failure,
+};
 pub use model::{
     ClusterProjectedFirstOrderProblem, ClusterProjectedFirstOrderWorkspace,
     ProjectedFirstOrderConfig, ProjectedFirstOrderFiniteEvidence, ProjectedFirstOrderSolveRecord,
+};
+pub use observe::{
+    DimensionBucket, ElapsedBucket, IterationsBucket, NoopObserver, OutcomeKind, ProblemClassId,
+    SolveObservationContext, SolveObserver, SolveTelemetryEvent, SolverFamilyId,
+    observe_batch_report, observe_batch_report_with_metadata, outcome_kind_from_item,
+    outcome_kind_from_solver_error, solve_batch_observed, telemetry_event_from_item,
 };
 pub use runtime::{
     BatchExecutionPolicy, ClusterCancellationToken, ClusterError, ClusterSolveConfig,

@@ -6,13 +6,15 @@ Server-side solving: dynamic models, batch with per-item failure isolation, orch
 - **Depends on:** `loeres`, `loeres-backend-std`
 - **Status:** RFC 008 (v0.13.0) populates the orchestration foundation in `batch`,
   `runtime`, and `solve`; RFC 016 (v0.14.0) adds the first std-side numerical kernel in
-  `model` and `solve`. `observe` and `gateway` remain placeholders owned by later RFCs.
+  `model` and `solve`; RFC 009 (v0.15.0) adds metadata observability and the safe
+  gateway boundary in `observe` and `gateway`.
 
 ## What's implemented
 
 RFC 008 (v0.13.0) delivered the orchestration foundation; RFC 016 (v0.14.0) added the
 first production std-side numerical kernel plugged into the `ClusterJob` seam, so the
-cluster now does real solving (not only orchestration of deterministic test jobs).
+cluster now does real solving (not only orchestration of deterministic test jobs). RFC 009
+(v0.15.0) adds redacted observability and a safe gateway boundary without changing that seam.
 
 - `batch` — the per-item outcome contract: `BatchItemOutcome` (`Solved` / `Failed` /
   `Cancelled` / `Panicked`, preserving the RFC 014 status/error split — a non-converged
@@ -24,6 +26,13 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   evidence), the cluster-owned `ClusterCancellationToken`, and a small `ClusterError`.
 - `solve` — the `ClusterJob` hybrid-dispatch seam, `ClusterExecutionContext`,
   `solve_batch`, and (behind `async-tokio`) `solve_batch_async`.
+- `observe` — metadata-only `SolveTelemetryEvent` categories, bounded static labels,
+  the total `SolverError` / `BatchItemOutcome` classifiers, `SolveObserver` /
+  `NoopObserver`, `observe_batch_report`, and `solve_batch_observed`.
+- `gateway` — safe gateway boundary categories (`GatewayBackendKind`,
+  `GatewayThreadSafety`, `GatewayFailureKind`) plus a pure Rust `MockGatewayJob`
+  exercising status/error mapping and adapter-side rejection of unwrapped
+  `SingleThreadOnly` backends. No concrete native solver adapter ships here.
 
 ### RFC 016 (v0.14.0) — std-side projected first-order kernel
 
@@ -50,6 +59,10 @@ Rayon type appears in the baseline public surface. Optional, default-off:
 
 - `parallel-rayon` — a bounded Rayon worker pool for parallel batch execution.
 - `async-tokio` — a Tokio blocking-pool offload exposing `solve_batch_async`.
+- `observability-tracing` / `observability-metrics` — reserved default-off integration
+  gates; the baseline observability types need no external telemetry dependency.
+- `ffi-gateway` — reserved default-off gate for audited concrete native/legacy solver
+  adapters. RFC 009 ships only the safe boundary and mock gateway.
 
 See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)
 chapter, and the [RFC index](../../rfcs/README.md).
