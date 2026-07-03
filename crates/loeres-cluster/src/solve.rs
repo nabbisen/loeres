@@ -148,7 +148,10 @@ where
 }
 
 mod projected_first_order;
-pub use projected_first_order::{ClusterProjectedFirstOrderJob, solve_projected_first_order_dyn};
+pub use projected_first_order::{
+    ClusterProjectedFirstOrderJob, ProjectedFirstOrderSolveOptions,
+    solve_projected_first_order_dyn, solve_projected_first_order_dyn_cached,
+};
 
 #[cfg(test)]
 mod tests;

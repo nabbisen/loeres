@@ -41,7 +41,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 | RFC 012 — core validation-state vocabulary | Implemented since v0.12.0 (hardened v0.12.1) | `loeres::validation`: scope/coverage/trust/recorded-state; consumed by the cluster validation policy. |
 | RFC 008 — cluster orchestration foundation | Implemented since v0.13.0 (corrected v0.13.1; apex sync v0.13.2) | `loeres-cluster` `batch`/`runtime`/`solve`: per-item batch contract, cancellation/executor, the `ClusterJob` seam. Orchestration infrastructure, not a production cluster solver; no std-side kernel yet. |
 | RFC 009 — observability and FFI gateway | Next (Milestone 3) | Follows the orchestration foundation; populates `observe`/`gateway`; keep zero-bleed active. |
-| RFC 010/011/013 — governance / targets / conformance | Implemented through v0.18.0 | `xtask` governance, manifest-driven target profiles, and the enforced RFC 013 smoke conformance corpus are in place. `size-budget` remains a reporting/advisory baseline until owner RFCs freeze thresholds. |
+| RFC 010/011/013/015 — governance / targets / conformance / validation cache | Implemented through v0.19.0 | `xtask` governance, manifest-driven target profiles, the enforced RFC 013 smoke conformance corpus, and the RFC 015 cluster validation evidence cache are in place, including fail-closed mutation epochs. `size-budget` remains a reporting/advisory baseline until owner RFCs freeze thresholds. |
 
 ## 0. Purpose and Roadmap Principle
 

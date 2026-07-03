@@ -1,12 +1,17 @@
 use super::*;
 use crate::runtime::ClusterValidationPolicy;
 use crate::solve::ClusterExecutionContext;
+use crate::validation_cache::{
+    CacheableProjectedFirstOrderProblem, CachedValidationEvidence, ModelIdentity,
+    ProvidedValidationEvidence, ValidationEvidenceCache, ValidationEvidenceKey,
+};
 use crate::{ClusterCancellationToken, ClusterSolveConfig, solve_batch};
 use loeres::validation::{TrustToken, TrustedByCaller};
 use loeres::{VectorAccess, VectorAccessMut};
 
 /// Separable quadratic `f(x) = ½ Σ wᵢ (xᵢ − cᵢ)²`, gradient `wᵢ(xᵢ − cᵢ)`,
 /// unconstrained optimum `cᵢ`, box-constrained optimum `clamp(cᵢ, loᵢ, hiᵢ)`.
+#[derive(Clone)]
 struct Quadratic {
     weights: Vec<f64>,
     centers: Vec<f64>,
@@ -295,6 +300,261 @@ fn trusted_finite_records_trusted_evidence() {
     ));
     // FINITE was trusted away, not scanned: checked_scope must not claim it.
     assert!(!rec.checked_scope.contains(ValidationScope::FINITE));
+}
+
+fn cache_evidence(scope: ValidationScope) -> CachedValidationEvidence {
+    CachedValidationEvidence {
+        model_checked_scope: scope,
+        finite: ProjectedFirstOrderFiniteEvidence::Scanned,
+    }
+}
+
+fn cacheable_quadratic() -> CacheableProjectedFirstOrderProblem<Quadratic> {
+    CacheableProjectedFirstOrderProblem::new(Quadratic {
+        weights: vec![1.0],
+        centers: vec![1.0],
+        lo: dv(&[-10.0]),
+        hi: dv(&[10.0]),
+        alpha: 0.5,
+    })
+    .unwrap()
+}
+
+#[test]
+fn cached_matching_evidence_solves_like_validate_all_inputs() {
+    let p = cacheable_quadratic();
+    let mut cache = ValidationEvidenceCache::new();
+    cache
+        .insert(
+            p.projected_first_order_key(),
+            cache_evidence(ValidationScope::FINITE),
+        )
+        .unwrap();
+
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let rec = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(1000, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: None,
+            cache: Some(&cache),
+        },
+    )
+    .unwrap();
+    assert!(rec.report.status().is_converged());
+    assert!(rec.checked_scope.contains(ValidationScope::FINITE));
+    assert_eq!(rec.finite, ProjectedFirstOrderFiniteEvidence::Scanned);
+    assert!((x.get(0).unwrap() - 1.0).abs() < 1e-6);
+}
+
+#[test]
+fn cached_miss_scans_and_succeeds() {
+    let p = cacheable_quadratic();
+    let cache = ValidationEvidenceCache::new();
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let rec = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(1000, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: None,
+            cache: Some(&cache),
+        },
+    )
+    .unwrap();
+    assert!(rec.report.status().is_converged());
+}
+
+#[test]
+fn cache_miss_does_not_skip_non_finite_bounds_scan() {
+    let p = CacheableProjectedFirstOrderProblem::new(Quadratic {
+        weights: vec![1.0],
+        centers: vec![1.0],
+        lo: dv(&[-10.0]),
+        hi: dv(&[f64::NAN]),
+        alpha: 0.5,
+    })
+    .unwrap();
+    let cache = ValidationEvidenceCache::new();
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let err = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(10, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: None,
+            cache: Some(&cache),
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, SolverError::NonFiniteInput));
+}
+
+#[test]
+fn insufficient_scope_scans_missing_model_scope_and_succeeds() {
+    let p = cacheable_quadratic();
+    let provided = ProvidedValidationEvidence {
+        key: p.projected_first_order_key(),
+        evidence: cache_evidence(ValidationScope::EMPTY),
+    };
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let rec = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(1000, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: Some(&provided),
+            cache: None,
+        },
+    )
+    .unwrap();
+    assert!(rec.report.status().is_converged());
+}
+
+#[test]
+fn insufficient_scope_does_not_skip_non_finite_bounds_scan() {
+    let p = CacheableProjectedFirstOrderProblem::new(Quadratic {
+        weights: vec![1.0],
+        centers: vec![1.0],
+        lo: dv(&[-10.0]),
+        hi: dv(&[f64::NAN]),
+        alpha: 0.5,
+    })
+    .unwrap();
+    let provided = ProvidedValidationEvidence {
+        key: p.projected_first_order_key(),
+        evidence: cache_evidence(ValidationScope::EMPTY),
+    };
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let err = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(10, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: Some(&provided),
+            cache: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, SolverError::NonFiniteInput));
+}
+
+#[test]
+fn provided_wrong_identity_or_stale_epoch_is_invalid_input() {
+    let p = cacheable_quadratic();
+    let wrong_identity = ProvidedValidationEvidence {
+        key: ValidationEvidenceKey {
+            model_identity: ModelIdentity::NON_CACHEABLE,
+            ..p.projected_first_order_key()
+        },
+        evidence: cache_evidence(ValidationScope::FINITE),
+    };
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let err = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(10, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: Some(&wrong_identity),
+            cache: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, SolverError::InvalidInput));
+
+    let mut p_stale = cacheable_quadratic();
+    let old_key = p_stale.projected_first_order_key();
+    p_stale.mutate(|_| Ok(())).unwrap();
+    let stale_epoch = ProvidedValidationEvidence {
+        key: old_key,
+        evidence: cache_evidence(ValidationScope::FINITE),
+    };
+    let mut x2 = dv(&[0.0]);
+    let mut ws2 = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let err2 = solve_projected_first_order_dyn_cached(
+        &p_stale,
+        &mut x2,
+        &mut ws2,
+        &cfg(10, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: Some(&stale_epoch),
+            cache: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err2, SolverError::InvalidInput));
+}
+
+#[test]
+fn cached_evidence_does_not_skip_current_iterate_scan() {
+    let p = cacheable_quadratic();
+    let provided = ProvidedValidationEvidence {
+        key: p.projected_first_order_key(),
+        evidence: cache_evidence(ValidationScope::FINITE),
+    };
+    let mut x = dv(&[f64::NAN]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let err = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(10, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: Some(&provided),
+            cache: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, SolverError::NonFiniteInput));
+}
+
+#[test]
+fn cached_evidence_does_not_suppress_hot_loop_numerical_domain() {
+    let p = CacheableProjectedFirstOrderProblem::new(NanGradient {
+        lo: dv(&[-1.0]),
+        hi: dv(&[1.0]),
+    })
+    .unwrap();
+    let provided = ProvidedValidationEvidence {
+        key: p.projected_first_order_key(),
+        evidence: cache_evidence(ValidationScope::FINITE),
+    };
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterProjectedFirstOrderWorkspace::new(1).unwrap();
+    let err = solve_projected_first_order_dyn_cached(
+        &p,
+        &mut x,
+        &mut ws,
+        &cfg(10, 1e-9),
+        &ctx(ClusterValidationPolicy::RespectBackendValidationState),
+        &ProjectedFirstOrderSolveOptions {
+            provided_evidence: Some(&provided),
+            cache: None,
+        },
+    )
+    .unwrap_err();
+    assert!(matches!(err, SolverError::NumericalDomain));
 }
 
 mod error_mapping;

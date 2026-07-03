@@ -51,6 +51,12 @@ conformance` runs the smoke corpus under `conformance/smoke/`, comparing the
 real device and cluster projected-first-order solvers. `extended` and
 `adversarial` remain placeholder suites until populated by later work.
 
+RFC 015 adds the cluster-only validation evidence cache. The cached
+projected-first-order path is carrier-only and `f64`-only in v0.19.0; the
+generic RFC 016 solve path remains source-compatible and non-cacheable. The
+carrier advances mutation epochs before mutable model access, so stale cached
+evidence fails closed after failed or panicking mutation closures.
+
 ## Workflow
 
 Development is **design-first**: requirement / RFC → external design → internal

@@ -21,7 +21,8 @@
 //! ([`model`] types plus [`solve_projected_first_order_dyn`](solve::solve_projected_first_order_dyn)
 //! and its [`ClusterProjectedFirstOrderJob`](solve::ClusterProjectedFirstOrderJob)
 //! adapter), plugged into the `ClusterJob` seam. RFC 009 adds cluster-only
-//! metadata observability and the safe gateway boundary.
+//! metadata observability and the safe gateway boundary. RFC 015 adds the
+//! cluster-only validation evidence cache for model-owned scans.
 
 pub mod batch;
 pub mod gateway;
@@ -29,6 +30,7 @@ pub mod model;
 pub mod observe;
 pub mod runtime;
 pub mod solve;
+pub mod validation_cache;
 
 pub use batch::{BatchItemOutcome, BatchSolveReport, BatchSummary, ClusterSolution};
 pub use gateway::{
@@ -50,9 +52,16 @@ pub use runtime::{
     ClusterValidationPolicy, DispatchPolicy, MissingCoverage,
 };
 pub use solve::{
-    ClusterExecutionContext, ClusterJob, ClusterProjectedFirstOrderJob, solve_batch,
-    solve_projected_first_order_dyn,
+    ClusterExecutionContext, ClusterJob, ClusterProjectedFirstOrderJob,
+    ProjectedFirstOrderSolveOptions, solve_batch, solve_projected_first_order_dyn,
+    solve_projected_first_order_dyn_cached,
 };
 
 #[cfg(feature = "async-tokio")]
 pub use solve::solve_batch_async;
+pub use validation_cache::{
+    CacheableProjectedFirstOrderProblem, CachedValidationEvidence, ModelIdentity, MutationEpoch,
+    ProblemClassId as ValidationProblemClassId, ProvidedValidationEvidence, ScalarFamilyId,
+    SolverFamilyId as ValidationSolverFamilyId, ValidationEvidenceCache, ValidationEvidenceKey,
+    ValidationEvidenceLookup,
+};

@@ -5,6 +5,43 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.19.0] — 2026-07-03 — RFC 015: trusted pipeline validation cache
+
+RFC 015 is implemented as a cluster-only validation-cache release. Edge/runtime
+crate boundaries are unchanged.
+
+The pre-release implementation reviewed as `0.19.0-pre.1` was corrected before
+publication; the final v0.19.0 includes the fail-closed mutation epoch fix.
+
+### Added
+
+- Added `loeres-cluster::validation_cache` with model identity, mutation epochs,
+  validation evidence keys/lookups, cached/provided evidence, and a host-side
+  `ValidationEvidenceCache`.
+- Added `CacheableProjectedFirstOrderProblem<P>`, a Loeres-owned identity/epoch
+  carrier for cacheable cluster projected-first-order models.
+- Added `solve_projected_first_order_dyn_cached`, a carrier-only `f64` cached
+  solve path. Existing generic projected-first-order solves remain
+  source-compatible and non-cacheable.
+
+### Safety and validation behavior
+
+- Cached evidence is model-owned only: current iterates, workspace/config
+  compatibility, current `step_scale`, cancellation, and hot-loop finite checks
+  remain non-skippable.
+- `ValidationEvidenceCache::insert` rejects non-cacheable evidence such as
+  `Trusted(..)` and `DomainInapplicable` for `f64`.
+- Wrong identity or stale epoch in provided evidence fails closed with
+  `SolverError::InvalidInput`.
+- `CacheableProjectedFirstOrderProblem::mutate` advances the mutation epoch
+  before exposing mutable access to the inner model. If the closure mutates and
+  then returns `Err` or unwinds under `catch_unwind`, stale cached evidence from
+  the previous epoch no longer matches.
+- `ValidationEvidenceCache::insert` rejects entries keyed by
+  `ModelIdentity::NON_CACHEABLE`.
+- The local cache key-dimension enums are `#[non_exhaustive]` for future
+  solver/problem/scalar family expansion.
+
 ## [0.18.0] — 2026-07-03 — RFC 013: conformance corpus and numerical parity
 
 RFC 013 is implemented as a conformance-corpus release. Runtime crate APIs are
@@ -1555,6 +1592,7 @@ workflow once the remaining design rounds land.
   terminology, no milestone-style RFC numbering, and no folder-scheme drift
   outside RFC 014's explanatory prose.
 
+[0.19.0]: https://github.com/nabbisen/loeres/releases/tag/v0.19.0
 [0.18.0]: https://github.com/nabbisen/loeres/releases/tag/v0.18.0
 [0.17.0]: https://github.com/nabbisen/loeres/releases/tag/v0.17.0
 [0.16.1]: https://github.com/nabbisen/loeres/releases/tag/v0.16.1

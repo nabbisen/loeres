@@ -22,6 +22,10 @@ use crate::model::{
 };
 use crate::runtime::ClusterValidationPolicy;
 use crate::solve::{ClusterExecutionContext, ClusterJob};
+use crate::validation_cache::{
+    CacheableProjectedFirstOrderProblem, ProvidedValidationEvidence, ValidationEvidenceCache,
+    ValidationEvidenceLookup,
+};
 
 /// Checked `usize -> u32` for `DimensionMismatch` payloads (I7); overflow folds
 /// to [`SolverError::InvalidDimension`].
@@ -76,23 +80,49 @@ where
     Ok(max_change)
 }
 
-/// Solve a dynamic box/bound-constrained projected first-order problem.
-///
-/// `x` is the in/out iterate; `workspace` supplies reusable gradient scratch.
-/// Converged and not-converged both return `Ok` (the status/error split);
-/// fail-safe failures return `Err`. Cancellation returns
-/// [`SolverError::Cancelled`], which the RFC 008 executor normalizes to
-/// `Cancelled`.
-///
-/// # Errors
-/// Structural/validation failures and in-loop numerical-domain failures per the
-/// RFC 016 §3.7 error mapping.
-pub fn solve_projected_first_order_dyn<P, S>(
+#[derive(Copy, Clone, Debug, Default)]
+struct ModelFiniteCache {
+    available: bool,
+}
+
+/// Options for the RFC 015 cached projected-first-order entrypoint.
+#[derive(Copy, Clone, Debug, Default)]
+pub struct ProjectedFirstOrderSolveOptions<'a> {
+    /// Caller-provided model-owned evidence for this solve.
+    pub provided_evidence: Option<&'a ProvidedValidationEvidence>,
+    /// Optional reusable cache. A miss is not an error.
+    pub cache: Option<&'a ValidationEvidenceCache>,
+}
+
+fn model_finite_cache_from_options(
+    lookup: ValidationEvidenceLookup,
+    options: &ProjectedFirstOrderSolveOptions<'_>,
+) -> Result<ModelFiniteCache, SolverError> {
+    if let Some(provided) = options.provided_evidence {
+        if provided.key != lookup.key {
+            return Err(SolverError::InvalidInput);
+        }
+        provided.evidence.validate_cacheable(&provided.key)?;
+        return Ok(ModelFiniteCache {
+            available: provided
+                .evidence
+                .model_checked_scope
+                .contains(lookup.required_model_scope),
+        });
+    }
+
+    Ok(ModelFiniteCache {
+        available: options.cache.and_then(|cache| cache.get(&lookup)).is_some(),
+    })
+}
+
+fn solve_projected_first_order_dyn_inner<P, S>(
     problem: &P,
     x: &mut DenseVector<S>,
     workspace: &mut ClusterProjectedFirstOrderWorkspace<S>,
     config: &ProjectedFirstOrderConfig<S>,
     ctx: &ClusterExecutionContext,
+    model_finite_cache: ModelFiniteCache,
 ) -> Result<ProjectedFirstOrderSolveRecord, SolverError>
 where
     P: ClusterProjectedFirstOrderProblem<S>,
@@ -138,9 +168,8 @@ where
         {
             ProjectedFirstOrderFiniteEvidence::Trusted(t)
         }
-        // RespectBackendValidationState has no provided-state channel in v1, so it
-        // scans here / fills missing coverage here (B2; provided/cached state is
-        // RFC 015-owned). ValidateAllInputs likewise scans. Either way: Scanned.
+        // RespectBackendValidationState with a matching RFC 015 cache/provided
+        // hit may skip model-owned scans only. Current x is still scanned below.
         _ => ProjectedFirstOrderFiniteEvidence::Scanned,
     };
     let finite_trusted = matches!(
@@ -150,13 +179,15 @@ where
     {
         let (lo, hi) = problem.bounds();
         if !finite_trusted {
-            lo.validate_finite()?;
-            hi.validate_finite()?;
+            if !model_finite_cache.available {
+                lo.validate_finite()?;
+                hi.validate_finite()?;
+            }
             x.validate_finite()?;
         }
         // Structural ordering: classify only finite lo > hi as InvalidInput (C3).
         // Non-finite bounds were caught above under scanning policies; under
-        // trust they propagate to the hot-loop candidate check (NumericalDomain).
+        // trust/cache they propagate to the hot-loop candidate check (NumericalDomain).
         for i in 0..n {
             let l = lo.get(i)?;
             let h = hi.get(i)?;
@@ -169,8 +200,9 @@ where
     // Problem-specific hook (F3), after the universal checks.
     problem.validate_boundary()?;
 
-    // checked_scope: PROBLEM_CONFIG always (universal checks ran); FINITE only when
-    // the kernel actually scanned it. The finite-discharge mode is in finite_evidence.
+    // checked_scope: PROBLEM_CONFIG always (universal checks ran); FINITE only
+    // when finite responsibility was discharged by scans/cache. The
+    // finite-discharge mode is in finite_evidence.
     let checked_scope = if finite_trusted {
         ValidationScope::PROBLEM_CONFIG
     } else {
@@ -203,6 +235,69 @@ where
         checked_scope,
         finite: finite_evidence,
     })
+}
+
+/// Solve a dynamic box/bound-constrained projected first-order problem.
+///
+/// `x` is the in/out iterate; `workspace` supplies reusable gradient scratch.
+/// Converged and not-converged both return `Ok` (the status/error split);
+/// fail-safe failures return `Err`. Cancellation returns
+/// [`SolverError::Cancelled`], which the RFC 008 executor normalizes to
+/// `Cancelled`.
+///
+/// # Errors
+/// Structural/validation failures and in-loop numerical-domain failures per the
+/// RFC 016 §3.7 error mapping.
+pub fn solve_projected_first_order_dyn<P, S>(
+    problem: &P,
+    x: &mut DenseVector<S>,
+    workspace: &mut ClusterProjectedFirstOrderWorkspace<S>,
+    config: &ProjectedFirstOrderConfig<S>,
+    ctx: &ClusterExecutionContext,
+) -> Result<ProjectedFirstOrderSolveRecord, SolverError>
+where
+    P: ClusterProjectedFirstOrderProblem<S>,
+    S: FiniteScalar + MetricScalar,
+{
+    solve_projected_first_order_dyn_inner(
+        problem,
+        x,
+        workspace,
+        config,
+        ctx,
+        ModelFiniteCache::default(),
+    )
+}
+
+/// Solve a cacheable `f64` projected first-order problem with RFC 015
+/// model-owned validation evidence.
+///
+/// The carrier is required so the lookup key is derived from the current model
+/// identity and mutation epoch. Unwrapped problems continue to use
+/// [`solve_projected_first_order_dyn`] and cannot consume cached evidence.
+///
+/// # Errors
+/// As [`solve_projected_first_order_dyn`], plus [`SolverError::InvalidInput`]
+/// for caller-provided stale/wrong evidence.
+pub fn solve_projected_first_order_dyn_cached<P>(
+    problem: &CacheableProjectedFirstOrderProblem<P>,
+    x: &mut DenseVector<f64>,
+    workspace: &mut ClusterProjectedFirstOrderWorkspace<f64>,
+    config: &ProjectedFirstOrderConfig<f64>,
+    ctx: &ClusterExecutionContext,
+    options: &ProjectedFirstOrderSolveOptions<'_>,
+) -> Result<ProjectedFirstOrderSolveRecord, SolverError>
+where
+    P: ClusterProjectedFirstOrderProblem<f64>,
+{
+    let model_cache = if problem.is_cacheable() {
+        model_finite_cache_from_options(problem.projected_first_order_lookup(), options)?
+    } else if options.provided_evidence.is_some() {
+        return Err(SolverError::InvalidInput);
+    } else {
+        ModelFiniteCache::default()
+    };
+    solve_projected_first_order_dyn_inner(problem, x, workspace, config, ctx, model_cache)
 }
 
 /// A `&self`-safe template adapter erasing a projected first-order solve into a

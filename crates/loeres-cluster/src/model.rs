@@ -129,14 +129,17 @@ impl<S: FiniteScalar + MetricScalar> ProjectedFirstOrderConfig<S> {
     }
 }
 
-/// How the kernel's finite invariant was discharged this run (RFC 016 §7,
-/// v0.14.1). The three states are named directly so the record never misencodes
-/// a trusted-away scan as `FiniteCoverage::NotApplicable` (which RFC 012 reserves
-/// for finite-incapable domains) nor as `Checked` (which would claim a scan that
-/// did not run). Trust evidence stays RFC 012's `TrustedByCaller`.
+/// How the kernel's finite invariant was discharged (RFC 016 §7, v0.14.1).
+/// The three states are named directly so the record never misencodes a
+/// trusted-away scan as `FiniteCoverage::NotApplicable` (which RFC 012 reserves
+/// for finite-incapable domains) nor as `Checked`. Under RFC 015, `Scanned` can
+/// include model-owned obligations backed by previously scanned cached evidence.
+/// Trust evidence stays RFC 012's `TrustedByCaller`.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum ProjectedFirstOrderFiniteEvidence {
-    /// The kernel ran the finite scans (bounds + initial iterate) and they passed.
+    /// Finite obligations were discharged by scans. Under the RFC 015 cached
+    /// path, model-owned finite data may be covered by matching scanned cache
+    /// evidence while per-call inputs are still scanned.
     Scanned,
     /// The caller transferred responsibility for finiteness (RFC 012 evidence);
     /// the pre-loop finite scans for the asserted scope were skipped. The
@@ -151,15 +154,15 @@ pub enum ProjectedFirstOrderFiniteEvidence {
 /// (RFC 016 §7, v0.14.1).
 ///
 /// `checked_scope` always includes `PROBLEM_CONFIG` (the universal structural
-/// checks that always run), and includes `FINITE` only when the kernel actually
-/// scanned it. `finite` names how the finite invariant was discharged; caller
-/// trust lives inside `finite` as RFC 012's `TrustedByCaller`, so there is no
-/// parallel trust model. RFC 015 decides later what is cacheable.
+/// checks that always run), and includes `FINITE` only when finite obligations
+/// were discharged by scans/cache rather than caller trust. `finite` names how
+/// the finite invariant was discharged; caller trust lives inside `finite` as
+/// RFC 012's `TrustedByCaller`, so there is no parallel trust model.
 #[derive(Clone, Copy, Debug)]
 pub struct ProjectedFirstOrderSolveRecord {
     /// Terminal report (RFC 014).
     pub report: SolveReport,
-    /// Structural/finite scopes the kernel verified this run.
+    /// Structural/finite scopes verified directly or discharged by scanned cache evidence.
     pub checked_scope: ValidationScope,
     /// How the finite invariant was discharged.
     pub finite: ProjectedFirstOrderFiniteEvidence,
