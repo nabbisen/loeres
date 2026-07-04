@@ -35,7 +35,7 @@ The point is that a cloud service can use allocation, threads, and tracing witho
 
 ## Quick Start
 
-> **v0.19.0 — Cluster validation evidence cache.** RFC 015 adds `loeres-cluster::validation_cache`, Loeres-generated model identity and mutation epochs, and a carrier-only cached `f64` projected-first-order solve path. Cached evidence is model-owned only; current iterates, config/workspace checks, cancellation, and hot-loop numerical-domain checks remain active. The final v0.19.0 release advances mutation epochs before mutable model access so stale evidence fails closed after failed or panicking mutations.
+> **v0.20.0 — Trusted/cache conformance hardening.** RFC 017 extends the enforced `conformance/smoke/` corpus with validation-cache fixtures for cache hit/miss, insufficient scope, stale/wrong evidence, current-iterate scan retention, hot-loop numerical-domain retention, and reusable-cache insertion rejection. Runtime crate APIs are unchanged.
 
 Build and verify from source:
 
@@ -70,7 +70,7 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`011`/`012`/`013`/`014`/`015`/`016`); proposed work lives under [`rfcs/proposed/`](rfcs/proposed/) when active. See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`011`/`012`/`013`/`014`/`015`/`016`/`017`/`018`); proposed work lives under [`rfcs/proposed/`](rfcs/proposed/) when active. See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

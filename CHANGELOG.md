@@ -5,6 +5,39 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.20.0] — 2026-07-04 — RFC 017: trusted/cache conformance fixtures
+
+RFC 017 is implemented as a verification-only conformance hardening release.
+Runtime crate APIs are unchanged.
+
+### Added
+
+- Added nine `schema_version = 2` smoke fixtures for RFC 015 validation-cache
+  semantics: reusable cache hit, cache miss, insufficient scope, stale epoch,
+  wrong identity, current-iterate finite-scan retention, hot-loop
+  numerical-domain retention, trusted-evidence insertion rejection, and
+  sentinel-identity insertion rejection.
+- Extended `cargo xtask conformance` with host-only v2 fixture parsing,
+  `execution_mode = "solve" | "cache-insert"`, and explicit `evidence_state`
+  setup for the cached projected-first-order path.
+- Added schema tests for v1/v2 evidence-state separation and execution-mode
+  contradiction rejection.
+
+### Verification behavior
+
+- Successful cache variants are compared against the device baseline and the
+  cluster `ValidateAllInputs` baseline.
+- Fail-closed solve and cache-insert variants compare structured
+  `SolverError` categories instead of formatted strings.
+- Runtime crates still do not parse conformance fixtures or depend on
+  conformance schema types.
+
+### Changed
+
+- Batched RFC 018 test cleanup: removed the opaque `kinds()` helper from
+  `loeres-cluster` solve tests and inlined the feature-gated sequential/parallel
+  and sync/async outcome comparisons.
+
 ## [0.19.0] — 2026-07-03 — RFC 015: trusted pipeline validation cache
 
 RFC 015 is implemented as a cluster-only validation-cache release. Edge/runtime

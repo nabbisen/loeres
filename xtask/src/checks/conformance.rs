@@ -3,13 +3,18 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use loeres::validation::{TrustToken, TrustedByCaller, ValidationScope};
 use loeres::{ContiguousVectorAccess, SolveStatus, SolverError, TerminationReason};
 use loeres_backend_static::array::FixedVector;
 use loeres_backend_std::DenseVector;
 use loeres_cluster::{
-    ClusterCancellationToken, ClusterExecutionContext, ClusterProjectedFirstOrderProblem,
-    ClusterProjectedFirstOrderWorkspace, ClusterValidationPolicy, ProjectedFirstOrderConfig,
-    solve_projected_first_order_dyn,
+    CacheableProjectedFirstOrderProblem, CachedValidationEvidence, ClusterCancellationToken,
+    ClusterExecutionContext, ClusterProjectedFirstOrderProblem,
+    ClusterProjectedFirstOrderWorkspace, ClusterValidationPolicy, ModelIdentity, MutationEpoch,
+    ProjectedFirstOrderConfig, ProjectedFirstOrderFiniteEvidence, ProjectedFirstOrderSolveOptions,
+    ProvidedValidationEvidence, ScalarFamilyId, ValidationEvidenceCache, ValidationEvidenceKey,
+    ValidationProblemClassId, ValidationSolverFamilyId, solve_projected_first_order_dyn,
+    solve_projected_first_order_dyn_cached,
 };
 use loeres_device::config::{DeviceSolveConfig, TimingMode};
 use loeres_device::problem::ProjectedFirstOrderProblem;
@@ -116,7 +121,7 @@ fn run_placeholder_suite(suite: Suite) -> bool {
         return true;
     }
     eprintln!(
-        "  fixtures are present, but {} suite execution is not implemented in v0.18.0",
+        "  fixtures are present, but {} suite execution is not implemented for this release",
         suite.as_str()
     );
     eprintln!("[conformance] FAIL");
@@ -181,6 +186,15 @@ const REQUIRED_SMOKE: &[&str] = &[
     "pfo-box-converged-001",
     "pfo-box-not-converged-001",
     "pfo-box-invalid-bound-001",
+    "pfo-cache-match-001",
+    "pfo-cache-miss-valid-001",
+    "pfo-cache-insufficient-scope-valid-001",
+    "pfo-cache-stale-epoch-001",
+    "pfo-cache-wrong-identity-001",
+    "pfo-cache-current-iterate-nonfinite-001",
+    "pfo-cache-hot-loop-numerical-domain-001",
+    "pfo-cache-reject-trusted-evidence-001",
+    "pfo-cache-reject-sentinel-identity-001",
 ];
 
 #[derive(Clone, Debug, Deserialize)]
@@ -188,21 +202,26 @@ struct Fixture {
     schema_version: u32,
     fixture_id: String,
     suite: String,
+    #[serde(default)]
+    execution_mode: Option<String>,
     problem_class: String,
     solver_family: String,
     dimension: usize,
     scalar_family: String,
     validation_state: String,
+    #[serde(default)]
+    evidence_state: Option<String>,
     conformance_groups: Vec<String>,
     config: FixtureConfig,
     problem: FixtureProblem,
     expected: FixtureExpected,
     tolerance: FixtureTolerance,
+    #[serde(default)]
+    evidence: Option<FixtureEvidence>,
 }
 
 impl Fixture {
     fn validate(&self, suite: &str) -> Result<(), String> {
-        expect_eq(self.schema_version, 1, &self.fixture_id, "schema_version")?;
         expect_str(&self.suite, suite, &self.fixture_id, "suite")?;
         expect_str(
             &self.problem_class,
@@ -223,16 +242,12 @@ impl Fixture {
             &self.fixture_id,
             "scalar_family",
         )?;
-        expect_str(
-            &self.validation_state,
-            "validate-all-inputs",
-            &self.fixture_id,
-            "validation_state",
-        )?;
-        for required in ["device-reference-smoke", "cluster-reference-smoke"] {
-            if !self.conformance_groups.iter().any(|g| g == required) {
+        match self.schema_version {
+            1 => self.validate_v1()?,
+            2 => self.validate_v2()?,
+            other => {
                 return Err(format!(
-                    "{}: conformance_groups must contain `{required}`",
+                    "{}: unsupported schema_version {other}",
                     self.fixture_id
                 ));
             }
@@ -265,7 +280,8 @@ impl Fixture {
                     self.fixture_id
                 ));
             }
-            if !values.iter().all(|v| v.is_finite()) {
+            if !values.iter().all(|v| v.is_finite()) && !self.non_finite_problem_field_allowed(name)
+            {
                 return Err(format!("{}: {name} values must be finite", self.fixture_id));
             }
         }
@@ -295,17 +311,194 @@ impl Fixture {
         }
         if self.tolerance.objective_abs.as_deref() != Some("not-applicable") {
             return Err(format!(
-                "{}: objective_abs must be \"not-applicable\" in v0.18.0",
+                "{}: objective_abs must be \"not-applicable\" for this conformance slice",
                 self.fixture_id
             ));
         }
         if self.tolerance.residual_abs.as_deref() != Some("not-applicable") {
             return Err(format!(
-                "{}: residual_abs must be \"not-applicable\" in v0.18.0",
+                "{}: residual_abs must be \"not-applicable\" for this conformance slice",
                 self.fixture_id
             ));
         }
         Ok(())
+    }
+
+    fn validate_v1(&self) -> Result<(), String> {
+        if self.execution_mode.is_some() || self.evidence_state.is_some() || self.evidence.is_some()
+        {
+            return Err(format!(
+                "{}: schema_version 1 must not use execution_mode, evidence_state, or [evidence]",
+                self.fixture_id
+            ));
+        }
+        expect_str(
+            &self.validation_state,
+            "validate-all-inputs",
+            &self.fixture_id,
+            "validation_state",
+        )?;
+        self.require_group("device-reference-smoke")?;
+        self.require_group("cluster-reference-smoke")?;
+        Ok(())
+    }
+
+    fn validate_v2(&self) -> Result<(), String> {
+        expect_str(
+            &self.validation_state,
+            "respect-backend-validation-state",
+            &self.fixture_id,
+            "validation_state",
+        )?;
+        let execution_mode = self.execution_mode()?;
+        let evidence_state = self.evidence_state()?;
+        if self.evidence.is_some() {
+            return Err(format!(
+                "{}: [evidence] is reserved; derive evidence setup from evidence_state",
+                self.fixture_id
+            ));
+        }
+        self.require_group("cluster-reference-smoke")?;
+        match execution_mode {
+            ExecutionMode::Solve if self.expected.error == "none" => {
+                self.require_group("device-reference-smoke")?;
+            }
+            ExecutionMode::Solve => {
+                if self.expected.status != "error" || self.expected.termination != "not-applicable"
+                {
+                    return Err(format!(
+                        "{}: fail-closed solve fixtures must use status = \"error\" and termination = \"not-applicable\"",
+                        self.fixture_id
+                    ));
+                }
+            }
+            ExecutionMode::CacheInsert => {
+                if self.expected.status != "not-applicable"
+                    || self.expected.termination != "not-applicable"
+                    || !self.expected.solution.is_empty()
+                    || self.expected.error == "none"
+                {
+                    return Err(format!(
+                        "{}: cache-insert fixtures must mark status, termination, and solution not-applicable and expect an error",
+                        self.fixture_id
+                    ));
+                }
+            }
+        }
+        if execution_mode == ExecutionMode::CacheInsert && !evidence_state.is_cache_insert() {
+            return Err(format!(
+                "{}: cache-insert execution_mode contradicts evidence_state",
+                self.fixture_id
+            ));
+        }
+        if execution_mode == ExecutionMode::Solve && evidence_state.is_cache_insert() {
+            return Err(format!(
+                "{}: solve execution_mode contradicts cache-insert evidence_state",
+                self.fixture_id
+            ));
+        }
+        Ok(())
+    }
+
+    fn require_group(&self, required: &str) -> Result<(), String> {
+        if self.conformance_groups.iter().any(|g| g == required) {
+            Ok(())
+        } else {
+            Err(format!(
+                "{}: conformance_groups must contain `{required}`",
+                self.fixture_id
+            ))
+        }
+    }
+
+    fn execution_mode(&self) -> Result<ExecutionMode, String> {
+        let value = self.execution_mode.as_deref().unwrap_or("solve");
+        ExecutionMode::parse(value)
+            .ok_or_else(|| format!("{}: unknown execution_mode `{value}`", self.fixture_id))
+    }
+
+    fn evidence_state(&self) -> Result<EvidenceState, String> {
+        let value = self.evidence_state.as_deref().ok_or_else(|| {
+            format!(
+                "{}: schema_version 2 requires evidence_state",
+                self.fixture_id
+            )
+        })?;
+        EvidenceState::parse(value)
+            .ok_or_else(|| format!("{}: unknown evidence_state `{value}`", self.fixture_id))
+    }
+
+    fn non_finite_problem_field_allowed(&self, name: &str) -> bool {
+        matches!(
+            (self.evidence_state.as_deref(), name),
+            (
+                Some("cached-validation-current-iterate-nonfinite"),
+                "initial"
+            ) | (
+                Some("cached-validation-hot-loop-numerical-domain"),
+                "quadratic_diag"
+            )
+        )
+    }
+}
+
+#[derive(Clone, Debug, Deserialize)]
+struct FixtureEvidence {}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum ExecutionMode {
+    Solve,
+    CacheInsert,
+}
+
+impl ExecutionMode {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "solve" => Some(Self::Solve),
+            "cache-insert" => Some(Self::CacheInsert),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum EvidenceState {
+    CachedValidationMatch,
+    CachedValidationMiss,
+    CachedValidationInsufficientScope,
+    CachedValidationStaleEpoch,
+    CachedValidationWrongIdentity,
+    CachedValidationCurrentIterateNonfinite,
+    CachedValidationHotLoopNumericalDomain,
+    CacheInsertTrustedEvidence,
+    CacheInsertSentinelIdentity,
+}
+
+impl EvidenceState {
+    fn parse(value: &str) -> Option<Self> {
+        match value {
+            "cached-validation-match" => Some(Self::CachedValidationMatch),
+            "cached-validation-miss" => Some(Self::CachedValidationMiss),
+            "cached-validation-insufficient-scope" => Some(Self::CachedValidationInsufficientScope),
+            "cached-validation-stale-epoch" => Some(Self::CachedValidationStaleEpoch),
+            "cached-validation-wrong-identity" => Some(Self::CachedValidationWrongIdentity),
+            "cached-validation-current-iterate-nonfinite" => {
+                Some(Self::CachedValidationCurrentIterateNonfinite)
+            }
+            "cached-validation-hot-loop-numerical-domain" => {
+                Some(Self::CachedValidationHotLoopNumericalDomain)
+            }
+            "cache-insert-trusted-evidence" => Some(Self::CacheInsertTrustedEvidence),
+            "cache-insert-sentinel-identity" => Some(Self::CacheInsertSentinelIdentity),
+            _ => None,
+        }
+    }
+
+    fn is_cache_insert(self) -> bool {
+        matches!(
+            self,
+            Self::CacheInsertTrustedEvidence | Self::CacheInsertSentinelIdentity
+        )
     }
 }
 
@@ -367,12 +560,57 @@ struct FixtureTolerance {
 }
 
 fn run_fixture(fixture: &Fixture) -> Result<FixtureResult, String> {
-    let device = run_device(fixture)?;
-    let cluster = run_cluster(fixture)?;
+    let execution_mode = match fixture.schema_version {
+        1 => ExecutionMode::Solve,
+        2 => fixture.execution_mode()?,
+        _ => return Err("fixture must be validated before running".to_owned()),
+    };
     let mut result = FixtureResult::new(fixture.fixture_id.clone());
-    result.status_match = compare_status(fixture, &device, &cluster);
-    result.solution_within_tolerance = compare_solution(fixture, &device, &cluster);
-    result.expected_failure_match = compare_failure(fixture, &device, &cluster);
+    match (fixture.schema_version, execution_mode) {
+        (1, ExecutionMode::Solve) => {
+            let device = run_device(fixture)?;
+            let cluster = run_cluster(fixture)?;
+            result.status_match =
+                compare_status(fixture, &[("device", &device), ("cluster", &cluster)]);
+            result.solution_within_tolerance =
+                compare_solution(fixture, &[("device", &device), ("cluster", &cluster)]);
+            result.expected_failure_match =
+                compare_failure(fixture, &[("device", &device), ("cluster", &cluster)]);
+        }
+        (2, ExecutionMode::Solve) if fixture.expected.error == "none" => {
+            let device = run_device(fixture)?;
+            let cluster_validate_all = run_cluster(fixture)?;
+            let cluster_cached = run_cluster_cached(fixture)?;
+            result.status_match = compare_status(
+                fixture,
+                &[
+                    ("device", &device),
+                    ("cluster_validate_all", &cluster_validate_all),
+                    ("cluster_cached", &cluster_cached),
+                ],
+            );
+            result.solution_within_tolerance = compare_solution(
+                fixture,
+                &[
+                    ("device", &device),
+                    ("cluster_validate_all", &cluster_validate_all),
+                    ("cluster_cached", &cluster_cached),
+                ],
+            );
+            result.expected_failure_match = CategoryResult::NotApplicable;
+        }
+        (2, ExecutionMode::Solve) => {
+            let cluster_cached = run_cluster_cached(fixture)?;
+            result.expected_failure_match =
+                compare_failure(fixture, &[("cluster_cached", &cluster_cached)]);
+        }
+        (2, ExecutionMode::CacheInsert) => {
+            let insertion = run_cache_insert(fixture)?;
+            result.expected_failure_match =
+                compare_failure(fixture, &[("cache_insert", &insertion)]);
+        }
+        _ => return Err("unsupported fixture execution combination".to_owned()),
+    }
     result.objective_within_tolerance = CategoryResult::NotApplicable;
     result.residual_within_tolerance = CategoryResult::NotApplicable;
     result.print();
@@ -442,6 +680,160 @@ fn run_cluster(fixture: &Fixture) -> Result<RunOutcome, String> {
             },
         },
     )
+}
+
+fn run_cluster_cached(fixture: &Fixture) -> Result<RunOutcome, String> {
+    let evidence_state = fixture.evidence_state()?;
+    let mut problem =
+        CacheableProjectedFirstOrderProblem::new(ClusterDiagonalProblem::new(fixture)?)
+            .map_err(|e| format!("cacheable problem init failed: {e:?}"))?;
+    let mut cache = ValidationEvidenceCache::new();
+    let mut provided = None;
+    match evidence_state {
+        EvidenceState::CachedValidationMatch
+        | EvidenceState::CachedValidationCurrentIterateNonfinite
+        | EvidenceState::CachedValidationHotLoopNumericalDomain => {
+            cache
+                .insert(
+                    problem.projected_first_order_key(),
+                    cache_evidence(ValidationScope::FINITE),
+                )
+                .map_err(|e| format!("cache insert setup failed: {e:?}"))?;
+        }
+        EvidenceState::CachedValidationMiss => {}
+        EvidenceState::CachedValidationInsufficientScope => {
+            cache
+                .insert(
+                    problem.projected_first_order_key(),
+                    cache_evidence(ValidationScope::EMPTY),
+                )
+                .map_err(|e| format!("cache insert setup failed: {e:?}"))?;
+        }
+        EvidenceState::CachedValidationWrongIdentity => {
+            provided = Some(ProvidedValidationEvidence {
+                key: ValidationEvidenceKey {
+                    model_identity: ModelIdentity::NON_CACHEABLE,
+                    ..problem.projected_first_order_key()
+                },
+                evidence: cache_evidence(ValidationScope::FINITE),
+            });
+        }
+        EvidenceState::CachedValidationStaleEpoch => {
+            let old_key = problem.projected_first_order_key();
+            problem
+                .mutate(|_| Ok(()))
+                .map_err(|e| format!("cacheable problem mutation setup failed: {e:?}"))?;
+            provided = Some(ProvidedValidationEvidence {
+                key: old_key,
+                evidence: cache_evidence(ValidationScope::FINITE),
+            });
+        }
+        EvidenceState::CacheInsertTrustedEvidence | EvidenceState::CacheInsertSentinelIdentity => {
+            return Err(format!(
+                "{}: evidence_state is not valid for cached solve",
+                fixture.fixture_id
+            ));
+        }
+    }
+
+    let mut x = dense(&fixture.problem.initial)?;
+    let mut workspace = ClusterProjectedFirstOrderWorkspace::new(2)
+        .map_err(|e| format!("cluster workspace init failed: {e:?}"))?;
+    let config = ProjectedFirstOrderConfig {
+        max_iterations: fixture.config.max_iterations,
+        tolerance: fixture.config.tolerance,
+    };
+    let ctx = ClusterExecutionContext::new(
+        ClusterCancellationToken::new(),
+        0,
+        ClusterValidationPolicy::RespectBackendValidationState,
+    );
+    let options = ProjectedFirstOrderSolveOptions {
+        provided_evidence: provided.as_ref(),
+        cache: Some(&cache),
+    };
+    Ok(
+        match solve_projected_first_order_dyn_cached(
+            &problem,
+            &mut x,
+            &mut workspace,
+            &config,
+            &ctx,
+            &options,
+        ) {
+            Ok(record) => RunOutcome {
+                report: Some((record.report.status(), record.report.termination())),
+                solution: Some(*array_ref(
+                    x.as_contiguous()
+                        .ok_or("cluster cached solution is not contiguous")?,
+                )?),
+                error: None,
+            },
+            Err(error) => RunOutcome {
+                report: None,
+                solution: None,
+                error: Some(error),
+            },
+        },
+    )
+}
+
+fn run_cache_insert(fixture: &Fixture) -> Result<RunOutcome, String> {
+    let evidence_state = fixture.evidence_state()?;
+    let problem = CacheableProjectedFirstOrderProblem::new(ClusterDiagonalProblem::new(fixture)?)
+        .map_err(|e| format!("cacheable problem init failed: {e:?}"))?;
+    let mut cache = ValidationEvidenceCache::new();
+    let (key, evidence) = match evidence_state {
+        EvidenceState::CacheInsertTrustedEvidence => {
+            let trust = TrustedByCaller::caller_assertion(
+                ValidationScope::FINITE,
+                TrustToken::new(17),
+                Some("rfc017-conformance"),
+            );
+            (
+                problem.projected_first_order_key(),
+                CachedValidationEvidence {
+                    model_checked_scope: ValidationScope::FINITE,
+                    finite: ProjectedFirstOrderFiniteEvidence::Trusted(trust),
+                },
+            )
+        }
+        EvidenceState::CacheInsertSentinelIdentity => (
+            ValidationEvidenceKey {
+                model_identity: ModelIdentity::NON_CACHEABLE,
+                mutation_epoch: MutationEpoch::INITIAL,
+                solver_family: ValidationSolverFamilyId::ProjectedFirstOrder,
+                problem_class: ValidationProblemClassId::BoxBoundFirstOrder,
+                scalar_family: ScalarFamilyId::Float64,
+            },
+            cache_evidence(ValidationScope::FINITE),
+        ),
+        _ => {
+            return Err(format!(
+                "{}: evidence_state is not valid for cache-insert",
+                fixture.fixture_id
+            ));
+        }
+    };
+    Ok(match cache.insert(key, evidence) {
+        Ok(()) => RunOutcome {
+            report: None,
+            solution: None,
+            error: None,
+        },
+        Err(error) => RunOutcome {
+            report: None,
+            solution: None,
+            error: Some(error),
+        },
+    })
+}
+
+fn cache_evidence(scope: ValidationScope) -> CachedValidationEvidence {
+    CachedValidationEvidence {
+        model_checked_scope: scope,
+        finite: ProjectedFirstOrderFiniteEvidence::Scanned,
+    }
 }
 
 fn fixed(values: &[f64]) -> Result<FixedVector<f64, 2>, String> {
@@ -581,7 +973,7 @@ fn objective(x: &[f64], q: &[f64; 2], center: &[f64; 2]) -> f64 {
     total
 }
 
-fn compare_status(fixture: &Fixture, device: &RunOutcome, cluster: &RunOutcome) -> CategoryResult {
+fn compare_status(fixture: &Fixture, outcomes: &[(&str, &RunOutcome)]) -> CategoryResult {
     if fixture.expected.error != "none" {
         return CategoryResult::NotApplicable;
     }
@@ -595,54 +987,59 @@ fn compare_status(fixture: &Fixture, device: &RunOutcome, cluster: &RunOutcome) 
         "iteration-cap" => TerminationReason::IterationCap,
         other => return CategoryResult::Fail(format!("unknown expected termination `{other}`")),
     };
-    match (device.report, cluster.report) {
-        (Some(d), Some(c)) if d == c && d == (expected_status, expected_term) => {
-            CategoryResult::Pass
+    let expected = (expected_status, expected_term);
+    for (name, outcome) in outcomes {
+        match outcome.report {
+            Some(report) if report == expected => {}
+            Some(report) => {
+                return CategoryResult::Fail(format!(
+                    "{name} status={report:?}, expected=({expected_status:?}, {expected_term:?})"
+                ));
+            }
+            None => {
+                return CategoryResult::Fail(format!(
+                    "expected {name} report, got error={:?}",
+                    outcome.error
+                ));
+            }
         }
-        (Some(d), Some(c)) => CategoryResult::Fail(format!(
-            "status mismatch: device={d:?}, cluster={c:?}, expected=({expected_status:?}, {expected_term:?})"
-        )),
-        _ => CategoryResult::Fail(format!(
-            "expected reports, got device_error={:?}, cluster_error={:?}",
-            device.error, cluster.error
-        )),
     }
+    CategoryResult::Pass
 }
 
-fn compare_solution(
-    fixture: &Fixture,
-    device: &RunOutcome,
-    cluster: &RunOutcome,
-) -> CategoryResult {
+fn compare_solution(fixture: &Fixture, outcomes: &[(&str, &RunOutcome)]) -> CategoryResult {
     if fixture.expected.status != "converged" {
         return CategoryResult::NotApplicable;
     }
     let Ok(expected) = array_ref(&fixture.expected.solution) else {
         return CategoryResult::Fail("expected solution must have dimension 2".to_owned());
     };
-    let (Some(device), Some(cluster)) = (device.solution, cluster.solution) else {
-        return CategoryResult::Fail("missing solution from one or both paths".to_owned());
-    };
     let abs = fixture.tolerance.solution_abs;
     let rel = fixture.tolerance.solution_rel;
-    for i in 0..2 {
-        if !within_tolerance(device[i], expected[i], abs, rel) {
-            return CategoryResult::Fail(format!(
-                "device solution[{i}]={} expected={} abs={abs} rel={rel}",
-                device[i], expected[i]
-            ));
+    let mut reference: Option<(&str, [f64; 2])> = None;
+    for (name, outcome) in outcomes {
+        let Some(solution) = outcome.solution else {
+            return CategoryResult::Fail(format!("missing solution from {name}"));
+        };
+        for i in 0..2 {
+            if !within_tolerance(solution[i], expected[i], abs, rel) {
+                return CategoryResult::Fail(format!(
+                    "{name} solution[{i}]={} expected={} abs={abs} rel={rel}",
+                    solution[i], expected[i]
+                ));
+            }
         }
-        if !within_tolerance(cluster[i], expected[i], abs, rel) {
-            return CategoryResult::Fail(format!(
-                "cluster solution[{i}]={} expected={} abs={abs} rel={rel}",
-                cluster[i], expected[i]
-            ));
-        }
-        if !within_tolerance(device[i], cluster[i], abs, rel) {
-            return CategoryResult::Fail(format!(
-                "cross-path solution[{i}] device={} cluster={} abs={abs} rel={rel}",
-                device[i], cluster[i]
-            ));
+        if let Some((reference_name, reference_solution)) = reference {
+            for i in 0..2 {
+                if !within_tolerance(solution[i], reference_solution[i], abs, rel) {
+                    return CategoryResult::Fail(format!(
+                        "cross-path solution[{i}] {reference_name}={} {name}={} abs={abs} rel={rel}",
+                        reference_solution[i], solution[i]
+                    ));
+                }
+            }
+        } else {
+            reference = Some((*name, solution));
         }
     }
     CategoryResult::Pass
@@ -653,24 +1050,33 @@ fn within_tolerance(actual: f64, expected: f64, abs: f64, rel: f64) -> bool {
     diff <= abs.max(rel * expected.abs())
 }
 
-fn compare_failure(fixture: &Fixture, device: &RunOutcome, cluster: &RunOutcome) -> CategoryResult {
+fn compare_failure(fixture: &Fixture, outcomes: &[(&str, &RunOutcome)]) -> CategoryResult {
     if fixture.expected.error == "none" {
         return CategoryResult::NotApplicable;
     }
     let expected = match fixture.expected.error.as_str() {
         "invalid-input" => SolverError::InvalidInput,
+        "non-finite-input" => SolverError::NonFiniteInput,
+        "numerical-domain" => SolverError::NumericalDomain,
         other => return CategoryResult::Fail(format!("unknown expected error `{other}`")),
     };
-    match (device.error, cluster.error) {
-        (Some(d), Some(c)) if d == expected && c == expected => CategoryResult::Pass,
-        (Some(d), Some(c)) => CategoryResult::Fail(format!(
-            "error mismatch: device={d:?}, cluster={c:?}, expected={expected:?}"
-        )),
-        _ => CategoryResult::Fail(format!(
-            "expected errors, got device_report={:?}, cluster_report={:?}",
-            device.report, cluster.report
-        )),
+    for (name, outcome) in outcomes {
+        match outcome.error {
+            Some(error) if error == expected => {}
+            Some(error) => {
+                return CategoryResult::Fail(format!(
+                    "{name} error={error:?}, expected={expected:?}"
+                ));
+            }
+            None => {
+                return CategoryResult::Fail(format!(
+                    "expected {name} error, got report={:?}",
+                    outcome.report
+                ));
+            }
+        }
     }
+    CategoryResult::Pass
 }
 
 #[derive(Clone, Debug)]
@@ -837,7 +1243,7 @@ mod tests {
     #[test]
     fn smoke_fixtures_parse_and_validate() {
         let fixtures = load_fixtures("smoke").unwrap();
-        assert_eq!(fixtures.len(), 3);
+        assert_eq!(fixtures.len(), 12);
     }
 
     #[test]
@@ -862,5 +1268,121 @@ mod tests {
             result.expected_failure_match,
             CategoryResult::Pass
         ));
+    }
+
+    #[test]
+    fn rfc017_cache_match_fixture_passes() {
+        let fixtures = load_fixtures("smoke").unwrap();
+        let fixture = fixtures
+            .iter()
+            .find(|f| f.fixture_id == "pfo-cache-match-001")
+            .unwrap();
+        assert!(run_fixture(fixture).unwrap().fixture_passed());
+    }
+
+    #[test]
+    fn rfc017_cache_insert_fixture_checks_structured_error() {
+        let fixtures = load_fixtures("smoke").unwrap();
+        let fixture = fixtures
+            .iter()
+            .find(|f| f.fixture_id == "pfo-cache-reject-sentinel-identity-001")
+            .unwrap();
+        let result = run_fixture(fixture).unwrap();
+        assert!(matches!(
+            result.expected_failure_match,
+            CategoryResult::Pass
+        ));
+    }
+
+    #[test]
+    fn schema_v1_rejects_evidence_state() {
+        let mut fixture = inline_fixture(
+            r#"
+schema_version = 1
+fixture_id = "schema-v1-evidence"
+suite = "smoke"
+execution_mode = "solve"
+problem_class = "box_quadratic_diagonal"
+solver_family = "projected_first_order"
+dimension = 2
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+evidence_state = "cached-validation-match"
+conformance_groups = ["device-reference-smoke", "cluster-reference-smoke"]
+"#,
+        );
+        fixture.evidence = None;
+        assert!(fixture.validate("smoke").is_err());
+    }
+
+    #[test]
+    fn schema_v2_requires_valid_evidence_state() {
+        let fixture = inline_fixture(
+            r#"
+schema_version = 2
+fixture_id = "schema-v2-missing-evidence"
+suite = "smoke"
+execution_mode = "solve"
+problem_class = "box_quadratic_diagonal"
+solver_family = "projected_first_order"
+dimension = 2
+scalar_family = "float"
+validation_state = "respect-backend-validation-state"
+conformance_groups = ["cluster-reference-smoke"]
+"#,
+        );
+        assert!(fixture.validate("smoke").is_err());
+    }
+
+    #[test]
+    fn schema_v2_rejects_execution_mode_contradiction() {
+        let fixture = inline_fixture(
+            r#"
+schema_version = 2
+fixture_id = "schema-v2-contradiction"
+suite = "smoke"
+execution_mode = "cache-insert"
+problem_class = "box_quadratic_diagonal"
+solver_family = "projected_first_order"
+dimension = 2
+scalar_family = "float"
+validation_state = "respect-backend-validation-state"
+evidence_state = "cached-validation-match"
+conformance_groups = ["cluster-reference-smoke"]
+"#,
+        );
+        assert!(fixture.validate("smoke").is_err());
+    }
+
+    fn inline_fixture(header: &str) -> Fixture {
+        let src = format!(
+            r#"{header}
+
+[config]
+max_iterations = 4
+tolerance = 0.000001
+step_scale = 1.0
+
+[problem]
+lower = [-1.0, -1.0]
+upper = [1.0, 1.0]
+initial = [0.0, 0.0]
+quadratic_diag = [1.0, 1.0]
+center = [0.25, -0.5]
+
+[expected]
+status = "error"
+termination = "not-applicable"
+solution = []
+error = "invalid-input"
+
+[tolerance]
+solution_abs = 0.00001
+solution_rel = 0.00001
+objective_abs = "not-applicable"
+residual_abs = "not-applicable"
+"#
+        );
+        toml::from_str(&src).unwrap()
     }
 }

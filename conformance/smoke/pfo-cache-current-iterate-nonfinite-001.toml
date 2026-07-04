@@ -1,0 +1,35 @@
+schema_version = 2
+fixture_id = "pfo-cache-current-iterate-nonfinite-001"
+suite = "smoke"
+execution_mode = "solve"
+problem_class = "box_quadratic_diagonal"
+solver_family = "projected_first_order"
+dimension = 2
+scalar_family = "float"
+validation_state = "respect-backend-validation-state"
+evidence_state = "cached-validation-current-iterate-nonfinite"
+conformance_groups = ["cluster-reference-smoke", "trusted-cache-smoke"]
+
+[config]
+max_iterations = 4
+tolerance = 0.000001
+step_scale = 1.0
+
+[problem]
+lower = [-1.0, -1.0]
+upper = [1.0, 1.0]
+initial = [nan, 0.0]
+quadratic_diag = [1.0, 1.0]
+center = [0.25, -0.5]
+
+[expected]
+status = "error"
+termination = "not-applicable"
+solution = []
+error = "non-finite-input"
+
+[tolerance]
+solution_abs = 0.00001
+solution_rel = 0.00001
+objective_abs = "not-applicable"
+residual_abs = "not-applicable"

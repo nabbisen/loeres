@@ -17,24 +17,6 @@ fn solved(converged: bool) -> BatchItemOutcome<f64> {
     }
 }
 
-fn kinds(outcomes: &[BatchItemOutcome<f64>]) -> Vec<u8> {
-    outcomes
-        .iter()
-        .map(|o| match o {
-            BatchItemOutcome::Solved { report, .. } => {
-                if report.status().is_converged() {
-                    0
-                } else {
-                    1
-                }
-            }
-            BatchItemOutcome::Failed { .. } => 2,
-            BatchItemOutcome::Cancelled => 3,
-            BatchItemOutcome::Panicked => 4,
-        })
-        .collect()
-}
-
 struct FixedJob(fn() -> BatchItemOutcome<f64>);
 impl ClusterJob<f64> for FixedJob {
     fn run_boxed(&self, _ctx: &ClusterExecutionContext) -> BatchItemOutcome<f64> {
@@ -229,7 +211,31 @@ fn parallel_matches_sequential() {
         ..ClusterSolveConfig::default()
     };
     let par = solve_batch(build(), par_config, ClusterCancellationToken::new()).unwrap();
-    assert_eq!(kinds(&seq.outcomes), kinds(&par.outcomes));
+    assert!(matches!(
+        (&seq.outcomes[0], &par.outcomes[0]),
+        (
+            BatchItemOutcome::Solved { report: seq, .. },
+            BatchItemOutcome::Solved { report: par, .. }
+        ) if seq.status().is_converged() && par.status().is_converged()
+    ));
+    assert!(matches!(
+        (&seq.outcomes[1], &par.outcomes[1]),
+        (
+            BatchItemOutcome::Solved { report: seq, .. },
+            BatchItemOutcome::Solved { report: par, .. }
+        ) if !seq.status().is_converged() && !par.status().is_converged()
+    ));
+    assert!(matches!(
+        (&seq.outcomes[2], &par.outcomes[2]),
+        (
+            BatchItemOutcome::Failed {
+                error: SolverError::SingularMatrix
+            },
+            BatchItemOutcome::Failed {
+                error: SolverError::SingularMatrix
+            }
+        )
+    ));
     assert_eq!(seq.summary, par.summary);
 }
 
@@ -258,6 +264,19 @@ fn async_matches_sync() {
             ClusterCancellationToken::new(),
         ))
         .unwrap();
-    assert_eq!(kinds(&sync.outcomes), kinds(&asynced.outcomes));
+    assert!(matches!(
+        (&sync.outcomes[0], &asynced.outcomes[0]),
+        (
+            BatchItemOutcome::Solved { report: sync, .. },
+            BatchItemOutcome::Solved { report: asynced, .. }
+        ) if sync.status().is_converged() && asynced.status().is_converged()
+    ));
+    assert!(matches!(
+        (&sync.outcomes[1], &asynced.outcomes[1]),
+        (
+            BatchItemOutcome::Solved { report: sync, .. },
+            BatchItemOutcome::Solved { report: asynced, .. }
+        ) if !sync.status().is_converged() && !asynced.status().is_converged()
+    ));
     assert_eq!(sync.summary, asynced.summary);
 }

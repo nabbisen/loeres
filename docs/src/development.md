@@ -57,6 +57,11 @@ generic RFC 016 solve path remains source-compatible and non-cacheable. The
 carrier advances mutation epochs before mutable model access, so stale cached
 evidence fails closed after failed or panicking mutation closures.
 
+RFC 017 extends the enforced smoke corpus with validation-cache conformance
+fixtures. `schema_version = 2` fixtures exercise cache hit/miss, insufficient
+scope, stale/wrong evidence, current-iterate scan retention, hot-loop
+numerical-domain retention, and reusable-cache insertion rejection.
+
 ## Workflow
 
 Development is **design-first**: requirement / RFC → external design → internal

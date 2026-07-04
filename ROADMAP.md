@@ -20,7 +20,7 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, and the conformance corpus (RFCs 010–013).
 
-## Current status (v0.7.0)
+## Current status (v0.20.0)
 
 **Milestone 1 complete — RFC 003, RFC 014, RFC 001, and RFC 002 implemented.**
 `loeres` now ships the error/diagnostic topology (RFC 003), the solver
@@ -125,6 +125,15 @@ scope normalized to always include `FINITE`, accessors) so the scope bit and the
 
 **RFC 015** is now **implemented (v0.19.0)**: `loeres-cluster` owns a cluster-only validation evidence cache. The release adds Loeres-generated `ModelIdentity`, `MutationEpoch`, exact evidence keys/lookups, `ValidationEvidenceCache`, `ProvidedValidationEvidence`, the `CacheableProjectedFirstOrderProblem<P>` carrier, and a carrier-only cached `f64` projected-first-order solve path. Reusable evidence is model-owned only: current iterates, workspace/config checks, current `step_scale`, cancellation, and hot-loop finite checks remain active. Wrong identity or stale epoch fails closed with `InvalidInput`; cache misses or insufficient model-owned scope scan and continue when data is valid. The final v0.19.0 release advances mutation epochs before mutable model access, so stale evidence fails closed even if mutation later returns an error or unwinds. Edge crates and runtime crate APIs outside `loeres-cluster` are unchanged.
 
+**RFC 017** is now **implemented (v0.20.0)**: the enforced `conformance/smoke/`
+corpus covers RFC 015 trusted/cache semantics through `schema_version = 2`
+fixtures. The runner now materializes cache hit/miss, insufficient-scope,
+stale-epoch, wrong-identity, current-iterate non-finite, hot-loop
+numerical-domain, trusted-evidence insertion rejection, and sentinel-identity
+insertion rejection cases. Successful cache cases compare against the device and
+cluster `ValidateAllInputs` baselines; fail-closed cases compare structured
+`SolverError` categories. Runtime APIs are unchanged.
+
 ### Open design rounds (gate later-milestone *content*, not the skeleton)
 
 1. RFC 006 — box/bound-constrained first device kernel scope (Milestone 2). **Resolved — implemented (v0.10.0); Milestone 2 complete.**
@@ -137,3 +146,4 @@ scope normalized to always include `FINITE`, accessors) so the scope bit and the
 8. RFC 011 — target profiles and deterministic math policy. **Resolved — implemented (v0.17.0); manifest-driven target-profile checks with mandatory/advisory/documented-only evidence classes.**
 9. RFC 013 — conformance corpus and numerical parity policy. **Resolved — implemented (v0.18.0); enforced smoke corpus for device/cluster projected-first-order parity, with extended/adversarial placeholders staged.**
 10. RFC 015 — trusted pipeline validation cache. **Resolved — implemented (v0.19.0); cluster-only model identity, mutation epochs, validation evidence cache, and carrier-only cached `f64` projected-first-order solving, with fail-closed mutation epochs.**
+11. RFC 017 — trusted/cache conformance fixtures. **Resolved — implemented (v0.20.0); enforced smoke fixtures now cover RFC 015 validation-cache hit/miss, stale trust, scan-retention, and cache-insert rejection behavior.**

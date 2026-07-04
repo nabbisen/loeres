@@ -6,7 +6,9 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 
 ## Proposed RFCs
 
-None.
+| RFC | Title | Status | Notes |
+|---:|---|---|---|
+None currently.
 
 ## Done RFCs
 
@@ -29,6 +31,8 @@ None.
 | [014](done/014-core-solver-outcome-state.md) | Core Solver Outcome and Status Taxonomy | Implemented (v0.5.0) | `loeres` `solver` module; `SolveStatus`, `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`. |
 | [015](done/015-trusted-pipeline-validation-cache.md) | Trusted Pipeline Validation Cache | Implemented (v0.19.0) | `loeres-cluster::validation_cache`; model identity, mutation epochs, `ValidationEvidenceCache`, `CacheableProjectedFirstOrderProblem`, and carrier-only cached `f64` projected-first-order solving, with fail-closed mutation epochs. |
 | [016](done/016-std-side-projected-first-order-cluster-kernel.md) | Std-Side Projected First-Order Cluster Kernel | Implemented (v0.14.0) | `loeres-cluster` `model`/`solve`; first std-side numerical kernel — dynamic box/bound-constrained projected first-order over `DenseVector` (`ClusterProjectedFirstOrderProblem`, `ClusterProjectedFirstOrderWorkspace`, `ProjectedFirstOrderConfig`, `solve_projected_first_order_dyn`, `ClusterProjectedFirstOrderJob`), step-norm convergence aligned with RFC 006, two-field `ProjectedFirstOrderSolveRecord` (`checked`/`trust`), plugged into the RFC 008 `ClusterJob` seam. Trusted-pipeline/caching deferred to RFC 015. |
+| [017](done/017-trusted-cache-conformance-fixtures.md) | Trusted/Cache Conformance Fixtures | Implemented (v0.20.0) | Extends RFC 013 conformance with enforced RFC 015 trusted/cache fixture states: cache hit/miss, insufficient scope, stale epoch, wrong identity, current-iterate scan retention, hot-loop fail-safe retention, and reusable-cache rejection cases. |
+| [018](done/018-cluster-solve-test-helper-cleanup.md) | Cluster Solve Test Helper Cleanup | Implemented (v0.20.0) | Small test-only cleanup for `loeres-cluster` solve tests: removed the opaque `kinds()` helper while preserving feature-gated sequential/parallel and sync/async comparisons. |
 
 ## Archived RFCs
 
