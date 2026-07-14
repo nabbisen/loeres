@@ -1,7 +1,8 @@
 # RFC 020 - Implementation Handoff
 
 **RFC.** [`020-normative-documentation-authority-and-currency.md`](../../proposed/020-normative-documentation-authority-and-currency.md)
-**Handoff state.** Proposed; implementation must wait for architecture design freeze.
+**Handoff state.** Proposed; implementation must wait for architecture
+design freeze, project-owner approval, and the RFC 000 `accepted/` transition.
 **Target.** Same corrective baseline as RFC 019 unless architecture review separates them.
 
 ## 1. Summary
@@ -58,6 +59,8 @@ Runtime crate production source is evidence to inspect, not a target to edit.
 - The detailed roadmap owns sequencing/status but cannot override contracts.
 - Code/test divergence triggers review; code does not silently supersede design.
 - Requirement, decision, and RFC IDs remain stable.
+- Accepted/frozen designs live in `rfcs/accepted/`; `proposed/` remains
+  review-active and implementation-forbidden.
 - Historical sequencing differences are recorded honestly.
 - Future/aspirational surfaces are labeled unimplemented.
 - RFC 019 owns release command/tag/package semantics; reuse its terminology.
@@ -104,7 +107,7 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
 ## 8. Recommended next step
 
 Request architecture approval of RFC 020's authority hierarchy. After freeze,
-build the traceability matrix before editing prose. Submit the apex trio as one
+complete the atomic `accepted/` lifecycle activation, then build the
+traceability matrix before editing prose. Submit the apex trio as one
 review point, then supporting docs/checks as a second, and close only with RFC
 019's complete release evidence.
-

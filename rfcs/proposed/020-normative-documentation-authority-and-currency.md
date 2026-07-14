@@ -127,6 +127,7 @@ revision is forbidden.
 | `docs/specs/loeres-external-design-v1.md` | Normative | Public crate/module boundaries, externally visible policies, cross-layer contracts. |
 | Implemented RFCs in `rfcs/done/` | Normative and specific | Accepted detailed decisions and implementation departures for their scope. |
 | Proposed RFCs in `rfcs/proposed/` | Review contract, not implemented truth | Candidate design; implementation must wait for approval/freeze. |
+| Accepted RFCs in `rfcs/accepted/` | Normative frozen implementation contract | Architecture and project-owner review are complete; implementation may start, but shipped behavior must not yet be claimed. |
 | `docs/specs/loeres-roadmap-milestones-v1.md` | Normative for sequencing/status | Milestones, dependencies, evidence gates; cannot override requirements or implemented RFC contracts. |
 | Root `ROADMAP.md` | Current concise status | Maintainer-facing summary that must link to and agree with the detailed roadmap. |
 | `CHANGELOG.md` | Historical release record | What shipped and when; not permission to change architecture. |
@@ -161,6 +162,47 @@ Each apex specification must state:
 
 The three apex documents should share one reconciliation table or equivalent
 machine-checkable markers so mixed-current headers cannot recur.
+
+### 11.4 RFC lifecycle and design-freeze authorization
+
+Loeres adopts RFC 000's five-folder lifecycle variant for recovery work and
+later RFCs:
+
+```text
+rfcs/proposed/  -> review-active; implementation forbidden
+rfcs/accepted/  -> design frozen; implementation authorized
+rfcs/done/      -> implemented/shipped
+rfcs/archive/   -> withdrawn or superseded
+rfcs/draft/     -> optional authoring state
+```
+
+The `accepted/` transition is the durable implementation authorization. An
+ignored review file or handoff is evidence/input only and cannot authorize the
+transition.
+
+Before R1 begins, one atomic R0 lifecycle-activation change must:
+
+1. amend RFC 000's project-adoption section to state that Loeres now uses the
+   five-folder variant;
+2. create `rfcs/accepted/`;
+3. move RFC 019 and RFC 020 from `proposed/` to `accepted/` only after the
+   independent architect accepts the patched design and the project owner
+   approves the transition;
+4. update each RFC Status field to `Accepted` with the design-freeze date and a
+   concise tracked approval note;
+5. add an Accepted section to `rfcs/README.md` and update all relative links;
+6. extend `cargo xtask check-rfcs` to validate accepted-folder status, index
+   coverage, unique numbering, and link integrity;
+7. run the exact RFC/link/MSRV-relevant checks for that atomic transition.
+
+The transition actor is the project owner or an explicitly authorized
+maintainer. The committed folder move, Status metadata, RFC index, and amended
+RFC 000 are the normative record. Architect review remains required evidence,
+but the `.git-exclude/` copy is not itself normative.
+
+If either RFC remains in `proposed/`, its implementation must not start. Moving
+an RFC to `accepted/` does not claim code exists or gates pass; only movement to
+`done/` after closeout records implementation.
 
 ## 12. Concrete reconciliation specification
 
@@ -250,13 +292,46 @@ RFC 020 extends documentation verification with bounded checks for stable facts:
 2. no current normative status block claims v0.13.1 after reconciliation;
 3. every RFC in `rfcs/done/` appears in `rfcs/README.md` with Implemented status;
 4. every RFC in `rfcs/proposed/` appears with Proposed status;
-5. root roadmap recovery state matches RFC 019/RFC 020 lifecycle;
-6. mdBook navigation includes the recovery roadmap and current threat model;
-7. prohibited stale phrases identified during implementation are absent from
+5. every RFC in `rfcs/accepted/` appears with Accepted status and tracked
+   design-freeze metadata;
+6. root roadmap recovery state matches RFC 019/RFC 020 lifecycle;
+7. mdBook navigation includes the recovery roadmap and current threat model;
+8. prohibited stale phrases identified during implementation are absent from
    current-status sections.
 
 Checks should target stable metadata, not parse arbitrary prose or pretend to
 prove semantic correctness. Human architecture review remains mandatory.
+
+### 12.7 Release-local review links
+
+A release artifact must be self-contained enough to review its requirements,
+external design, roadmap, RFC registry, and accepted/implemented RFCs without
+network access.
+
+Documentation pages must provide release-local repository paths for normative
+sources. Default-branch web links may remain only when labeled as navigation to
+the moving development branch; they must not be the sole normative link in a
+tagged book or extracted release. Where mdBook cannot render a source-relative
+link outside `docs/src/`, the page must print the release-local path and may add
+a separately labeled web-navigation link.
+
+### 12.8 Normative amendment record
+
+Every substantive requirements or external-design amendment in the
+reconciliation traceability matrix must record at least:
+
+| Field | Meaning |
+|---|---|
+| affected ID | Stable requirement or external-design decision identifier |
+| prior rule | Concise statement of the previously approved rule |
+| new rule | Concise statement of the reconciled rule |
+| approving RFC | RFC that authorized the semantic change, or `none` for prose-only currency correction |
+| compatibility impact | Runtime/API, operational, documentation-only, or none, with rationale |
+| reconciled release | Corrective baseline in which the amendment becomes current |
+
+If no approving RFC exists for a substantive change, reconciliation stops and a
+separate RFC is required. A prose-only clarification must say why semantics did
+not change.
 
 ## 13. Security and secret handling
 
@@ -277,6 +352,7 @@ tests as formal security proofs.
 | Update only version headers | Leaves substantive contradictions and creates false currency. |
 | Let implemented code automatically override RFCs | Rewards accidental divergence and undermines architecture review. |
 | Add an elaborate semantic Markdown parser | High maintenance cost and false confidence; bounded metadata checks plus human review are sufficient. |
+| Keep accepted/frozen RFCs in `proposed/` | Conflicts with RFC 000's meaning of Proposed and leaves implementation authorization ambiguous. |
 
 ## 15. Verification gates
 
@@ -296,11 +372,36 @@ Required design/reconciliation evidence:
 
 Documentation-only checks do not replace runtime tests at release closeout.
 
-## 16. Implementation sprint plan
+## 16. Rollback and partial-reconciliation policy
+
+The authority policy, apex requirements, external design, and detailed roadmap
+must be published atomically as one reviewed reconciliation. Supporting threat,
+index, README, and currency-check changes must be consistent with that same
+baseline before closeout.
+
+If semantic review discovers an unresolved conflict among requirements,
+approved RFCs, current public behavior, or security policy:
+
+1. retain the recovery warning and current No-Go status;
+2. do not claim the new last-reconciled release marker;
+3. do not declare only one or two apex documents current;
+4. revert partial currency/status markers or leave the reconciliation explicitly
+   draft on its implementation branch until a separate decision resolves the
+   conflict;
+5. do not edit prose to bless accidental runtime behavior;
+6. record the blocker and return the affected boundary to architecture review.
+
+The prior v0.13.1 documents may remain historically inaccurate for current code
+during this rollback state, but they must stay visibly marked stale and must not
+be relabeled current. RFC 019 release evidence cannot close over a partial RFC
+020 reconciliation.
+
+## 17. Implementation sprint plan
 
 | Sprint | Work | Review point |
 |---|---|---|
-| S0 Design freeze | Approve authority hierarchy, conflict rule, and currency metadata | Architecture review of RFC 020 |
+| S0 Design freeze | Approve authority hierarchy, accepted-folder lifecycle, conflict rule, and currency metadata | Architecture review of RFC 020 |
+| S0.5 Lifecycle activation | Atomically amend RFC 000, enable `accepted/`, move frozen RFCs, and extend lifecycle checks | Project-owner approval and lifecycle gate review |
 | S1 Traceability matrix | Map requirements/design sections to RFCs 001-018 and current modules | Review before prose edits |
 | S2 Apex reconciliation | Refresh requirements, external design, detailed roadmap | Apex-document architecture review |
 | S3 Supporting docs | Update threat model, root/crate READMEs, RFC index, book pages | Security and maintainer review |
@@ -308,21 +409,23 @@ Documentation-only checks do not replace runtime tests at release closeout.
 | S5 Full documentation build | Run links, mdBook, RFC, and aggregate gates | Documentation review request package |
 | S6 Joint closeout | Combine with RFC 019 release evidence and move to `done/` | Go/No-Go review |
 
-## 17. Exit criteria
+## 18. Exit criteria
 
 RFC 020 is complete only when:
 
-1. the normative hierarchy and conflict rule are published;
-2. the apex trio is reconciled through the chosen corrective baseline;
-3. requirements and decision IDs retain traceability;
-4. no current normative text claims the absence of shipped RFC 009/RFC 016/RFC
+1. the five-folder lifecycle is active and RFC 019/RFC 020 entered R1 from
+   `rfcs/accepted/` under §11.4;
+2. the normative hierarchy and conflict rule are published;
+3. the apex trio is reconciled through the chosen corrective baseline;
+4. requirements and decision IDs retain traceability and amendment records;
+5. no current normative text claims the absence of shipped RFC 009/RFC 016/RFC
    015/RFC 017 capabilities;
-5. the threat model describes actual controls and residual risks;
-6. RFC 016's index summary matches the current public solve record;
-7. crate READMEs no longer claim Phase 0 skeleton status where implementation exists;
-8. historical sequencing divergence is recorded, not erased;
-9. semantic currency, RFC, link, mdBook, and aggregate checks pass;
-10. an architecture review accepts the refreshed documents;
-11. RFC 019's tagged-revision/clean-extraction evidence closes before any new
+6. the threat model describes actual controls and residual risks;
+7. RFC 016's index summary matches the current public solve record;
+8. crate READMEs no longer claim Phase 0 skeleton status where implementation exists;
+9. historical sequencing divergence is recorded, not erased;
+10. release-local paths make the normative baseline self-contained;
+11. semantic currency, RFC, link, mdBook, and aggregate checks pass;
+12. an architecture review accepts the refreshed documents;
+13. RFC 019's tagged-revision/clean-extraction evidence closes before any new
     public-boundary implementation begins.
-

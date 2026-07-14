@@ -1,7 +1,8 @@
 # RFC 019 - Implementation Handoff
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../proposed/019-release-integrity-and-msrv-recovery.md)
-**Handoff state.** Proposed; implementation must wait for architecture design freeze.
+**Handoff state.** Proposed; implementation must wait for architecture
+design freeze, project-owner approval, and the RFC 000 `accepted/` transition.
 **Target.** Corrective baseline after v0.20.0. No tag, commit, push, or publication is authorized by this handoff.
 
 ## 1. Summary
@@ -55,6 +56,12 @@ files, stop and request scope review.
 - `cargo xtask check` is the developer aggregate.
 - `cargo xtask release-gate` is the complete release-candidate aggregate and
   must avoid recursive repackaging in the extracted tree.
+- RFC 019 §11.3 is the only normative complete gate list; this handoff does not
+  create a second list.
+- Package bytes come from the clean candidate commit's tracked-file set and are
+  bound to the recorded commit/tag/version/digest/manifest.
+- The source archive contains regular files/directories only and excludes
+  generated `docs/book/`.
 - Temporary extraction state is workspace-local and ignored.
 - Release/publish authority remains with the project owner.
 - RFC 020 owns normative-specification content; coordinate shared contributor
@@ -65,20 +72,11 @@ files, stop and request scope review.
 No implementation gates have been run for this handoff because implementation
 has not started. This blocks RFC closeout but not design review.
 
-Required during implementation:
-
-```text
-cargo +1.85.0 check --workspace --all-features
-cargo fmt --all --check
-cargo clippy --workspace --all-features --all-targets -- -D warnings
-cargo test --workspace --all-features
-cargo xtask check
-mdbook build docs
-cargo xtask release-gate
-```
-
-Record source-tree and clean-extraction results separately. Do not summarize an
-advisory/unavailable target as passed enforcement.
+Required during implementation: execute the complete gate list and order in
+RFC 019 §11.3. The first focused evidence after the syntax repair is the exact
+Rust 1.85 all-feature workspace check; it does not replace the later complete
+gate. Record source-tree and clean-extraction results separately. Do not
+summarize an advisory/unavailable target as passed enforcement.
 
 ## 6. Generated artifacts
 
@@ -105,7 +103,7 @@ specific durable evidence location.
 ## 8. Recommended next step
 
 Request architecture approval of RFC 019. After freeze, implement the Rust 1.85
-repair first and observe the exact MSRV command before changing gate composition.
+repair first only after RFC 019 is in `rfcs/accepted/`, and observe the exact
+MSRV command before changing gate composition.
 Submit a review request after S3 workflow alignment and again with S6 complete
 source/extraction evidence.
-

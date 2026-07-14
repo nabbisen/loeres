@@ -135,7 +135,33 @@ by the exact workspace command is in scope when caused by project source or
 manifest configuration. Dependency incompatibility requires a separately
 reviewed lock/dependency decision, not silent version churn.
 
-### 11.2 Gate classes
+### 11.2 Candidate identity and repository cleanliness
+
+Release evidence is valid only when the tested source, packaged source, and
+named revision are demonstrably the same candidate.
+
+Normative rules:
+
+1. Tagged CI must peel/dereference the canonical release tag and verify that it
+   resolves exactly to checked-out `HEAD`. A moving branch name, unpeeled tag
+   object, or merely printed commit identifier is insufficient.
+2. Staged and unstaged changes to tracked files must be absent before source
+   evidence is accepted. The gate must check both the index and working tree.
+3. Package input must come from the candidate commit's tracked-file set, using
+   `git archive` or an equivalently reviewed explicit manifest derived from the
+   candidate commit. It must not be a broad walk of the ambient filesystem.
+4. Untracked and ignored files, including build output and local evidence, are
+   excluded from the source archive by construction rather than only by a
+   best-effort deny list.
+5. Durable evidence must record the peeled commit, tag or local-dry-run state,
+   candidate version, archive SHA-256, tracked content manifest, and archive
+   layout/type validation result.
+
+A local dirty-tree invocation may run diagnostics through the non-packaging
+developer gates. It must stop before packaging, must report that candidate
+identity was not established, and must never be labeled release evidence.
+
+### 11.3 Gate classes
 
 The project has two canonical aggregates:
 
@@ -158,11 +184,14 @@ records a safe reason to reorder:
 9. package layout and exclusion validation;
 10. the complete applicable gate suite against a clean extraction.
 
+Section 11.3 is the single normative release-gate list. Workflows, handoffs, and
+closeout records must link to it rather than restating a shorter competing list.
+
 The implementation must avoid recursive invocation of `release-gate` inside
 the extracted tree. It may use an internal mode or pass a documented flag so
 the extracted run repeats steps 2-7 without packaging again.
 
-### 11.3 Package contract
+### 11.4 Package contract
 
 The release artifact must:
 
@@ -172,16 +201,31 @@ The release artifact must:
   parent directory;
 - include `Cargo.lock` and all release-required source, RFC, documentation,
   workflow, conformance, and license files;
-- exclude `.git/`, `target/`, `.git-exclude/`, editor caches, local evidence,
-  and previously generated archives;
+- exclude `.git/`, `target/`, `.git-exclude/`, generated `docs/book/`, editor
+  caches, local evidence, and previously generated archives; `docs/book/` may be
+  delivered only as a separately named artifact under a later approved policy;
 - extract without overwriting the source tree;
-- be tested from a fresh directory controlled by the release gate.
+- be tested from a gate-owned empty directory controlled by the release gate.
+
+Before extraction, archive validation must reject:
+
+- absolute paths;
+- `..` path traversal or normalized paths escaping the extraction root;
+- duplicate entries;
+- symlinks, hardlinks, device nodes, FIFOs, sockets, or other special entries;
+- any entry not present in the reviewed tracked-content manifest, apart from
+  required directory entries synthesized by the archive format.
+
+The baseline source archive permits regular files and directories only.
+Extraction must not follow an archive entry outside the gate-owned empty
+directory. The archive SHA-256 and a normalized path/type/content manifest must
+be recorded before clean-extraction gates run.
 
 Temporary release-gate state should live under `.git-exclude/tmp/release-gate/`
 or an equivalent ignored workspace-local path so restricted environments do not
 depend on `/tmp`. Cleanup must be scoped to the gate-owned directory.
 
-### 11.4 Version consistency
+### 11.5 Version consistency
 
 Before packaging, the gate must verify that the candidate version agrees across:
 
@@ -195,7 +239,13 @@ Local non-tagged dry runs may derive the candidate version from `Cargo.toml`
 and report that no tag assertion was performed. They must not claim tagged
 release evidence.
 
-### 11.5 Workflow composition
+Version and changelog parsing must fail closed. The candidate changelog must
+contain exactly one current-version heading that parses as the complete
+candidate version; substring matches, zero matches, and multiple matches are
+errors. RFC 019 supports stable `MAJOR.MINOR.PATCH` only. SemVer pre-release and
+build metadata are rejected unless a later RFC defines their release behavior.
+
+### 11.6 Workflow composition
 
 The release workflow must:
 
@@ -203,7 +253,8 @@ The release workflow must:
 2. check out the tagged revision, not a moving branch;
 3. install stable Rust with rustfmt, clippy, and mandatory target support;
 4. install Rust 1.85.0;
-5. install mdBook using a version/policy accepted by implementation review;
+5. install mdBook exactly at `0.5.4` for this corrective workflow and record the
+   resolved `mdbook --version` output;
 6. execute `cargo xtask release-gate` once as the canonical orchestration;
 7. upload evidence/artifacts only after the gate succeeds;
 8. perform no crates.io publication in this RFC.
@@ -211,7 +262,13 @@ The release workflow must:
 Ordinary CI may retain parallel jobs, but its commands must not be presented as
 substitutes for tagged-revision release evidence.
 
-### 11.6 Tag-selector verification
+Every GitHub Action reference in the corrective release workflow must be pinned
+to a reviewed full commit SHA. A readable release/major tag may appear only in a
+comment. Any exception requires an explicit architecture-review finding and
+must be recorded in release evidence; there is no implicit exception for
+GitHub-owned actions.
+
+### 11.7 Tag-selector verification
 
 Implementation must provide a non-publishing verification method demonstrating
 that representative tags are classified correctly:
@@ -227,7 +284,7 @@ that representative tags are classified correctly:
 This may be a focused `xtask` unit test plus a manual `workflow_dispatch`
 dry-run path. It must not create a real release or publish a crate.
 
-### 11.7 Evidence retention
+### 11.8 Evidence retention
 
 The release review package must record:
 
@@ -236,6 +293,7 @@ The release review package must record:
 - each gate result;
 - source-tree versus clean-extraction scope;
 - archive name and content-layout result;
+- archive SHA-256 and normalized tracked content manifest;
 - advisory/unavailable target evidence without mislabeling it enforced;
 - limitations and waivers.
 
@@ -248,8 +306,8 @@ what was actually observed.
 - Commands must not print registry credentials or broad environment dumps.
 - Archive validation must reject `.git/`, `.git-exclude/`, and local credential
   files before an artifact is considered acceptable.
-- Release workflow actions must be pinned according to the repository's chosen
-  action-version policy; supply-chain scanning itself is a later RFC.
+- Release workflow actions must follow §11.6's full-commit-SHA policy;
+  supply-chain scanning itself is a later RFC.
 - The clean extraction must execute only repository-controlled build commands.
 
 ## 13. Rejected alternatives
@@ -263,7 +321,29 @@ what was actually observed.
 | Package without testing a clean extraction | Violates the project's release-deliverable policy and misses packaging defects. |
 | Add publication now | Publication is separately owner-authorized and outside corrective scope. |
 
-## 14. Verification gates
+## 14. Rollback and partial-failure policy
+
+The Rust 1.85 repair, command split, workflow alignment, package validation, and
+release documentation form one corrective unit. They do not confer partial
+release readiness independently.
+
+If the complete source-tree or clean-extraction gate cannot be made green:
+
+1. the repository remains No-Go for release/readiness claims;
+2. no tag, uploaded artifact, GitHub release, or publication is approved;
+3. partial release-workflow activation must be reverted or disabled before
+   integration so an incomplete workflow cannot create a false release signal;
+4. the pre-existing `cargo xtask check` developer gate must remain usable while
+   the release-gate correction is revised;
+5. failures and any retained diagnostic artifacts must be reported as
+   incomplete evidence, not as a partial pass.
+
+Gate-owned cleanup may remove only the exact temporary directory created by the
+current invocation. It must verify ownership/path identity before deletion and
+must never remove user-owned paths, the source checkout, or an arbitrary path
+provided through unchecked input.
+
+## 15. Verification gates
 
 Design-review gates:
 
@@ -287,7 +367,7 @@ The last command is accepted only when its output proves both source-tree and
 clean-extraction phases. A command may not be claimed passed unless observed for
 the reviewed revision.
 
-## 15. Implementation sprint plan
+## 16. Implementation sprint plan
 
 | Sprint | Work | Review point |
 |---|---|---|
@@ -299,18 +379,20 @@ the reviewed revision.
 | S5 Documentation | Update contributor/release instructions and changelog | Documentation consistency review |
 | S6 Closeout | Complete gate evidence and move RFC to `done/` with approved release | Go/No-Go review |
 
-## 16. Exit criteria
+## 17. Exit criteria
 
 RFC 019 is complete only when:
 
 1. `cargo +1.85.0 check --workspace --all-features` passes;
 2. canonical unprefixed tags are selected and validated by the release workflow;
-3. `cargo xtask release-gate` covers every required gate in §11.2;
-4. a root-layout archive is produced with required exclusions;
-5. the applicable complete gate suite passes in a clean extraction;
-6. source-tree and extraction evidence refer to the same revision/content;
-7. documentation distinguishes developer checks from release evidence;
-8. no runtime API, solver behavior, or edge dependency boundary changed;
-9. an architect review accepts the closeout evidence;
-10. any tag or release action is separately authorized by the project owner.
-
+3. candidate identity and repository cleanliness satisfy §11.2;
+4. `cargo xtask release-gate` covers every required gate in §11.3;
+5. a tracked-input, root-layout archive is produced with required exclusions
+   and path/type validation;
+6. the applicable complete gate suite passes in a clean extraction;
+7. source-tree and extraction evidence refer to the same revision/content and
+   record the archive digest/manifest;
+8. documentation distinguishes developer checks from release evidence;
+9. no runtime API, solver behavior, or edge dependency boundary changed;
+10. an architect review accepts the closeout evidence;
+11. any tag or release action is separately authorized by the project owner.

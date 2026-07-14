@@ -38,6 +38,9 @@ R0 Recovery design freeze
     `-- RFC 020: normative documentation authority and currency
              |
              v
+R0.5 Lifecycle activation (`accepted/`)
+             |
+             v
 R1 Corrective implementation and documentation baseline
              |
              v
@@ -55,8 +58,9 @@ R4 Next public capability RFC
 ```
 
 RFC 019 and RFC 020 may be implemented in parallel only after both designs are
-frozen. Their closeout evidence converges at R2. R3 design may begin earlier,
-but its implementation must not weaken or delay the blocking recovery.
+frozen and moved through the normative `rfcs/accepted/` transition. Their
+closeout evidence converges at R2. R3 design may begin earlier, but its
+implementation must not weaken or delay the blocking recovery.
 
 ## Milestone R0 — Recovery design freeze
 
@@ -72,28 +76,57 @@ Required deliverables:
 3. Each RFC records non-goals, exact acceptance gates, rollback behavior, and
    ownership boundaries.
 4. Focused developer handoffs exist for both RFCs.
+5. RFC 020 selects RFC 000's five-folder `accepted/` lifecycle variant and
+   specifies the atomic transition/checking mechanism.
 
 Exit criteria:
 
-- architecture review accepts both RFCs for implementation;
+- architecture review accepts both RFCs for design freeze;
 - open choices are resolved or explicitly deferred;
 - no implementation has been smuggled into the design change;
-- `rfcs/README.md` identifies both RFCs as Proposed.
+- `rfcs/README.md` identifies both RFCs as Proposed until the project owner
+  authorizes the R0.5 lifecycle transition.
+
+## Milestone R0.5 — Lifecycle activation
+
+Objective: create a durable, policy-valid implementation authorization rather
+than relying on ignored review files or an ambiguous frozen-Proposed state.
+
+One atomic governance change must:
+
+1. amend RFC 000 to adopt its documented five-folder variant;
+2. create and check `rfcs/accepted/`;
+3. move architect-approved RFC 019 and RFC 020 there with Accepted status and
+   tracked design-freeze metadata after project-owner approval;
+4. update the RFC index and all relative links;
+5. extend RFC lifecycle tooling/tests for the Accepted state;
+6. pass RFC, link, stable, and exact Rust 1.85 checks applicable to the change.
+
+Exit criteria:
+
+- both RFCs are durably Accepted, not Proposed and not falsely Implemented;
+- RFC 000, folder location, Status fields, index, and tooling agree;
+- only then may R1 corrective implementation begin.
 
 ## Milestone R1 — Corrective baseline
 
 Objective: implement RFC 019 and RFC 020 without changing solver semantics or
 runtime public APIs.
 
-Implementation order:
+Shared integration order:
 
-1. Restore the exact Rust 1.85 all-feature workspace check.
-2. Establish one canonical non-publishing release gate and tag convention.
-3. Wire CI/tag workflows to the canonical gate and documentation build.
-4. Refresh the normative requirements, external design, and roadmap through the
-   chosen corrective baseline.
-5. Update the threat model, RFC index, crate READMEs, and book navigation.
-6. Run semantic consistency review across requirements, RFCs, code, and tests.
+1. RFC 019 restores the exact Rust 1.85 all-feature workspace check and
+   establishes the release-gate/package skeleton.
+2. RFC 020 builds the traceability matrix, reconciles the normative documents,
+   and adds semantic currency checks to the developer aggregate.
+3. Shared `CHANGELOG.md`, `xtask`, evidence, and maintainer wording are
+   integrated against one corrective version/revision.
+4. RFC 019's final source-tree/package/clean-extraction release gate runs only
+   after RFC 020 is integrated.
+5. Both closeouts cite the same revision and corrective version.
+
+Parallel authoring is allowed after R0.5, but RFC 019 must not certify a package
+that predates RFC 020's normative reconciliation.
 
 Exit criteria:
 
