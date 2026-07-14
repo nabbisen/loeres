@@ -8,7 +8,8 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `done/`, and 
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [019](proposed/019-release-integrity-and-msrv-recovery.md) | Release Integrity and MSRV Recovery | Proposed | Architecture recovery R0-R2: restore Rust 1.85, canonical unprefixed tags, complete tagged-revision gates, package/clean-extraction evidence. [Handoff](handoffs/019-release-integrity-and-msrv-recovery/implementation-handoff.md). |
+| [020](proposed/020-normative-documentation-authority-and-currency.md) | Normative Documentation Authority and Currency | Proposed | Architecture recovery R0-R2: establish authority/conflict rules and reconcile the apex trio, threat model, indexes, and READMEs with v0.20.x. [Handoff](handoffs/020-normative-documentation-authority-and-currency/implementation-handoff.md). |
 
 ## Done RFCs
 

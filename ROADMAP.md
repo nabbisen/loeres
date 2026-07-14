@@ -5,6 +5,15 @@ automated verification, not by calendar dates. The authoritative, detailed plan
 lives in [`docs/specs/loeres-roadmap-milestones-v1.md`](docs/specs/loeres-roadmap-milestones-v1.md);
 this file is a short summary.
 
+> **Architecture recovery notice (2026-07-15).** An independent architecture
+> audit found four blockers in the v0.20.0 baseline: broken declared MSRV,
+> release-tag/workflow mismatch, incomplete tag-revision gates, and materially
+> stale normative specifications. v0.20.0 remains **No-Go** for release-readiness
+> claims. The dependency-gated corrective schedule is the
+> [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). Proposed RFC
+> 019 and RFC 020 own the blocking recovery. New public-boundary implementation
+> waits until their corrective baseline and release evidence close.
+
 ## Phases
 
 - **Phase 0 — Repository & policy foundation.** Workspace skeleton, crate layout,
@@ -147,3 +156,5 @@ cluster `ValidateAllInputs` baselines; fail-closed cases compare structured
 9. RFC 013 — conformance corpus and numerical parity policy. **Resolved — implemented (v0.18.0); enforced smoke corpus for device/cluster projected-first-order parity, with extended/adversarial placeholders staged.**
 10. RFC 015 — trusted pipeline validation cache. **Resolved — implemented (v0.19.0); cluster-only model identity, mutation epochs, validation evidence cache, and carrier-only cached `f64` projected-first-order solving, with fail-closed mutation epochs.**
 11. RFC 017 — trusted/cache conformance fixtures. **Resolved — implemented (v0.20.0); enforced smoke fixtures now cover RFC 015 validation-cache hit/miss, stale trust, scan-retention, and cache-insert rejection behavior.**
+12. RFC 019 — release integrity and MSRV recovery. **Proposed — blocks release-readiness claims; owns audit blockers B1-B3 and recovery milestones R0-R2.**
+13. RFC 020 — normative documentation authority and currency. **Proposed — blocks new public-boundary implementation; owns audit blocker B4 and the apex/threat-model/index reconciliation.**

@@ -11,6 +11,13 @@ contributors edit those documents directly; readers can browse them here.
 
 ## Specifications (`docs/specs/`)
 
+> **Currency warning.** The apex trio currently describes the v0.13.1 baseline
+> and is undergoing a proposed recovery reconciliation. Until RFC 020 is
+> implemented, use the implemented RFCs and current repository state to detect
+> conflicts, and stop affected public-boundary work rather than silently choosing
+> one contradictory source. See the
+> [Architecture Recovery Roadmap](recovery-roadmap.md).
+
 - [Requirements](https://github.com/nabbisen/loeres/blob/main/docs/specs/loeres-requirements-v1.md)
 - [External Design](https://github.com/nabbisen/loeres/blob/main/docs/specs/loeres-external-design-v1.md)
 - [Roadmap & Milestones](https://github.com/nabbisen/loeres/blob/main/docs/specs/loeres-roadmap-milestones-v1.md)
@@ -19,7 +26,7 @@ contributors edit those documents directly; readers can browse them here.
 
 - [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md)
 - [RFC lifecycle policy (RFC 000)](https://github.com/nabbisen/loeres/blob/main/rfcs/done/000-rfc-lifecycle-policy.md)
-- [Proposed RFCs](https://github.com/nabbisen/loeres/tree/main/rfcs/proposed) — Milestone 1–3 and cross-cutting contracts (001–014).
+- [Proposed RFCs](https://github.com/nabbisen/loeres/tree/main/rfcs/proposed) — current architecture-recovery designs (RFC 019 and RFC 020).
 
 ## Contributing
 
