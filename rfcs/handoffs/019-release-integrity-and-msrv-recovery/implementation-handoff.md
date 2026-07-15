@@ -69,8 +69,15 @@ files, stop and request scope review.
 
 ## 5. Tests and gates run
 
-No implementation gates have been run for this handoff because implementation
-has not started. This blocks RFC closeout but not design review.
+RFC 019 S1 completed on 2026-07-15. The host-only let-chain was replaced with
+Rust-1.85-compatible nested conditionals, and a focused unknown-command
+regression test was added. Observed evidence:
+
+- `cargo test -p xtask checks::target_profiles`: passed; 5 tests;
+- `cargo +1.85.0 check --workspace --all-features`: passed.
+
+This focused evidence closes the known syntax failure but does not satisfy the
+later complete release gate or RFC closeout.
 
 Required during implementation: execute the complete gate list and order in
 RFC 019 §11.3. The first focused evidence after the syntax repair is the exact
@@ -102,7 +109,6 @@ specific durable evidence location.
 
 ## 8. Recommended next step
 
-Begin R1 with the Rust 1.85 repair and observe the exact MSRV command before
-changing gate composition.
-Submit a review request after S3 workflow alignment and again with S6 complete
-source/extraction evidence.
+Proceed with the RFC 019 release-gate/package skeleton, then follow the shared
+integration order in the recovery roadmap. Submit a review request after S3
+workflow alignment and again with S6 complete source/extraction evidence.

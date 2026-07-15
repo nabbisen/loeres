@@ -207,6 +207,7 @@ does not provide a safe implementation sequence.
 
 The repository remains No-Go for release/readiness claims at v0.20.0. R0 design
 freeze and the owner-authorized R0.5 `accepted/` transition completed on
-2026-07-15. R1 corrective implementation is now authorized, beginning with RFC
-019's Rust 1.85 repair; the known full-workspace MSRV failure remains open until
-that first R1 step passes the exact command.
+2026-07-15. R1 corrective implementation began with RFC 019 S1: the host-only
+let-chain was rewritten without changing validation semantics, and the exact
+`cargo +1.85.0 check --workspace --all-features` command passed on 2026-07-15.
+The remaining RFC 019/RFC 020 implementation and R2 evidence blockers stay open.

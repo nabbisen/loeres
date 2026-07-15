@@ -346,11 +346,10 @@ fn validate_profiles(raw_profiles: Vec<RawProfile>) -> Result<Vec<Profile>, Stri
                 "profile `{name}`: buildable profiles require package, command, default_features, and features"
             ));
         }
-        if let Some(command) = raw.command.as_deref()
-            && command != "check"
-            && command != "build"
-        {
-            return Err(format!("profile `{name}`: unknown command `{command}`"));
+        if let Some(command) = raw.command.as_deref() {
+            if command != "check" && command != "build" {
+                return Err(format!("profile `{name}`: unknown command `{command}`"));
+            }
         }
         out.push(Profile {
             name,
@@ -538,5 +537,31 @@ conformance_group = "x"
         .unwrap();
         assert_eq!(profiles.len(), 1);
         assert_eq!(profiles[0].class, ProfileClass::DocumentedOnly);
+    }
+
+    #[test]
+    fn manifest_rejects_unknown_build_command() {
+        let err = parse_manifest(
+            r#"
+schema_version = 1
+
+[[profiles]]
+name = "x"
+class = "mandatory"
+environment = "cluster"
+target = "host"
+package = "loeres-cluster"
+command = "run"
+default_features = true
+features = []
+panic_strategy = "target-default"
+fpu = "host"
+scalar_family = "host"
+size_budget_group = "x"
+conformance_group = "x"
+"#,
+        )
+        .unwrap_err();
+        assert!(err.contains("unknown command `run`"));
     }
 }
