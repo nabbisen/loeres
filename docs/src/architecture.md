@@ -6,11 +6,22 @@ Loeres is a Cargo workspace of five public crates.
 
 | Crate | Environment | Responsibility |
 |---|---|---|
-| `loeres` | `#![no_std]`, no `alloc` | Mathematical contracts: scalar capabilities, vector/matrix access, problem families, solver outcome/status, dimensions, allocation-free errors. Defines no storage. |
+| `loeres` | `#![no_std]`, no `alloc` | Implemented scalar, vector/matrix access, solver outcome/status, validation, dimension, error, and diagnostic contracts. The `problem` namespace is reserved; no generic problem-family contract ships. Defines no storage. |
 | `loeres-backend-std` | `std` | Dynamic dense/sparse storage adapters and server math adapters. |
 | `loeres-backend-static` | `#![no_std]`, no `alloc` | Fixed-size owned storage, borrowed static views, typed workspace blocks. |
 | `loeres-cluster` | `std` | Server-side solving: dynamic models, batch execution, cancellation, parallelism, observability, optional FFI gateways. |
 | `loeres-device` | `#![no_std]`, no `alloc` | Deterministic edge solve entrypoints, bounded execution configuration, caller-owned typed workspace lifecycle. |
+
+Through v0.20.0, `loeres-device` and `loeres-cluster` implement one shared
+box/bound-constrained projected-first-order family. `loeres-cluster` also
+provides per-item orchestration/cancellation, metadata-only observation, a safe
+mock gateway seam, and a process-local validation evidence cache. It does not
+ship broad LP/QP/SOCP modeling, a concrete native adapter, a distributed cache,
+or broad throughput/multi-tenant stress evidence.
+
+The PFO problem traits are execution-crate contracts, not implementations of a
+generic `loeres::problem` family. PF-001 through PF-003 remain unimplemented,
+and PF-004 is represented only by solver-specific oracle traits.
 
 ## Dependency direction
 
@@ -51,3 +62,9 @@ builds for edge crates, dependency-graph checks, a public-API surface scanner
 (forbidden types and `dyn` in edge APIs), panic-path audits, size budgets,
 target-profile checks, and the cross-layer conformance corpus. See RFC 010 and
 the roadmap's verification section for the full gate list.
+
+`cargo xtask check` is developer evidence. The RFC 019
+`cargo xtask release-gate` is a distinct package/readiness gate and remains
+fail-closed until integrated documentation, tag/revision, clean-extraction, and
+approval evidence exists. Advisory and documented-only evidence is not reported
+as mandatory tested support.

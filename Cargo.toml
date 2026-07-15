@@ -10,8 +10,9 @@ members = [
 ]
 
 # Shared metadata inherited by every member via `field.workspace = true`.
-# Member crates are unpublished in the Phase 0 skeleton (no public API yet);
-# the repository release tag is the source of version truth (see CHANGELOG.md).
+# Member crates expose implemented public APIs through RFCs 001-018. Repository
+# state alone does not establish external registry publication; workspace
+# metadata and CHANGELOG.md define the release-local version baseline.
 [workspace.package]
 version = "0.20.0"
 edition = "2024"

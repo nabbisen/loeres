@@ -5,6 +5,29 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## Unreleased — RFC 019/RFC 020 architecture recovery
+
+The repository remains No-Go for release/readiness claims. These changes are
+documentation and release-integrity recovery work; they do not change runtime
+crate APIs, solver semantics, features, tags, publication, or package approval.
+
+### Documentation reconciliation
+
+- Reconciled the requirements, external design, and detailed roadmap through
+  the implemented v0.20.0 / RFC 001-018 baseline while keeping their shared
+  RFC 020 currency marker explicitly draft pending supporting documents,
+  semantic checks, and joint closeout.
+- Updated supporting threat/security, recovery, root/crate, RFC-index, book,
+  and manifest-comment surfaces to distinguish implemented controls from
+  narrow evidence, residual risk, and future work.
+- Corrected RFC 016's index record to
+  `ProjectedFirstOrderSolveRecord { report, checked_scope, finite }` and its
+  explicit finite-evidence semantics.
+- Removed external publication/version badges whose truth is not established
+  by repository state; external publication remains unverified.
+- Retained OQ-012 as open: Apache-2.0 warranty language is not a dedicated
+  safety-critical engineering-use disclaimer.
+
 ## [0.20.0] — 2026-07-04 — RFC 017: trusted/cache conformance fixtures
 
 RFC 017 is implemented as a verification-only conformance hardening release.

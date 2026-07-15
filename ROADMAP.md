@@ -12,8 +12,10 @@ this file is a short summary.
 > claims. The dependency-gated corrective schedule is the
 > [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). RFC 019 and
 > RFC 020 own the blocking recovery and are Accepted (design frozen
-> 2026-07-15). The owner-authorized R0.5 lifecycle activation is complete; R1
-> begins with the Rust 1.85 repair. New public-boundary implementation waits
+> 2026-07-15). R0.5 lifecycle activation, the RFC 019 S1-S3 baseline, the RFC
+> 020 S1 traceability matrix, and the reviewed S2 apex reconciliation are
+> owner-durable. R1 continues with supporting documentation and semantic checks;
+> the apex currency marker remains draft. New public-boundary implementation waits
 > until their corrective baseline and release evidence close.
 
 ## Phases
@@ -25,13 +27,25 @@ this file is a short summary.
   core solver outcome/status taxonomy (RFCs 001–003, 014).
 - **Phase 2 / Milestone 2 — Static backend & device.** Fixed-size storage,
   typed workspaces, and the first deterministic device solver (RFCs 004–006).
-- **Phase 3 / Milestone 3 — Dynamic backend & cluster.** Heap/sparse adapters,
-  async orchestration, observability, and the optional FFI gateway
-  (RFCs 007–009).
+- **Phase 3 / Milestone 3 — Dynamic backend & cluster.** Heap/CSR adapters,
+  orchestration, one dynamic PFO kernel, metadata observation, safe mock
+  gateway, and process-local validation cache (RFCs 007–009, 015, 016).
 - **Cross-layer.** Verification governance, target profiles, validation-state
-  policy, and the conformance corpus (RFCs 010–013).
+  policy, bounded conformance, and cache/trust fixtures (RFCs 010–013, 017).
 
 ## Current status (v0.20.0)
+
+RFCs 001-018 are implemented. The current numerical breadth is one
+box/bound-constrained projected-first-order family on device and cluster.
+Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
+throughput, or adversarial parity claim is made. Observability is metadata-only,
+the gateway is mock-only, and validation caching is process-local. RFCs 019/020
+are accepted but unshipped recovery contracts; package/release readiness is
+No-Go and `cargo xtask release-gate` remains intentionally fail-closed.
+
+The detailed entries below are chronological release history. Statements about
+what was “next,” absent, or green apply only to the named historical revision
+unless the current-status paragraph above repeats them.
 
 **Milestone 1 complete — RFC 003, RFC 014, RFC 001, and RFC 002 implemented.**
 `loeres` now ships the error/diagnostic topology (RFC 003), the solver
@@ -44,7 +58,7 @@ base-scalar ordering question is resolved: the architect chose **Direction B**
 (base excludes ordering; ordering is `OrderedScalar`), recorded as ADR-017, and
 Requirements §5.1.3 was amended to match. All gates pass; 62 tests.
 
-### Complete: Milestone 2 — static backend + device kernel (RFC 004–006)
+### Historical completion: Milestone 2 — static backend + device kernel (RFC 004–006)
 
 Milestone 1 (`loeres` core contracts) is closed. Milestone 2 is underway. The
 static storage engine (**RFC 004**) is now **implemented (v0.8.0)**:
@@ -81,7 +95,7 @@ and gradient via fixed-size slices; bounds via the contiguous slice with a
 per-element fallback); the access traits bound only `BaseScalar` except where
 they compare / project / tolerance-check.
 
-### In progress: Milestone 3 — dynamic backend & cluster (RFC 007 →)
+### Historical rollout: Milestone 3 — dynamic backend & cluster (RFC 007 →)
 
 Milestone 3 opens with the server-side dynamic storage foundation. **RFC 007** is
 now **implemented (v0.11.0)**: `loeres-backend-std` gains dynamic dense and

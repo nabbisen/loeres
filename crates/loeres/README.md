@@ -1,6 +1,10 @@
 # loeres
 
-Shared mathematical contracts for the Loeres family: stratified scalars, storage-agnostic vector/matrix access, problem families, the solver outcome/status taxonomy, dimensions, and allocation-free errors. Defines **no** storage, runtime, or OS assumptions.
+Shared mathematical contracts for the Loeres family: stratified scalars,
+storage-agnostic vector/matrix access, solver outcome/status and validation
+vocabulary, dimensions, and allocation-free errors/diagnostics. Defines **no**
+storage, runtime, or OS assumptions. The `problem` namespace is reserved and
+ships no generic public LP/QP/SOCP/problem-family contract.
 
 - **Environment:** `#![no_std]`, no `alloc`
 - **Depends on:** nothing (defines contracts only)
@@ -8,8 +12,8 @@ Shared mathematical contracts for the Loeres family: stratified scalars, storage
   tiers), `access` / `dimension` (RFC 002, storage-agnostic vector/matrix
   contracts + views), `error` / `diagnostic` (RFC 003, allocation-free error
   topology), `solver` (RFC 014, outcome/status taxonomy), and `validation`
-  (RFC 012, the validation-state vocabulary). `problem` remains a documented
-  placeholder pending its owning RFC.
+  (RFC 012, the validation-state vocabulary). `problem` remains a reserved
+  empty namespace pending a separately accepted generic-family RFC.
 
 See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)
 chapter, and the [RFC index](../../rfcs/README.md).

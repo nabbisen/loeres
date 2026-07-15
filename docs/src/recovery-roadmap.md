@@ -210,6 +210,9 @@ freeze and the owner-authorized R0.5 `accepted/` transition completed on
 2026-07-15. R1 corrective implementation began with RFC 019 S1: the host-only
 let-chain was rewritten without changing validation semantics, and the exact
 `cargo +1.85.0 check --workspace --all-features` command passed on 2026-07-15.
+RFC 020 S1's accepted traceability matrix and S2's reviewed atomic apex
+reconciliation are now owner-durable. The apex shared metadata intentionally
+remains draft while S3 supporting artifacts and S4 semantic checks proceed.
 The remaining RFC 019/RFC 020 implementation and R2 evidence blockers stay open.
 RFC 019 S2 adds a fail-closed candidate/package skeleton: it separates the
 developer aggregate from `release-gate`, validates candidate metadata and a

@@ -19,14 +19,23 @@ The core design principle is:
 > **Share mathematical contracts, not execution assumptions.**
 
 `loeres` defines the shared vocabulary — scalar capabilities, vector and
-matrix access contracts, problem families, solver outcome/status categories,
-dimensions, and an allocation-free error topology. It is `#![no_std]` and does
-not depend on `alloc`. Backends provide storage; execution crates provide the
-server and edge solve paths. A cloud service may use heap allocation, threads,
-and tracing without contaminating an embedded controller that depends only on
-the edge crates, and the reverse can never happen because edge-facing crates
-cannot depend on server-facing crates.
+matrix access contracts, solver outcome/status and validation categories,
+dimensions, and allocation-free error/diagnostic topology. Its `problem`
+namespace is reserved: no generic public LP/QP/SOCP/problem-family contract
+ships. Implemented PFO problem contracts belong to the device and cluster
+execution crates. `loeres` is `#![no_std]` and does not depend on `alloc`.
+Backends provide storage; execution crates provide solve paths. A cloud service
+may use heap allocation, threads, and tracing without contaminating an embedded
+controller that depends only on the edge crates, and the reverse can never
+happen because edge-facing crates cannot depend on server-facing crates.
 
 This book summarizes the architecture and threat model. The authoritative,
 detailed design lives in the specifications under `docs/specs/` and in the RFC
 set under `rfcs/`.
+
+The last reconciled repository release is v0.20.0: RFCs 001-018 are
+implemented, while accepted RFCs 019/020 are unshipped recovery work. Current
+solver breadth is one box/bound-constrained projected-first-order family on
+device and cluster. The gateway is mock-only, validation caching is
+process-local, and conformance is a bounded smoke corpus. The repository remains
+No-Go for package/release readiness while recovery evidence is incomplete.

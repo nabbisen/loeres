@@ -1,17 +1,13 @@
 # Loeres
 
-[![License](https://img.shields.io/github/license/nabbisen/loeres)](LICENSE)
-[![loeres Docs](https://docs.rs/loeres/badge.svg?version=latest)](https://docs.rs/loeres)    
-[![loeres crate](https://img.shields.io/crates/v/loeres?label=loeres)](https://crates.io/crates/loeres)
-[![loeres Deps Status](https://deps.rs/crate/loeres/latest/status.svg)](https://deps.rs/crate/loeres)
-[![loeres-backend-std crate](https://img.shields.io/crates/v/loeres-backend-std?label=loeres-backend-std)](https://crates.io/crates/loeres-backend-std)
-[![loeres-backend-std Deps Status](https://deps.rs/crate/loeres-backend-std/latest/status.svg)](https://deps.rs/crate/loeres-backend-std)
-[![loeres-backend-static crate](https://img.shields.io/crates/v/loeres-backend-static?label=loeres-backend-static)](https://crates.io/crates/loeres-backend-static)
-[![loeres-backend-static Deps Status](https://deps.rs/crate/loeres-backend-static/latest/status.svg)](https://deps.rs/crate/loeres-backend-static)    
-[![loeres-cluster crate](https://img.shields.io/crates/v/loeres-cluster?label=loeres-cluster)](https://crates.io/crates/loeres-cluster)
-[![loeres-cluster Deps Status](https://deps.rs/crate/loeres-cluster/latest/status.svg)](https://deps.rs/crate/loeres-cluster)
-[![loeres-device crate](https://img.shields.io/crates/v/loeres-device?label=loeres-device)](https://crates.io/crates/loeres-device)
-[![loeres-device Deps Status](https://deps.rs/crate/loeres-device/latest/status.svg)](https://deps.rs/crate/loeres-device)
+[License: Apache-2.0](LICENSE)
+
+> **Publication and recovery status.** Repository state does not establish that
+> every workspace crate or its hosted documentation is published or current, so
+> external registry/documentation badges are intentionally omitted. The last
+> reconciled repository release is v0.20.0. RFCs 019/020 recovery is accepted
+> but unshipped, the apex current marker remains draft, and release/package
+> readiness remains No-Go and fail-closed.
 
 **One optimization contract, two worlds — high-throughput server solving and deterministic `no_std` edge solving, without letting either contaminate the other.**
 
@@ -42,7 +38,7 @@ Build and verify from source:
 ```sh
 # toolchain, components, and the bare-metal target come from rust-toolchain.toml
 cargo check --workspace --all-features
-cargo xtask check        # aggregate verification gate
+cargo xtask check        # developer aggregate; not release approval
 ```
 
 The intended downstream import model (specified in the external design, §1.4) is environment-selected by crate choice:
@@ -61,16 +57,33 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 
 ## Design Notes
 
-- **Five crates, one contract.** `loeres` (`no_std`, no-`alloc`) defines scalar, vector/matrix access, problem, solver-outcome, error, and dimension contracts. Backends (`-backend-std`, `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own the server and edge solve paths. The dependency graph is acyclic and environment-separated; edge crates can never depend on server crates.
+- **Five crates, one contract.** `loeres` (`no_std`, no-`alloc`) defines scalar,
+  vector/matrix access, solver-outcome, validation, error, diagnostic, and
+  dimension contracts. Its `problem` namespace is reserved; no generic public
+  LP/QP/SOCP/problem-family contract ships. Implemented PFO problem contracts
+  belong to `loeres-device` and `loeres-cluster`. Backends (`-backend-std`,
+  `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own
+  solve paths. The dependency graph is acyclic and environment-separated.
 - **Stratified scalar capabilities** — six tiers (`BaseScalar`, `OrderedScalar`, `FiniteScalar`, `DivisibleScalar`, `MetricScalar`, `AdvancedNumericalScalar`) rather than one monolithic `Scalar` trait, so edge solvers are not forced to implement operations they never use. Ordering is split out of the base tier so order-free numeric types stay valid and floating-point `min`/`max` behavior is pinned.
 - **Status / error split.** Bounded solver progress (including non-convergence at the iteration cap) is a *status* returned in `Ok`; boundary rejection and fail-safe conditions are *errors* returned in `Err`.
 - **Caller-owned typed workspaces** on device — no hidden allocation; memory footprint is reviewable before execution.
 - **Target-scoped determinism.** Floating-point reproducibility claims are tied to documented target profiles, not asserted globally.
+- **Narrow current solver scope.** Device and cluster paths share one
+  box/bound-constrained projected-first-order family. The conformance suite is a
+  bounded smoke corpus; broad LP/QP/SOCP, large-N, and throughput parity are not
+  claimed.
+- **Bounded server integrations.** Observability is metadata-only, the gateway
+  is mock-only, and validation caching is process-local. No concrete native
+  adapter, persistent/distributed cache, or broad multi-tenant isolation
+  evidence ships.
 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — Milestone 1–3 and cross-cutting contracts. Implemented contracts live in [`rfcs/done/`](rfcs/done/) (the lifecycle policy `000`, plus `001`/`002`/`003`/`004`/`005`/`006`/`007`/`008`/`009`/`010`/`011`/`012`/`013`/`014`/`015`/`016`/`017`/`018`); proposed work lives under [`rfcs/proposed/`](rfcs/proposed/) when active. See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — implemented contracts `000`–`018` live in
+  [`rfcs/done/`](rfcs/done/); accepted, unshipped recovery RFCs `019`/`020`
+  live in [`rfcs/accepted/`](rfcs/accepted/); review-active work lives in
+  [`rfcs/proposed/`](rfcs/proposed/) when present. See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

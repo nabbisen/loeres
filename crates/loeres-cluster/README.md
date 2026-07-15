@@ -7,7 +7,8 @@ Server-side solving: dynamic models, batch with per-item failure isolation, orch
 - **Status:** RFC 008 (v0.13.0) populates the orchestration foundation in `batch`,
   `runtime`, and `solve`; RFC 016 (v0.14.0) adds the first std-side numerical kernel in
   `model` and `solve`; RFC 009 (v0.15.0) adds metadata observability and the safe
-  gateway boundary in `observe` and `gateway`.
+  gateway boundary in `observe` and `gateway`; RFC 015 (v0.19.0) adds the
+  process-local validation evidence cache.
 
 ## What's implemented
 
@@ -33,6 +34,10 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   `GatewayThreadSafety`, `GatewayFailureKind`) plus a pure Rust `MockGatewayJob`
   exercising status/error mapping and adapter-side rejection of unwrapped
   `SingleThreadOnly` backends. No concrete native solver adapter ships here.
+- `validation_cache` — model identity/mutation epochs,
+  `ValidationEvidenceCache`, `CacheableProjectedFirstOrderProblem`, and the
+  cached `f64` PFO solve path. Evidence is process-local and model-carrier
+  scoped; wrong identity/stale epoch fails closed.
 
 ### RFC 016 (v0.14.0) — std-side projected first-order kernel
 
@@ -47,10 +52,17 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   aligned with RFC 006; non-convergence at the cap is a *solved* `NotConverged`, never a
   failure; in-loop non-finite maps to `NumericalDomain` even under trust.
 
-Validation note: `ClusterValidationPolicy::ValidateAllInputs` and, in v1,
-`RespectBackendValidationState` both **scan inputs here** — there is no provided/cached
-backend-state channel yet (that is RFC 015-owned). `TrustedByCaller` skips the pre-loop
-finite scans for the asserted scope but never the hot-loop finiteness checks.
+Validation note: `ValidateAllInputs` scans eligible model-owned data.
+`RespectBackendValidationState` may consume provided/current RFC 015 evidence
+on the carrier-only cached path; missing or insufficient evidence falls back to
+validation, while wrong identity or stale epoch fails closed. `TrustedByCaller`
+may skip eligible pre-loop model finite scans for the asserted scope. None of
+these paths skips current-iterate, step-scale, cancellation, workspace/config,
+or hot-loop finiteness checks.
+
+The cache is neither persistent nor distributed. Metadata redaction is not
+proof of tenant isolation, and no broad throughput, large-N, memory-pressure,
+or multi-tenant stress claim is made.
 
 ## Features
 
