@@ -67,8 +67,24 @@ Runtime crate production source is evidence to inspect, not a target to edit.
 
 ## 5. Tests and gates run
 
-No reconciliation gates have been run for this handoff because implementation
-has not started. This blocks RFC closeout but not design review.
+RFC 020 S1 produced
+`docs/specs/loeres-reconciliation-traceability-v020.md` before editing apex
+prose. The matrix maps requirements/design sections, stable ID groups, RFCs
+001-018, current crate roots, manifests, tests, and verification tooling. It
+also records candidate amendments in RFC 020 §12.8's required schema and keeps
+unapproved semantic changes as stop conditions.
+
+S1 inventory commands inspected apex headings/IDs, RFC statuses and summaries,
+crate root exports, feature manifests, the threat model, root/crate READMEs,
+and known stale phrases. No runtime source was edited.
+
+The first S1 architecture review required bounded traceability corrections.
+The matrix now explicitly maps SEC-D-001..007 and OQ-001..012; separates RFC
+008 server budgets/failure, RFC 009 observability, residual multi-tenant duties,
+edge FFI prohibitions, and future server FFI obligations; marks PF-001..003
+unimplemented and PF-004 only partially covered by solver-specific traits; and
+adds REC-015 for stale root/crate manifest comments while keeping publication
+status externally uncertain.
 
 Required during implementation:
 
@@ -106,7 +122,7 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
 
 ## 8. Recommended next step
 
-Begin R1 by building the traceability matrix before editing prose. Submit the
-apex trio as one
-review point, then supporting docs/checks as a second, and close only with RFC
-019's complete release evidence.
+Submit the S1 traceability matrix for architecture review before editing apex
+prose. After acceptance, reconcile the apex trio atomically, then submit it as
+the next review point. Supporting docs/checks follow as a second implementation
+review, and closeout still requires RFC 019's complete release evidence.
