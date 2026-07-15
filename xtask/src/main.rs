@@ -4,8 +4,8 @@
 //! library crate (external design §1.1). It hosts the verification gates that
 //! keep the server/edge boundary intact.
 //!
-//! RFC 010 defines `check` as the aggregate release gate and `release-gate` as
-//! an alias for CI clarity.
+//! RFC 010 defines `check` as the developer aggregate. Accepted RFC 019
+//! separates `release-gate` into a complete, non-publishing candidate gate.
 
 mod checks;
 
@@ -31,8 +31,8 @@ fn main() -> ExitCode {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     let cmd = args.first().map(String::as_str);
     let ok = match cmd {
-        Some("check") => checks::release_gate::run("check"),
-        Some("release-gate") => checks::release_gate::run("release-gate"),
+        Some("check") => checks::release_gate::run_developer(),
+        Some("release-gate") => checks::release_gate::run_release(),
         Some("zero-bleed") => checks::zero_bleed::run(),
         Some("no-std") => checks::no_std::run(),
         Some("check-rfcs") => checks::check_rfcs::run(),

@@ -79,6 +79,23 @@ regression test was added. Observed evidence:
 This focused evidence closes the known syntax failure but does not satisfy the
 later complete release gate or RFC closeout.
 
+RFC 019 S2 then established the fail-closed release-candidate skeleton. It
+separates `check` from `release-gate`, parses stable unprefixed SemVer, checks
+version/changelog/tag/cleanliness preconditions, and derives a sorted
+regular-file manifest from `git ls-tree -rz --full-tree HEAD`. Unsafe,
+excluded, duplicate, link, and special-entry candidates are rejected. Package
+construction and clean-extraction certification remain deliberately disabled
+until RFC 020 integration.
+
+Additional observed S2 evidence:
+
+- `cargo test -p xtask checks::release_gate`: passed; 3 tests;
+- `cargo +1.85.0 test -p xtask checks::release_gate`: passed; 3 tests;
+- `cargo +1.85.0 check --workspace --all-features`: passed;
+- `cargo clippy -p xtask --all-targets -- -D warnings`: passed;
+- dirty-tree `cargo xtask release-gate`: failed closed before packaging, as
+  required.
+
 Required during implementation: execute the complete gate list and order in
 RFC 019 §11.3. The first focused evidence after the syntax repair is the exact
 Rust 1.85 all-feature workspace check; it does not replace the later complete
@@ -109,6 +126,7 @@ specific durable evidence location.
 
 ## 8. Recommended next step
 
-Proceed with the RFC 019 release-gate/package skeleton, then follow the shared
-integration order in the recovery roadmap. Submit a review request after S3
-workflow alignment and again with S6 complete source/extraction evidence.
+Proceed with S3 workflow alignment while preserving the fail-closed package
+boundary, then follow the shared integration order in the recovery roadmap.
+Submit a review request after S3 and again with S6 complete source/extraction
+evidence.

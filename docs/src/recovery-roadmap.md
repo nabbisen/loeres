@@ -211,3 +211,7 @@ freeze and the owner-authorized R0.5 `accepted/` transition completed on
 let-chain was rewritten without changing validation semantics, and the exact
 `cargo +1.85.0 check --workspace --all-features` command passed on 2026-07-15.
 The remaining RFC 019/RFC 020 implementation and R2 evidence blockers stay open.
+RFC 019 S2 adds a fail-closed candidate/package skeleton: it separates the
+developer aggregate from `release-gate`, validates candidate metadata and a
+commit-derived regular-file manifest, and deliberately refuses certification
+until RFC 020 reconciliation reaches the shared integration point.

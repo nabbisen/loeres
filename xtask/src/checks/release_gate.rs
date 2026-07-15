@@ -1,11 +1,38 @@
-//! Aggregate RFC 010 release gate.
+//! RFC 010 developer aggregate and RFC 019 release-candidate orchestration.
+
+use std::env;
+use std::path::{Component, Path};
+use std::process::Command;
 
 use super::{
     basic, check_rfcs, conformance, feature_matrix, link_audit, no_std, panic_audit, public_api,
     size_budget, target_profiles, unsafe_audit, zero_bleed,
 };
 
-pub fn run(name: &str) -> bool {
+pub fn run_developer() -> bool {
+    run_developer_named("check")
+}
+
+/// Run the fail-closed RFC 019 S2 candidate skeleton.
+///
+/// Packaging and clean-extraction certification stay disabled until the RFC
+/// 020 reconciliation is integrated, as required by the recovery roadmap.
+pub fn run_release() -> bool {
+    eprintln!("[release-gate] RFC 019 candidate preconditions");
+    let preflight = release_preflight();
+    if !preflight {
+        eprintln!("[release-gate] FAIL (candidate preconditions not established)");
+        return false;
+    }
+
+    eprintln!(
+        "[release-gate] FAIL CLOSED: package and clean-extraction certification \
+         activate only after RFC 020 integration"
+    );
+    false
+}
+
+fn run_developer_named(name: &str) -> bool {
     eprintln!("[{name}] running RFC 010 aggregate gates");
     let results = [
         ("host-check", GateKind::Enforced, basic::run()),
@@ -25,13 +52,220 @@ pub fn run(name: &str) -> bool {
         ("conformance", GateKind::Enforced, conformance::run(&[])),
         ("link-audit", GateKind::Enforced, link_audit::run()),
     ];
-    let ok = results.iter().all(|(_, _, r)| *r);
+    let ok = results.iter().all(|(_, _, result)| *result);
     eprintln!("[{name}] summary:");
-    for (name, kind, r) in results {
-        eprintln!("  {name}: {}", kind.status(r));
+    for (gate, kind, result) in results {
+        eprintln!("  {gate}: {}", kind.status(result));
     }
     eprintln!("[{name}] {}", if ok { "PASS" } else { "FAIL" });
     ok
+}
+
+fn release_preflight() -> bool {
+    let version = match workspace_version() {
+        Ok(version) => version,
+        Err(error) => {
+            eprintln!("  VERSION: {error}");
+            return false;
+        }
+    };
+    if let Err(error) = require_single_changelog_heading(&version) {
+        eprintln!("  CHANGELOG: {error}");
+        return false;
+    }
+    if let Err(error) = validate_ci_tag(&version) {
+        eprintln!("  TAG: {error}");
+        return false;
+    }
+    if !git_success(&["diff", "--quiet"]) || !git_success(&["diff", "--cached", "--quiet"]) {
+        eprintln!("  CLEANLINESS: staged or unstaged tracked changes exist");
+        return false;
+    }
+    let entries = match tracked_manifest() {
+        Ok(entries) => entries,
+        Err(error) => {
+            eprintln!("  MANIFEST: {error}");
+            return false;
+        }
+    };
+    eprintln!("  version: {version}");
+    eprintln!("  tracked regular files: {}", entries.len());
+    eprintln!("  candidate identity: local dry run or validated CI tag");
+    true
+}
+
+fn workspace_version() -> Result<String, String> {
+    let source = std::fs::read_to_string("Cargo.toml")
+        .map_err(|error| format!("cannot read Cargo.toml: {error}"))?;
+    let document = source
+        .parse::<toml::Value>()
+        .map_err(|error| format!("cannot parse Cargo.toml: {error}"))?;
+    let version = document
+        .get("workspace")
+        .and_then(|workspace| workspace.get("package"))
+        .and_then(|package| package.get("version"))
+        .and_then(toml::Value::as_str)
+        .ok_or_else(|| "missing workspace.package.version".to_owned())?;
+    parse_stable_version(version)?;
+    Ok(version.to_owned())
+}
+
+fn require_single_changelog_heading(version: &str) -> Result<(), String> {
+    let source = std::fs::read_to_string("CHANGELOG.md")
+        .map_err(|error| format!("cannot read CHANGELOG.md: {error}"))?;
+    let expected = format!("## [{version}]");
+    let count = source
+        .lines()
+        .filter(|line| {
+            line.strip_prefix(&expected)
+                .map(|suffix| suffix.is_empty() || suffix.starts_with(char::is_whitespace))
+                .unwrap_or(false)
+        })
+        .count();
+    if count == 1 {
+        Ok(())
+    } else {
+        Err(format!(
+            "expected exactly one `{expected}` heading, found {count}"
+        ))
+    }
+}
+
+fn validate_ci_tag(version: &str) -> Result<(), String> {
+    match (env::var("GITHUB_REF_TYPE"), env::var("GITHUB_REF_NAME")) {
+        (Ok(kind), Ok(tag)) if kind == "tag" => {
+            parse_stable_version(&tag)?;
+            if tag != version {
+                return Err(format!("tag `{tag}` does not match version `{version}`"));
+            }
+            let reference = format!("refs/tags/{tag}^{{commit}}");
+            let tag_commit = git_output(&["rev-parse", &reference])?;
+            let head = git_output(&["rev-parse", "HEAD"])?;
+            if tag_commit != head {
+                return Err(format!(
+                    "peeled tag {tag_commit} does not equal HEAD {head}"
+                ));
+            }
+            Ok(())
+        }
+        (Ok(kind), _) if kind == "tag" => Err("GITHUB_REF_NAME is missing for tag run".to_owned()),
+        _ => {
+            eprintln!("  tag assertion: not performed (local non-tagged dry run)");
+            Ok(())
+        }
+    }
+}
+
+fn parse_stable_version(value: &str) -> Result<(u64, u64, u64), String> {
+    let parts = value.split('.').collect::<Vec<_>>();
+    if parts.len() != 3 {
+        return Err(format!("`{value}` is not stable MAJOR.MINOR.PATCH"));
+    }
+    let parse = |part: &str| -> Result<u64, String> {
+        if part.is_empty()
+            || !part.bytes().all(|byte| byte.is_ascii_digit())
+            || (part.len() > 1 && part.starts_with('0'))
+        {
+            return Err(format!("`{value}` is not stable MAJOR.MINOR.PATCH"));
+        }
+        part.parse::<u64>()
+            .map_err(|_| format!("`{value}` contains an overflowing component"))
+    };
+    Ok((parse(parts[0])?, parse(parts[1])?, parse(parts[2])?))
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct TrackedEntry {
+    mode: String,
+    object: String,
+    path: String,
+}
+
+fn tracked_manifest() -> Result<Vec<TrackedEntry>, String> {
+    let output = Command::new("git")
+        .args(["ls-tree", "-rz", "--full-tree", "HEAD"])
+        .output()
+        .map_err(|error| format!("cannot run git ls-tree: {error}"))?;
+    if !output.status.success() {
+        return Err("git ls-tree failed".to_owned());
+    }
+    parse_tracked_manifest(&output.stdout)
+}
+
+fn parse_tracked_manifest(output: &[u8]) -> Result<Vec<TrackedEntry>, String> {
+    let mut entries = Vec::new();
+    for raw in output
+        .split(|byte| *byte == 0)
+        .filter(|entry| !entry.is_empty())
+    {
+        let record = std::str::from_utf8(raw)
+            .map_err(|_| "tracked path or metadata is not UTF-8".to_owned())?;
+        let (metadata, path) = record
+            .split_once('\t')
+            .ok_or_else(|| format!("malformed git ls-tree record `{record}`"))?;
+        let fields = metadata.split_whitespace().collect::<Vec<_>>();
+        if fields.len() != 3 || fields[1] != "blob" {
+            return Err(format!("unsupported tracked entry `{record}`"));
+        }
+        if fields[0] != "100644" && fields[0] != "100755" {
+            return Err(format!(
+                "non-regular tracked mode `{}` at `{path}`",
+                fields[0]
+            ));
+        }
+        validate_archive_path(path)?;
+        entries.push(TrackedEntry {
+            mode: fields[0].to_owned(),
+            object: fields[2].to_owned(),
+            path: path.to_owned(),
+        });
+    }
+    entries.sort_by(|left, right| left.path.cmp(&right.path));
+    if entries.windows(2).any(|pair| pair[0].path == pair[1].path) {
+        return Err("duplicate tracked path".to_owned());
+    }
+    Ok(entries)
+}
+
+fn validate_archive_path(value: &str) -> Result<(), String> {
+    let path = Path::new(value);
+    if value.contains('\\') || path.is_absolute() {
+        return Err(format!("unsafe archive path `{value}`"));
+    }
+    if path
+        .components()
+        .any(|component| !matches!(component, Component::Normal(_)))
+    {
+        return Err(format!("unsafe archive path `{value}`"));
+    }
+    let forbidden = [".git", ".git-exclude", "target", "docs/book"];
+    if forbidden
+        .iter()
+        .any(|prefix| path == Path::new(prefix) || path.starts_with(prefix))
+        || value.ends_with(".tar.gz")
+    {
+        return Err(format!("excluded archive path `{value}`"));
+    }
+    Ok(())
+}
+
+fn git_success(args: &[&str]) -> bool {
+    Command::new("git")
+        .args(args)
+        .status()
+        .map(|status| status.success())
+        .unwrap_or(false)
+}
+
+fn git_output(args: &[&str]) -> Result<String, String> {
+    let output = Command::new("git")
+        .args(args)
+        .output()
+        .map_err(|error| format!("cannot run git {}: {error}", args.join(" ")))?;
+    if !output.status.success() {
+        return Err(format!("git {} failed", args.join(" ")));
+    }
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_owned())
 }
 
 #[derive(Copy, Clone)]
@@ -48,5 +282,61 @@ impl GateKind {
             (Self::Advisory, true) => "advisory baseline reported",
             (Self::Advisory, false) => "FAIL",
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{parse_stable_version, parse_tracked_manifest, validate_archive_path};
+
+    #[test]
+    fn canonical_tags_are_stable_unprefixed_semver() {
+        assert_eq!(parse_stable_version("0.20.1"), Ok((0, 20, 1)));
+        assert_eq!(parse_stable_version("1.0.0"), Ok((1, 0, 0)));
+        for invalid in ["v0.20.1", "0.20", "release-0.20.1", "01.0.0", "1.0.0-rc.1"] {
+            assert!(
+                parse_stable_version(invalid).is_err(),
+                "accepted `{invalid}`"
+            );
+        }
+    }
+
+    #[test]
+    fn tracked_manifest_accepts_only_regular_unique_safe_paths() {
+        let input = b"100755 blob bbbb\tscripts/check.sh\0\
+                      100644 blob aaaa\tCargo.toml\0";
+        let entries = parse_tracked_manifest(input).unwrap();
+        assert_eq!(entries[0].path, "Cargo.toml");
+        assert_eq!(entries[1].path, "scripts/check.sh");
+
+        assert!(parse_tracked_manifest(b"120000 blob aaaa\tlink\0").is_err());
+        assert!(
+            parse_tracked_manifest(
+                b"100644 blob aaaa\tCargo.toml\0\
+              100644 blob bbbb\tCargo.toml\0"
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn archive_paths_reject_escape_and_excluded_content() {
+        for invalid in [
+            "/absolute",
+            "../escape",
+            "docs/../escape",
+            "windows\\path",
+            ".git/config",
+            ".git-exclude/review.md",
+            "target/debug/file",
+            "docs/book/index.html",
+            "loeres-v0.20.0.tar.gz",
+        ] {
+            assert!(
+                validate_archive_path(invalid).is_err(),
+                "accepted `{invalid}`"
+            );
+        }
+        assert!(validate_archive_path("crates/loeres/src/lib.rs").is_ok());
     }
 }

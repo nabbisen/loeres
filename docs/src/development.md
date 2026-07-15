@@ -29,8 +29,8 @@ cargo clippy --workspace --all-features -- -D warnings
 ```sh
 cargo xtask zero-bleed     # no forbidden server <-> edge dependency edge exists
 cargo xtask no-std         # edge crates build for thumbv7em-none-eabihf (no std/alloc)
-cargo xtask check          # canonical aggregate release gate
-cargo xtask release-gate   # alias for cargo xtask check
+cargo xtask check          # canonical developer architecture aggregate
+cargo xtask release-gate   # fail-closed RFC 019 candidate gate; not a check alias
 ```
 
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
