@@ -1,8 +1,8 @@
 # RFC 020 - Implementation Handoff
 
-**RFC.** [`020-normative-documentation-authority-and-currency.md`](../../proposed/020-normative-documentation-authority-and-currency.md)
-**Handoff state.** Proposed; implementation must wait for architecture
-design freeze, project-owner approval, and the RFC 000 `accepted/` transition.
+**RFC.** [`020-normative-documentation-authority-and-currency.md`](../../accepted/020-normative-documentation-authority-and-currency.md)
+**Handoff state.** Accepted; architecture design freeze, project-owner
+approval, and the RFC 000 `accepted/` transition completed on 2026-07-15.
 **Target.** Same corrective baseline as RFC 019 unless architecture review separates them.
 
 ## 1. Summary
@@ -106,8 +106,7 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
 
 ## 8. Recommended next step
 
-Request architecture approval of RFC 020's authority hierarchy. After freeze,
-complete the atomic `accepted/` lifecycle activation, then build the
-traceability matrix before editing prose. Submit the apex trio as one
+Begin R1 by building the traceability matrix before editing prose. Submit the
+apex trio as one
 review point, then supporting docs/checks as a second, and close only with RFC
 019's complete release evidence.

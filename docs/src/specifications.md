@@ -12,10 +12,10 @@ contributors edit those documents directly; readers can browse them here.
 ## Specifications (`docs/specs/`)
 
 > **Currency warning.** The apex trio currently describes the v0.13.1 baseline
-> and is undergoing a proposed recovery reconciliation. Until RFC 020 is
-> implemented, use the implemented RFCs and current repository state to detect
-> conflicts, and stop affected public-boundary work rather than silently choosing
-> one contradictory source. See the
+> and is undergoing an accepted, design-frozen recovery reconciliation. Until
+> RFC 020 is implemented, use the implemented RFCs and current repository state
+> to detect conflicts, and stop affected public-boundary work rather than
+> silently choosing one contradictory source. See the
 > [Architecture Recovery Roadmap](recovery-roadmap.md).
 
 - [Requirements](https://github.com/nabbisen/loeres/blob/main/docs/specs/loeres-requirements-v1.md)
@@ -26,7 +26,11 @@ contributors edit those documents directly; readers can browse them here.
 
 - [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md)
 - [RFC lifecycle policy (RFC 000)](https://github.com/nabbisen/loeres/blob/main/rfcs/done/000-rfc-lifecycle-policy.md)
-- [Proposed RFCs](https://github.com/nabbisen/loeres/tree/main/rfcs/proposed) — current architecture-recovery designs (RFC 019 and RFC 020).
+- Accepted recovery RFCs (release-local): `rfcs/accepted/` — RFC 019 and RFC
+  020 are design-frozen implementation contracts.
+- [Accepted RFCs on the moving development branch](https://github.com/nabbisen/loeres/tree/main/rfcs/accepted)
+  — navigation only; use the release-local path for normative review.
+- [Proposed RFCs](https://github.com/nabbisen/loeres/tree/main/rfcs/proposed) — review-active designs; none currently.
 
 ## Contributing
 

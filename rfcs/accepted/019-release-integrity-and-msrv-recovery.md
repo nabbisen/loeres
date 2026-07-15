@@ -1,6 +1,7 @@
 # RFC 019 - Release Integrity and MSRV Recovery
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-07-15)
+**Design approval.** Independent architecture R0 re-review accepted; project owner authorized R0.5 activation on 2026-07-15.
 **Tracks.** Architecture recovery milestones R0-R2; audit blockers B1-B3 and documentation-build evidence N5.
 **Touches.** `xtask/`, `.github/workflows/`, release documentation, packaging verification, MSRV evidence, and corrective-release records.
 

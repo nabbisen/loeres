@@ -74,6 +74,7 @@ An RFC is in exactly one of the following states at any time:
 |---|---|
 | **Draft** | The author is still writing. Not ready for review by anyone but the author and immediate collaborators. |
 | **Proposed** | Open for review and discussion. Implementer should *not* yet start work — the design may change. |
+| **Accepted** | Design review and project-owner approval are complete. Implementation may start, but shipped behavior must not yet be claimed. Used by projects adopting the 5-folder variant. |
 | **Implemented** | The work has shipped (in a release, on `main`, or wherever the project's stability marker lives). The RFC is now a historical record. |
 | **Withdrawn** | The author or maintainer decided not to pursue this RFC. The work will not happen. |
 | **Superseded** | A later RFC replaces this one. The replacement RFC's identifier is recorded in this RFC's Status field. |
@@ -150,8 +151,34 @@ otherwise — `accepted/` will sit empty in projects where the
 two events collapse, and an empty folder is a maintenance
 burden with no payoff.
 
-This RFC is written for the 4-folder variant. The 5-folder
+This RFC was originally written for the 4-folder variant. The 5-folder
 variant works identically with one extra transition.
+
+### Loeres adoption of the 5-folder variant
+
+Effective 2026-07-15, Loeres adopts the 5-folder variant because independent
+architecture review and project-owner implementation authorization are now
+distinct, auditable events. The Loeres layout is:
+
+```text
+rfcs/proposed/  # review-active; implementation forbidden
+rfcs/accepted/  # design frozen; implementation authorized
+rfcs/done/      # implemented/shipped
+rfcs/archive/   # withdrawn or superseded
+rfcs/draft/     # optional authoring state
+```
+
+For Loeres, an RFC moves from `proposed/` to `accepted/` only after independent
+architecture acceptance and explicit project-owner authorization. The same
+tracked change updates the RFC's Status field, `rfcs/README.md`, inbound links,
+and lifecycle checks. The committed folder move and metadata are the normative
+authorization record; ignored review bundles are supporting evidence only.
+
+`cargo xtask check-rfcs` validates Accepted status, index coverage, unique
+numbering, links, and the presence of every governed lifecycle directory. Loeres
+keeps `accepted/` present even when it has no RFCs, using `.gitkeep` when needed.
+Moving an RFC to `accepted/` does not claim implementation or release evidence.
+Only a later move to `done/` records shipped work.
 
 ## Status field inside each RFC
 
@@ -174,6 +201,14 @@ release tag in which the work shipped:
 
 ```markdown
 **Status.** Implemented (v1.4.0)
+```
+
+For Accepted RFCs in the 5-folder variant, the field records the freeze date
+and tracked approval event:
+
+```markdown
+**Status.** Accepted (design frozen 2026-07-15)
+**Design approval.** Independent architecture review accepted; project owner authorized implementation.
 ```
 
 For Superseded RFCs, the field names the replacement:
@@ -243,7 +278,7 @@ below), but for projects without CI on RFC files, periodic
 manual sweeps suffice.
 
 A common convention to make this less painful: when an RFC
-moves to `done/` or `archive/`, the maintainer also runs a
+moves to `accepted/`, `done/`, or `archive/`, the maintainer also runs a
 quick `grep -l "<NNN>-<slug>.md" rfcs/` to find inbound
 references and updates them in the same commit. The cost is
 seconds per move; the alternative — broken links accumulating
@@ -255,20 +290,34 @@ preview, which gives a second line of defence.
 
 ## Review and transitions
 
-The transitions between states are:
+The transitions between states depend on the selected folder variant:
 
 ```
-                    ┌─────────────────────┐
-                    ▼                     │
-[author writes]──▶ Draft? ──▶ Proposed ──▶ Implemented
-                                │             │
-                                ▼             ▼
-                          Withdrawn      (lives in done/)
-                          Superseded     forever
-                                │
-                                ▼
-                          (lives in archive/)
-                          forever
+5-folder (used by Loeres):
+
+[author writes] -> Draft? -> Proposed -> Accepted -> Implemented
+                              |            |             |
+                              +------------+             v
+                              |                     (lives in done/)
+                              v                          forever
+                        Withdrawn or
+                         Superseded
+                              |
+                              v
+                       (lives in archive/)
+                            forever
+
+4-folder:
+
+[author writes] -> Draft? -> Proposed ------------> Implemented
+                              |                          |
+                              v                          v
+                        Withdrawn or               (lives in done/)
+                         Superseded                     forever
+                              |
+                              v
+                       (lives in archive/)
+                            forever
 ```
 
 State transitions are operations performed by the maintainer
@@ -278,17 +327,22 @@ operations:
 - **Open.** New file in `proposed/` (or `draft/` if used).
   Triggered by an author opening a pull request adding the
   file.
-- **Accept and ship.** RFC is implemented; the implementer or
-  maintainer moves the file from `proposed/` to `done/` and
-  updates the Status field with the release tag. Done in the
-  same commit (or commit series) that ships the implementation.
-- **Withdraw.** The author or maintainer decides not to pursue
-  the RFC. Move to `archive/` with Status updated and a brief
-  reason added in the file.
+- **Accept/freeze (5-folder).** After design acceptance and implementation
+  authorization, move the RFC from `proposed/` to `accepted/` and update its
+  Status and approval metadata. For Loeres, this requires independent
+  architecture acceptance and explicit project-owner authorization in the same
+  tracked transition.
+- **Implement/ship.** Once the implementation has shipped, move the RFC to
+  `done/` and update the Status field with the release tag. In the 5-folder
+  variant the source is `accepted/`; in the 4-folder variant, acceptance and
+  shipment collapse and the source is `proposed/`.
+- **Withdraw.** The author or maintainer decides not to pursue the RFC. Move it
+  from `proposed/` or `accepted/` to `archive/`, update Status, and add a brief
+  rationale.
 - **Supersede.** A new RFC takes over the design space of an
-  older one. Move the older RFC to `archive/`, update its
-  Status to `Superseded by RFC NNN`, and add a reciprocal note
-  in the new RFC.
+  older one. Move the older RFC from `proposed/` or `accepted/` to `archive/`,
+  update its Status to `Superseded by RFC NNN`, and add a reciprocal note in the
+  new RFC.
 
 There is no "rejected" state distinct from "withdrawn". An RFC
 that the maintainer declines to accept is moved to `archive/`
@@ -303,10 +357,11 @@ the partial work captures the RFC's main design decision; any
 deferred work either gets a follow-up RFC or is logged in the
 RFC's Status section as an explicit "deferred" note.
 
-This is a judgement call. The principle: **don't keep an RFC
-in `proposed/` indefinitely just because one open question
-remains**. Move it to `done/` when the design has shipped, and
-record what didn't make it.
+This is a judgement call. The principle: **do not leave an RFC in a state that
+no longer describes its lifecycle event just because one open question
+remains**. In the 5-folder variant, move a frozen design to `accepted/`, then to
+`done/` when it ships. In the 4-folder variant, keep it in `proposed/` until it
+ships and then move it to `done/`. Record any deferred work in either case.
 
 ## README integrity
 
@@ -328,6 +383,11 @@ A typical structure:
 |----|-------|----------|
 | 042 | [Feature flags](./proposed/042-feature-flags.md) | High |
 | 047 | [Caching layer](./proposed/047-caching.md) | Medium |
+
+## Accepted
+| ID | Title | Frozen on |
+|----|-------|-----------|
+| 038 | [Request tracing](./accepted/038-request-tracing.md) | 2026-06-01 |
 
 ## Implemented
 | ID | Title | Shipped in |

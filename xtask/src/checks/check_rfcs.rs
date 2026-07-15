@@ -12,11 +12,12 @@ struct RfcFile {
     file_name: String,
 }
 
-const RFC_DIRS: &[&str] = &["proposed", "done", "archive"];
+const RFC_DIRS: &[&str] = &["proposed", "accepted", "done", "archive"];
 
 pub fn run() -> bool {
     eprintln!("[check-rfcs] RFC lifecycle and index integrity");
     let mut ok = true;
+    ok &= check_governed_directories();
     let rfcs = collect_rfcs();
     ok &= check_file_names_and_uniqueness(&rfcs);
     ok &= check_status_fields(&rfcs);
@@ -24,6 +25,26 @@ pub fn run() -> bool {
     ok &= check_markdown_links(&rfc_markdown_files());
     eprintln!("[check-rfcs] {}", if ok { "PASS" } else { "FAIL" });
     ok
+}
+
+fn check_governed_directories() -> bool {
+    let missing =
+        missing_governed_directories(|folder| fs::read_dir(Path::new("rfcs").join(folder)).is_ok());
+    for folder in &missing {
+        eprintln!("  MISSING OR UNREADABLE RFC DIRECTORY: rfcs/{folder}/");
+    }
+    missing.is_empty()
+}
+
+fn missing_governed_directories<F>(mut is_dir: F) -> Vec<&'static str>
+where
+    F: FnMut(&str) -> bool,
+{
+    RFC_DIRS
+        .iter()
+        .copied()
+        .filter(|folder| !is_dir(folder))
+        .collect()
 }
 
 fn collect_rfcs() -> Vec<RfcFile> {
@@ -111,11 +132,9 @@ fn check_status_fields(rfcs: &[RfcFile]) -> bool {
             }
         };
         let status = src.lines().find(|line| line.starts_with("**Status.**"));
-        let matches_folder = match (rfc.folder.as_str(), status) {
-            ("proposed", Some(line)) => line.contains("Proposed"),
-            ("done", Some(line)) => line.contains("Implemented"),
-            ("archive", Some(line)) => line.contains("Withdrawn") || line.contains("Superseded"),
-            (_, _) => false,
+        let matches_folder = match status {
+            Some(line) => status_matches_folder(&rfc.folder, line),
+            None => false,
         };
         if !matches_folder {
             eprintln!(
@@ -127,6 +146,24 @@ fn check_status_fields(rfcs: &[RfcFile]) -> bool {
         }
     }
     ok
+}
+
+fn status_matches_folder(folder: &str, status: &str) -> bool {
+    let Some(state) = status
+        .strip_prefix("**Status.** ")
+        .and_then(|value| value.split(|c: char| !c.is_ascii_alphabetic()).next())
+        .filter(|state| !state.is_empty())
+    else {
+        return false;
+    };
+
+    match folder {
+        "proposed" => state == "Proposed",
+        "accepted" => state == "Accepted",
+        "done" => state == "Implemented",
+        "archive" => state == "Withdrawn" || state == "Superseded",
+        _ => false,
+    }
 }
 
 fn check_readme_index(rfcs: &[RfcFile]) -> bool {
@@ -219,4 +256,67 @@ fn external_or_anchor(target: &str) -> bool {
         || target.starts_with("https://")
         || target.starts_with("mailto:")
         || target.starts_with('#')
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{RFC_DIRS, missing_governed_directories, status_matches_folder};
+
+    #[test]
+    fn accepted_is_a_governed_rfc_directory() {
+        assert!(RFC_DIRS.contains(&"accepted"));
+    }
+
+    #[test]
+    fn accepted_status_matches_only_the_accepted_folder() {
+        let status = "**Status.** Accepted (design frozen 2026-07-15)";
+        assert!(status_matches_folder("accepted", status));
+        assert!(!status_matches_folder("proposed", status));
+        assert!(!status_matches_folder("done", status));
+        assert!(!status_matches_folder("archive", status));
+    }
+
+    #[test]
+    fn lifecycle_status_requires_the_expected_leading_state_token() {
+        assert!(!status_matches_folder(
+            "accepted",
+            "**Status.** Proposed — not Accepted"
+        ));
+        assert!(!status_matches_folder(
+            "accepted",
+            "**Status.** Not Accepted"
+        ));
+        assert!(!status_matches_folder(
+            "proposed",
+            "**Status.** Accepted (design frozen 2026-07-15)"
+        ));
+        assert!(!status_matches_folder(
+            "accepted",
+            "**Status.**Accepted (missing required separator)"
+        ));
+    }
+
+    #[test]
+    fn every_lifecycle_state_uses_its_leading_token() {
+        assert!(status_matches_folder("proposed", "**Status.** Proposed"));
+        assert!(status_matches_folder("accepted", "**Status.** Accepted"));
+        assert!(status_matches_folder(
+            "done",
+            "**Status.** Implemented (v1.0.0)"
+        ));
+        assert!(status_matches_folder(
+            "archive",
+            "**Status.** Withdrawn — rationale"
+        ));
+        assert!(status_matches_folder(
+            "archive",
+            "**Status.** Superseded by RFC 042"
+        ));
+    }
+
+    #[test]
+    fn missing_governed_directory_fails_the_invariant() {
+        let missing = missing_governed_directories(|folder| folder != "accepted");
+        assert_eq!(missing, vec!["accepted"]);
+    }
 }

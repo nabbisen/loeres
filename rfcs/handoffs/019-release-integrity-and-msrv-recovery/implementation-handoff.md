@@ -1,8 +1,8 @@
 # RFC 019 - Implementation Handoff
 
-**RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../proposed/019-release-integrity-and-msrv-recovery.md)
-**Handoff state.** Proposed; implementation must wait for architecture
-design freeze, project-owner approval, and the RFC 000 `accepted/` transition.
+**RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../accepted/019-release-integrity-and-msrv-recovery.md)
+**Handoff state.** Accepted; architecture design freeze, project-owner
+approval, and the RFC 000 `accepted/` transition completed on 2026-07-15.
 **Target.** Corrective baseline after v0.20.0. No tag, commit, push, or publication is authorized by this handoff.
 
 ## 1. Summary
@@ -102,8 +102,7 @@ specific durable evidence location.
 
 ## 8. Recommended next step
 
-Request architecture approval of RFC 019. After freeze, implement the Rust 1.85
-repair first only after RFC 019 is in `rfcs/accepted/`, and observe the exact
-MSRV command before changing gate composition.
+Begin R1 with the Rust 1.85 repair and observe the exact MSRV command before
+changing gate composition.
 Submit a review request after S3 workflow alignment and again with S6 complete
 source/extraction evidence.

@@ -1,6 +1,7 @@
 # RFC 020 - Normative Documentation Authority and Currency
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-07-15)
+**Design approval.** Independent architecture R0 re-review accepted; project owner authorized R0.5 activation on 2026-07-15.
 **Tracks.** Architecture recovery milestones R0-R2; audit blocker B4 and documentation findings N1, N2, and N6.
 **Touches.** `docs/specs/`, `docs/src/`, `README.md`, `ROADMAP.md`, crate READMEs, `rfcs/README.md`, changelog cross-references, and documentation consistency checks.
 

@@ -10,9 +10,11 @@ this file is a short summary.
 > release-tag/workflow mismatch, incomplete tag-revision gates, and materially
 > stale normative specifications. v0.20.0 remains **No-Go** for release-readiness
 > claims. The dependency-gated corrective schedule is the
-> [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). Proposed RFC
-> 019 and RFC 020 own the blocking recovery. New public-boundary implementation
-> waits until their corrective baseline and release evidence close.
+> [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). RFC 019 and
+> RFC 020 own the blocking recovery and are Accepted (design frozen
+> 2026-07-15). The owner-authorized R0.5 lifecycle activation is complete; R1
+> begins with the Rust 1.85 repair. New public-boundary implementation waits
+> until their corrective baseline and release evidence close.
 
 ## Phases
 
@@ -156,5 +158,5 @@ cluster `ValidateAllInputs` baselines; fail-closed cases compare structured
 9. RFC 013 — conformance corpus and numerical parity policy. **Resolved — implemented (v0.18.0); enforced smoke corpus for device/cluster projected-first-order parity, with extended/adversarial placeholders staged.**
 10. RFC 015 — trusted pipeline validation cache. **Resolved — implemented (v0.19.0); cluster-only model identity, mutation epochs, validation evidence cache, and carrier-only cached `f64` projected-first-order solving, with fail-closed mutation epochs.**
 11. RFC 017 — trusted/cache conformance fixtures. **Resolved — implemented (v0.20.0); enforced smoke fixtures now cover RFC 015 validation-cache hit/miss, stale trust, scan-retention, and cache-insert rejection behavior.**
-12. RFC 019 — release integrity and MSRV recovery. **Proposed — blocks release-readiness claims; owns audit blockers B1-B3 and recovery milestones R0-R2.**
-13. RFC 020 — normative documentation authority and currency. **Proposed — blocks new public-boundary implementation; owns audit blocker B4 and the apex/threat-model/index reconciliation.**
+12. RFC 019 — release integrity and MSRV recovery. **Accepted (design frozen 2026-07-15) — R1 begins with the Rust 1.85 repair; owns audit blockers B1-B3 and recovery milestones R0-R2.**
+13. RFC 020 — normative documentation authority and currency. **Accepted (design frozen 2026-07-15) — owns audit blocker B4 and the apex/threat-model/index reconciliation; integrates before RFC 019's final release evidence.**

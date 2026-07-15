@@ -1,8 +1,8 @@
 # Architecture Recovery Roadmap
 
-Status: Proposed planning baseline following the independent architecture audit
-dated 2026-07-15. This document sequences corrective work; it does not claim
-that the blockers are already resolved.
+Status: Accepted recovery plan following the independent architecture audit and
+R0 design freeze dated 2026-07-15. R0.5 lifecycle activation is complete; this
+document does not claim that the R1/R2 blockers are already resolved.
 
 ## Purpose
 
@@ -27,8 +27,8 @@ The recovery must preserve:
 - no commits, tags, publication, or pushes without project-owner authorization.
 
 The independent audit is evidence for planning, not a replacement for project
-requirements or RFCs. Proposed RFCs 019 and 020 convert its blocking findings
-into reviewable project decisions.
+requirements or RFCs. Accepted RFCs 019 and 020 convert its blocking findings
+into frozen implementation contracts.
 
 ## Dependency schedule
 
@@ -205,6 +205,8 @@ does not provide a safe implementation sequence.
 
 ## Current disposition
 
-The repository remains No-Go for release/readiness claims at v0.20.0. Internal
-design work is allowed. Corrective implementation begins only after RFC 019 and
-RFC 020 receive architecture approval.
+The repository remains No-Go for release/readiness claims at v0.20.0. R0 design
+freeze and the owner-authorized R0.5 `accepted/` transition completed on
+2026-07-15. R1 corrective implementation is now authorized, beginning with RFC
+019's Rust 1.85 repair; the known full-workspace MSRV failure remains open until
+that first R1 step passes the exact command.
