@@ -1,37 +1,27 @@
 # Loeres External Design Specification v1
 
-Status: Accepted — Milestone 3 in progress (dynamic backend, validation vocabulary, cluster orchestration) (current as of v0.13.1)  
+Status: Accepted v1; RFC 020 S2 reconciliation draft (not yet the current marker)
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **Document currency.** Current as of repository release **v0.13.1**; the design is
-> **accepted** (no longer a draft). Implemented in `loeres` (`rfcs/done/`):
-> the error/diagnostic topology (RFC 003, v0.4.0); the solver outcome/status
-> taxonomy with the **status/error split** (RFC 014, v0.5.0 — see ED-014); the
-> six-tier scalar model with the base tier **excluding ordering** (RFC 001, v0.6.0
-> — see ED-004 and §2.2); and the storage-agnostic access contracts (RFC 002,
-> v0.7.0 — see ED-015), which **complete Milestone 1**. **Milestone 2 (static
-> backend + device) is complete:** the const-generic fixed-size static storage
-> engine (RFC 004, v0.8.0 — `loeres-backend-static` `FixedVector` / `FixedMatrix`
-> and contiguous static views); the caller-owned typed workspace mechanics
-> (RFC 005, v0.9.0 — `DeviceWorkspace` / `DeviceWorkspaceDiagnostic` /
-> `WorkspaceFor`, `DeviceSolveConfig` / `TimingMode`, and `WorkspaceFootprint`);
-> and the baseline deterministic device kernel (RFC 006, v0.10.0, hardened
-> v0.10.1 — the box/bound-constrained projected first-order solver). **Milestone 3
-> (dynamic backend + cluster) is in progress:** the dynamic dense/sparse storage
-> adapters (RFC 007, v0.11.0, hardened v0.11.1 — `loeres-backend-std` `dense` /
-> `sparse`); the core validation-state vocabulary (RFC 012, v0.12.0, hardened
-> v0.12.1 — `loeres::validation`: `ValidationScope`, `FiniteCoverage`, `TrustKind`,
-> `TrustToken`, `ValidationCoverage`, `TrustedByCaller`, `ValidationState`); and the
-> cluster orchestration foundation (RFC 008, v0.13.0, corrected v0.13.1 —
-> `loeres-cluster` `batch` / `runtime` / `solve`: the per-item batch contract,
-> a runtime-agnostic config / cancellation / executor layer, and the `ClusterJob`
-> dispatch seam). The cluster slice is orchestration **infrastructure, not a
-> production numerical cluster solver**: no std-side solver kernel exists yet and
-> the dynamic model builders of §3.2 are not yet shipped — `ClusterJob` is the seam
-> where a kernel attaches. Phase 0 (five-crate workspace plus `xtask`) is complete
-> (v0.3.0). The roadmap holds the authoritative live status.
+> **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
+> repository release: **v0.20.0**. Implemented scope: **RFCs 001-018** in
+> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020** in
+> `../../rfcs/accepted/`; this work is unshipped and in progress. Open proposals
+> are roadmap items only. Activation as the current marker is pending RFC 020 S3
+> supporting-document reconciliation, S4 semantic checks, and architecture
+> review. Until then, this block is a review candidate and does not assert that
+> repository documentation is fully current.
+>
+> The current cluster surface includes dynamic dense/CSR storage, bounded
+> orchestration, one dynamic box/bound-constrained projected-first-order kernel,
+> metadata-only observability, a safe mock gateway seam, and process-local
+> validation evidence caching. It does not ship broad dynamic LP/QP/SOCP model
+> builders, a concrete native solver adapter, a persistent/distributed cache, or
+> broad throughput/large-N/multi-tenant stress evidence. Target and conformance
+> evidence are scoped as described below. RFC 019 release packaging remains
+> fail-closed during joint recovery closeout.
 
 ---
 
@@ -110,6 +100,24 @@ The following points are deliberately not over-specified here:
 
 Those belong to the RFC sequence.
 
+### 0.4 Normative Authority, Paths, and Conflicts
+
+For a repository release, the release-local normative paths are
+`loeres-requirements-v1.md`, this document,
+`loeres-roadmap-milestones-v1.md`, and scope-specific implemented RFCs in
+`../../rfcs/done/`. Accepted RFCs in `../../rfcs/accepted/` are frozen
+implementation contracts but are not shipped truth; proposed RFCs in
+`../../rfcs/proposed/` are review contracts only. The detailed roadmap governs
+sequencing and status but cannot override requirements or an implemented RFC.
+Code and tests are implementation evidence, not automatic authority.
+
+When current normative artifacts conflict, work in the affected boundary must
+stop. The project must classify stale prose, implementation divergence, or
+intentional supersession; apply the later approved scope-specific RFC without
+silently weakening higher-level requirements; reconcile all affected normative
+documents atomically; and record the resolution and evidence. Neither code nor
+old apex prose silently wins.
+
 ---
 
 ## 1. Workspace & Integration Topography
@@ -136,7 +144,9 @@ loeres/
 │   │   └── verification.md
 │   └── book.toml
 ├── rfcs/
+│   ├── draft/
 │   ├── proposed/
+│   ├── accepted/
 │   ├── done/
 │   └── archive/
 ├── crates/
@@ -300,15 +310,18 @@ The static backend may provide both owned fixed arrays and borrowed views. Borro
 #### `loeres-cluster`
 
 ```text
-loeres_cluster::model       // dynamic model construction UX (planned; not yet populated)
-loeres_cluster::solve       // solve/batch entrypoints + the ClusterJob dispatch seam (RFC 008)
-loeres_cluster::batch       // per-item batch outcome contract (RFC 008)
-loeres_cluster::runtime     // execution config, cancellation, timeout, parallelism, validation policy (RFC 008)
-loeres_cluster::observe     // tracing/metrics/logging integration points (planned; RFC 009)
-loeres_cluster::gateway     // optional FFI/native solver gateways (planned; RFC 009)
+loeres_cluster::model             // dynamic PFO model, workspace, config, finite-evidence record
+loeres_cluster::solve             // PFO kernel, cached path, batch entrypoints, ClusterJob seam
+loeres_cluster::batch             // per-item batch outcome contract
+loeres_cluster::runtime           // config, cancellation, timeout, dispatch, validation policy
+loeres_cluster::observe           // metadata-only observer/event categories and redaction boundary
+loeres_cluster::gateway           // safe mock gateway categories; no native adapter
+loeres_cluster::validation_cache  // model identity/epoch evidence cache; process-local only
 ```
 
 `loeres-cluster` is allowed to be ergonomic, dynamic, and integration-rich.
+The implemented `model` surface is limited to the projected-first-order family;
+the broader LP/QP/SOCP builders described in §3.2 remain design targets.
 
 #### `loeres-device`
 
@@ -336,6 +349,9 @@ Feature flags must not collapse the server/edge boundary. In particular, no feat
 
 No `loeres` feature may change core error layout in a way that breaks device ABI expectations inside the same semver line.
 
+Current posture: `libm` and `fixed-point-hooks` are reserved/inert integration
+hooks; the shipped primitive scalar baseline does not depend on them.
+
 #### 1.6.2 `loeres-backend-static`
 
 | Feature | Default | Public meaning | Constraints |
@@ -346,6 +362,9 @@ No `loeres` feature may change core error layout in a way that breaks device ABI
 | `diagnostic-snapshot` | no | Enables compact numeric diagnostic snapshot structs | No strings, no logging framework |
 
 `owned-arrays` and `static-views` may be enabled together. Baseline borrowed adapters are limited to contiguous, simple access. Advanced view construction belongs behind `static-views`. The RFC for the static backend must define whether any advanced view should become default after v0.x experience.
+
+Current posture: `owned-arrays` is implemented. Advanced `static-views` and
+richer `diagnostic-snapshot` behavior remain reserved/deferred.
 
 #### 1.6.3 `loeres-device`
 
@@ -382,6 +401,10 @@ No `loeres` feature may change core error layout in a way that breaks device ABI
 
 Adapter features may coexist unless a later RFC records an incompatibility.
 
+Current posture: default `dense` and opt-in `sparse` are implemented. `serde`,
+`parallel-rayon`, `adapter-ndarray`, `adapter-nalgebra`, and `native-linalg` are
+reserved/inert; `view`, `batch`, and `adapter` modules remain placeholders.
+
 #### 1.6.5 `loeres-cluster`
 
 | Feature | Default | Public meaning | Constraints |
@@ -394,6 +417,12 @@ Adapter features may coexist unless a later RFC records an incompatibility.
 | `ffi-gateway` | no | Explicit opt-in gateway to native or legacy solvers | Server-only; audited boundary required |
 
 The baseline synchronous batch path is **unconditional** — there are no named `sync` / `batch` features (RFC 008 / D6). `ffi-gateway` must never be a default feature.
+
+Current posture: `parallel-rayon` and `async-tokio` execute implemented batch
+paths. The observability feature names are reserved because the bounded observer
+API is dependency-neutral. `serde` is inert. `ffi-gateway` is a reserved
+activation seam; the safe mock gateway is dependency-free and no native adapter
+ships.
 
 ### 1.7 Mutually Exclusive Configurations
 
@@ -445,6 +474,13 @@ Device documentation must distinguish:
 
 No v0.x device API may claim bit-for-bit reproducibility across all target triples unless a later verification document proves that claim.
 
+RFC 011 classifies `cluster-linux-host` and
+`device-thumbv7em-hardfloat` as **mandatory**, installed soft-float and RISC-V
+profiles as **advisory-installed**, and WASM/AArch64 profiles as
+**documented-only**. A listed profile is not necessarily executed evidence.
+These classes scope determinism, portability, and panic-averse claims; none is
+formal proof of panic freedom or universal numerical identity.
+
 ### 1.9 Verification Targets and Repository Automation
 
 The repository must include `xtask` commands or equivalent CI jobs for:
@@ -459,7 +495,12 @@ The repository must include `xtask` commands or equivalent CI jobs for:
 | target profile check | Baseline cluster and device target profiles |
 | docs examples check | Cluster examples and device examples separately |
 
-The exact tooling is an RFC subject. The external contract is that these checks exist and are visible to maintainers.
+`cargo xtask check` is the developer aggregate. The RFC 019 candidate
+`cargo xtask release-gate` is a distinct package/readiness command and remains
+fail-closed until joint RFC 019/RFC 020 closeout provides preflight,
+clean-extraction, tagged-revision, and approval evidence. Passing the developer
+aggregate does not establish release approval. Checks report enforced,
+advisory/reporting, documented-only, or owner-RFC-hook status as applicable.
 
 ---
 
@@ -665,7 +706,11 @@ The exact form may be enum-based or struct-based by RFC. It must remain allocati
 
 ## 3. Cluster Developer Interface
 
-As of RFC 008 (v0.13.x), the shipped cluster surface covers the orchestration contracts (`BatchItemOutcome`, `BatchSolveReport`, `BatchSummary`, `ClusterSolution`, `ClusterJob`, `ClusterSolveConfig`, `ClusterCancellationToken`, `ClusterValidationPolicy`, `ClusterError`, `solve_batch`). The dynamic model builders (§3.2) and a production std-side solver kernel remain planned surfaces; the categories named below are design targets, not all of which are populated yet.
+Through v0.20.0, the shipped cluster surface includes RFC 008 orchestration,
+RFC 016's dynamic box/bound-constrained projected-first-order model and kernel,
+RFC 009 metadata-only observation and safe mock gateway seam, and RFC 015's
+process-local validation evidence cache. The broader model and solver categories
+below remain design targets unless explicitly identified as implemented.
 
 ### 3.1 Cluster Design Objective
 
@@ -709,6 +754,12 @@ loeres_cluster::model::BatchModelSet
 ```
 
 Exact names are RFC subjects. The categories are required.
+
+**Current limitation.** RFC 016 implements
+`ClusterProjectedFirstOrderProblem` and its associated configuration, workspace,
+finite evidence, and solve record. It does not implement generic `DynamicLp`,
+`DynamicQp`, `DynamicSocp`, or builder categories. Quadratic smoke fixtures do
+not establish a public generic QP model contract.
 
 ### 3.3 Cluster Storage Binding
 
@@ -768,6 +819,14 @@ The public result must include:
 
 Batch solve APIs must use per-item outcome semantics by default. A batch containing many models should return an ordered collection of individual outcomes, so that one invalid, ill-conditioned, cancelled, or unsupported model does not force unrelated items to fail. A separate batch-level error may be returned only for failures that prevent the batch from being scheduled or represented at all, such as invalid global configuration, exhausted service budget before dispatch, or catastrophic backend failure.
 
+The implemented numerical path is
+`solve_projected_first_order_dyn` (plus its cached variant and
+`ClusterProjectedFirstOrderJob` adapter). It is one bounded solver family, not
+broad server-solver parity. Non-convergence is an `Ok(SolveReport)` status.
+RFC 012/RFC 015 validation evidence may avoid eligible model-owned rescans, but
+wrong identity or stale epoch fails closed and current-iterate and hot-loop
+numerical-domain checks are never skipped.
+
 ### 3.6 Observability Hooks
 
 `loeres-cluster::observe` must define opt-in public integration points for:
@@ -782,6 +841,11 @@ Batch solve APIs must use per-item outcome semantics by default. A batch contain
 
 Observability must be server-only. `loeres`, `loeres-backend-static`, and `loeres-device` must not expose public types from `tracing`, `log`, `metrics`, or similar frameworks.
 
+RFC 009 implements a bounded metadata observer API and redacted event
+categories. Baseline telemetry excludes model values and tenant identifiers and
+requires an explicit sink. This reduces disclosure risk but does not by itself
+prove multi-tenant isolation.
+
 ### 3.7 FFI Gateway Boundary
 
 `loeres-cluster::gateway` may provide optional adapters to native or legacy solvers.
@@ -794,6 +858,11 @@ Rules:
 - FFI gateway types must not appear in core problem contracts.
 - FFI results must be normalized into Loeres structured result/error categories at the cluster boundary.
 - FFI safety requirements must be covered by a later RFC before implementation.
+
+RFC 009 implements gateway policy types and `MockGatewayJob` only. No concrete
+native adapter ships. Memory ownership, licensing, thread-safety, native failure
+containment, and audit evidence remain activation gates for any future adapter;
+enabling `ffi-gateway` alone does not satisfy them.
 
 ### 3.8 Cluster Developer UX Example
 
@@ -1314,39 +1383,20 @@ access expensive. *(Design finalized in v0.6.1; implemented in v0.7.0.)*
 
 ## 7. RFC Roadmap Derived from This External Design
 
-The following RFC sequence should follow this external design. RFC references use the canonical flat numbering (RFC 000); the authoritative full sequencing, including the cross-cutting RFCs 010–013 and RFC 014, is maintained in the roadmap document.
+RFCs 001-018 are implemented and shipped through v0.20.0. RFC 019/RFC 020
+are accepted recovery contracts, not shipped behavior. The detailed roadmap is
+normative for sequencing/status and records historical departures.
 
-```mermaid
-graph TD
-    EDS[External Design Specification v1]
-
-    R11[RFC 001 Stratified Scalar Capability Model]
-    R12[RFC 002 Storage-Agnostic Matrix/Vector Contracts]
-    R13[RFC 003 Allocation-Free Error and State Topology]
-    R14[RFC 014 Core Solver Outcome and Status Taxonomy]
-
-    R21[RFC 004 Static Storage: Owned Arrays and Borrowed Views]
-    R22[RFC 005 Typed Workspace Mechanics]
-    R23[RFC 006 First Deterministic Device Solver Family]
-
-    R31[RFC 007 Dynamic Dense/Sparse Backend]
-    R32[RFC 008 Cluster Orchestration and Parallel Execution]
-    R33[RFC 009 Observability, Multi-Tenant Policy, and FFI Gateway]
-
-    EDS --> R11
-    EDS --> R12
-    EDS --> R13
-    R13 --> R14
-    R11 --> R21
-    R12 --> R21
-    R13 --> R22
-    R21 --> R22
-    R22 --> R23
-    R11 --> R31
-    R12 --> R31
-    R31 --> R32
-    R32 --> R33
-```
+| RFC range | Implemented external-design contribution |
+|---|---|
+| 001-003, 014 | Scalar/access/error/diagnostic/solver contracts and status/error split. |
+| 004-006 | Static storage, poison-free caller-owned workspace, and bounded device PFO kernel. |
+| 007-009 | Dynamic dense/CSR storage, cluster orchestration, metadata observation, safe mock gateway. |
+| 010-011 | Verification command governance and target-profile evidence classes. |
+| 012-013 | Validation vocabulary and bounded cross-layer conformance fixtures. |
+| 015-017 | Process-local validation cache, one dynamic PFO kernel, and cache/trust conformance. |
+| 018 | Cluster solve test maintainability; no public design change. |
+| 019-020 | Accepted, unshipped recovery: release integrity and normative documentation currency. |
 
 ### 7.1 Milestone 1: Core and Mathematical Interfaces
 
@@ -1369,11 +1419,14 @@ graph TD
 
 ### 7.3 Milestone 3: Dynamic Backend and Cluster Interface
 
-| RFC | Scope |
-|---|---|
-| RFC 007 | Dynamic dense/sparse storage adapters and third-party backend adapter boundaries |
-| RFC 008 | Sync/batch/async orchestration, cancellation, timeout, parallelism controls, per-item batch failure semantics, validation reuse policy |
-| RFC 009 | Observability, multi-tenant safeguards, redaction, optional FFI gateway design |
+| RFC | Scope | Status through v0.20.0 |
+|---|---|---|
+| RFC 007 | Dynamic dense/sparse storage adapters and third-party backend adapter boundaries | Dense/CSR implemented; native adapters deferred |
+| RFC 008 | Sync/batch/async orchestration, cancellation, timeout, parallelism controls, per-item failure semantics | Implemented |
+| RFC 009 | Observability, redaction, and optional FFI gateway policy | Metadata observer and safe mock seam implemented; native adapter and broad isolation evidence deferred |
+| RFC 012/015 | Validation vocabulary and process-local identity/epoch evidence cache | Implemented; not persistent/distributed |
+| RFC 016 | First dynamic projected-first-order model and kernel | Implemented; one narrow solver family |
+| RFC 013/017 | Cross-layer and cache/trust conformance | Enforced bounded smoke fixtures only |
 
 ---
 
@@ -1421,12 +1474,22 @@ The following questions are intentionally left to RFCs:
 5. **(Resolved in design — RFC 002, v0.6.1; ED-015.)** Core owns simple contiguous row-major views plus an optional contiguous fast path; column-major / strided / sub-matrix views belong to `loeres-backend-static`'s `static-views` feature (RFC 004). Implemented in v0.7.0.
 6. **(Resolved by RFC 003, v0.4.0.)** `DiagnosticSnapshot { code, iteration, primary_index, secondary_index }` is fixed, `Copy`, and compile-time size-budgeted (≤ 16 bytes).
 7. **(Resolved by RFC 003, v0.4.0.)** Public error and diagnostic enums (`SolverError`, `DiagnosticCode`) carry `#[non_exhaustive]`, enforced by the `xtask check-rfcs` source audit.
-8. Exact workspace reset/poison type-state or lifecycle API.
-9. Exact release-gate tooling for panic-averse device entrypoints.
-10. Exact target compiler settings for floating-point reference profiles.
-11. Exact cluster adapter strategy for `ndarray`, `nalgebra`, sparse crates, and native numerical libraries.
-12. Exact observability redaction policy for multi-tenant server use.
-13. Exact representation of validated/trusted input states and whether any validation bypass requires `unsafe`.
+8. **Resolved for the baseline (RFC 005/006).** Typed workspace is normalized
+   on entry and remains reusable after success, failure, or non-convergence.
+9. **Partially resolved (RFC 010/011; RFC 019 recovery).** Panic audits and
+   target gates provide panic-averse evidence, not formal proof; the package
+   release gate remains fail-closed.
+10. **Resolved as scoped policy (RFC 011).** Compiler/target assumptions live in
+    the profile manifest with mandatory, advisory-installed, and documented-only
+    evidence classes.
+11. Dynamic dense/CSR adapters ship; exact `ndarray`, `nalgebra`, SIMD, and
+    native-library adapter strategy remains open.
+12. **Resolved for baseline telemetry (RFC 009), residual for multi-tenancy.**
+    Bounded metadata categories and redaction ship; broad tenant isolation
+    evidence does not.
+13. **Resolved for the implemented cache boundary (RFC 012/015/017).** Identity,
+    epoch, scope, and finite evidence are explicit and fail closed; a broader
+    bypass/unsafe policy remains future.
 
 These are not omissions. They are intentionally deferred because they belong to RFC-level design.
 
@@ -1442,4 +1505,5 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-Milestone 1 is complete: RFC 001, RFC 002, RFC 003, and RFC 014 are implemented in `loeres`.
+RFCs 001-018 form the implemented v0.20.0 baseline. RFC 019/RFC 020 are
+accepted, unshipped recovery work, and the release package gate remains No-Go.

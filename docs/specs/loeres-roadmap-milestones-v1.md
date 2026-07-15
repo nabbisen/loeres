@@ -1,31 +1,28 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted — Milestone 3 in progress (dynamic backend, validation vocabulary, cluster orchestration) (current as of v0.13.1)  
+Status: Accepted v1; RFC 020 S2 reconciliation draft (not yet the current marker)
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
-> **Document currency.** Current as of repository release **v0.13.1**; the design is
-> accepted. **Phase 0** (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0). **Milestone 1 (`loeres`) is complete:** RFC 003 (v0.4.0), RFC 014
-> (v0.5.0), RFC 001 (v0.6.0), and RFC 002 (v0.7.0). **Milestone 2 (static backend +
-> device) is complete:** RFC 004 (v0.8.0 — const-generic fixed-size static storage),
-> RFC 005 (v0.9.0 — caller-owned typed workspace mechanics), and RFC 006 (v0.10.0 —
-> baseline deterministic device kernel; fail-safe hardening and closeout corrections
-> in v0.10.1) are implemented and in `rfcs/done/`. **Milestone 3 (dynamic backend +
-> cluster) is in progress:** RFC 007 (v0.11.0 — dynamic dense/sparse storage
-> adapters; construction hardening in v0.11.1), RFC 012 (v0.12.0 — core
-> validation-state vocabulary; coherence hardening in v0.12.1), and RFC 008 (v0.13.0
-> — cluster orchestration foundation, orchestration-first; review corrections in
-> v0.13.1, apex external-design currency sync in v0.13.2) are implemented and in
-> `rfcs/done/`; RFC 009 (observability/gateway) and RFC 010 (xtask size-budget
-> governance) follow. The cluster slice is orchestration infrastructure, not a
-> production numerical cluster solver — no std-side kernel exists yet. The test
-> suite and `release-gate` are green — the `panic-audit` gate across the bare-metal
-> `no_std` build and all feature combinations.
+> **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
+> repository release: **v0.20.0**. Implemented scope: **RFCs 001-018** in
+> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020** in
+> `../../rfcs/accepted/`; this work is unshipped and in progress. Open proposals
+> are roadmap items only. Activation as the current marker is pending RFC 020 S3
+> supporting-document reconciliation, S4 semantic checks, and architecture
+> review. Until then, this block is a review candidate and does not assert that
+> repository documentation is fully current.
+>
+> Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
+> dense/CSR storage, orchestration, one dynamic projected-first-order kernel,
+> metadata-only observability, a safe mock gateway seam, and process-local
+> validation caching. Cross-layer conformance is an enforced bounded smoke
+> corpus, not broad numerical parity. RFC 019 release packaging remains No-Go
+> and intentionally fail-closed during recovery.
 
 ---
 
-## Current v0.13.1 Roadmap Snapshot
+## Proposed v0.20.0 Reconciled Roadmap Snapshot
 
 | Area | Status | Next action |
 |---|---|---|
@@ -39,9 +36,14 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 | RFC 006 — baseline deterministic device kernel | Implemented since v0.10.0 (hardened v0.10.1) | `ProjectedFirstOrderProblem`, `solve_projected_first_order`, `DeviceSolveReport`. **Closed Milestone 2.** |
 | RFC 007 — dynamic dense/sparse storage adapters | Implemented since v0.11.0 (hardened v0.11.1) | `loeres-backend-std` `dense`/`sparse` over the RFC 002 access contracts; opened Milestone 3. |
 | RFC 012 — core validation-state vocabulary | Implemented since v0.12.0 (hardened v0.12.1) | `loeres::validation`: scope/coverage/trust/recorded-state; consumed by the cluster validation policy. |
-| RFC 008 — cluster orchestration foundation | Implemented since v0.13.0 (corrected v0.13.1; apex sync v0.13.2) | `loeres-cluster` `batch`/`runtime`/`solve`: per-item batch contract, cancellation/executor, the `ClusterJob` seam. Orchestration infrastructure, not a production cluster solver; no std-side kernel yet. |
-| RFC 009 — observability and FFI gateway | Next (Milestone 3) | Follows the orchestration foundation; populates `observe`/`gateway`; keep zero-bleed active. |
-| RFC 010/011/013/015/017 — governance / targets / conformance / validation cache | Implemented through v0.20.0 | `xtask` governance, manifest-driven target profiles, the enforced smoke conformance corpus, the RFC 015 cluster validation evidence cache, and RFC 017 trusted/cache conformance fixtures are in place. `size-budget` remains a reporting/advisory baseline until owner RFCs freeze thresholds. |
+| RFC 008 — cluster orchestration foundation | Implemented since v0.13.0 (corrected v0.13.1; apex sync v0.13.2) | Per-item outcomes, cancellation/deadline budgets, sync/parallel/async execution, and `ClusterJob`; no broad throughput claim. |
+| RFC 009 — observability and FFI gateway | Implemented since v0.15.0 | Bounded metadata observation and safe `MockGatewayJob`; no concrete native adapter and no broad multi-tenant-isolation evidence. |
+| RFC 010/011 — verification and target profiles | Implemented through v0.17.0 | Developer aggregate plus mandatory/advisory-installed/documented-only target evidence. RFC 019 supersedes old release-gate alias semantics. |
+| RFC 013/017 — conformance | Implemented through v0.20.0 | Enforced dimension-2 smoke and cache/trust fixtures; no broad/adversarial/large-N parity claim. |
+| RFC 015 — validation evidence cache | Implemented since v0.19.0 | Model identity/mutation epoch cache; process-local only; per-call and hot-loop checks remain. |
+| RFC 016 — dynamic PFO kernel | Implemented since v0.14.0 | One box/bound-constrained projected-first-order cluster kernel; no generic LP/QP/SOCP surface. |
+| RFC 018 — cluster solve test split | Implemented in v0.20.0 | Maintainability-only; no public behavior change. |
+| RFC 019/020 — recovery | Accepted; unshipped/in progress | Release integrity and normative documentation currency. Release package gate remains fail-closed. |
 
 ## 0. Purpose and Roadmap Principle
 
@@ -90,22 +92,29 @@ Every technical RFC must move through the following states. A state transition i
 | State | Meaning | Allowed next states | Required evidence |
 |---|---|---|---|
 | `Draft` | Initial authoring stage. Open questions are allowed. | `Proposed`, `Withdrawn` | Problem statement, public boundary impact, affected crates, non-goals. |
-| `Proposed` | Architecture review, acceptance, and implementation planning happen here. A proposed RFC may be review-active or accepted/frozen but not yet implemented. | `Implemented`, `Draft`, `Superseded`, `Withdrawn` | Review comments resolved or explicitly deferred; traceability to requirements/external design; zero-bleed impact analysis where applicable. |
+| `Proposed` | Review-active proposal; implementation is forbidden. | `Accepted`, `Draft`, `Withdrawn` | Review comments resolved or explicitly deferred; traceability and impact analysis. |
+| `Accepted` | Design-frozen implementation contract; implementation is authorized, but shipped behavior is not yet claimed. | `Implemented`, `Superseded`, `Withdrawn` | Independent architecture acceptance and project-owner/authorized-maintainer transition recorded durably. |
 | `Implemented` | Code, tests, examples, and verification gates exist. | `Superseded` | CI pass, documentation pass, automated safety checks pass, and closeout evidence attached. |
 | `Withdrawn` | The proposal was intentionally abandoned before implementation. | none | Withdrawal rationale and any replacement pointer. |
 | `Superseded` | Replaced by a newer RFC or rendered obsolete. | none | Superseding RFC ID and migration rationale. |
 
-A proposed RFC may become accepted/frozen before code lands, but it remains in `proposed/` until implemented. A frozen RFC is a contract. Later RFCs may extend it only through additive specialized traits, wrapper layouts, configuration objects, or new crates. They must not silently loosen earlier safety, memory, or dependency constraints.
+Moving an RFC to `accepted/` is the durable implementation authorization. A
+review file or handoff is evidence/input only and cannot authorize the
+transition. Moving it to `done/` is the durable implemented/shipped record. A
+frozen RFC is a contract; later RFCs must not silently loosen earlier safety,
+memory, or dependency constraints.
 
 ### 1.2 RFC File Layout
 
-RFCs are stored under the canonical RFC 000 folder scheme — `proposed/`, `done/`, `archive/`, with an optional `draft/` — not the milestone-encoded layout used in earlier drafts:
+Loeres uses RFC 000's five-folder variant:
 
 ```text
 rfcs/
   README.md
   proposed/
     001-stratified-scalar.md
+  accepted/
+    ...
   done/
     ...
   archive/
@@ -114,7 +123,9 @@ rfcs/
     ...
 ```
 
-The §1.1 lifecycle states map onto these folders: `Draft` may live in optional `draft/` or in `proposed/` depending on repository policy; `Proposed` lives in `proposed/`; `Implemented` lives in `done/`; `Withdrawn` and `Superseded` live in `archive/`.
+The §1.1 states map directly: `Draft` may live in optional `draft/`;
+`Proposed` lives in `proposed/`; `Accepted` lives in `accepted/`; `Implemented`
+lives in `done/`; and `Withdrawn`/`Superseded` live in `archive/`.
 
 RFC files use flat, stable, sequential numbering per RFC 000 (`NNN-slug.md`), not a milestone-encoded prefix:
 
@@ -206,6 +217,23 @@ Additional rules:
 - A milestone may be partially implemented without being considered complete.
 - A failed verification gate blocks milestone advancement.
 - Examples that bypass safety rules are treated as API bugs unless clearly marked as internal test fixtures.
+
+### 1.8 Normative Authority, Paths, and Conflicts
+
+For a repository release, the release-local normative paths are
+`loeres-requirements-v1.md`, `loeres-external-design-v1.md`, this document, and
+scope-specific RFCs in `../../rfcs/done/`. Accepted RFCs in
+`../../rfcs/accepted/` authorize implementation but are not shipped truth;
+proposed RFCs in `../../rfcs/proposed/` are review contracts only. This roadmap
+governs sequencing and status but cannot override requirements, external design,
+or an implemented scope-specific RFC. Code/tests are evidence, not automatic
+authority.
+
+When normative artifacts conflict, work in the affected boundary stops. The
+project classifies stale prose, implementation divergence, or supersession;
+applies the later approved scope-specific RFC without silently weakening
+higher-level requirements; reconciles all affected normative documents in one
+reviewed change; and records the resolution and evidence.
 
 ---
 
@@ -647,6 +675,10 @@ Milestone 3 does not strictly require Milestone 2 implementation to be complete,
 
 ### 4.3 RFC 007 — Heap-Allocated and Sparse Storage Adapters
 
+**Status: Implemented (v0.11.0; hardened v0.11.1).** Dense `Vec` and CSR
+storage implement the RFC 002 access contracts. `adapter`/`batch`/`view`
+categories and native/SIMD integrations remain reserved or deferred.
+
 #### Scope
 
 Design `loeres-backend-std` dynamic storage adapters for dense and sparse problem representations.
@@ -695,6 +727,11 @@ Design `loeres-backend-std` dynamic storage adapters for dense and sparse proble
 - No cluster dependency appears in core or device graphs.
 
 ### 4.4 RFC 008 — High-Throughput Async Orchestration and Monomorphization Budgets
+
+**Status: Implemented (v0.13.0; corrected v0.13.1).** Per-item outcomes,
+cooperative cancellation/deadline budgets, sync/parallel/async execution, and
+the `ClusterJob` seam ship. This does not establish high-throughput,
+memory-pressure, large-N, or multi-tenant stress evidence.
 
 #### Scope
 
@@ -748,6 +785,12 @@ Design `loeres-cluster` orchestration APIs for parallel and asynchronous solving
 - Cluster orchestration does not alter core or device constraints.
 
 ### 4.5 RFC 009 — Observability, Metrics, and FFI Gateway Interfacing
+
+**Status: Implemented within its accepted baseline (v0.15.0).** Bounded,
+redacted metadata observation and a safe mock gateway seam ship. No concrete
+native adapter ships. Multi-tenant isolation and concrete FFI ownership,
+licensing, thread-safety, and failure obligations remain residual activation
+gates rather than satisfied claims.
 
 #### Scope
 
@@ -809,6 +852,13 @@ Milestone 3 is complete only when:
 - Monomorphization budget is measured.
 - Observability payloads are redacted by default.
 - Dependency graph checks prove cluster dependencies do not leak backward into core or device crates.
+
+**Status through v0.20.0: partially complete.** RFCs 007-009 plus RFCs 012,
+015, and 016 supply storage, orchestration, validation/cache, one numerical
+kernel, observation, and the safe mock gateway. RFCs 013/017 supply bounded
+smoke conformance. Broad solver parity, accepted monomorphization/throughput
+budgets, multi-tenant stress/isolation evidence, and a concrete native adapter
+remain open, so the aspirational milestone exit criteria above are not all met.
 
 ---
 
@@ -886,8 +936,8 @@ Required commands:
 | `cargo xtask size-budget` | Measure binary, stack-relevant type, error, diagnostic, and code-size budgets. |
 | `cargo xtask check-public-api` | Detect forbidden public types and forbidden `dyn` use in device-facing APIs. |
 | `cargo xtask conformance` | Run shared numerical and failure-mode corpus tests. |
-| `cargo xtask check` | Canonical aggregate release gate for milestone advancement. |
-| `cargo xtask release-gate` | Optional alias for `cargo xtask check` for CI clarity. |
+| `cargo xtask check` | Canonical developer aggregate; not release approval. |
+| `cargo xtask release-gate` | RFC 019 package/readiness candidate; distinct from `check` and currently fail-closed. |
 
 ### 5.5 Dependency-Graph Freezing
 
@@ -952,7 +1002,11 @@ Required checks:
 - selected panic-analysis tooling run under the release profile used for size and target checks;
 - manual review of any `unsafe` code if it is ever introduced.
 
-**As of v0.10.1**, the `unwrap` / `expect` / `panic!` / `todo!` / `unimplemented!` / logging-macro checks are mechanically enforced for the `no_std` production crates (`loeres`, `loeres-backend-static`, `loeres-device`, excluding tests) by the implemented `cargo xtask panic-audit` gate, which runs inside `release-gate` (RFC 006 §6.2).
+The `unwrap` / `expect` / `panic!` / `todo!` / `unimplemented!` /
+logging-macro checks are mechanically enforced for the `no_std` production
+crates (excluding tests) by `cargo xtask panic-audit`, which runs in the
+developer aggregate and the RFC 019 candidate gate. These scans and target
+tests are panic-averse evidence, not formal proof of panic freedom.
 
 ### 5.8 Size and Monomorphization Verification
 
@@ -976,12 +1030,19 @@ A release candidate may be cut only when:
 
 - all implemented RFCs are in the `done/` directory;
 - no accepted RFC is partially implemented without being marked as incomplete;
-- `cargo xtask check` passes; `cargo xtask release-gate` may be used as a CI alias if present;
+- `cargo xtask check` passes as developer evidence;
+- the distinct `cargo xtask release-gate` passes package preflight, clean
+  extraction, tagged-revision, and release-documentation checks;
 - device and cluster examples compile under their intended feature sets;
 - dependency graph checks pass;
 - public API checks pass;
 - documentation describes the split between cluster and device without suggesting runtime mode switching;
 - any public `v1.0` or stability release has explicit project owner approval.
+
+**Current recovery disposition: No-Go.** The RFC 019 candidate gate is
+intentionally fail-closed until the joint RFC 019/RFC 020 closeout supplies all
+required evidence and approval. Developer checks, even when green, do not
+authorize packaging or release.
 
 ### 5.10 Roadmap Completion Matrix
 
@@ -990,8 +1051,43 @@ A release candidate may be cut only when:
 | Phase 0 | Governance bootstrap | none | RFC lifecycle, repository skeleton, and initial `xtask` exist. | ✅ complete (v0.3.0) |
 | Phase 1 | Core | RFC 001, 002, 003, 014 | Core contracts frozen and no-std verified. | ✅ complete — RFC 001/002/003/014 implemented; core contracts frozen and `no_std`-verified (v0.7.0) |
 | Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ✅ complete — RFC 004 (v0.8.0) / 005 (v0.9.0) / 006 (v0.10.0, hardened v0.10.1); kernel runs on `thumbv7em-none-eabihf` under test; zero-bleed, `no-std`, and `panic-audit` gates pass; footprint evidence recorded (RFC 006 §7.1) |
-| Phase 3 | Cluster | RFC 007, 008, 009 | Dynamic backend and cluster orchestration pass partial-failure, observability, and dependency isolation checks. | ⬜ not started |
-| Integration | Cross-layer verification | corpus and `xtask` gates | Compatible cluster/device solvers converge within accepted epsilon and preserve separation. | ⬜ not started |
+| Phase 3 | Cluster | RFC 007, 008, 009, 012, 015, 016 | Dynamic backend, one cluster kernel, orchestration, cache, observation, and dependency isolation exist; broad scale/isolation/native-adapter criteria remain. | ◐ partially complete through v0.20.0 |
+| Integration | Cross-layer verification | RFC 013, 017 and `xtask` gates | Bounded device/cluster PFO and cache/trust fixtures preserve separation; broad parity remains future. | ◐ bounded smoke baseline implemented through v0.20.0 |
+| Recovery | Release integrity and documentation currency | RFC 019, 020 | Package gate and normative currency close jointly with reviewed evidence. | ◐ accepted, unshipped; release No-Go |
+
+---
+
+## Section 6: Recovery Milestones R0-R4
+
+Recovery is a gated sequence. RFC 019 and RFC 020 may be authored in parallel
+after design freeze, but their release evidence converges on one revision at
+R2. No public capability expansion may enter implementation before R2 closes.
+
+| Milestone | Entry | Required outcome | Exit / current status |
+|---|---|---|---|
+| R0 — design freeze | Audit blockers classified | RFC 019/RFC 020 define bounded recovery, gates, rollback, and handoffs | Complete: independent architecture review accepted both designs. |
+| R0.5 — lifecycle activation | R0 accepted and owner authorizes transition | Five-folder lifecycle, `accepted/`, index/link/tool agreement | Complete: both recovery RFCs are durably Accepted. |
+| R1 — corrective baseline | R0.5 complete | Exact Rust 1.85 repair, release-gate skeleton, traceability matrix, atomic documentation reconciliation, semantic currency checks | In progress. Runtime APIs/solver semantics must not change; package certification is forbidden before RFC 020 integration. |
+| R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | Not entered; current disposition is No-Go. |
+| R3 — assurance expansion | R1 baseline settled; each candidate separately reviewed | Optional follow-on RFCs for enforced budgets/portability, supply chain/stress, wider numerical conformance, and maintainability | Candidate scope only; not approved implementation. |
+| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Blocked by R2; no capability is selected. |
+
+R1 exit requires audit blockers B1-B4 corrected, exact MSRV/stable/docs gates
+observed, current public names and RFC status consistent, no contradicted
+v0.13.1 apex current marker, and no unrelated changes. R2 additionally requires
+package construction and the full suite against a clean extraction from the
+same revision; tag or publication still requires separate project-owner action.
+
+### 6.1 Historical Sequencing Divergence
+
+RFC 006 shipped the first device kernel before RFC 011 established the explicit
+target-profile evidence classes, despite the earlier roadmap preference to
+freeze a reference floating-point profile first. History is not rewritten:
+RFC 006's claims were target-scoped, and RFC 011 later supplied mandatory host
+and hard-float evidence plus advisory/documented-only portability classes.
+RFC 013 and RFC 017 then added bounded device/cluster and cache/trust
+conformance fixtures. This is retrospective mitigation, not proof of universal
+bit identity, WCET, panic freedom, or broad numerical parity.
 
 ---
 
@@ -1013,6 +1109,7 @@ RFC 001 Stratified Scalar Capability Model
     |               +--> RFC 008 High-Throughput Async Orchestration
     |                       |
     |                       +--> RFC 009 Observability, Metrics, and FFI Gateway
+    |                       +--> RFC 016 Dynamic Projected-First-Order Kernel
     |
     +--> RFC 003 Allocation-Free Error Topology
             |
@@ -1036,6 +1133,16 @@ Cross-cutting RFCs (apply across milestones):
         -> consumed by RFC 007 dynamic adapters and RFC 008 cluster validation policy
     RFC 013 Conformance Corpus and Numerical Parity
         -> consumed by RFC 006 device kernel tests and RFC 008/cluster parity checks
+    RFC 015 Validation Evidence Cache
+        -> process-local identity/epoch reuse consumed by the RFC 016 cluster kernel
+    RFC 016 Dynamic Projected-First-Order Kernel
+        -> first std-side numerical path through the RFC 008 ClusterJob seam
+    RFC 017 Conformance Coverage Completion
+        -> enforces cache/trust and bounded parity fixtures
+    RFC 018 Cluster Solve Test Split
+        -> maintainability-only; no public contract change
+    RFC 019/020 Recovery
+        -> release integrity and normative documentation currency; converge at R2
 ```
 
 ## Appendix B: Milestone Acceptance Checklist

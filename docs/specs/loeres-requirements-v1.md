@@ -5,85 +5,28 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted — Milestone 3 in progress (dynamic backend, validation vocabulary, cluster orchestration) (current as of v0.13.1)  
+**Status:** Accepted v1; RFC 020 S2 reconciliation draft (not yet the current marker)
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
-> **Document currency.** This specification is current as of repository release
-> **v0.13.1** and reflects the **accepted** design (no longer a draft). The
-> architecture and the Milestone-1 and Milestone-2 contracts are accepted and
-> **implemented**: RFC 002 (storage-agnostic access) shipped in v0.7.0, closing
-> Milestone 1; RFC 004 (v0.8.0), RFC 005 (v0.9.0), and RFC 006 (v0.10.0, hardened
-> v0.10.1) closed Milestone 2. **Milestone 3 (dynamic backend + cluster) is in
-> progress** with RFC 007 (v0.11.x), RFC 012 (v0.12.x), and RFC 008 (v0.13.x)
-> implemented (see the Milestone-3 list below). Earlier housekeeping: v0.6.2 resynced the in-repo
-> `docs/specs` mirrors, v0.6.3 renamed the core crate from `loeres-core` to
-> `loeres` (directory `crates/loeres/`; public module layout unchanged — see
-> ADR-019), and v0.7.0 implemented RFC 002 (exact-size row-major views — see
-> ADR-020).
+> **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
+> repository release: **v0.20.0**. Implemented scope: **RFCs 001-018** in
+> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020** in
+> `../../rfcs/accepted/`; this work is unshipped and in progress. Open proposals
+> are roadmap items only. Activation as the current marker is pending RFC 020 S3
+> supporting-document reconciliation, S4 semantic checks, and architecture
+> review. Until then, this block is a review candidate and does not assert that
+> repository documentation is fully current.
 >
-> **Implemented** (`loeres`, in `rfcs/done/`):
-> - **RFC 003** — allocation-free error/diagnostic topology (`SolverError`,
->   `DiagnosticSnapshot`, `error_code_to_str`); shipped v0.4.0.
-> - **RFC 014** — solver outcome/status taxonomy (`SolveStatus`,
->   `TerminationReason`, `StepOutcome`, `SolveReport`, `AsCoreReport`), introducing
->   the **status/error split** — non-convergence at the iteration cap is a status,
->   not an error (recorded as ADR-018); shipped v0.5.0.
-> - **RFC 001** — six-tier stratified scalar model (`BaseScalar` →
->   `OrderedScalar` → `FiniteScalar` → `DivisibleScalar` → `MetricScalar` →
->   `AdvancedNumericalScalar`); the base tier **excludes ordering** (ADR-017, with
->   §5.1.3 amended accordingly); shipped v0.6.0.
->
-> **Implemented:**
-> - **RFC 002** — storage-agnostic vector/matrix access contracts. Design
->   finalized in v0.6.1 (architect-review patches: `dimension` naming;
->   contiguous-only core views with strided views deferred to RFC 004; an optional
->   contiguous fast path; an explicit access-error mapping over `SolverError`; no
->   overlapping mutable views) and **implemented in v0.7.0** (exact-size row-major
->   views and per-axis 2-D bounds — see ADR-020), **closing Milestone 1.**
->
-> **Implemented** (Milestone 2 — `loeres-backend-static` / `loeres-device`, in `rfcs/done/`):
-> - **RFC 004** — const-generic fixed-size static storage engine: owned
->   `FixedVector` / `FixedMatrix` (`owned-arrays`) and baseline contiguous static
->   views over caller-owned memory, with const-assert dimension invariants and the
->   RFC 002 access traits reporting `DimensionKind::Static` (exact-size row-major
->   matrix view constructor — ADR-020); shipped v0.8.0.
-> - **RFC 005** — caller-owned typed workspace mechanics: the
->   `WorkspaceFootprint` sizing contract plus the `DeviceWorkspace` /
->   `DeviceWorkspaceDiagnostic` / `WorkspaceFor` lifecycle and `DeviceSolveConfig`
->   / `TimingMode` policy. Poisoning policy: always-reusable (overwrite-on-use
->   `reset_for_entry`); shipped v0.9.0.
-> - **RFC 006** — baseline deterministic device kernel: the box/bound-constrained
->   projected first-order solver (`ProjectedFirstOrderProblem`,
->   `solve_projected_first_order`, `ProjectedFirstOrderWorkspace`,
->   `DeviceSolveReport` over the RFC 014 `SolveReport`); non-convergence at the cap
->   is a status, not an error. Shipped v0.10.0, with fail-safe validation and the
->   `panic-audit` gate added in v0.10.1.
->
-> **Implemented** (Milestone 3 — `loeres-backend-std` / `loeres` / `loeres-cluster`, in `rfcs/done/`):
-> - **RFC 007** — dynamic dense/sparse storage adapters: `loeres-backend-std`
->   `dense` / `sparse` over the RFC 002 access contracts, without changing core
->   contracts; shipped v0.11.0, with construction hardening in v0.11.1.
-> - **RFC 012** — core validation-state vocabulary (`loeres::validation`:
->   `ValidationScope`, `FiniteCoverage`, `TrustKind`, `TrustToken`,
->   `ValidationCoverage`, `TrustedByCaller`, `ValidationState`); shipped v0.12.0,
->   with coherence hardening in v0.12.1.
-> - **RFC 008** — cluster orchestration foundation (orchestration-first):
->   `loeres-cluster` `batch` / `runtime` / `solve` — the per-item batch contract,
->   a runtime-agnostic config / cancellation / executor layer (`parallel-rayon` /
->   `async-tokio` gated), and the `ClusterJob` dispatch seam, consuming the RFC 012
->   vocabulary. Orchestration infrastructure, not a production numerical cluster
->   solver — no std-side kernel exists yet. Shipped v0.13.0, corrected v0.13.1; the
->   apex external-design currency was synced in v0.13.2.
->
-> **Status:** Phase 0 (workspace skeleton — five crates plus `xtask`) is complete
-> (v0.3.0); **Milestone 1 (`loeres`) and Milestone 2 (static backend + device) are
-> complete**, and **Milestone 3 (dynamic backend + cluster) is in progress** —
-> RFC 001/002/003/014, RFC 004/005/006, and RFC 007/012/008 are implemented;
-> RFC 009 (observability/gateway) and RFC 010 (xtask size-budget governance)
-> follow. The test suite and `release-gate` are green (the `panic-audit` gate,
-> across the bare-metal `no_std` build and all feature combinations). `ROADMAP.md`
-> holds the authoritative live status.
+> The implemented baseline includes the core contracts, static storage and the
+> bounded device projected-first-order kernel, dynamic dense/CSR storage,
+> cluster orchestration, one dynamic projected-first-order kernel, metadata-only
+> observability, a safe mock gateway seam, process-local validation evidence
+> caching, target-profile evidence classes, and bounded conformance fixtures.
+> It does **not** include broad LP/QP/SOCP solver parity, a concrete native
+> adapter, a persistent/distributed cache, universal bitwise determinism, or
+> broad throughput/large-N/multi-tenant stress evidence. The RFC 019 release
+> package gate remains intentionally fail-closed during joint recovery closeout.
 
 ---
 
@@ -466,6 +409,12 @@ Important scope rule:
 - Solver crates decide which problem families they implement.
 - Device crates must not inherit server-only modeling breadth by default.
 
+**Current disposition.** PF-001 through PF-003 remain unimplemented; no public
+generic LP/QP/SOCP core contract ships. PF-004 is only partially realized by
+the solver-specific RFC 006/RFC 016 projected-first-order oracle traits;
+`loeres::problem` remains reserved. Smoke fixtures with quadratic objectives do
+not create a generic QP public model.
+
 ## 5.2 `loeres-backend-std`
 
 ### 5.2.1 Purpose
@@ -573,7 +522,20 @@ Server-side solvers may target:
 
 Server solver breadth must not imply device solver obligations.
 
-**Implemented (v0.13.0; corrected v0.13.1).** RFC 008 satisfies the orchestration subset of CLUSTER-001..007/010 with the orchestration-first cluster slice (`loeres-cluster` `batch` / `runtime` / `solve`): heap/`std` (CLUSTER-001/002), optional async (`async-tokio`) and multi-threaded (`parallel-rayon`) execution (CLUSTER-003/004), an explicit cooperative `ClusterCancellationToken` and timeout budget (CLUSTER-006), and per-item typed outcomes rather than service panics — `BatchItemOutcome` / `ClusterError` (CLUSTER-010). RFC 008 does not populate `gateway` or implement FFI integration; `ffi-gateway` remains a future, audited, feature-gated boundary (CLUSTER-008) owned by RFC 009 / a later gateway RFC. This is orchestration infrastructure: the server solver families of §5.4.3 remain future RFCs — no std-side numerical kernel exists yet, and `ClusterJob` is the seam where one attaches. RFC 012 (v0.12.0, hardened v0.12.1) supplies the validation-state vocabulary that the cluster validation policy consumes.
+**Implemented through v0.20.0.** RFC 008 supplies bounded orchestration:
+per-item outcomes, cooperative cancellation and deadline budgets, sequential,
+parallel, and async execution, and the `ClusterJob` seam. RFC 016 adds one
+dynamic box/bound-constrained projected-first-order numerical kernel; it does
+not satisfy the broader solver-family list above. RFC 009 adds metadata-only
+observability with bounded/redacted categories and a safe `MockGatewayJob`
+gateway seam. No concrete native adapter ships, and the default-off
+`ffi-gateway` feature does not imply one. RFC 012 defines validation-state
+vocabulary; RFC 015 adds model-identity/mutation-epoch evidence and an
+in-process cache; RFC 017 exercises the enforced smoke conformance fixtures.
+Wrong identity or stale epoch fails closed, while per-call current-iterate and
+hot-loop numerical-domain checks remain mandatory. The cache is neither
+persistent nor distributed. Multi-tenant isolation documentation and broad
+throughput, large-N, and stress evidence remain open obligations.
 
 ## 5.5 `loeres-device`
 
@@ -785,6 +747,12 @@ Loeres must define, before stabilizing device solver claims:
 
 A Cargo feature alone must not be treated as sufficient to guarantee floating-point determinism.
 
+**Implemented evidence policy (RFC 011).** Host and `thumbv7em` hard-float
+profiles are mandatory evidence. Installed soft-float/RISC-V profiles are
+advisory, and WASM/AArch64 profiles are documented-only. These classes are not
+interchangeable: passing mandatory gates does not prove universal cross-target
+identity, WCET, or panic freedom.
+
 ---
 
 ## 8. Security and Threat Model Requirements
@@ -811,6 +779,12 @@ Server requirements:
 | SEC-S-005 | Multi-tenant use must document isolation boundaries and non-guarantees. |
 | SEC-S-006 | Server panic messages must not be relied on for normal failure handling. |
 
+RFC 008 implements budgets, cooperative cancellation, typed per-item failure,
+and worker-panic containment when the process uses `panic = "unwind"`. Under
+`panic = "abort"`, a panic aborts the process; no universal containment claim is
+made. RFC 009 metadata redaction reduces leakage but does not fully satisfy
+SEC-S-005 without deployment-specific isolation documentation and evidence.
+
 ### 8.2 Device Threats
 
 Device-side threats include:
@@ -833,6 +807,12 @@ Device requirements:
 | SEC-D-005 | Device solvers must return explicit errors on invalid or adversarial inputs. |
 | SEC-D-006 | Device solvers must document behavior on ill-conditioned problems. |
 | SEC-D-007 | Device solvers must avoid secret-dependent or input-dependent timing claims unless a later security RFC defines and verifies them. |
+
+The RFC 006 PFO family satisfies SEC-D-001..005/007 for its supported boundary.
+SEC-D-006 is solver-specific: the current family documents bounds, positive
+step scale, finite inputs, and numerical-domain rejection, but does not claim a
+general ill-conditioning detector. Each later solver family retains that
+documentation obligation.
 
 ### 8.3 FFI Policy
 
@@ -896,6 +876,12 @@ Edge release gates must include:
 - Documentation of memory footprint and iteration bounds.
 
 ### 9.4 Release Gates
+
+`cargo xtask check` is the developer aggregate. The RFC 019 candidate
+`cargo xtask release-gate` is a distinct package/readiness gate and remains
+fail-closed until the RFC 019/RFC 020 joint closeout supplies the required
+preflight, clean-extraction, tagged-revision, and approval evidence. A passing
+developer aggregate must not be reported as release approval.
 
 Before publishing any crate version:
 
@@ -967,6 +953,24 @@ Because design must precede implementation, the project must maintain RFCs for m
 - Floating-point profile and reference target.
 - First supported device solver family.
 
+### 10.5 Normative Authority, Paths, and Conflicts
+
+For a repository release, the release-local normative paths are this document,
+`loeres-external-design-v1.md`, `loeres-roadmap-milestones-v1.md`, and the
+scope-specific implemented RFCs in `../../rfcs/done/`. Accepted RFCs in
+`../../rfcs/accepted/` are frozen implementation contracts but are not shipped
+truth; proposed RFCs in `../../rfcs/proposed/` are review contracts only. The
+detailed roadmap governs sequencing and status but cannot override a
+requirement or an implemented RFC. Code and tests are implementation evidence,
+not automatic authority.
+
+When normative artifacts conflict, implementation in the affected boundary
+must stop. The project must classify stale prose, implementation divergence, or
+intentional supersession; apply the later approved scope-specific RFC without
+silently weakening higher-level requirements; reconcile all affected normative
+documents atomically; and record the resolution and evidence. Neither code nor
+old apex prose silently wins.
+
 ---
 
 ## 11. Feature Flag Policy
@@ -1028,7 +1032,8 @@ Requirements:
 > (001–014) are written, and core implementation is tracked by the roadmap's
 > milestone model — **Milestone 1 (`loeres`) is complete**, with RFC 001, 002,
 > 003, and 014 implemented.
-> See the document-currency block above and `ROADMAP.md` for authoritative status.
+> See the shared currency block above and the detailed roadmap for normative
+> sequencing/status; root `ROADMAP.md` is a concise maintainer summary.
 
 ### 12.1 Phase 0 — Repository and Policy Foundation — ✅ complete (v0.3.0)
 
@@ -1101,11 +1106,21 @@ Acceptance:
 - Server memory behavior is documented.
 - FFI is feature-gated and documented.
 
-**Implemented (Milestone 3, v0.11.0–v0.13.2):** RFC 007 dynamic dense/sparse storage adapters (v0.11.x); RFC 012 core validation-state vocabulary (v0.12.x); and RFC 008 the cluster orchestration foundation (v0.13.x — orchestration-first: `batch` / `runtime` / `solve`, cancellation/budget, and the `ClusterJob` seam, covering the dynamic-storage, batch, and async/cancellation deliverables). Observability and native-backend integration (RFC 009) and a production std-side numerical kernel remain follow-on work; the apex external-design currency was synced in v0.13.2.
+**Implemented through v0.20.0:** RFC 007 dynamic dense/CSR storage; RFC 008
+cluster orchestration, cancellation, and budgets; RFC 009 metadata
+observability and the safe mock gateway seam; RFC 012 validation vocabulary;
+RFC 015 process-local validation evidence caching; RFC 016 one dynamic
+projected-first-order kernel; and RFC 013/RFC 017 bounded conformance evidence.
+The remaining optional-native-integration deliverable is not implemented: no
+concrete native adapter ships. The implemented numerical scope is one narrow
+solver family, not the broad family list in §5.4.3.
 
 ### 12.5 Phase 4 — Implementation Baseline
 
-Baseline implementation proceeds only for items backed by accepted requirements and RFCs. This phase is now being entered incrementally as Milestone RFCs land; RFC 001, RFC 002, RFC 003, and RFC 014 are implemented in `loeres`, completing Milestone 1.
+Baseline implementation proceeds only for items backed by accepted requirements
+and RFCs. RFCs 001-018 provide the implemented v0.20.0 baseline across all five
+crates. RFC 019/RFC 020 recovery work is accepted but unshipped and does not
+expand the runtime surface.
 
 Possible baseline implementation scope:
 
@@ -1173,18 +1188,18 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 
 | ID | Question |
 |---|---|
-| OQ-001 | What is the first supported device solver family: QP, bounded first-order method, SOCP subset, or another structured problem? |
-| OQ-002 | What is the reference edge target for early determinism claims? |
-| OQ-003 | Is hardware floating point required for the first device solver? |
-| OQ-004 | Is fixed-point support a near-term requirement or a future roadmap topic? |
+| OQ-001 | **Resolved for the baseline (RFC 006).** The first device family is a bounded box projected-first-order method; broader QP/SOCP families remain future. |
+| OQ-002 | **Resolved as a profile policy (RFC 011).** Evidence is classified as mandatory, advisory-installed, or documented-only. |
+| OQ-003 | **Resolved for mandatory evidence (RFC 011).** Hard-float `thumbv7em` is mandatory; soft-float remains advisory-installed, not universally required or supported. |
+| OQ-004 | **Deferred/open.** RFC 001 reserves fixed-point hooks but no fixed-point baseline ships. |
 | OQ-005 | Which scalar capabilities belong in the first accepted scalar RFC? **(Resolved — RFC 001, v0.6.0.)** The six-tier model, ordering split out of the base tier (ADR-017). |
 | OQ-006 | Which vector/matrix kernels are common enough to define as optional core extension traits? **(Resolved in design — RFC 002, v0.6.1.)** Optional contiguous fast-path traits (`ContiguousVectorAccess` / `ContiguousVectorAccessMut` / `ContiguousMatrixAccess`); heavy kernels stay backend/solver-owned. Implemented in RFC 002 (v0.7.0). |
-| OQ-007 | Should raw scratch-slice APIs exist in v0.x, or should the first device API be typed-workspace-only? |
-| OQ-008 | Which server backend should be the first dynamic storage adapter? |
-| OQ-009 | Should optional FFI solvers be included in v0.x or deferred until the Rust-native architecture is stable? |
-| OQ-010 | What evidence is required before any device entrypoint is documented as panic-free? |
-| OQ-011 | What level of numerical reproducibility is actually required across edge targets? |
-| OQ-012 | How should Loeres document safety-critical usage limitations and disclaimers? |
+| OQ-007 | **Resolved for the baseline (RFC 005).** Typed, caller-owned, overwrite-on-entry workspace is primary; raw scratch remains optional/future. |
+| OQ-008 | **Resolved (RFC 007).** Dynamic dense and CSR sparse adapters are implemented; native/SIMD adapters remain deferred. |
+| OQ-009 | **Partially resolved/deferred (RFC 009).** A safe mock gateway and default-off seam ship; a concrete native adapter does not. |
+| OQ-010 | **Partially resolved/open at formal-proof level (RFC 010/011).** Audits and target gates provide panic-averse evidence, not formal panic freedom. |
+| OQ-011 | **Resolved as scoped policy (RFC 011).** Claims are target-profile-scoped; broad cross-target bit identity remains unsupported. |
+| OQ-012 | **Open.** No dedicated safety-critical engineering-use disclaimer currently satisfies this documentation requirement. |
 
 ---
 
