@@ -1,16 +1,48 @@
 name: release
+
 on:
   push:
-    tags: ["v*"]
+    # GitHub ref filters are globs. The gate independently parses exact stable
+    # SemVer and rejects malformed lookalikes before any artifact phase.
+    tags: ["[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release-gate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Check out the candidate revision
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
+          fetch-depth: 0
+
+      - name: Install stable Rust
+        uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          components: rustfmt, clippy
           targets: thumbv7em-none-eabihf
-      # Runs every gate implemented at the current milestone. Crate publishing
-      # is intentionally not wired up: crates are unpublished until a public
-      # release is approved by the project owner (requirements REL-008).
-      - run: cargo xtask release-gate
+
+      - name: Install the declared MSRV
+        uses: dtolnay/rust-toolchain@98effd2fc0b766278e30ab86762dd5e9a8531399 # 1.85.0
+
+      - name: Install the pinned documentation tool
+        run: cargo +stable install mdbook --version 0.5.4 --locked
+
+      - name: Record tool versions
+        run: |
+          rustc +stable --version --verbose
+          rustc +1.85.0 --version --verbose
+          mdbook --version
+
+      # RFC 019 S2/S3 deliberately leaves package certification fail-closed
+      # until RFC 020 reconciliation reaches the shared integration point.
+      # No artifact upload or publication step runs in this intermediate state.
+      - name: Run the canonical non-publishing candidate gate
+        run: cargo +stable xtask release-gate

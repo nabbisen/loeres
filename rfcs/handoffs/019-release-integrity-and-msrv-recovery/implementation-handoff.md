@@ -96,6 +96,24 @@ Additional observed S2 evidence:
 - dirty-tree `cargo xtask release-gate`: failed closed before packaging, as
   required.
 
+RFC 019 S3 aligns the workflows without enabling publication or intermediate
+artifact claims:
+
+- ordinary CI uses full-SHA action pins, all-target/all-feature clippy, and
+  all-feature workspace tests;
+- the MSRV workflow uses the exact Rust 1.85 all-feature workspace check;
+- the release workflow selects the unprefixed SemVer glob, retains a manual
+  non-publishing dispatch, installs stable plus Rust 1.85.0, pins mdBook 0.5.4,
+  and invokes the canonical candidate gate once;
+- release-workflow actions are pinned to checkout v4.3.1 and the resolved
+  stable/1.85.0 rust-toolchain commits; the SHAs were observed directly with
+  `git ls-remote` on 2026-07-15;
+- no upload or publication step exists while the gate is intentionally
+  fail-closed.
+
+The focused workflow-policy test verifies the canonical selector, exact mdBook
+install, and 40-hex action references. It passes on stable and Rust 1.85.
+
 Required during implementation: execute the complete gate list and order in
 RFC 019 §11.3. The first focused evidence after the syntax repair is the exact
 Rust 1.85 all-feature workspace check; it does not replace the later complete
@@ -126,7 +144,7 @@ specific durable evidence location.
 
 ## 8. Recommended next step
 
-Proceed with S3 workflow alignment while preserving the fail-closed package
-boundary, then follow the shared integration order in the recovery roadmap.
-Submit a review request after S3 and again with S6 complete source/extraction
-evidence.
+Submit the S1-S3 RFC 019 implementation for architecture review. After
+acceptance and durability, follow the shared recovery order by beginning RFC
+020 reconciliation before activating RFC 019 package certification. Submit the
+final RFC 019 review again with S6 complete source/extraction evidence.

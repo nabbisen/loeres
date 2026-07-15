@@ -215,3 +215,8 @@ RFC 019 S2 adds a fail-closed candidate/package skeleton: it separates the
 developer aggregate from `release-gate`, validates candidate metadata and a
 commit-derived regular-file manifest, and deliberately refuses certification
 until RFC 020 reconciliation reaches the shared integration point.
+RFC 019 S3 aligns CI, the exact MSRV workflow, and the non-publishing release
+workflow with the accepted command profiles. The release selector uses the
+canonical unprefixed tag family, action references are full reviewed SHAs, and
+mdBook is pinned to 0.5.4. Artifact upload remains absent while certification is
+fail-closed.

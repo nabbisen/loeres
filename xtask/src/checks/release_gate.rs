@@ -339,4 +339,32 @@ mod tests {
         }
         assert!(validate_archive_path("crates/loeres/src/lib.rs").is_ok());
     }
+
+    #[test]
+    fn release_workflow_selects_canonical_tags_and_pins_actions() {
+        let workflow = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../.github/workflows/release.yml");
+        let source = std::fs::read_to_string(workflow).unwrap();
+        assert!(source.contains("tags: [\"[0-9]+.[0-9]+.[0-9]+\"]"));
+        assert!(!source.contains("tags: [\"v*\"]"));
+        assert!(source.contains("cargo +stable install mdbook --version 0.5.4 --locked"));
+
+        let mut action_count = 0;
+        for line in source.lines().map(str::trim) {
+            let Some(reference) = line.strip_prefix("uses: ") else {
+                continue;
+            };
+            action_count += 1;
+            let revision = reference
+                .split_once('@')
+                .map(|(_, value)| value.split_whitespace().next().unwrap_or(""))
+                .unwrap_or("");
+            assert_eq!(revision.len(), 40, "action is not pinned: `{line}`");
+            assert!(
+                revision.bytes().all(|byte| byte.is_ascii_hexdigit()),
+                "action is not pinned: `{line}`"
+            );
+        }
+        assert_eq!(action_count, 3);
+    }
 }
