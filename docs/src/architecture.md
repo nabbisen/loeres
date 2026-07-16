@@ -9,7 +9,7 @@ Loeres is a Cargo workspace of five public crates.
 | `loeres` | `#![no_std]`, no `alloc` | Implemented scalar, vector/matrix access, solver outcome/status, validation, dimension, error, and diagnostic contracts. The `problem` namespace is reserved; no generic problem-family contract ships. Defines no storage. |
 | `loeres-backend-std` | `std` | Dynamic dense/sparse storage adapters and server math adapters. |
 | `loeres-backend-static` | `#![no_std]`, no `alloc` | Fixed-size owned storage, borrowed static views, typed workspace blocks. |
-| `loeres-cluster` | `std` | Server-side solving: dynamic models, batch execution, cancellation, parallelism, observability, optional FFI gateways. |
+| `loeres-cluster` | `std` | Server-side solving: dynamic models, batch execution, cancellation, parallelism, observability, safe gateway categories and a mock gateway; `ffi-gateway` is reserved for a future separately reviewed native adapter. |
 | `loeres-device` | `#![no_std]`, no `alloc` | Deterministic edge solve entrypoints, bounded execution configuration, caller-owned typed workspace lifecycle. |
 
 Through v0.20.0, `loeres-device` and `loeres-cluster` implement one shared

@@ -1,13 +1,17 @@
 //! `loeres-cluster` — the server-side developer interface.
 //!
-//! Environment: `std`, heap allocation, optional async/parallel/observability/
-//! FFI behind feature gates. Optimizes for ergonomics, dynamic problem sizes,
+//! Environment: `std`, heap allocation, and optional async/parallel integration
+//! behind feature gates. Optimizes for ergonomics, dynamic problem sizes,
 //! throughput, and integration. Server-only: it must never be depended on by
 //! edge-facing crates, and its dynamic-dispatch conveniences must not leak into
-//! `loeres` contracts used by device code.
+//! `loeres` contracts used by device code. The shipped gateway surface is safe
+//! boundary categories plus [`gateway::MockGatewayJob`]; `ffi-gateway` is an
+//! inert, default-off activation gate reserved for a future separately reviewed
+//! native/legacy adapter.
 //!
 //! Public module topography (external design §1.5):
-//! `model`, `solve`, `batch`, `runtime`, `observe`, `gateway`.
+//! `model`, `solve`, `batch`, `runtime`, `observe`, `gateway`,
+//! `validation_cache`.
 //!
 //! RFC 008 (v0.13.0) populates the orchestration foundation in `batch`,
 //! `runtime`, and `solve`: the per-item batch contract, a runtime-agnostic

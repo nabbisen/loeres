@@ -2,9 +2,9 @@
 
 **RFC.** [`020-normative-documentation-authority-and-currency.md`](../../accepted/020-normative-documentation-authority-and-currency.md)
 **Handoff state.** Accepted; R0.5 lifecycle activation, S1 traceability, S2
-apex reconciliation, and corrected S3 supporting artifacts are owner-durable.
-S4 bounded semantic currency checks are in review preparation; apex currency
-remains draft.
+apex reconciliation, corrected S3 supporting artifacts, and corrected S4
+bounded semantic currency checks are owner-durable. S5 integrated documentation
+evidence is in review preparation; apex currency remains draft.
 **Target.** Same corrective baseline as RFC 019 unless architecture review separates them.
 
 ## 1. Summary
@@ -101,6 +101,24 @@ Also run the RFC 019 complete release gate at joint closeout. Human review must
 compare public crate re-exports, RFC closeouts, and normative prose; automated
 metadata checks are not proof of semantic correctness.
 
+S5 integrated evidence was run from the clean, owner-durable S4 baseline at
+`0d76d4e`. The standalone currency, RFC lifecycle/index, 54-file Markdown-link,
+and mdBook gates passed. The developer aggregate passed, including mandatory
+host/edge profiles and 12/12 bounded conformance fixtures; its soft-float and
+RISC-V profiles remained explicitly advisory-unavailable, while wasm32 and
+Linux AArch64 remained documented-only. Workspace tests passed 269/269, the
+workspace Clippy gate passed with warnings denied, and the Rust 1.85 workspace
+check passed. Generated `docs/book/` output was removed after observation.
+
+The first S5 architecture review found three residual semantic conflicts that
+bounded automation intentionally did not infer. The correction aligns current
+roadmap/book/changelog notices with the owner-durable S3/S4 baseline; describes
+the cluster gateway as shipped safe categories plus `MockGatewayJob`, with
+`ffi-gateway` inert and reserved for a separately reviewed adapter; adds
+`validation_cache` to cluster crate-root topography; and describes the static
+`WorkspaceFootprint` surface as implemented rather than a placeholder. No
+runtime API, feature definition, dependency, or behavior changed.
+
 ## 6. Generated artifacts
 
 Expected review artifacts:
@@ -124,8 +142,8 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
 
 ## 8. Recommended next step
 
-Submit the S4 bounded semantic currency command, aggregate integration, and
-focused false-positive/false-negative tests for architecture review. Do not
-activate the apex current marker through tooling. After accepted owner
-durability, run S5 integrated documentation evidence. Closeout still requires
-RFC 019's complete release evidence and a separate Go/No-Go review.
+Submit the cumulative S1-S5 documentation baseline and integrated evidence for
+architecture review. Do not activate the apex current marker through evidence
+collection alone. After accepted owner durability, prepare S6 joint closeout
+with RFC 019's complete tagged-revision, clean-extraction, package, retained
+approval, and separate Go/No-Go evidence.

@@ -13,10 +13,12 @@ this file is a short summary.
 > [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). RFC 019 and
 > RFC 020 own the blocking recovery and are Accepted (design frozen
 > 2026-07-15). R0.5 lifecycle activation, the RFC 019 S1-S3 baseline, the RFC
-> 020 S1 traceability matrix, and the reviewed S2 apex reconciliation are
-> owner-durable. R1 continues with supporting documentation and semantic checks;
-> the apex currency marker remains draft. New public-boundary implementation waits
-> until their corrective baseline and release evidence close.
+> 020 S1 traceability matrix, reviewed S2 apex reconciliation, corrected S3
+> supporting documentation, and corrected S4 semantic currency checks are
+> owner-durable. R1 is at S5 integrated-documentation review; S6 joint closeout
+> remains pending, and the apex currency marker remains draft. New
+> public-boundary implementation waits until the corrective baseline and release
+> evidence close.
 
 ## Phases
 

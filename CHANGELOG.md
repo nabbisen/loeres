@@ -15,8 +15,9 @@ crate APIs, solver semantics, features, tags, publication, or package approval.
 
 - Reconciled the requirements, external design, and detailed roadmap through
   the implemented v0.20.0 / RFC 001-018 baseline while keeping their shared
-  RFC 020 currency marker explicitly draft pending supporting documents,
-  semantic checks, and joint closeout.
+  RFC 020 currency marker explicitly draft. Corrected supporting documents and
+  semantic checks are owner-durable; S5 integrated review and S6 joint closeout
+  remain pending.
 - Updated supporting threat/security, recovery, root/crate, RFC-index, book,
   and manifest-comment surfaces to distinguish implemented controls from
   narrow evidence, residual risk, and future work.

@@ -1,6 +1,6 @@
 [package]
 name = "loeres-cluster"
-description = "Loeres server-side solving: dynamic models, batch, orchestration, observability, optional FFI. std; server-only."
+description = "Loeres server-side solving: dynamic models, batch, orchestration, observability, and safe gateway contracts. std; server-only."
 version.workspace       = true
 edition.workspace       = true
 rust-version.workspace  = true
@@ -18,7 +18,7 @@ async-tokio = ["dep:tokio"]
 observability-tracing = []
 observability-metrics = []
 serde = []
-ffi-gateway = []   # audited, opt-in native/legacy solver gateway (RFC 009)
+ffi-gateway = []   # reserved activation gate for a future separately reviewed native/legacy adapter
 
 [dependencies]
 loeres = { workspace = true }

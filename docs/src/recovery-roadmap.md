@@ -211,9 +211,11 @@ freeze and the owner-authorized R0.5 `accepted/` transition completed on
 let-chain was rewritten without changing validation semantics, and the exact
 `cargo +1.85.0 check --workspace --all-features` command passed on 2026-07-15.
 RFC 020 S1's accepted traceability matrix and S2's reviewed atomic apex
-reconciliation are now owner-durable. The apex shared metadata intentionally
-remains draft while S3 supporting artifacts and S4 semantic checks proceed.
-The remaining RFC 019/RFC 020 implementation and R2 evidence blockers stay open.
+reconciliation are now owner-durable. Corrected S3 supporting artifacts and
+corrected S4 bounded semantic currency checks are also owner-durable. S5
+integrated documentation evidence is under architecture review, while S6 joint
+closeout and R2 evidence remain open. The apex shared metadata intentionally
+remains draft throughout this review state.
 RFC 019 S2 adds a fail-closed candidate/package skeleton: it separates the
 developer aggregate from `release-gate`, validates candidate metadata and a
 commit-derived regular-file manifest, and deliberately refuses certification

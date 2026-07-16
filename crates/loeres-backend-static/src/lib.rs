@@ -10,7 +10,8 @@
 //! - [`dimension`] — static dimension descriptors and shared access support (baseline).
 //! - [`view`] — borrowed const-sized contiguous static views (baseline).
 //! - [`array`] — owned `FixedVector` / `FixedMatrix` (feature `owned-arrays`).
-//! - [`workspace`] — scratch/workspace storage (placeholder; RFC 005).
+//! - [`workspace`] — the implemented RFC 005 [`workspace::WorkspaceFootprint`]
+//!   contract; owned-array implementations require feature `owned-arrays`.
 //!
 //! Feature posture (external design §1.6.2): the featureless baseline is the
 //! borrowed contiguous static adapters plus dimension descriptors. `owned-arrays`

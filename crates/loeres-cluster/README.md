@@ -1,6 +1,9 @@
 # loeres-cluster
 
-Server-side solving: dynamic models, batch with per-item failure isolation, orchestration, observability, and optional audited FFI. **Server-only.**
+Server-side solving: dynamic models, batch with per-item failure isolation,
+orchestration, observability, safe gateway categories, and a pure Rust mock
+gateway. The default-off `ffi-gateway` feature is an inert activation gate
+reserved for a future separately reviewed native/legacy adapter. **Server-only.**
 
 - **Environment:** `std`
 - **Depends on:** `loeres`, `loeres-backend-std`
