@@ -1,9 +1,10 @@
 # RFC 020 - Implementation Handoff
 
 **RFC.** [`020-normative-documentation-authority-and-currency.md`](../../accepted/020-normative-documentation-authority-and-currency.md)
-**Handoff state.** Accepted; R0.5 lifecycle activation, S1 traceability, and the
-reviewed atomic S2 apex reconciliation are owner-durable. S3 supporting-artifact
-reconciliation is in progress; apex currency remains draft.
+**Handoff state.** Accepted; R0.5 lifecycle activation, S1 traceability, S2
+apex reconciliation, and corrected S3 supporting artifacts are owner-durable.
+S4 bounded semantic currency checks are in review preparation; apex currency
+remains draft.
 **Target.** Same corrective baseline as RFC 019 unless architecture review separates them.
 
 ## 1. Summary
@@ -123,9 +124,8 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
 
 ## 8. Recommended next step
 
-Reconcile the S3 threat model, root/crate documentation, RFC index, book pages,
-manifest comments, changelog, publication uncertainty, and OQ-012 status without
-activating the apex current marker. Submit that bounded candidate for the
-required security/maintainer review. Only after owner durability should S4 add
-bounded semantic currency checks. Closeout still requires RFC 019's complete
-release evidence and a separate Go/No-Go review.
+Submit the S4 bounded semantic currency command, aggregate integration, and
+focused false-positive/false-negative tests for architecture review. Do not
+activate the apex current marker through tooling. After accepted owner
+durability, run S5 integrated documentation evidence. Closeout still requires
+RFC 019's complete release evidence and a separate Go/No-Go review.

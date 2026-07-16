@@ -24,6 +24,7 @@ const IMPLEMENTED: &[&str] = &[
     "size-budget",
     "unsafe-audit",
     "conformance",
+    "doc-currency",
     "link-audit",
 ];
 
@@ -43,6 +44,7 @@ fn main() -> ExitCode {
         Some("size-budget") => checks::size_budget::run(),
         Some("unsafe-audit") => checks::unsafe_audit::run(),
         Some("conformance") => checks::conformance::run(&args[1..]),
+        Some("doc-currency") => checks::doc_currency::run(),
         Some("link-audit") => checks::link_audit::run(),
         Some(other) => {
             eprintln!("xtask: unknown command `{other}`");

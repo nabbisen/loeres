@@ -29,16 +29,24 @@ cargo clippy --workspace --all-features -- -D warnings
 ```sh
 cargo xtask zero-bleed     # no forbidden server <-> edge dependency edge exists
 cargo xtask no-std         # edge crates build for thumbv7em-none-eabihf (no std/alloc)
+cargo xtask doc-currency   # bounded RFC 020 metadata/lifecycle/navigation assertions
 cargo xtask check          # canonical developer architecture aggregate
 cargo xtask release-gate   # fail-closed RFC 019 candidate gate; not a check alias
 ```
 
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
 `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
-`size-budget`, `unsafe-audit`, `conformance`, and `link-audit`.
+`size-budget`, `unsafe-audit`, `conformance`, `doc-currency`, and `link-audit`.
 The aggregate summary labels commands as enforced, advisory/reporting, or
 owner-RFC hooks; threshold-less baselines and missing future corpora are not
 reported as enforced verification passes.
+
+RFC 020 adds `doc-currency` to the developer aggregate. It checks the shared
+apex release/draft fields, RFC folder/index status agreement and accepted
+design-freeze metadata, recovery markers, mdBook navigation, release-local
+normative paths, and an explicit current-status stale-phrase ledger. It ignores
+the labeled historical root-roadmap suffix and does not attempt to infer
+arbitrary prose semantics; human architecture review remains required.
 
 RFC 011 makes `target-profiles` manifest-driven through
 `xtask/target-profiles.toml`. Mandatory profiles fail the aggregate on missing

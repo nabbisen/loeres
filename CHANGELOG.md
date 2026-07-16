@@ -27,6 +27,11 @@ crate APIs, solver semantics, features, tags, publication, or package approval.
   by repository state; external publication remains unverified.
 - Retained OQ-012 as open: Apache-2.0 warranty language is not a dedicated
   safety-critical engineering-use disclaimer.
+- Added enforced `cargo xtask doc-currency` developer checks for bounded shared
+  apex fields, RFC lifecycle/index status, accepted design-freeze metadata,
+  recovery markers, mdBook navigation, release-local paths, and explicit stale
+  current-status phrases. Historical roadmap prose is excluded by a pinned
+  section boundary; the checker does not claim semantic prose proof.
 
 ## [0.20.0] — 2026-07-04 — RFC 017: trusted/cache conformance fixtures
 
