@@ -25,7 +25,8 @@ Planned implementation is limited to:
 2. bounded conditional apex/lifecycle metadata and validation;
 3. reviewed amendments to RFC 000, RFC 019, and RFC 020;
 4. owner-selected `0.20.2` release-local preparation;
-5. one atomic exact finalization revision;
+5. one atomic exact finalization revision conditionally staging RFCs
+   019/020/021;
 6. separate local and tagged evidence reviews;
 7. explicit owner release authorization followed by an authorized distribution
    event.
@@ -46,21 +47,33 @@ authorized by this proposed handoff.
 
 ## 4. Design decisions and assumptions
 
-- Distribution-authorization predicate `Q` requires exact tree/tag identity,
-  accepted tagged evidence, architecture release Go, and owner release
-  authorization. Activation predicate `P` additionally requires the
-  owner-authorized distribution event.
+- Distribution-authorization predicate `Q` requires matching conditional
+  metadata, accepted local evidence and `A_L`, exact local tag peel, accepted
+  tagged evidence and `A_E`, a fresh authoritative-remote collision check, and
+  owner authorization for the named bundle.
+- Activation predicate `P` additionally requires successful `D_release`
+  strictly after `Q`. Under the current workflow, `D_release` inseparably
+  includes remote acceptance of tag `0.20.2`, the automatically triggered
+  release workflow starting within 30 minutes, its release gate and required
+  evidence upload, and successful terminal completion within 120 minutes.
 - `0.20.2` is owner-selected; availability must be rechecked before
   finalization and tag creation.
 - `0.20.1` stays local, immutable, unpublished, and blocked.
-- The final tagged tree must contain conditional release-current state and
-  conditionally staged RFC 019/020 `done/` paths.
+- The final tagged tree must contain conditional release-current state with
+  activated scope RFCs 001-021 and conditionally staged RFC 019/020/021
+  `done/` paths.
 - RFC 000's ordinary folder semantics remain unchanged outside the narrow
   reviewed exception.
-- Failure after tag creation quarantines the tag and requires another
+- Failure after local tag creation quarantines the tag and requires another
   owner-selected version; tags are never repaired by movement.
-- Push, GitHub release, registry publication, certification, and actual release
-  remain separately authorized actions.
+- Tag push and its automatic workflow/upload are one bundle. Branch push,
+  GitHub release, registry publication, and certification remain separately
+  authorized actions.
+- A fresh exact direct/peeled ref query against one authoritative release
+  remote is mandatory immediately before distribution and fails closed on
+  collision, ambiguity, multiple candidate remotes, or network failure.
+- Tooling validates conditional structure but must never infer external `P`
+  from tracked `done/` paths alone.
 
 ## 5. Tests and gates run
 
@@ -91,12 +104,16 @@ owned by this design round.
 - The conditional lifecycle exception changes current release semantics and
   requires architecture acceptance before implementation.
 - The exact conditional metadata schema and CLI spelling remain implementation
-  details bounded by RFC 021.
+  details bounded by RFC 021, but schema/version/tag/RFC allowlist/remote/bundle
+  bindings are normative.
 - A conditionally staged `done/` state is intentionally narrow and must not
   become a general substitute for shipped lifecycle state.
 - Tag-bound evidence still occurs after tag creation; the protocol reduces
   risk through exact local evidence and architecture review but cannot make tag
   creation reversible.
+- Remote tag acceptance followed by workflow no-start, cancellation, timeout,
+  gate failure, or artifact-upload failure is a partial-distribution incident;
+  `P` remains false and the remote tag is not rewritten.
 - No actual release is authorized.
 
 ## 8. Recommended next step
