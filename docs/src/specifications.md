@@ -12,11 +12,12 @@ contributors edit those documents directly; readers can browse them here.
 ## Specifications (`docs/specs/`)
 
 > **Currency warning.** The apex trio now contains the reviewed RFC 020 S2
-> v0.20.0 reconciliation, but its shared metadata remains explicitly draft and
-> not yet the current marker. Corrected S3 supporting-document reconciliation
-> and corrected S4 bounded semantic checks are owner-durable; S5 integrated
-> documentation review and S6 joint closeout remain. On conflict, stop affected
-> public-boundary work rather than silently choosing code or prose. See the
+> v0.20.1 candidate reconciliation, but its shared metadata remains explicitly
+> draft and not yet the current marker. Corrected S3 supporting-document reconciliation
+> and corrected S4 bounded semantic checks, S5 integration, and the RFC 019 gate
+> implementation are owner-durable. Review 021 accepted local pre-tag evidence;
+> tagged-revision evidence and S6 joint closeout remain. On conflict, stop
+> affected public-boundary work rather than silently choosing code or prose. See the
 > [Architecture Recovery Roadmap](recovery-roadmap.md).
 
 - Requirements (release-local): `docs/specs/loeres-requirements-v1.md`

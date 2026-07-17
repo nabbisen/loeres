@@ -5,19 +5,22 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## Unreleased — RFC 019/RFC 020 architecture recovery
+## [0.20.1] — 2026-07-17 — RFC 019/RFC 020 architecture recovery (candidate)
 
-The repository remains No-Go for release/readiness claims. These changes are
-documentation and release-integrity recovery work; they do not change runtime
-crate APIs, solver semantics, features, tags, publication, or package approval.
+Version 0.20.1 is a prepared corrective candidate and remains No-Go for
+release/readiness claims pending evidence for its exact revision and canonical
+tag. These changes are documentation and release-integrity recovery work; they
+do not change runtime crate APIs, solver semantics, features, publication, or
+package approval.
 
 ### Documentation reconciliation
 
 - Reconciled the requirements, external design, and detailed roadmap through
   the implemented v0.20.0 / RFC 001-018 baseline while keeping their shared
   RFC 020 currency marker explicitly draft. Corrected supporting documents and
-  semantic checks are owner-durable; S5 integrated review and S6 joint closeout
-  remain pending.
+  semantic checks and the S5 integrated baseline are owner-durable. Architecture
+  review 021 accepted the clean `525b5fd` local-dry-run evidence as the pre-tag
+  baseline; tagged-revision evidence and S6 joint closeout remain pending.
 - Updated supporting threat/security, recovery, root/crate, RFC-index, book,
   and manifest-comment surfaces to distinguish implemented controls from
   narrow evidence, residual risk, and future work.
@@ -44,6 +47,12 @@ crate APIs, solver semantics, features, tags, publication, or package approval.
 - Retained successful workflow evidence only after the gate passes. The
   workflow still creates no GitHub release and performs no registry
   publication; tags and release actions remain separately owner-authorized.
+- Selected the unused `0.20.1` version for bounded tag-candidate preparation;
+  the existing `0.20.0` tag is not reused or moved. This entry does not claim
+  that `0.20.1` is tagged, released, or published.
+- Retained the evidence classifications accepted by review 021: soft-float and
+  RISC-V profiles are advisory-unavailable, WASM and Linux AArch64 are
+  documented-only, and the size budget remains advisory.
 
 ## [0.20.0] — 2026-07-04 — RFC 017: trusted/cache conformance fixtures
 

@@ -14,11 +14,12 @@ this file is a short summary.
 > RFC 020 own the blocking recovery and are Accepted (design frozen
 > 2026-07-15). R0.5 lifecycle activation, the RFC 019 S1-S3 baseline, the RFC
 > 020 S1 traceability matrix, reviewed S2 apex reconciliation, corrected S3
-> supporting documentation, and corrected S4 semantic currency checks are
-> owner-durable. R1 is at S5 integrated-documentation review; S6 joint closeout
-> remains pending, and the apex currency marker remains draft. New
-> public-boundary implementation waits until the corrective baseline and release
-> evidence close.
+> supporting documentation, corrected S4 semantic currency checks, S5
+> integration, and RFC 019 S4/S5 gate implementation are owner-durable.
+> Architecture review 021 accepted the clean `525b5fd` local evidence and
+> authorized `0.20.1` candidate preparation. Tagged-revision evidence and S6
+> joint closeout remain pending, and the apex currency marker remains draft.
+> New public-boundary implementation waits until R2 closes.
 
 ## Phases
 
@@ -35,15 +36,17 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, bounded conformance, and cache/trust fixtures (RFCs 010–013, 017).
 
-## Current status (v0.20.0)
+## Current status (released v0.20.0; prepared candidate v0.20.1)
 
 RFCs 001-018 are implemented. The current numerical breadth is one
 box/bound-constrained projected-first-order family on device and cluster.
 Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
 throughput, or adversarial parity claim is made. Observability is metadata-only,
 the gateway is mock-only, and validation caching is process-local. RFCs 019/020
-are accepted but unshipped recovery contracts; package/release readiness is
-No-Go and `cargo xtask release-gate` remains intentionally fail-closed.
+remain accepted recovery contracts. Their integrated pre-tag baseline and local
+source/package/clean-extraction evidence were accepted by architecture review
+021, but tagged-revision evidence is still missing. Package/release readiness
+therefore remains No-Go; `0.20.1` is a candidate, not a release.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision

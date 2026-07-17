@@ -3,9 +3,12 @@
 **RFC.** [`020-normative-documentation-authority-and-currency.md`](../../accepted/020-normative-documentation-authority-and-currency.md)
 **Handoff state.** Accepted; R0.5 lifecycle activation, S1 traceability, S2
 apex reconciliation, corrected S3 supporting artifacts, and corrected S4
-bounded semantic currency checks are owner-durable. S5 integrated documentation
-evidence is in review preparation; apex currency remains draft.
-**Target.** Same corrective baseline as RFC 019 unless architecture review separates them.
+bounded semantic currency checks are owner-durable. S5 integration and the
+joint pre-tag baseline were accepted by architecture review 021. Candidate
+v0.20.1 preparation is authorized; tagged evidence and S6 remain pending, and
+apex currency remains draft.
+**Target.** Candidate v0.20.1 with RFC 019; no lifecycle or current-marker
+activation yet.
 
 ## 1. Summary
 
@@ -53,6 +56,12 @@ Expected implementation files:
 - `CHANGELOG.md` at closeout
 
 Runtime crate production source is evidence to inspect, not a target to edit.
+
+Candidate v0.20.1 preparation changes only the shared draft currency version
+and pending-activation reason, current recovery roadmaps, changelog candidate
+record, workspace/lockfile version metadata, and recovery handoffs. It does not
+change normative requirements, public-boundary decisions, runtime code, or RFC
+lifecycle state.
 
 ## 4. Design decisions and assumptions
 
@@ -119,6 +128,23 @@ the cluster gateway as shipped safe categories plus `MockGatewayJob`, with
 `WorkspaceFootprint` surface as implemented rather than a placeholder. No
 runtime API, feature definition, dependency, or behavior changed.
 
+Review 021 accepted the integrated `525b5fd` RFC 019/RFC 020 baseline and its
+local source/package/clean-extraction evidence. The documentation aggregate
+passed with lifecycle, currency, and links intact; mandatory profiles were 2/2
+and bounded conformance was 12/12. Soft-float and RISC-V remained
+advisory-unavailable, WASM and Linux AArch64 documented-only, and size budgeting
+advisory. The review authorized v0.20.1 candidate preparation but explicitly
+kept the apex marker draft and RFCs 019/020 in `accepted/` until tagged evidence
+and the owner release decision are complete.
+
+The v0.20.1 preparation tree freshly passed document currency, RFC lifecycle,
+54-file link audit, mdBook, formatting, all-target/all-feature Clippy, 275
+workspace tests plus doc-tests, exact Rust 1.85 checking, and the developer
+aggregate with mandatory profiles 2/2 and conformance 12/12. Generated mdBook
+output was removed. The complete release gate stopped at its expected dirty-tree
+precondition, so this handoff does not claim v0.20.1 package or extraction
+evidence before owner durability.
+
 ## 6. Generated artifacts
 
 Expected review artifacts:
@@ -139,11 +165,13 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
   later candidate RFCs.
 - External publication badge truth may require network verification; if not
   observed, record uncertainty rather than infer publication state.
+- Candidate v0.20.1 does not yet have evidence for its exact committed revision
+  or a canonical tag-to-HEAD assertion.
 
 ## 8. Recommended next step
 
-Submit the cumulative S1-S5 documentation baseline and integrated evidence for
-architecture review. Do not activate the apex current marker through evidence
-collection alone. After accepted owner durability, prepare S6 joint closeout
-with RFC 019's complete tagged-revision, clean-extraction, package, retained
-approval, and separate Go/No-Go evidence.
+After the owner makes the bounded v0.20.1 preparation durable, collect and
+review RFC 019's complete local evidence for the exact candidate revision.
+Then wait for separate owner tag authority and tagged workflow/gate evidence.
+Do not activate the apex current marker or move either RFC before that evidence,
+joint S6 review, and the owner release decision.

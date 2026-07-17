@@ -10,13 +10,13 @@
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
-> repository release: **v0.20.0**. Implemented scope: **RFCs 001-018** in
+> repository release: **v0.20.1**. Implemented scope: **RFCs 001-018** in
 > `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020** in
 > `../../rfcs/accepted/`; this work is unshipped and in progress. Open proposals
-> are roadmap items only. Activation as the current marker is pending RFC 020 S3
-> supporting-document reconciliation, S4 semantic checks, and architecture
-> review. Until then, this block is a review candidate and does not assert that
-> repository documentation is fully current.
+> are roadmap items only. Activation as the current marker is pending tagged
+> revision evidence, joint S6 closeout review, and the project-owner release
+> decision. Until then, this block is a review candidate and does not assert
+> that repository documentation is fully current.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,

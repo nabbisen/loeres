@@ -1,11 +1,13 @@
 # RFC 019 - Implementation Handoff
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../accepted/019-release-integrity-and-msrv-recovery.md)
-**Handoff state.** Accepted; architecture design freeze, project-owner
-approval, the RFC 000 `accepted/` transition, and S1-S3 are owner-durable. S4
-package verification and S5 release documentation are in tooling-review
-preparation on the owner-durable RFC 020 S5 baseline.
-**Target.** Corrective baseline after v0.20.0. No tag, commit, push, or publication is authorized by this handoff.
+**Handoff state.** Accepted; S1-S5 and the integrated RFC 020 baseline are
+owner-durable. Architecture review 021 accepted revision `525b5fd` and its
+retained local evidence as the pre-tag baseline and authorized bounded
+`0.20.1` candidate preparation. Tagged evidence and joint S6 closeout remain
+pending.
+**Target.** Corrective candidate v0.20.1. No commit, tag, push, publication, or
+release is authorized by this handoff.
 
 ## 1. Summary
 
@@ -49,6 +51,11 @@ Expected implementation files:
 
 Do not edit runtime crate production files. If implementation needs unrelated
 files, stop and request scope review.
+
+The v0.20.1 candidate-preparation step is limited to workspace/lockfile version
+metadata, the matching changelog candidate entry, shared draft currency
+metadata, current recovery roadmaps, and the two recovery handoffs. RFC files
+remain in `accepted/`, and runtime crate production files remain untouched.
 
 ## 4. Design decisions and assumptions
 
@@ -151,6 +158,38 @@ defense-in-depth.
 The focused workflow-policy test verifies the canonical selector, exact mdBook
 install, and 40-hex action references. It passes on stable and Rust 1.85.
 
+After owner durability at `525b5fd`, the complete local gate passed for
+manifest version `0.20.0` with local-dry-run identity. It observed the ordered
+source suite, 275 workspace unit tests plus doc-test targets, exact Rust 1.85
+checking, the architecture aggregate, mdBook, root-layout package validation,
+Git-object content/mode identity, and the complete applicable clean-extraction
+suite. The retained manifest contained 179 tracked regular files. Review 021
+independently matched every archive payload and mode to the commit, confirmed
+the archive digest and exclusions, and accepted this evidence for pre-tag use.
+It did not accept it as tagged evidence because tag `0.20.0` identifies an
+older revision.
+
+The accepted classifications remain explicit: soft-float and RISC-V profiles
+were advisory-unavailable; WASM and Linux AArch64 were documented-only; the
+size budget was advisory. Candidate v0.20.1 requires new evidence bound to its
+exact committed revision, followed by separately authorized tag evidence.
+
+For the dirty v0.20.1 preparation tree, the following were freshly observed:
+
+- `cargo fmt --all -- --check`: passed;
+- `cargo clippy --workspace --all-features --all-targets -- -D warnings`:
+  passed;
+- `cargo test --workspace --all-features`: passed with 275 unit tests and all
+  doc-test targets, using a workspace-local temporary directory for rustdoc;
+- `cargo +1.85.0 check --workspace --all-features`: passed;
+- `cargo xtask check`: passed with mandatory profiles 2/2 and conformance
+  12/12, preserving the accepted advisory classes;
+- `cargo xtask doc-currency`, `cargo xtask check-rfcs`, and
+  `cargo xtask link-audit`: passed;
+- `mdbook build docs`: passed, and generated `docs/book/` was removed; and
+- `cargo xtask release-gate`: failed at the expected tracked-cleanliness
+  precondition before packaging, so no v0.20.1 candidate evidence is claimed.
+
 Required during implementation: execute the complete gate list and order in
 RFC 019 §11.3. The first focused evidence after the syntax repair is the exact
 Rust 1.85 all-feature workspace check; it does not replace the later complete
@@ -169,6 +208,15 @@ Expected only at release-candidate verification:
 Do not commit generated archives or raw logs unless the project owner approves a
 specific durable evidence location.
 
+The accepted `525b5fd` local run retained `EVIDENCE.md`, a normalized tracked
+content manifest, and `loeres-v0.20.0.tar.gz` in its gate-owned ignored evidence
+location. These are historical pre-tag evidence only; they are not v0.20.1
+candidate or publication artifacts.
+
+The preparation checks generated only transient build and mdBook output. The
+generated book was removed; no v0.20.1 archive or evidence directory exists
+before owner durability.
+
 ## 7. Known limitations
 
 - RFC 019 does not add vulnerability/license scanning.
@@ -178,12 +226,13 @@ specific durable evidence location.
 - A local selector test cannot prove GitHub service behavior by itself; pair it
   with a non-publishing workflow dry run or equivalent review evidence.
 - Completion does not authorize publication.
+- Candidate v0.20.1 has no clean evidence-bound revision or canonical tag yet.
 
 ## 8. Recommended next step
 
-Submit the RFC 019 S4/S5 release-gate, workflow-retention, and documentation
-candidate for architecture review. After acceptance and owner durability, run
-the complete gate from the clean revision and submit its retained local
-source/package/clean-extraction evidence for the joint S6 Go/No-Go review. Do
-not activate apex/lifecycle state, create a tag, publish, push, or release while
-collecting local evidence.
+After the owner makes this bounded v0.20.1 preparation durable, run the complete
+local gate on that exact clean revision and submit its retained evidence for
+review. Only after acceptance may the owner separately authorize canonical tag
+creation. Tagged workflow/gate evidence proving tag-to-HEAD identity is still
+required before joint S6 closeout. Do not activate apex/lifecycle state,
+publish, push, or release while collecting candidate evidence.

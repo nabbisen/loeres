@@ -159,7 +159,8 @@ Exit criteria:
 - evidence is retained in the review/release package;
 - RFC 019 and RFC 020 closeout sections identify the observed revision;
 - the project owner approves any tag or release operation separately;
-- only then may v0.20.0 readiness be superseded by a new Go/No-Go review.
+- only then may the v0.20.0 No-Go baseline be superseded by a v0.20.1
+  Go/No-Go review.
 
 ## Milestone R3 — Assurance expansion
 
@@ -205,23 +206,25 @@ does not provide a safe implementation sequence.
 
 ## Current disposition
 
-The repository remains No-Go for release/readiness claims at v0.20.0. R0 design
-freeze and the owner-authorized R0.5 `accepted/` transition completed on
-2026-07-15. R1 corrective implementation began with RFC 019 S1: the host-only
-let-chain was rewritten without changing validation semantics, and the exact
-`cargo +1.85.0 check --workspace --all-features` command passed on 2026-07-15.
-RFC 020 S1's accepted traceability matrix and S2's reviewed atomic apex
-reconciliation are now owner-durable. Corrected S3 supporting artifacts and
-corrected S4 bounded semantic currency checks are also owner-durable. S5
-integrated documentation evidence is under architecture review, while S6 joint
-closeout and R2 evidence remain open. The apex shared metadata intentionally
-remains draft throughout this review state.
-RFC 019 S2 adds a fail-closed candidate/package skeleton: it separates the
-developer aggregate from `release-gate`, validates candidate metadata and a
-commit-derived regular-file manifest, and deliberately refuses certification
-until RFC 020 reconciliation reaches the shared integration point.
+The repository remains No-Go for release/readiness claims. R0 design freeze and
+the owner-authorized R0.5 `accepted/` transition completed on 2026-07-15. The
+R1 corrective implementation, RFC 020 S1-S5 reconciliation, and RFC 019 S1-S5
+gate baseline are owner-durable. Architecture review 021 accepted revision
+`525b5fd` and its retained local source/package/clean-extraction evidence as the
+integrated pre-tag baseline, then authorized owner selection and bounded
+preparation of unused candidate version `0.20.1`. R2 is now in candidate
+preparation: evidence for the exact `0.20.1` revision and canonical tag remains
+open. The apex shared metadata intentionally remains draft, and RFCs 019/020
+remain Accepted, until tagged evidence, joint S6 review, and the owner release
+decision are complete.
+RFC 019 S2 began as a fail-closed candidate/package skeleton. The completed
+gate now separates the developer aggregate from `release-gate`, validates
+candidate metadata and a commit-derived regular-file manifest, constructs and
+checks the root-layout archive, verifies extracted Git-object content/modes,
+and repeats the applicable suite in a clean extraction. Passing local evidence
+does not certify a release or substitute for the pending tag assertion.
 RFC 019 S3 aligns CI, the exact MSRV workflow, and the non-publishing release
 workflow with the accepted command profiles. The release selector uses the
 canonical unprefixed tag family, action references are full reviewed SHAs, and
-mdBook is pinned to 0.5.4. Artifact upload remains absent while certification is
-fail-closed.
+mdBook is pinned to 0.5.4. The workflow may retain successful gate evidence but
+still has no publication or GitHub-release step; certification remains No-Go.
