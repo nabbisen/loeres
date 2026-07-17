@@ -1,8 +1,8 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
-**RFC.** [`021-conditional-release-finalization.md`](../../proposed/021-conditional-release-finalization.md)  
+**RFC.** [`021-conditional-release-finalization.md`](../../proposed/021-conditional-release-finalization.md)
 **Handoff state.** Design proposed; implementation forbidden until independent
-architecture acceptance and project-owner lifecycle authorization.  
+architecture acceptance and project-owner lifecycle authorization.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
