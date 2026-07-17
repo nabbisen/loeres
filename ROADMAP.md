@@ -16,9 +16,10 @@ this file is a short summary.
 > 020 S1 traceability matrix, reviewed S2 apex reconciliation, corrected S3
 > supporting documentation, corrected S4 semantic currency checks, S5
 > integration, and RFC 019 S4/S5 gate implementation are owner-durable.
-> Architecture review 021 accepted the clean `525b5fd` local evidence and
-> authorized `0.20.1` candidate preparation. Tagged-revision evidence and S6
-> joint closeout remain pending, and the apex currency marker remains draft.
+> Architecture review 024 accepted the non-publishing tagged evidence for
+> canonical tag `0.20.1` at `ed282545...`. The bounded post-tag S6/R2 closeout
+> delta is now being prepared for separate review; final closeout remains
+> pending, and the apex currency marker remains draft.
 > New public-boundary implementation waits until R2 closes.
 
 ## Phases
@@ -43,10 +44,14 @@ box/bound-constrained projected-first-order family on device and cluster.
 Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
 throughput, or adversarial parity claim is made. Observability is metadata-only,
 the gateway is mock-only, and validation caching is process-local. RFCs 019/020
-remain accepted recovery contracts. Their integrated pre-tag baseline and local
-source/package/clean-extraction evidence were accepted by architecture review
-021, but tagged-revision evidence is still missing. Package/release readiness
-therefore remains No-Go; `0.20.1` is a candidate, not a release.
+remain accepted recovery contracts. Their integrated tagged
+source/package/clean-extraction evidence for canonical tag `0.20.1` at
+`ed282545...` was accepted with notes by architecture review 024. The current
+tracked closeout-preparation edits are necessarily post-tag governance state
+and are not part of that immutable archive. Joint S6/R2 closeout, apex
+activation, RFC moves, and the project-owner release decision remain pending.
+Package/release readiness therefore remains No-Go; `0.20.1` is a tagged
+candidate, not an actual release.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision

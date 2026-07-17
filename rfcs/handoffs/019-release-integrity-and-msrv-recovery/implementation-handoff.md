@@ -2,12 +2,12 @@
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../accepted/019-release-integrity-and-msrv-recovery.md)
 **Handoff state.** Accepted; S1-S5 and the integrated RFC 020 baseline are
-owner-durable. Architecture review 021 accepted revision `525b5fd` and its
-retained local evidence as the pre-tag baseline and authorized bounded
-`0.20.1` candidate preparation. Tagged evidence and joint S6 closeout remain
-pending.
-**Target.** Corrective candidate v0.20.1. No commit, tag, push, publication, or
-release is authorized by this handoff.
+owner-durable. Architecture review 024 accepted the non-publishing evidence
+for canonical tag `0.20.1` at `ed282545...` and authorized preparation of the
+tracked joint S6/R2 closeout delta. Final closeout remains pending.
+**Target.** Post-tag closeout preparation for corrective candidate v0.20.1.
+No tag mutation, push, publication, GitHub release, certification, lifecycle
+activation, or actual release is authorized by this handoff.
 
 ## 1. Summary
 
@@ -214,8 +214,37 @@ location. These are historical pre-tag evidence only; they are not v0.20.1
 candidate or publication artifacts.
 
 The preparation checks generated only transient build and mdBook output. The
-generated book was removed; no v0.20.1 archive or evidence directory exists
+generated book was removed; no v0.20.1 archive or evidence directory existed
 before owner durability.
+
+After owner creation of canonical annotated tag `0.20.1`, the canonical
+non-publishing tagged gate passed at
+`ed282545fe12de7827377c690a3e7024f0f4fbeb`. It retained
+`loeres-v0.20.1.tar.gz`, `EVIDENCE.md`, and a normalized tracked-content
+manifest. Architecture review 024 accepted that tagged evidence with notes
+after independently checking tag peel, signature cryptography, manifest/tree
+identity, all 179 payloads and modes, paths/types, required inputs, exclusions,
+digest, and cleanup. The signature key lacked independent local trust
+certification, so only a good cryptographic signature is claimed.
+
+For the bounded post-tag closeout-preparation worktree, the following were
+freshly observed:
+
+- `cargo fmt --all -- --check`: passed;
+- `cargo xtask check-rfcs`, `cargo xtask doc-currency`, and
+  `cargo xtask link-audit`: passed; the link audit scanned 54 Markdown files;
+- `mdbook build docs`: passed; generated `docs/book/` was removed;
+- `cargo xtask check`: passed with mandatory profiles 2/2 and conformance
+  12/12, retaining the accepted advisory classes;
+- all-target/all-feature workspace Clippy with warnings denied: passed;
+- all-feature workspace tests: passed with 275 unit tests and all doc-test
+  targets;
+- exact Rust 1.85 all-feature workspace check: passed; and
+- `git diff --check`: passed.
+
+`cargo xtask release-gate` was not rerun for the dirty post-tag governance
+delta. It cannot replace or extend the accepted evidence for immutable tag
+`0.20.1`; its tracked-cleanliness precondition would reject this worktree.
 
 ## 7. Known limitations
 
@@ -226,13 +255,18 @@ before owner durability.
 - A local selector test cannot prove GitHub service behavior by itself; pair it
   with a non-publishing workflow dry run or equivalent review evidence.
 - Completion does not authorize publication.
-- Candidate v0.20.1 has no clean evidence-bound revision or canonical tag yet.
+- The immutable `0.20.1` tag contains revision `ed282545...`; later tracked
+  closeout prose is post-tag governance state and is not part of its archive.
+- The tag signing key is not independently certified by the local GPG trust
+  database.
+- Joint S6/R2 review, owner closeout/release decisions, remote push/CI,
+  publication, GitHub release, and certification remain pending.
 
 ## 8. Recommended next step
 
-After the owner makes this bounded v0.20.1 preparation durable, run the complete
-local gate on that exact clean revision and submit its retained evidence for
-review. Only after acceptance may the owner separately authorize canonical tag
-creation. Tagged workflow/gate evidence proving tag-to-HEAD identity is still
-required before joint S6 closeout. Do not activate apex/lifecycle state,
-publish, push, or release while collecting candidate evidence.
+After the project owner makes this bounded post-tag joint S6/R2 preparation
+durable, submit its exact resulting revision and the observed gate record for
+architecture review. Keep RFCs 019/020 in `accepted/` and the apex marker
+draft. Do not move or recreate tag `0.20.1`, activate lifecycle state, push,
+publish, create a GitHub release, certify, or claim an actual release before
+the separate review and project-owner decision.

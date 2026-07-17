@@ -209,20 +209,20 @@ does not provide a safe implementation sequence.
 The repository remains No-Go for release/readiness claims. R0 design freeze and
 the owner-authorized R0.5 `accepted/` transition completed on 2026-07-15. The
 R1 corrective implementation, RFC 020 S1-S5 reconciliation, and RFC 019 S1-S5
-gate baseline are owner-durable. Architecture review 021 accepted revision
-`525b5fd` and its retained local source/package/clean-extraction evidence as the
-integrated pre-tag baseline, then authorized owner selection and bounded
-preparation of unused candidate version `0.20.1`. R2 is now in candidate
-preparation: evidence for the exact `0.20.1` revision and canonical tag remains
-open. The apex shared metadata intentionally remains draft, and RFCs 019/020
-remain Accepted, until tagged evidence, joint S6 review, and the owner release
-decision are complete.
+gate baseline are owner-durable. Architecture review 024 accepted the
+non-publishing tagged source/package/clean-extraction evidence for canonical
+tag `0.20.1` at `ed282545...`. R2 is now in bounded post-tag closeout
+preparation. The closeout delta is later repository-governance state and is not
+part of the immutable tagged archive. The apex shared metadata intentionally
+remains draft, and RFCs 019/020 remain Accepted, until joint S6/R2 review and
+the separate project-owner closeout and release decisions are complete.
 RFC 019 S2 began as a fail-closed candidate/package skeleton. The completed
 gate now separates the developer aggregate from `release-gate`, validates
 candidate metadata and a commit-derived regular-file manifest, constructs and
 checks the root-layout archive, verifies extracted Git-object content/modes,
-and repeats the applicable suite in a clean extraction. Passing local evidence
-does not certify a release or substitute for the pending tag assertion.
+and repeats the applicable suite in a clean extraction. The accepted tagged
+evidence proves the immutable candidate; it does not itself certify or publish
+a release.
 RFC 019 S3 aligns CI, the exact MSRV workflow, and the non-publishing release
 workflow with the accepted command profiles. The release selector uses the
 canonical unprefixed tag family, action references are full reviewed SHAs, and

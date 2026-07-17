@@ -430,3 +430,42 @@ RFC 020 is complete only when:
 12. an architecture review accepts the refreshed documents;
 13. RFC 019's tagged-revision/clean-extraction evidence closes before any new
     public-boundary implementation begins.
+
+## 19. S6 closeout preparation (post-tag; pending)
+
+This section records preparation for joint S6/R2 review; it does not mark RFC
+020 implemented. RFC 020 remains in `accepted/`, the shared apex metadata
+remains a reconciliation draft rather than the current marker, and new
+public-boundary implementation remains blocked.
+
+Architecture review 024 accepted RFC 019's non-publishing evidence for
+canonical unprefixed tag `0.20.1`, which peels to
+`ed282545fe12de7827377c690a3e7024f0f4fbeb`. That tagged archive contains the
+integrated RFC 020 S1-S5 reconciliation: the shared draft apex trio, authority
+and conflict rules, stable traceability/amendment records, current threat and
+supporting documentation, RFC/index lifecycle state, release-local paths, and
+bounded semantic currency checks. The accepted artifact has 179 tracked
+regular files; independent review matched its manifest, contents, modes,
+required documentation, exclusions, and safe paths/types to the tagged commit.
+RFC 019 §18 records the package identity, digest, tools, gate scope, and
+evidence-class limitations without creating a second normative gate list.
+
+The tag is immutable at `ed282545...`; this closeout-preparation section and
+the accompanying status refresh are post-tag repository-governance records and
+are not files in the accepted archive. They must not be presented as tagged
+artifact content. Their purpose is to make the later owner and architecture
+decisions auditable while preserving the distinction between artifact evidence
+and repository lifecycle state.
+
+For this post-tag closeout-preparation worktree, lifecycle, semantic currency,
+54-file link, mdBook, aggregate, formatting, all-target/all-feature Clippy,
+275-test plus doc-test, exact Rust 1.85, and diff gates were freshly observed
+passing. The aggregate reported mandatory profiles 2/2 and conformance 12/12,
+with the accepted advisory classifications unchanged. Generated `docs/book/`
+output was removed.
+
+Final joint S6/R2 closure still requires owner durability for this delta,
+architecture review of its exact resulting revision, and a separate
+project-owner decision. Until then, the apex current marker, RFC moves,
+release-readiness claims, push, publication, GitHub release, certification, and
+actual release remain blocked.

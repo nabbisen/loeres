@@ -1,14 +1,13 @@
 # RFC 020 - Implementation Handoff
 
 **RFC.** [`020-normative-documentation-authority-and-currency.md`](../../accepted/020-normative-documentation-authority-and-currency.md)
-**Handoff state.** Accepted; R0.5 lifecycle activation, S1 traceability, S2
-apex reconciliation, corrected S3 supporting artifacts, and corrected S4
-bounded semantic currency checks are owner-durable. S5 integration and the
-joint pre-tag baseline were accepted by architecture review 021. Candidate
-v0.20.1 preparation is authorized; tagged evidence and S6 remain pending, and
-apex currency remains draft.
-**Target.** Candidate v0.20.1 with RFC 019; no lifecycle or current-marker
-activation yet.
+**Handoff state.** Accepted; R0.5 lifecycle activation and S1-S5 are
+owner-durable. Architecture review 024 accepted the integrated non-publishing
+tagged evidence for `0.20.1` at `ed282545...` and authorized preparation of
+the tracked joint S6/R2 closeout delta. Apex currency remains draft and final
+closeout remains pending.
+**Target.** Post-tag closeout preparation with RFC 019; no lifecycle,
+current-marker, publication, or actual-release activation.
 
 ## 1. Summary
 
@@ -145,6 +144,24 @@ output was removed. The complete release gate stopped at its expected dirty-tree
 precondition, so this handoff does not claim v0.20.1 package or extraction
 evidence before owner durability.
 
+After owner durability and creation of canonical unprefixed tag `0.20.1`, RFC
+019's complete non-publishing tagged gate passed at
+`ed282545fe12de7827377c690a3e7024f0f4fbeb`. Architecture review 024 accepted
+the tag-bound source, package, and clean-extraction evidence with notes. The
+review independently confirmed that all 179 manifest entries, archive
+payloads, executable modes, required documentation, exclusions, and safe
+paths/types match the tagged commit. This proves the integrated S1-S5
+documentation baseline in the immutable tagged artifact; it does not place
+later closeout-preparation prose inside that artifact.
+
+The bounded post-tag closeout-preparation worktree freshly passed formatting,
+RFC lifecycle/index, semantic currency, the 54-file link audit, mdBook,
+all-target/all-feature Clippy with warnings denied, 275 workspace unit tests
+plus all doc-test targets, exact Rust 1.85 checking, the developer aggregate,
+and diff hygiene. The aggregate reported mandatory profiles 2/2 and conformance
+12/12; the accepted advisory classifications remain unchanged. Generated
+`docs/book/` output was removed.
+
 ## 6. Generated artifacts
 
 Expected review artifacts:
@@ -165,13 +182,17 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
   later candidate RFCs.
 - External publication badge truth may require network verification; if not
   observed, record uncertainty rather than infer publication state.
-- Candidate v0.20.1 does not yet have evidence for its exact committed revision
-  or a canonical tag-to-HEAD assertion.
+- The immutable `0.20.1` tag identifies `ed282545...`; the tracked S6/R2
+  preparation delta is a later governance revision and is not in its archive.
+- Final closeout, apex activation, RFC moves, owner release authorization,
+  remote push/CI, publication, GitHub release, and certification remain
+  pending.
 
 ## 8. Recommended next step
 
-After the owner makes the bounded v0.20.1 preparation durable, collect and
-review RFC 019's complete local evidence for the exact candidate revision.
-Then wait for separate owner tag authority and tagged workflow/gate evidence.
-Do not activate the apex current marker or move either RFC before that evidence,
-joint S6 review, and the owner release decision.
+After the project owner makes the bounded post-tag closeout-preparation delta
+durable, submit its exact resulting revision for architecture review. Keep the
+shared apex metadata draft and both RFCs in `accepted/`. Do not move or
+recreate tag `0.20.1`, activate the current marker, push, publish, create a
+GitHub release, certify, or claim an actual release before the separate review
+and project-owner decision.

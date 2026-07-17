@@ -43,7 +43,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 | RFC 015 — validation evidence cache | Implemented since v0.19.0 | Model identity/mutation epoch cache; process-local only; per-call and hot-loop checks remain. |
 | RFC 016 — dynamic PFO kernel | Implemented since v0.14.0 | One box/bound-constrained projected-first-order cluster kernel; no generic LP/QP/SOCP surface. |
 | RFC 018 — cluster solve test split | Implemented in v0.20.0 | Maintainability-only; no public behavior change. |
-| RFC 019/020 — recovery | Accepted; v0.20.1 candidate preparation | Integrated pre-tag baseline and local gate evidence accepted by review 021; tagged evidence and S6 closeout remain. |
+| RFC 019/020 — recovery | Accepted; v0.20.1 post-tag closeout preparation | Tagged source/package/clean-extraction evidence for `0.20.1` at `ed282545...` accepted by review 024; joint S6/R2 review and owner decision remain. |
 
 ## 0. Purpose and Roadmap Principle
 
@@ -1041,8 +1041,9 @@ A release candidate may be cut only when:
 
 **Current recovery disposition: No-Go.** Review 021 accepted the integrated
 `525b5fd` pre-tag baseline and its local source/package/clean-extraction
-evidence, authorizing bounded `0.20.1` candidate preparation. Tagged-revision
-evidence and joint RFC 019/RFC 020 closeout remain required. Developer or local
+evidence, authorizing bounded `0.20.1` candidate preparation. Architecture
+review 024 later accepted the tag-bound evidence for `0.20.1` at `ed282545...`;
+joint RFC 019/RFC 020 closeout and the owner decision remain required. Developer or local
 candidate checks, even when green, do not authorize release.
 
 ### 5.10 Roadmap Completion Matrix
@@ -1054,7 +1055,7 @@ candidate checks, even when green, do not authorize release.
 | Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ✅ complete — RFC 004 (v0.8.0) / 005 (v0.9.0) / 006 (v0.10.0, hardened v0.10.1); kernel runs on `thumbv7em-none-eabihf` under test; zero-bleed, `no-std`, and `panic-audit` gates pass; footprint evidence recorded (RFC 006 §7.1) |
 | Phase 3 | Cluster | RFC 007, 008, 009, 012, 015, 016 | Dynamic backend, one cluster kernel, orchestration, cache, observation, and dependency isolation exist; broad scale/isolation/native-adapter criteria remain. | ◐ partially complete through v0.20.0 |
 | Integration | Cross-layer verification | RFC 013, 017 and `xtask` gates | Bounded device/cluster PFO and cache/trust fixtures preserve separation; broad parity remains future. | ◐ bounded smoke baseline implemented through v0.20.0 |
-| Recovery | Release integrity and documentation currency | RFC 019, 020 | Package gate and normative currency close jointly with reviewed evidence. | ◐ v0.20.1 candidate preparation; tagged evidence pending; release No-Go |
+| Recovery | Release integrity and documentation currency | RFC 019, 020 | Package gate and normative currency close jointly with reviewed evidence. | ◐ v0.20.1 tagged evidence accepted; post-tag S6/R2 preparation; release No-Go |
 
 ---
 
@@ -1069,7 +1070,7 @@ R2. No public capability expansion may enter implementation before R2 closes.
 | R0 — design freeze | Audit blockers classified | RFC 019/RFC 020 define bounded recovery, gates, rollback, and handoffs | Complete: independent architecture review accepted both designs. |
 | R0.5 — lifecycle activation | R0 accepted and owner authorizes transition | Five-folder lifecycle, `accepted/`, index/link/tool agreement | Complete: both recovery RFCs are durably Accepted. |
 | R1 — corrective baseline | R0.5 complete | Exact Rust 1.85 repair, release-gate skeleton, traceability matrix, atomic documentation reconciliation, semantic currency checks | Complete: integrated revision `525b5fd` and local evidence accepted by review 021; runtime APIs/solver semantics unchanged. |
-| R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | In progress: `0.20.1` candidate preparation authorized; exact-revision and tagged evidence pending; release No-Go. |
+| R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | In progress: `0.20.1` tagged evidence accepted at `ed282545...`; post-tag closeout review and owner decision pending; release No-Go. |
 | R3 — assurance expansion | R1 baseline settled; each candidate separately reviewed | Optional follow-on RFCs for enforced budgets/portability, supply chain/stress, wider numerical conformance, and maintainability | Candidate scope only; not approved implementation. |
 | R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Blocked by R2; no capability is selected. |
 

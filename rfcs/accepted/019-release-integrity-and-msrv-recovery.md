@@ -398,3 +398,40 @@ RFC 019 is complete only when:
 9. no runtime API, solver behavior, or edge dependency boundary changed;
 10. an architect review accepts the closeout evidence;
 11. any tag or release action is separately authorized by the project owner.
+
+## 18. S6 closeout preparation (post-tag; pending)
+
+This section is a closeout-preparation record, not a completion declaration.
+RFC 019 remains Accepted and the repository remains No-Go for release/readiness
+claims until the complete joint S6/R2 delta receives architecture review and
+the project owner makes the separate closeout and release decisions.
+
+The canonical annotated and signed Git tag `0.20.1` peels to
+`ed282545fe12de7827377c690a3e7024f0f4fbeb`. Architecture review 024 accepted
+the retained non-publishing tagged evidence with notes. The tag's signature was
+cryptographically good against the locally available key; the local GPG trust
+database did not independently certify that key, so no stronger signer-identity
+claim is made.
+
+The accepted evidence records candidate version `0.20.1`, validated tag
+`0.20.1`, the exact peeled revision, Rust/Cargo 1.97.1, exact Rust 1.85.0,
+mdBook 0.5.4, Git 2.55.0, and GNU tar 1.35. It records the complete ordered
+source-tree and clean-extraction gate defined by §11.3 as passing. The package
+is the root-layout `loeres-v0.20.1.tar.gz`, with SHA-256
+`98caed86eca34d1565e3fff7b4554fe912f7d56542b1a6bfded4dcbdf51066d3`
+and a normalized manifest of 179 tracked regular files. Independent review
+matched the manifest to the tagged commit tree, all payloads to their Git
+objects, executable modes, required inputs, exclusions, safe paths/types, and
+cleanup state.
+
+Evidence classes remain bounded: soft-float and RISC-V are
+advisory-unavailable, WASM and Linux AArch64 are documented-only, and the
+artifact-size budget is advisory. No publication or GitHub release occurred.
+
+The immutable tag identifies only `ed282545...`. This section and every other
+tracked closeout-preparation edit are necessarily part of a later post-tag
+governance revision and are not contained in the accepted tagged archive. They
+describe evidence for the tagged artifact; they do not alter, supplement, or
+retroactively certify its file set. Final S6 closure, movement to `done/`, apex
+activation, push, publication, GitHub release, certification, and actual
+release remain pending separate review and project-owner authority.
