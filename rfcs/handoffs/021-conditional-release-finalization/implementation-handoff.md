@@ -35,16 +35,26 @@ Planned implementation is limited to:
 Runtime source, APIs, behavior, features, dependencies, publication automation,
 credential handling, and tag mutation are out of scope.
 
+The current owner authorization is narrower than the complete plan above. After
+architecture accepts the Q0.5/S0.5 lifecycle baseline, bounded S1 may implement
+only the host-side intended-tag preflight, conditional metadata/lifecycle
+validation, focused tests, and normative RFC 000/019/020 protocol amendments
+accepted by review 027. S2 version/apex/changelog/roadmap preparation and every
+later finalization, tag, distribution, publication, certification, or release
+stage remain unauthorized.
+
 ## 3. Files changed
 
-This design round changes only:
+The Q0.5/S0.5 lifecycle transition changes only:
 
 - `rfcs/accepted/021-conditional-release-finalization.md`;
 - `rfcs/handoffs/021-conditional-release-finalization/implementation-handoff.md`;
 - `rfcs/README.md`.
 
-Expected later implementation areas are enumerated by RFC 021 §4. They are not
-authorized by this proposed handoff.
+RFC 021 §4 enumerates the complete eventual implementation surface. Only the
+bounded S1 subset stated above is owner-authorized, subject to architecture
+acceptance of this lifecycle baseline; all S2 and later areas remain
+unauthorized.
 
 ## 4. Design decisions and assumptions
 
@@ -87,23 +97,25 @@ Observed for the Q0.5/S0.5 lifecycle-transition worktree:
 - `mdbook build docs`: passed; generated `docs/book/` removed; and
 - `git diff --check`: passed.
 
-No implementation or release gate is claimed by this proposed design.
+This lifecycle transition contains no S1 implementation and claims no
+implementation-gate or release-gate result.
 
 ## 6. Generated artifacts
 
-Expected only:
+Tracked lifecycle artifacts:
 
-- the tracked RFC 021 design;
-- this tracked implementation handoff;
-- a private direct-tree architecture review request.
+- accepted RFC 021;
+- the synchronized RFC index; and
+- this synchronized implementation handoff.
 
 No release archive, evidence directory, tag, or generated documentation is
-owned by this design round.
+owned by this lifecycle transition. Its private direct-tree review request is
+coordination state, not a tracked lifecycle artifact.
 
 ## 7. Known limitations
 
 - The conditional lifecycle exception changes current release semantics and
-  requires architecture acceptance before implementation.
+  requires acceptance of this exact lifecycle baseline before S1 begins.
 - The exact conditional metadata schema and CLI spelling remain implementation
   details bounded by RFC 021, but schema/version/tag/RFC allowlist/remote/bundle
   bindings are normative.
