@@ -2,6 +2,7 @@
 
 pub mod basic;
 pub mod check_rfcs;
+pub mod conditional_finalization;
 pub mod conformance;
 pub mod doc_currency;
 pub mod feature_matrix;

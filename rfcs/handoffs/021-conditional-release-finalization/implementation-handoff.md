@@ -1,9 +1,10 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
 **RFC.** [`021-conditional-release-finalization.md`](../../accepted/021-conditional-release-finalization.md)
-**Handoff state.** Accepted; architecture review 027 froze the design and the
-project owner authorized Q0.5/S0.5 plus bounded S1 on 2026-07-18. S2 and later
-stages remain unauthorized.
+**Handoff state.** Bounded S1 implemented; architecture review 027 froze the
+design, review 029 accepted the Q0.5 lifecycle baseline and granted S1 Go, and
+the project owner authorized execution on 2026-07-18. S1 implementation review
+is pending. S2 and later stages remain unauthorized.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
@@ -45,16 +46,30 @@ stage remain unauthorized.
 
 ## 3. Files changed
 
-The Q0.5/S0.5 lifecycle transition changes only:
+Bounded S1 changes:
 
-- `rfcs/accepted/021-conditional-release-finalization.md`;
-- `rfcs/handoffs/021-conditional-release-finalization/implementation-handoff.md`;
-- `rfcs/README.md`.
+- `xtask/src/main.rs` passes `release-gate` arguments to the gate;
+- `xtask/src/checks.rs` registers the conditional-finalization module;
+- `xtask/src/checks/conditional_finalization.rs` defines and validates the
+  exact optional schema, lifecycle state, apex constants, and focused predicate
+  fixtures;
+- `xtask/src/checks/release_gate.rs` adds host-only
+  `--intended-tag 0.20.2` preflight, local/remote collision checks, and intended
+  candidate identity;
+- `xtask/src/checks/check_rfcs.rs` activates exact conditional lifecycle checks
+  only when the tracked metadata file exists;
+- `xtask/src/checks/doc_currency.rs` activates exact conditional apex checks
+  only when that metadata exists;
+- `rfcs/done/000-rfc-lifecycle-policy.md` incorporates the narrow lifecycle
+  exception and exact Status qualifier;
+- `rfcs/accepted/019-release-integrity-and-msrv-recovery.md` incorporates
+  intended-tag and partial-distribution semantics;
+- `rfcs/accepted/020-normative-documentation-authority-and-currency.md`
+  incorporates conditional apex/currency semantics; and
+- this handoff records S1 traceability and evidence.
 
-RFC 021 §4 enumerates the complete eventual implementation surface. Only the
-bounded S1 subset stated above is owner-authorized, subject to architecture
-acceptance of this lifecycle baseline; all S2 and later areas remain
-unauthorized.
+No conditional metadata instance, version change, apex/current-state change,
+RFC lifecycle move, workflow change, or release artifact is part of S1.
 
 ## 4. Design decisions and assumptions
 
@@ -85,40 +100,53 @@ unauthorized.
   collision, ambiguity, multiple candidate remotes, or network failure.
 - Tooling validates conditional structure but must never infer external `P`
   from tracked `done/` paths alone.
+- The optional schema path is
+  `release/conditional-finalization.toml`. Its reviewed implementation values
+  are schema `1`, version/tag `0.20.2`, phase
+  `release-finalization-candidate`, remote `origin`, bundle
+  `tag-push-release-workflow-v1`, RFC set `[19, 20, 21]`, and 30/120-minute
+  workflow boundaries. Unknown fields, including a self-referential revision,
+  fail closed.
+- The optional file must be tracked in `HEAD` before intended-tag mode can
+  pass. This prevents an untracked worktree-only file from influencing release
+  evidence.
 
 ## 5. Tests and gates run
 
-Observed for the Q0.5/S0.5 lifecycle-transition worktree:
+Observed for the bounded S1 implementation worktree:
 
 - `cargo fmt --all -- --check`: passed;
+- `cargo test -p xtask`: passed, 56 tests;
 - `cargo xtask check-rfcs`: passed;
 - `cargo xtask doc-currency`: passed;
-- `cargo xtask link-audit`: passed; 56 Markdown files scanned;
-- `mdbook build docs`: passed; generated `docs/book/` removed; and
-- `git diff --check`: passed.
+- `cargo +stable clippy --workspace --all-features --all-targets -- -D
+  warnings`: passed;
+- `TMPDIR="$PWD/target/tmp" cargo +stable test --workspace --all-features`:
+  passed, including all unit and doc-test targets;
+- `cargo +1.85.0 check --workspace --all-features`: passed;
+- `cargo xtask check`: passed, including link audit of 56 Markdown files; and
+- `mdbook build docs`: passed; generated `docs/book/` was removed.
 
-This lifecycle transition contains no S1 implementation and claims no
-implementation-gate or release-gate result.
+The first workspace-test invocation reached successful unit suites but rustdoc
+could not write to the environment's read-only `/tmp`. The same command was
+rerun with a workspace-local `TMPDIR` and passed completely.
+
+`cargo xtask release-gate --intended-tag 0.20.2` was not run: S2 has not added
+the tracked metadata, workspace/changelog version `0.20.2`, or clean exact
+finalization tree that the command must require. Running it now could only
+produce an expected precondition failure and is not S1 release evidence.
 
 ## 6. Generated artifacts
 
-Tracked lifecycle artifacts:
-
-- accepted RFC 021;
-- the synchronized RFC index; and
-- this synchronized implementation handoff.
-
-No release archive, evidence directory, tag, or generated documentation is
-owned by this lifecycle transition. Its private direct-tree review request is
-coordination state, not a tracked lifecycle artifact.
+No release archive, evidence directory, metadata instance, tag, or generated
+documentation is owned by S1. Test fixture directories are gate-local temporary
+state and are removed by their test guards. The generated mdBook output was
+removed after validation.
 
 ## 7. Known limitations
 
-- The conditional lifecycle exception changes current release semantics and
-  requires acceptance of this exact lifecycle baseline before S1 begins.
-- The exact conditional metadata schema and CLI spelling remain implementation
-  details bounded by RFC 021, but schema/version/tag/RFC allowlist/remote/bundle
-  bindings are normative.
+- S1 implementation still requires architecture review before S2 can be
+  considered.
 - A conditionally staged `done/` state is intentionally narrow and must not
   become a general substitute for shipped lifecycle state.
 - Tag-bound evidence still occurs after tag creation; the protocol reduces
@@ -131,9 +159,9 @@ coordination state, not a tracked lifecycle artifact.
 
 ## 8. Recommended next step
 
-Make the Q0.5/S0.5 lifecycle transition owner-durable and submit its exact
-revision for review. After that transition is accepted, implement only S1's
-host-side intended-tag preflight, bounded conditional metadata/lifecycle
-validation, focused tests, and RFC 000/019/020 protocol amendments. Do not
-begin S2 version/apex/changelog/roadmap preparation or any later lifecycle,
-tag, push, publication, or release action.
+Make this bounded S1 implementation owner-durable, then submit the exact
+revision for focused architecture review against RFC 021, the amended RFC
+000/019/020 protocol, and this handoff. Do not begin S2
+version/apex/changelog/roadmap preparation or any later lifecycle, tag, push,
+publication, or release action until that review is accepted and the project
+owner separately authorizes S2.

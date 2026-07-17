@@ -7,6 +7,8 @@
 use std::fs;
 use std::path::Path;
 
+use super::conditional_finalization::{self, ConditionalMetadata};
+
 const APEX_DOCS: &[&str] = &[
     "docs/specs/loeres-requirements-v1.md",
     "docs/specs/loeres-external-design-v1.md",
@@ -45,8 +47,19 @@ pub fn run() -> bool {
 
 fn validate_repository() -> Vec<String> {
     let mut errors = Vec::new();
+    let conditional = match conditional_finalization::load_optional(Path::new(".")) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            errors.push(format!("CONDITIONAL METADATA: {error}"));
+            None
+        }
+    };
     let expected_release = workspace_release_marker(&mut errors);
-    check_apex_currency(expected_release.as_deref(), &mut errors);
+    check_apex_currency(
+        expected_release.as_deref(),
+        conditional.as_ref(),
+        &mut errors,
+    );
     check_rfc_index(&mut errors);
     check_root_roadmap(&mut errors);
     check_book_navigation(&mut errors);
@@ -84,14 +97,22 @@ fn workspace_release_marker(errors: &mut Vec<String>) -> Option<String> {
     }
 }
 
-fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>) {
+fn check_apex_currency(
+    expected_release: Option<&str>,
+    conditional: Option<&ConditionalMetadata>,
+    errors: &mut Vec<String>,
+) {
     let mut found = Vec::new();
     for path in APEX_DOCS {
         let source = match read_required(path, errors) {
             Some(source) => source,
             None => continue,
         };
-        match parse_apex_currency(&source) {
+        let parsed = match conditional {
+            Some(metadata) => parse_conditional_apex_currency(&source, metadata),
+            None => parse_apex_currency(&source),
+        };
+        match parsed {
             Ok(currency) => {
                 if let Some(expected) = expected_release {
                     if currency.release != expected {
@@ -116,6 +137,9 @@ fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>)
                 ));
             }
         }
+    }
+    if conditional.is_some() && errors.is_empty() {
+        eprintln!("  conditional apex structure is staged; external activation is not inferred");
     }
 }
 
@@ -179,6 +203,58 @@ fn extract_shared_currency_block(source: &str) -> Result<String, String> {
     } else {
         Ok(block.join("\n"))
     }
+}
+
+fn parse_conditional_apex_currency(
+    source: &str,
+    metadata: &ConditionalMetadata,
+) -> Result<ApexCurrency, String> {
+    metadata.validate()?;
+    if source
+        .matches(conditional_finalization::APEX_MARKER)
+        .count()
+        != 1
+    {
+        return Err("expected exactly one RFC 021 conditional metadata marker".to_owned());
+    }
+    let lines = source.lines().collect::<Vec<_>>();
+    let start = lines
+        .iter()
+        .position(|line| line.contains(conditional_finalization::APEX_MARKER))
+        .ok_or_else(|| "missing RFC 021 conditional metadata marker".to_owned())?;
+    if !lines[start].trim_start().starts_with('>') {
+        return Err("RFC 021 conditional metadata marker is not in a blockquote".to_owned());
+    }
+    let mut block = Vec::new();
+    for line in lines.iter().skip(start) {
+        if !line.trim_start().starts_with('>') {
+            break;
+        }
+        if line.trim_start().trim_start_matches('>').trim().is_empty() {
+            break;
+        }
+        block.push(*line);
+    }
+    let normalized_block = normalize_whitespace(&block.join("\n"));
+    for marker in [
+        format!(
+            "Release-finalization marker for **{}**",
+            metadata.release_version
+        ),
+        format!("Canonical tag: **{}**", metadata.canonical_tag),
+        "Current only when this exact tree is distributed under the canonical tag after accepted tag-bound evidence, architecture release Go, and project-owner release authorization".to_owned(),
+        "otherwise a non-current release-finalization candidate".to_owned(),
+        "Implemented scope after activation: **RFCs 001-021**".to_owned(),
+        "Stored lifecycle paths do not prove external activation".to_owned(),
+    ] {
+        if !normalized_block.contains(&marker) {
+            return Err(format!("missing conditional apex field `{marker}`"));
+        }
+    }
+    Ok(ApexCurrency {
+        release: format!("v{}", metadata.release_version),
+        normalized_block,
+    })
 }
 
 fn check_rfc_index(errors: &mut Vec<String>) {
@@ -475,9 +551,10 @@ fn bounded_value(source: &str, prefix: &str, suffix: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        current_before_historical, index_status_matches, parse_apex_currency, parse_design_freeze,
-        stale_phrases_in,
+        current_before_historical, index_status_matches, parse_apex_currency,
+        parse_conditional_apex_currency, parse_design_freeze, stale_phrases_in,
     };
+    use crate::checks::conditional_finalization::ConditionalMetadata;
 
     fn valid_apex(release: &str) -> String {
         format!(
@@ -487,6 +564,35 @@ mod tests {
              > Accepted recovery work: **RFC 019 and RFC 020**; this work is unshipped and in progress.\n\
              > Activation as the current marker is pending review."
         )
+    }
+
+    fn valid_conditional_metadata() -> ConditionalMetadata {
+        ConditionalMetadata::parse(
+            r#"
+schema_version = 1
+release_version = "0.20.2"
+canonical_tag = "0.20.2"
+phase = "release-finalization-candidate"
+authoritative_remote = "origin"
+distribution_bundle = "tag-push-release-workflow-v1"
+conditional_rfcs = [19, 20, 21]
+workflow_start_timeout_minutes = 30
+workflow_terminal_timeout_minutes = 120
+"#,
+        )
+        .unwrap()
+    }
+
+    fn valid_conditional_apex() -> String {
+        "# Spec\n\n\
+         > **RFC 021 conditional release-finalization metadata.**\n\
+         > Release-finalization marker for **0.20.2**. Canonical tag: **0.20.2**.\n\
+         > Current only when this exact tree is distributed under the canonical tag after accepted\n\
+         > tag-bound evidence, architecture release Go, and project-owner release authorization;\n\
+         > otherwise a non-current release-finalization candidate.\n\
+         > Implemented scope after activation: **RFCs 001-021**.\n\
+         > Stored lifecycle paths do not prove external activation."
+            .to_owned()
     }
 
     #[test]
@@ -535,6 +641,38 @@ mod tests {
             "Last-reconciled\n> repository release: **v0.20.0**.",
         ) + "\n\nHistorical note: Proposed last-reconciled repository release: **v0.20.0**.";
         assert!(parse_apex_currency(&source).is_err());
+    }
+
+    #[test]
+    fn conditional_apex_parser_accepts_exact_shared_candidate_semantics() {
+        let parsed = parse_conditional_apex_currency(
+            &valid_conditional_apex(),
+            &valid_conditional_metadata(),
+        )
+        .unwrap();
+        assert_eq!(parsed.release, "v0.20.2");
+    }
+
+    #[test]
+    fn conditional_apex_never_treats_tracked_lifecycle_as_activation_proof() {
+        let source = valid_conditional_apex().replace(
+            "Stored lifecycle paths do not prove external activation.",
+            "",
+        );
+        assert!(parse_conditional_apex_currency(&source, &valid_conditional_metadata()).is_err());
+    }
+
+    #[test]
+    fn conditional_apex_rejects_scope_or_predicate_drift() {
+        for source in [
+            valid_conditional_apex().replace("RFCs 001-021", "RFCs 001-020"),
+            valid_conditional_apex().replace("otherwise a non-current", "already current"),
+            valid_conditional_apex().replace("architecture release Go", "architecture review"),
+        ] {
+            assert!(
+                parse_conditional_apex_currency(&source, &valid_conditional_metadata()).is_err()
+            );
+        }
     }
 
     #[test]

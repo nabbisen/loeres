@@ -241,6 +241,30 @@ Local non-tagged dry runs may derive the candidate version from `Cargo.toml`
 and report that no tag assertion was performed. They must not claim tagged
 release evidence.
 
+#### 11.5.1 RFC 021 intended-tag finalization mode
+
+For the one reviewed RFC 021 correction, the canonical host invocation is:
+
+```text
+cargo xtask release-gate --intended-tag 0.20.2
+```
+
+This is a complete non-publishing candidate gate, not a tag-creation command.
+It must fail unless the stable unprefixed intended tag equals the workspace and
+changelog version, tracked RFC 021 conditional metadata binds that same
+version/tag, the local tag ref is absent, and exact direct and peeled refs are
+absent on the metadata-named authoritative remote. The remote must resolve to
+exactly one configured push URL. Query failure, malformed or ambiguous output,
+multiple push URLs, or any matching/conflicting direct or peeled ref fails
+closed.
+
+The intended candidate revision is runtime-calculated `HEAD` of the clean tree.
+Evidence must label the identity as an unused intended tag targeting that
+revision and explicitly say that no tag was created. Intended-tag mode is
+host-only and is forbidden in a tagged CI run. It does not replace the later
+tagged gate, the fresh collision check immediately before distribution,
+architecture review, or owner authorization.
+
 Version and changelog parsing must fail closed. The candidate changelog must
 contain exactly one current-version heading that parses as the complete
 candidate version; substring matches, zero matches, and multiple matches are
@@ -344,6 +368,14 @@ Gate-owned cleanup may remove only the exact temporary directory created by the
 current invocation. It must verify ownership/path identity before deletion and
 must never remove user-owned paths, the source checkout, or an arbitrary path
 provided through unchecked input.
+
+RFC 021 adds a stricter boundary for `0.20.2`: intended-tag preflight remains
+side-effect free; a later created tag is immutable and quarantined on failure.
+Remote tag acceptance plus workflow no-start after 30 minutes, cancellation,
+failure, missing required upload, or lack of successful terminal completion
+within 120 minutes is a partial-distribution incident. None of those outcomes
+may be normalized into a pass, repaired by moving the tag, or used to infer
+external activation.
 
 ## 15. Verification gates
 

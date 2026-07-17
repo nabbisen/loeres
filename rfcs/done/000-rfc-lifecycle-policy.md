@@ -180,6 +180,44 @@ keeps `accepted/` present even when it has no RFCs, using `.gitkeep` when needed
 Moving an RFC to `accepted/` does not claim implementation or release evidence.
 Only a later move to `done/` records shipped work.
 
+### Loeres conditional release-finalization exception
+
+RFC 021 defines one narrow exception for owner-selected corrective release
+`0.20.2`. It is not a general fifth lifecycle state and cannot be used for
+feature work. One exact finalization revision may atomically stage RFCs 019,
+020, and 021 in `done/` before distribution only when all of the following are
+true:
+
+1. tracked `release/conditional-finalization.toml` is present and passes the
+   reviewed schema;
+2. its RFC allowlist is exactly `{019,020,021}`;
+3. all three RFCs move together, carry the exact conditional Status qualifier,
+   and have matching index rows and links;
+4. all three apex documents carry an identical conditional marker for the same
+   release, tag, scope, and external activation predicate; and
+5. the staged tree makes clear that stored paths do not prove external
+   activation.
+
+The reviewed schema binds schema version `1`, release version and canonical
+unprefixed tag `0.20.2`, phase `release-finalization-candidate`, authoritative
+remote `origin`, distribution bundle `tag-push-release-workflow-v1`, exact RFC
+allowlist `[19, 20, 21]`, workflow-start boundary 30 minutes, and
+successful-terminal boundary 120 minutes. Unknown or self-referential
+commit/tree fields are forbidden. The intended tree is bound by the clean-tree
+gate and its runtime-calculated revision.
+
+Before RFC 021's external predicate `P` succeeds, these `done/` paths mean
+“implementation complete and staged for this exact release predicate,” not
+“shipped.” After `P` succeeds, the same immutable bytes become ordinary
+Implemented history. Repository tools validate only the stored conditional
+structure; they never infer that `P` occurred from paths, metadata, or other
+tracked bytes.
+
+If the candidate is abandoned before successful distribution, a separately
+reviewed revision must atomically return all three RFCs to `accepted/`, restore
+the draft apex state, and repair the index, links, and handoffs. Any created tag
+is quarantined and is never moved, rewritten, or reused.
+
 ## Status field inside each RFC
 
 Each RFC carries a `Status` field at the top, alongside other
@@ -202,6 +240,16 @@ release tag in which the work shipped:
 ```markdown
 **Status.** Implemented (v1.4.0)
 ```
+
+RFC 021's bounded finalization revision instead uses this exact qualifier for
+each of RFCs 019, 020, and 021:
+
+```markdown
+**Status.** Implemented (conditional finalization for 0.20.2)
+```
+
+No other RFC may use that qualifier. Its meaning is conditional on the
+tracked schema and RFC 021 predicate described above.
 
 For Accepted RFCs in the 5-folder variant, the field records the freeze date
 and tracked approval event:

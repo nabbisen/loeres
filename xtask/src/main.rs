@@ -33,7 +33,7 @@ fn main() -> ExitCode {
     let cmd = args.first().map(String::as_str);
     let ok = match cmd {
         Some("check") => checks::release_gate::run_developer(),
-        Some("release-gate") => checks::release_gate::run_release(),
+        Some("release-gate") => checks::release_gate::run_release(&args[1..]),
         Some("zero-bleed") => checks::zero_bleed::run(),
         Some("no-std") => checks::no_std::run(),
         Some("check-rfcs") => checks::check_rfcs::run(),

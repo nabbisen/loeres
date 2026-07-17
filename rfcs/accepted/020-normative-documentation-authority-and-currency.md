@@ -164,6 +164,24 @@ Each apex specification must state:
 The three apex documents should share one reconciliation table or equivalent
 machine-checkable markers so mixed-current headers cannot recur.
 
+RFC 021 adds one bounded conditional form for exact release `0.20.2`. When
+`release/conditional-finalization.toml` is present, all three apex documents
+must replace the draft block with exactly one identical RFC 021 conditional
+block that binds:
+
+- release-finalization version and canonical tag `0.20.2`;
+- current state only after the exact tree is distributed under that tag after
+  accepted tag-bound evidence, architecture release Go, and project-owner
+  release authorization;
+- non-current release-finalization-candidate state otherwise;
+- Implemented scope RFCs 001-021 only after activation; and
+- the rule that stored lifecycle paths do not prove external activation.
+
+The schema, phase, authoritative remote, distribution bundle, exact conditional
+RFC set `{019,020,021}`, and 30/120-minute workflow boundaries must agree with
+RFC 021 and RFC 000. A tracked document or tool cannot assert that the external
+activation predicate occurred.
+
 ### 11.4 RFC lifecycle and design-freeze authorization
 
 Loeres adopts RFC 000's five-folder lifecycle variant for recovery work and
@@ -302,6 +320,13 @@ RFC 020 extends documentation verification with bounded checks for stable facts:
 
 Checks should target stable metadata, not parse arbitrary prose or pretend to
 prove semantic correctness. Human architecture review remains mandatory.
+
+In RFC 021 conditional mode, the same gate must additionally reject missing or
+duplicate conditional blocks, unequal apex blocks, version/tag/schema drift,
+scope other than RFCs 001-021, omitted candidate wording, any claim that
+`done/` proves activation, and a partial or extra conditional RFC move. The
+absence of tracked conditional metadata keeps the existing draft/not-current
+rules in force; tooling must not guess the mode from prose or folder paths.
 
 ### 12.7 Release-local review links
 

@@ -5,8 +5,9 @@ use std::path::{Component, Path};
 use std::process::Command;
 
 use super::{
-    basic, check_rfcs, conformance, doc_currency, feature_matrix, link_audit, no_std, panic_audit,
-    public_api, size_budget, target_profiles, unsafe_audit, zero_bleed,
+    basic, check_rfcs, conditional_finalization, conformance, doc_currency, feature_matrix,
+    link_audit, no_std, panic_audit, public_api, size_budget, target_profiles, unsafe_audit,
+    zero_bleed,
 };
 
 mod package;
@@ -16,9 +17,17 @@ pub fn run_developer() -> bool {
 }
 
 /// Run the complete non-publishing RFC 019 release-candidate gate.
-pub fn run_release() -> bool {
+pub fn run_release(args: &[String]) -> bool {
     eprintln!("[release-gate] RFC 019 candidate preconditions");
-    let candidate = match release_preflight() {
+    let mode = match parse_release_mode(args) {
+        Ok(mode) => mode,
+        Err(error) => {
+            eprintln!("  ARGUMENTS: {error}");
+            eprintln!("[release-gate] FAIL (invalid invocation)");
+            return false;
+        }
+    };
+    let candidate = match release_preflight(&mode) {
         Ok(candidate) => candidate,
         Err(error) => {
             eprintln!("  {error}");
@@ -155,15 +164,29 @@ fn run_developer_named(name: &str) -> bool {
     ok
 }
 
-fn release_preflight() -> Result<Candidate, String> {
+fn release_preflight(mode: &ReleaseMode) -> Result<Candidate, String> {
     let version = workspace_version().map_err(|error| format!("VERSION: {error}"))?;
     require_single_changelog_heading(&version).map_err(|error| format!("CHANGELOG: {error}"))?;
-    let reference = validate_ci_tag(&version).map_err(|error| format!("TAG: {error}"))?;
+    let reference = match mode {
+        ReleaseMode::Normal => validate_ci_tag(&version),
+        ReleaseMode::IntendedTag(tag) => validate_intended_tag(tag, &version),
+    }
+    .map_err(|error| format!("TAG: {error}"))?;
     if !git_success(&["diff", "--quiet"]) || !git_success(&["diff", "--cached", "--quiet"]) {
         return Err("CLEANLINESS: staged or unstaged tracked changes exist".to_owned());
     }
     let entries = tracked_manifest().map_err(|error| format!("MANIFEST: {error}"))?;
     package::require_release_inputs(&entries).map_err(|error| format!("MANIFEST: {error}"))?;
+    if matches!(reference, CandidateRef::IntendedTag(_))
+        && !entries
+            .iter()
+            .any(|entry| entry.path == conditional_finalization::METADATA_PATH)
+    {
+        return Err(format!(
+            "MANIFEST: intended-tag mode requires tracked `{}` in HEAD",
+            conditional_finalization::METADATA_PATH
+        ));
+    }
     let revision =
         git_output(&["rev-parse", "HEAD"]).map_err(|error| format!("REVISION: {error}"))?;
     eprintln!("  version: {version}");
@@ -176,6 +199,23 @@ fn release_preflight() -> Result<Candidate, String> {
         reference,
         entries,
     })
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+enum ReleaseMode {
+    Normal,
+    IntendedTag(String),
+}
+
+fn parse_release_mode(args: &[String]) -> Result<ReleaseMode, String> {
+    match args {
+        [] => Ok(ReleaseMode::Normal),
+        [flag, tag] if flag == "--intended-tag" => {
+            parse_stable_version(tag)?;
+            Ok(ReleaseMode::IntendedTag(tag.clone()))
+        }
+        _ => Err("expected no arguments or exactly `--intended-tag MAJOR.MINOR.PATCH`".to_owned()),
+    }
 }
 
 fn workspace_version() -> Result<String, String> {
@@ -240,6 +280,118 @@ fn validate_ci_tag(version: &str) -> Result<CandidateRef, String> {
     }
 }
 
+fn validate_intended_tag(tag: &str, version: &str) -> Result<CandidateRef, String> {
+    if env::var("GITHUB_REF_TYPE").as_deref() == Ok("tag") {
+        return Err("--intended-tag is host-only and forbidden in a tag run".to_owned());
+    }
+
+    let metadata = conditional_finalization::load_optional(Path::new("."))?.ok_or_else(|| {
+        format!(
+            "intended-tag mode requires reviewed `{}`",
+            conditional_finalization::METADATA_PATH
+        )
+    })?;
+    validate_intended_binding(tag, version, &metadata)?;
+
+    require_local_tag_absent(tag)?;
+    require_remote_tag_absent(&metadata.authoritative_remote, tag)?;
+    Ok(CandidateRef::IntendedTag(tag.to_owned()))
+}
+
+fn validate_intended_binding(
+    tag: &str,
+    version: &str,
+    metadata: &conditional_finalization::ConditionalMetadata,
+) -> Result<(), String> {
+    parse_stable_version(tag)?;
+    if tag != version {
+        return Err(format!(
+            "intended tag `{tag}` does not match workspace version `{version}`"
+        ));
+    }
+    if metadata.release_version != version || metadata.canonical_tag != tag {
+        return Err("conditional metadata does not bind the intended version/tag".to_owned());
+    }
+    Ok(())
+}
+
+fn require_local_tag_absent(tag: &str) -> Result<(), String> {
+    let reference = format!("refs/tags/{tag}");
+    let status = Command::new("git")
+        .args(["show-ref", "--verify", "--quiet", &reference])
+        .status()
+        .map_err(|error| format!("cannot query local tag `{tag}`: {error}"))?;
+    classify_local_tag_status(tag, status.code())
+        .map_err(|error| format!("{error} (query status {status})"))
+}
+
+fn classify_local_tag_status(tag: &str, code: Option<i32>) -> Result<(), String> {
+    match code {
+        Some(1) => Ok(()),
+        Some(0) => Err(format!("local tag `{tag}` already exists")),
+        _ => Err(format!("local tag query for `{tag}` failed")),
+    }
+}
+
+fn require_remote_tag_absent(remote: &str, tag: &str) -> Result<(), String> {
+    let urls = git_output(&["remote", "get-url", "--push", "--all", remote])?;
+    validate_remote_push_urls(remote, &urls)?;
+
+    let direct = format!("refs/tags/{tag}");
+    let peeled = format!("{direct}^{{}}");
+    let output = Command::new("git")
+        .args(["ls-remote", "--tags", remote, &direct, &peeled])
+        .output()
+        .map_err(|error| format!("cannot query authoritative remote `{remote}`: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "authoritative remote `{remote}` tag query failed with {}",
+            output.status
+        ));
+    }
+    let listing = std::str::from_utf8(&output.stdout)
+        .map_err(|_| "authoritative remote tag query was not UTF-8".to_owned())?;
+    validate_remote_tag_listing(tag, listing)
+}
+
+fn validate_remote_push_urls(remote: &str, urls: &str) -> Result<(), String> {
+    let configured = urls.lines().filter(|line| !line.trim().is_empty()).count();
+    if configured == 1 {
+        Ok(())
+    } else {
+        Err(format!(
+            "authoritative remote `{remote}` must have exactly one push URL, found {configured}"
+        ))
+    }
+}
+
+fn validate_remote_tag_listing(tag: &str, listing: &str) -> Result<(), String> {
+    if listing.trim().is_empty() {
+        return Ok(());
+    }
+    let direct = format!("refs/tags/{tag}");
+    let peeled = format!("{direct}^{{}}");
+    let mut found = Vec::new();
+    for line in listing.lines() {
+        let fields = line.split_whitespace().collect::<Vec<_>>();
+        if fields.len() != 2
+            || fields[0].len() != 40
+            || !fields[0].bytes().all(|byte| byte.is_ascii_hexdigit())
+            || (fields[1] != direct && fields[1] != peeled)
+        {
+            return Err(format!("ambiguous remote tag response `{line}`"));
+        }
+        if found.iter().any(|reference| reference == &fields[1]) {
+            return Err(format!("duplicate remote tag response for `{}`", fields[1]));
+        }
+        found.push(fields[1]);
+    }
+    Err(format!(
+        "authoritative remote already contains {} for `{tag}`",
+        found.join(" and ")
+    ))
+}
+
 #[derive(Debug)]
 struct Candidate {
     version: String,
@@ -251,6 +403,7 @@ struct Candidate {
 #[derive(Clone, Debug)]
 enum CandidateRef {
     LocalDryRun,
+    IntendedTag(String),
     Tag(String),
 }
 
@@ -258,6 +411,9 @@ impl CandidateRef {
     fn label(&self) -> String {
         match self {
             Self::LocalDryRun => "local dry run (no tag assertion)".to_owned(),
+            Self::IntendedTag(tag) => {
+                format!("validated unused intended tag `{tag}` targeting HEAD (tag not created)")
+            }
             Self::Tag(tag) => format!("validated tag `{tag}`"),
         }
     }
@@ -394,7 +550,29 @@ impl GateKind {
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_stable_version, parse_tracked_manifest, validate_archive_path};
+    use super::{
+        ReleaseMode, classify_local_tag_status, parse_release_mode, parse_stable_version,
+        parse_tracked_manifest, validate_archive_path, validate_intended_binding,
+        validate_remote_push_urls, validate_remote_tag_listing,
+    };
+    use crate::checks::conditional_finalization::ConditionalMetadata;
+
+    fn valid_conditional_metadata() -> ConditionalMetadata {
+        ConditionalMetadata::parse(
+            r#"
+schema_version = 1
+release_version = "0.20.2"
+canonical_tag = "0.20.2"
+phase = "release-finalization-candidate"
+authoritative_remote = "origin"
+distribution_bundle = "tag-push-release-workflow-v1"
+conditional_rfcs = [19, 20, 21]
+workflow_start_timeout_minutes = 30
+workflow_terminal_timeout_minutes = 120
+"#,
+        )
+        .unwrap()
+    }
 
     #[test]
     fn canonical_tags_are_stable_unprefixed_semver() {
@@ -406,6 +584,68 @@ mod tests {
                 "accepted `{invalid}`"
             );
         }
+    }
+
+    #[test]
+    fn intended_tag_cli_is_exact_and_host_oriented() {
+        assert_eq!(parse_release_mode(&[]), Ok(ReleaseMode::Normal));
+        assert_eq!(
+            parse_release_mode(&["--intended-tag".to_owned(), "0.20.2".to_owned()]),
+            Ok(ReleaseMode::IntendedTag("0.20.2".to_owned()))
+        );
+        for invalid in [
+            vec!["--intended-tag".to_owned()],
+            vec!["--intended-tag".to_owned(), "v0.20.2".to_owned()],
+            vec![
+                "--intended-tag".to_owned(),
+                "0.20.2".to_owned(),
+                "extra".to_owned(),
+            ],
+            vec!["--unknown".to_owned(), "0.20.2".to_owned()],
+        ] {
+            assert!(parse_release_mode(&invalid).is_err());
+        }
+    }
+
+    #[test]
+    fn intended_tag_remote_query_fails_closed() {
+        assert!(validate_remote_tag_listing("0.20.2", "").is_ok());
+        for listing in [
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/tags/0.20.2\n",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/tags/0.20.2\n\
+             bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\trefs/tags/0.20.2^{}\n",
+            "not-a-hash\trefs/tags/0.20.2\n",
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\trefs/tags/other\n",
+            "ambiguous output\n",
+        ] {
+            assert!(validate_remote_tag_listing("0.20.2", listing).is_err());
+        }
+    }
+
+    #[test]
+    fn intended_tag_binding_and_local_collision_are_fail_closed() {
+        let metadata = valid_conditional_metadata();
+        assert!(validate_intended_binding("0.20.2", "0.20.2", &metadata).is_ok());
+        assert!(validate_intended_binding("0.20.3", "0.20.2", &metadata).is_err());
+        assert!(validate_intended_binding("0.20.2", "0.20.3", &metadata).is_err());
+
+        assert!(classify_local_tag_status("0.20.2", Some(1)).is_ok());
+        assert!(classify_local_tag_status("0.20.2", Some(0)).is_err());
+        assert!(classify_local_tag_status("0.20.2", Some(2)).is_err());
+        assert!(classify_local_tag_status("0.20.2", None).is_err());
+    }
+
+    #[test]
+    fn authoritative_remote_requires_exactly_one_push_url() {
+        assert!(validate_remote_push_urls("origin", "git@example/repo.git\n").is_ok());
+        assert!(validate_remote_push_urls("origin", "").is_err());
+        assert!(
+            validate_remote_push_urls(
+                "origin",
+                "git@example/repo.git\nssh://mirror.example/repo.git\n"
+            )
+            .is_err()
+        );
     }
 
     #[test]
