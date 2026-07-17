@@ -11,7 +11,7 @@ start only from `accepted/`.
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [021](proposed/021-conditional-release-finalization.md) | Conditional Release Finalization | Proposed | Recovery sequencing correction for owner-selected `0.20.2`: exact finalization revision, conditional apex/lifecycle activation, local/tagged evidence, and fail-closed owner release order. [Handoff](handoffs/021-conditional-release-finalization/implementation-handoff.md). |
 
 ## Accepted RFCs
 
