@@ -11,7 +11,7 @@ start only from `accepted/`.
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [021](proposed/021-conditional-release-finalization.md) | Conditional Release Finalization | Proposed | Recovery sequencing correction for owner-selected `0.20.2`: exact finalization revision, conditional apex/lifecycle activation, local/tagged evidence, and fail-closed owner release order. [Handoff](handoffs/021-conditional-release-finalization/implementation-handoff.md). |
+None currently.
 
 ## Accepted RFCs
 
@@ -19,6 +19,7 @@ start only from `accepted/`.
 |---:|---|---|---|
 | [019](accepted/019-release-integrity-and-msrv-recovery.md) | Release Integrity and MSRV Recovery | Accepted (design frozen 2026-07-15) | Architecture recovery R0-R2: restore Rust 1.85, canonical unprefixed tags, complete tagged-revision gates, package/clean-extraction evidence. [Handoff](handoffs/019-release-integrity-and-msrv-recovery/implementation-handoff.md). |
 | [020](accepted/020-normative-documentation-authority-and-currency.md) | Normative Documentation Authority and Currency | Accepted (design frozen 2026-07-15) | Architecture recovery R0-R2: establish authority/conflict rules and reconcile the apex trio, threat model, indexes, and READMEs with v0.20.x. [Handoff](handoffs/020-normative-documentation-authority-and-currency/implementation-handoff.md). |
+| [021](accepted/021-conditional-release-finalization.md) | Conditional Release Finalization | Accepted (design frozen 2026-07-18) | Recovery sequencing correction for owner-selected `0.20.2`: exact finalization revision, conditional apex/lifecycle activation, local/tagged evidence, and fail-closed owner release order. [Handoff](handoffs/021-conditional-release-finalization/implementation-handoff.md). |
 
 ## Done RFCs
 

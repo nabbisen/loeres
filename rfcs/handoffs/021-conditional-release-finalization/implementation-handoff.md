@@ -1,8 +1,9 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
-**RFC.** [`021-conditional-release-finalization.md`](../../proposed/021-conditional-release-finalization.md)
-**Handoff state.** Design proposed; implementation forbidden until independent
-architecture acceptance and project-owner lifecycle authorization.
+**RFC.** [`021-conditional-release-finalization.md`](../../accepted/021-conditional-release-finalization.md)
+**Handoff state.** Accepted; architecture review 027 froze the design and the
+project owner authorized Q0.5/S0.5 plus bounded S1 on 2026-07-18. S2 and later
+stages remain unauthorized.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
@@ -38,7 +39,7 @@ credential handling, and tag mutation are out of scope.
 
 This design round changes only:
 
-- `rfcs/proposed/021-conditional-release-finalization.md`;
+- `rfcs/accepted/021-conditional-release-finalization.md`;
 - `rfcs/handoffs/021-conditional-release-finalization/implementation-handoff.md`;
 - `rfcs/README.md`.
 
@@ -77,7 +78,7 @@ authorized by this proposed handoff.
 
 ## 5. Tests and gates run
 
-Observed for this design worktree:
+Observed for the Q0.5/S0.5 lifecycle-transition worktree:
 
 - `cargo fmt --all -- --check`: passed;
 - `cargo xtask check-rfcs`: passed;
@@ -118,6 +119,9 @@ owned by this design round.
 
 ## 8. Recommended next step
 
-Submit RFC 021 and this handoff for architecture design review. If accepted,
-wait for project-owner authorization before moving RFC 021 to `accepted/` or
-implementing any tooling, version, apex, lifecycle, or release-state change.
+Make the Q0.5/S0.5 lifecycle transition owner-durable and submit its exact
+revision for review. After that transition is accepted, implement only S1's
+host-side intended-tag preflight, bounded conditional metadata/lifecycle
+validation, focused tests, and RFC 000/019/020 protocol amendments. Do not
+begin S2 version/apex/changelog/roadmap preparation or any later lifecycle,
+tag, push, publication, or release action.
