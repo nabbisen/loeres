@@ -41,8 +41,16 @@ jobs:
           rustc +1.85.0 --version --verbose
           mdbook --version
 
-      # RFC 019 S2/S3 deliberately leaves package certification fail-closed
-      # until RFC 020 reconciliation reaches the shared integration point.
-      # No artifact upload or publication step runs in this intermediate state.
       - name: Run the canonical non-publishing candidate gate
         run: cargo +stable xtask release-gate
+
+      - name: Retain non-publishing candidate evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: loeres-release-evidence-${{ github.sha }}
+          path: .git-exclude/release-evidence/
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+      # RFC 019 creates no GitHub release and performs no registry publication.

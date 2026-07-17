@@ -202,8 +202,9 @@ The release artifact must:
   parent directory;
 - include `Cargo.lock` and all release-required source, RFC, documentation,
   workflow, conformance, and license files;
-- exclude `.git/`, `target/`, `.git-exclude/`, generated `docs/book/`, editor
-  caches, local evidence, and previously generated archives; `docs/book/` may be
+- exclude `.git/`, `target/`, generated `docs/book/`, ignored/private workspace
+  state, editor caches, local evidence, and previously generated archives;
+  `docs/book/` may be
   delivered only as a separately named artifact under a later approved policy;
 - extract without overwriting the source tree;
 - be tested from a gate-owned empty directory controlled by the release gate.
@@ -222,9 +223,9 @@ Extraction must not follow an archive entry outside the gate-owned empty
 directory. The archive SHA-256 and a normalized path/type/content manifest must
 be recorded before clean-extraction gates run.
 
-Temporary release-gate state should live under `.git-exclude/tmp/release-gate/`
-or an equivalent ignored workspace-local path so restricted environments do not
-depend on `/tmp`. Cleanup must be scoped to the gate-owned directory.
+Temporary release-gate state should live under a gate-owned ignored
+workspace-local path so restricted environments do not depend on `/tmp`.
+Cleanup must be scoped to that gate-owned directory.
 
 ### 11.5 Version consistency
 
@@ -305,8 +306,8 @@ what was actually observed.
 
 - No publishing token is required or requested.
 - Commands must not print registry credentials or broad environment dumps.
-- Archive validation must reject `.git/`, `.git-exclude/`, and local credential
-  files before an artifact is considered acceptable.
+- Archive validation must reject `.git/`, ignored/private workspace state, and
+  local credential files before an artifact is considered acceptable.
 - Release workflow actions must follow §11.6's full-commit-SHA policy;
   supply-chain scanning itself is a later RFC.
 - The clean extraction must execute only repository-controlled build commands.

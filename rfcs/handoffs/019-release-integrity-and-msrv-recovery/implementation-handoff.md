@@ -2,7 +2,9 @@
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../accepted/019-release-integrity-and-msrv-recovery.md)
 **Handoff state.** Accepted; architecture design freeze, project-owner
-approval, and the RFC 000 `accepted/` transition completed on 2026-07-15.
+approval, the RFC 000 `accepted/` transition, and S1-S3 are owner-durable. S4
+package verification and S5 release documentation are in tooling-review
+preparation on the owner-durable RFC 020 S5 baseline.
 **Target.** Corrective baseline after v0.20.0. No tag, commit, push, or publication is authorized by this handoff.
 
 ## 1. Summary
@@ -111,6 +113,41 @@ artifact claims:
 - no upload or publication step exists while the gate is intentionally
   fail-closed.
 
+RFC 019 S4/S5 completes the non-publishing candidate gate after RFC 020 S5
+durability. A clean candidate runs RFC 019 §11.3's source suite, is archived
+from the commit-derived tracked manifest at archive root, and has its
+path/type/file-set, SHA-256, and normalized manifest validated before
+extraction. The gate then verifies extracted Git-object content identity and
+executable modes before repeating the applicable suite without recursive
+packaging in an owned clean-extraction directory. Successful ignored evidence
+records revision, version, local/tag identity, tools, archive digest, manifest,
+and evidence-class limitations. Tagged CI retains that directory only after
+the gate succeeds; it still performs no publication or GitHub release creation.
+The `actions/upload-artifact` v4.6.2 tag resolved directly to the pinned full
+commit `ea165f8d65b6e75b540449e92b4886f43607fa02` on 2026-07-16.
+
+Focused S4/S5 evidence observed before a clean candidate commit:
+
+- `cargo test -p xtask checks::release_gate`: passed; 10 tests;
+- `cargo +1.85.0 check -p xtask`: passed;
+- dirty-tree `cargo xtask release-gate`: failed at tracked-cleanliness
+  preflight before the source, package, or extraction phase.
+
+The complete source/package/clean-extraction command cannot be claimed passed
+until this candidate is accepted, committed by the owner, and rerun from that
+clean revision.
+
+The first S4/S5 tooling review found two evidence-retention blockers. The
+workflow now explicitly includes hidden files for its narrowly scoped
+gate-owned ignored evidence upload. Retained evidence now advances through
+separate source-suite, archive listing/type/file-set/digest, extracted
+content/mode, and clean-suite states; no incomplete state promotes a later
+validation to pass, and the heading is neutral for local or tagged identity.
+Focused tests cover the upload input, pre-extraction wording, post-content
+wording, final state, and both candidate identities. Packaging-tool versions
+and a second pre-archive tracked-cleanliness check were also added as
+defense-in-depth.
+
 The focused workflow-policy test verifies the canonical selector, exact mdBook
 install, and 40-hex action references. It passes on stable and Rust 1.85.
 
@@ -144,7 +181,9 @@ specific durable evidence location.
 
 ## 8. Recommended next step
 
-Submit the S1-S3 RFC 019 implementation for architecture review. After
-acceptance and durability, follow the shared recovery order by beginning RFC
-020 reconciliation before activating RFC 019 package certification. Submit the
-final RFC 019 review again with S6 complete source/extraction evidence.
+Submit the RFC 019 S4/S5 release-gate, workflow-retention, and documentation
+candidate for architecture review. After acceptance and owner durability, run
+the complete gate from the clean revision and submit its retained local
+source/package/clean-extraction evidence for the joint S6 Go/No-Go review. Do
+not activate apex/lifecycle state, create a tag, publish, push, or release while
+collecting local evidence.

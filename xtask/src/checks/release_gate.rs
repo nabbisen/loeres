@@ -9,27 +9,120 @@ use super::{
     public_api, size_budget, target_profiles, unsafe_audit, zero_bleed,
 };
 
+mod package;
+
 pub fn run_developer() -> bool {
     run_developer_named("check")
 }
 
-/// Run the fail-closed RFC 019 S2 candidate skeleton.
-///
-/// Packaging and clean-extraction certification stay disabled until the RFC
-/// 020 reconciliation is integrated, as required by the recovery roadmap.
+/// Run the complete non-publishing RFC 019 release-candidate gate.
 pub fn run_release() -> bool {
     eprintln!("[release-gate] RFC 019 candidate preconditions");
-    let preflight = release_preflight();
-    if !preflight {
-        eprintln!("[release-gate] FAIL (candidate preconditions not established)");
+    let candidate = match release_preflight() {
+        Ok(candidate) => candidate,
+        Err(error) => {
+            eprintln!("  {error}");
+            eprintln!("[release-gate] FAIL (candidate preconditions not established)");
+            return false;
+        }
+    };
+
+    if !run_candidate_suite(Path::new("."), "source-tree") {
+        eprintln!("[release-gate] FAIL (source-tree suite)");
         return false;
     }
 
-    eprintln!(
-        "[release-gate] FAIL CLOSED: package and clean-extraction certification \
-         activate only after RFC 020 integration"
-    );
-    false
+    match package::certify(&candidate) {
+        Ok(evidence) => {
+            eprintln!("[release-gate] evidence: {}", evidence.display());
+            eprintln!("[release-gate] PASS (non-publishing candidate evidence)");
+            true
+        }
+        Err(error) => {
+            eprintln!("[release-gate] PACKAGE/CLEAN EXTRACTION: {error}");
+            eprintln!("[release-gate] FAIL");
+            false
+        }
+    }
+}
+
+fn run_candidate_suite(root: &Path, name: &str) -> bool {
+    eprintln!("[release-gate:{name}] complete applicable suite");
+    let commands: &[(&str, &str, &[&str])] = &[
+        (
+            "fmt",
+            "cargo",
+            &["+stable", "fmt", "--all", "--", "--check"],
+        ),
+        (
+            "clippy",
+            "cargo",
+            &[
+                "+stable",
+                "clippy",
+                "--workspace",
+                "--all-features",
+                "--all-targets",
+                "--",
+                "-D",
+                "warnings",
+            ],
+        ),
+        (
+            "test",
+            "cargo",
+            &["+stable", "test", "--workspace", "--all-features"],
+        ),
+        (
+            "msrv",
+            "cargo",
+            &["+1.85.0", "check", "--workspace", "--all-features"],
+        ),
+        ("architecture", "cargo", &["+stable", "xtask", "check"]),
+    ];
+    for (label, program, args) in commands {
+        if !command_success(root, label, program, args) {
+            return false;
+        }
+    }
+    run_mdbook(root)
+}
+
+fn command_success(root: &Path, label: &str, program: &str, args: &[&str]) -> bool {
+    eprintln!("  [{label}] $ {program} {}", args.join(" "));
+    match Command::new(program).args(args).current_dir(root).status() {
+        Ok(status) if status.success() => true,
+        Ok(status) => {
+            eprintln!("  [{label}] command exited with {status}");
+            false
+        }
+        Err(error) => {
+            eprintln!("  [{label}] cannot run command: {error}");
+            false
+        }
+    }
+}
+
+fn run_mdbook(root: &Path) -> bool {
+    let generated = root.join("docs/book");
+    if generated.exists() {
+        eprintln!(
+            "  [mdbook] refusing to remove pre-existing {}",
+            generated.display()
+        );
+        return false;
+    }
+    let passed = command_success(root, "mdbook", "mdbook", &["build", "docs"]);
+    if generated.exists() {
+        if let Err(error) = std::fs::remove_dir_all(&generated) {
+            eprintln!(
+                "  [mdbook] cannot remove generated {}: {error}",
+                generated.display()
+            );
+            return false;
+        }
+    }
+    passed
 }
 
 fn run_developer_named(name: &str) -> bool {
@@ -62,37 +155,27 @@ fn run_developer_named(name: &str) -> bool {
     ok
 }
 
-fn release_preflight() -> bool {
-    let version = match workspace_version() {
-        Ok(version) => version,
-        Err(error) => {
-            eprintln!("  VERSION: {error}");
-            return false;
-        }
-    };
-    if let Err(error) = require_single_changelog_heading(&version) {
-        eprintln!("  CHANGELOG: {error}");
-        return false;
-    }
-    if let Err(error) = validate_ci_tag(&version) {
-        eprintln!("  TAG: {error}");
-        return false;
-    }
+fn release_preflight() -> Result<Candidate, String> {
+    let version = workspace_version().map_err(|error| format!("VERSION: {error}"))?;
+    require_single_changelog_heading(&version).map_err(|error| format!("CHANGELOG: {error}"))?;
+    let reference = validate_ci_tag(&version).map_err(|error| format!("TAG: {error}"))?;
     if !git_success(&["diff", "--quiet"]) || !git_success(&["diff", "--cached", "--quiet"]) {
-        eprintln!("  CLEANLINESS: staged or unstaged tracked changes exist");
-        return false;
+        return Err("CLEANLINESS: staged or unstaged tracked changes exist".to_owned());
     }
-    let entries = match tracked_manifest() {
-        Ok(entries) => entries,
-        Err(error) => {
-            eprintln!("  MANIFEST: {error}");
-            return false;
-        }
-    };
+    let entries = tracked_manifest().map_err(|error| format!("MANIFEST: {error}"))?;
+    package::require_release_inputs(&entries).map_err(|error| format!("MANIFEST: {error}"))?;
+    let revision =
+        git_output(&["rev-parse", "HEAD"]).map_err(|error| format!("REVISION: {error}"))?;
     eprintln!("  version: {version}");
+    eprintln!("  revision: {revision}");
     eprintln!("  tracked regular files: {}", entries.len());
-    eprintln!("  candidate identity: local dry run or validated CI tag");
-    true
+    eprintln!("  candidate identity: {}", reference.label());
+    Ok(Candidate {
+        version,
+        revision,
+        reference,
+        entries,
+    })
 }
 
 fn workspace_version() -> Result<String, String> {
@@ -132,7 +215,7 @@ fn require_single_changelog_heading(version: &str) -> Result<(), String> {
     }
 }
 
-fn validate_ci_tag(version: &str) -> Result<(), String> {
+fn validate_ci_tag(version: &str) -> Result<CandidateRef, String> {
     match (env::var("GITHUB_REF_TYPE"), env::var("GITHUB_REF_NAME")) {
         (Ok(kind), Ok(tag)) if kind == "tag" => {
             parse_stable_version(&tag)?;
@@ -147,12 +230,35 @@ fn validate_ci_tag(version: &str) -> Result<(), String> {
                     "peeled tag {tag_commit} does not equal HEAD {head}"
                 ));
             }
-            Ok(())
+            Ok(CandidateRef::Tag(tag))
         }
         (Ok(kind), _) if kind == "tag" => Err("GITHUB_REF_NAME is missing for tag run".to_owned()),
         _ => {
             eprintln!("  tag assertion: not performed (local non-tagged dry run)");
-            Ok(())
+            Ok(CandidateRef::LocalDryRun)
+        }
+    }
+}
+
+#[derive(Debug)]
+struct Candidate {
+    version: String,
+    revision: String,
+    reference: CandidateRef,
+    entries: Vec<TrackedEntry>,
+}
+
+#[derive(Clone, Debug)]
+enum CandidateRef {
+    LocalDryRun,
+    Tag(String),
+}
+
+impl CandidateRef {
+    fn label(&self) -> String {
+        match self {
+            Self::LocalDryRun => "local dry run (no tag assertion)".to_owned(),
+            Self::Tag(tag) => format!("validated tag `{tag}`"),
         }
     }
 }
@@ -176,10 +282,10 @@ fn parse_stable_version(value: &str) -> Result<(u64, u64, u64), String> {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-struct TrackedEntry {
-    mode: String,
-    object: String,
-    path: String,
+pub(super) struct TrackedEntry {
+    pub(super) mode: String,
+    pub(super) object: String,
+    pub(super) path: String,
 }
 
 fn tracked_manifest() -> Result<Vec<TrackedEntry>, String> {
@@ -366,6 +472,15 @@ mod tests {
                 "action is not pinned: `{line}`"
             );
         }
-        assert_eq!(action_count, 3);
+        assert_eq!(action_count, 4);
+        let gate = source.find("cargo +stable xtask release-gate").unwrap();
+        let upload = source.find("actions/upload-artifact@").unwrap();
+        assert!(
+            upload > gate,
+            "evidence upload must follow the successful gate"
+        );
+        assert!(source.contains("include-hidden-files: true"));
+        assert!(!source.contains("cargo publish"));
+        assert!(!source.contains("softprops/action-gh-release"));
     }
 }

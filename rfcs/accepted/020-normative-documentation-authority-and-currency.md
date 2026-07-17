@@ -134,7 +134,7 @@ revision is forbidden.
 | `CHANGELOG.md` | Historical release record | What shipped and when; not permission to change architecture. |
 | Code and tests | Implemented behavior/evidence | Must conform to approved design; a mismatch triggers review rather than automatically overriding design. |
 | Handoffs | Non-normative execution guidance | May sequence work but never override an RFC. |
-| Archived bundles under `.git-exclude/` | Historical/private review input | Not a public normative source. |
+| Ignored archived review bundles | Historical/private review input | Not a public normative source. |
 
 ### 11.2 Conflict rule
 
@@ -199,7 +199,7 @@ Before R1 begins, one atomic R0 lifecycle-activation change must:
 The transition actor is the project owner or an explicitly authorized
 maintainer. The committed folder move, Status metadata, RFC index, and amended
 RFC 000 are the normative record. Architect review remains required evidence,
-but the `.git-exclude/` copy is not itself normative.
+but an ignored private copy is not itself normative.
 
 If either RFC remains in `proposed/`, its implementation must not start. Moving
 an RFC to `accepted/` does not claim code exists or gates pass; only movement to

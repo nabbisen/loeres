@@ -230,8 +230,8 @@ revalidation milestone. Stale entries must fail or warn during
 
 `cargo xtask link-audit` must scan repository Markdown files for local relative
 links that resolve within the checkout. It covers README, changelog, roadmap,
-RFC, and documentation Markdown files while excluding `.git`, `.git-exclude`,
-and `target`.
+RFC, and documentation Markdown files while excluding Git metadata, the
+project-private ignored workspace directory, and build output.
 
 Local relative links are the mandatory CI gate. External URLs are out of scope
 for the mandatory gate and may be added later as advisory-only output.

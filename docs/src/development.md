@@ -31,7 +31,7 @@ cargo xtask zero-bleed     # no forbidden server <-> edge dependency edge exists
 cargo xtask no-std         # edge crates build for thumbv7em-none-eabihf (no std/alloc)
 cargo xtask doc-currency   # bounded RFC 020 metadata/lifecycle/navigation assertions
 cargo xtask check          # canonical developer architecture aggregate
-cargo xtask release-gate   # fail-closed RFC 019 candidate gate; not a check alias
+cargo xtask release-gate   # complete non-publishing RFC 019 candidate evidence
 ```
 
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
@@ -47,6 +47,21 @@ design-freeze metadata, recovery markers, mdBook navigation, release-local
 normative paths, and an explicit current-status stale-phrase ledger. It ignores
 the labeled historical root-roadmap suffix and does not attempt to infer
 arbitrary prose semantics; human architecture review remains required.
+
+`release-gate` is not an everyday check alias. On a clean tracked revision it
+runs the ordered RFC 019 §11.3 source suite, creates a tracked-input root-layout
+`loeres-v<version>.tar.gz`, and validates its paths, types, exact tracked-file
+set, and SHA-256 before extraction. It then verifies the extracted Git-object
+content and executable modes before repeating the applicable suite in the
+gate-owned clean extraction.
+Local runs record that no tag assertion occurred; tagged CI additionally proves
+that the peeled canonical unprefixed SemVer tag equals `HEAD`. Evidence and the
+archive remain in gate-owned ignored workspace state; temporary extraction
+state is removed only after an ownership check. A passing local dry run is not
+tagged-release evidence and neither mode publishes crates or creates a release.
+Pre-existing `docs/book/` output or tracked changes fail closed. The candidate
+gate expects the canonical Linux workflow tools `git`, GNU `tar`, and
+`sha256sum`; the release workflow supplies the reviewed execution environment.
 
 RFC 011 makes `target-profiles` manifest-driven through
 `xtask/target-profiles.toml`. Mandatory profiles fail the aggregate on missing

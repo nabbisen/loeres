@@ -59,6 +59,20 @@ To propose a design change:
   line-count splitting as production code. Do not centralize tests in a single
   top-level `src/tests/` tree.
 
+## Release-candidate verification
+
+`cargo xtask check` is the development aggregate. Project-owner-requested
+release preparation uses `cargo xtask release-gate` from a clean tracked
+revision. The latter runs the complete non-publishing RFC 019 §11.3 suite,
+constructs and validates the tracked-input source archive, and repeats the
+applicable gates in a clean extraction. A local run records that no tag
+assertion was performed and cannot substitute for tagged-revision evidence.
+
+Do not create a tag, upload outside the reviewed workflow, create a GitHub
+release, or publish a crate without separate explicit project-owner authority.
+Generated local evidence remains gate-owned ignored workspace state and must
+not be committed as repository content.
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the

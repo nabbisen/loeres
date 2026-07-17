@@ -34,6 +34,17 @@ crate APIs, solver semantics, features, tags, publication, or package approval.
   current-status phrases. Historical roadmap prose is excluded by a pinned
   section boundary; the checker does not claim semantic prose proof.
 
+### Release-integrity recovery
+
+- Completed the non-publishing RFC 019 candidate gate: clean revision/tag and
+  version preconditions, the ordered source suite, tracked-input root-layout
+  archive construction, pre-extraction path/type/file-set and SHA-256
+  validation, extracted Git-object content/mode verification, and the same
+  applicable suite in the clean extraction.
+- Retained successful workflow evidence only after the gate passes. The
+  workflow still creates no GitHub release and performs no registry
+  publication; tags and release actions remain separately owner-authorized.
+
 ## [0.20.0] — 2026-07-04 — RFC 017: trusted/cache conformance fixtures
 
 RFC 017 is implemented as a verification-only conformance hardening release.
@@ -202,7 +213,7 @@ unchanged from v0.15.0.
   `cargo clippy --workspace --all-features --all-targets -- -D warnings`,
   `cargo test --workspace --all-features`, `cargo xtask check`, and
   `cargo xtask release-gate`.
-- Observed green on a clean copy under `.git-exclude/clean-rfc010-v0160/`:
+- Observed green on an ignored clean working copy:
   `cargo xtask check` (rerun outside the sandbox after the first attempt hit
   the known linker temporary-file restriction).
 
@@ -251,7 +262,7 @@ and the safe gateway boundary while keeping edge crates untouched.
 - Observed green on the working tree: `cargo fmt --all --check`,
   `cargo clippy --workspace --all-features --all-targets -- -D warnings`,
   `cargo test --workspace --all-features`, and `cargo xtask release-gate`.
-- Observed green on a clean copy under `.git-exclude/clean-rfc009-v0150/`:
+- Observed green on an ignored clean working copy:
   `cargo xtask release-gate` (rerun outside the sandbox after the first attempt hit
   the known linker temporary-file restriction).
 
