@@ -1,17 +1,25 @@
 # Loeres v0.20 Architecture Reconciliation Traceability Matrix
 
-**Status:** RFC 020 S1 review candidate; not an apex currency marker  
-**Inventory baseline:** repository release v0.20.0 plus accepted RFC 019/RFC 020
-recovery work through commit `1132033`  
-**Prepared:** 2026-07-15  
+**Status:** Historical RFC 020 S1 inventory and S2 edit record; not an apex
+currency marker
+**Inventory snapshot:** repository release v0.20.0 plus accepted RFC 019/RFC
+020 recovery work through commit `1132033`, captured before corrective-version
+selection
+**Prepared:** 2026-07-15
+**Current-state annotation:** 2026-07-17; B5 correction after architecture
+review 022
 **Scope:** requirements, external design, detailed roadmap, implemented RFCs
 001-018, current public crate roots, manifests, verification tooling, threat
 model, RFC registry, and concise READMEs
 
-This matrix is the required review boundary before the RFC 020 apex prose is
-edited. It classifies discrepancies; it does not itself declare the apex trio
-current. If review finds a code-versus-approved-design conflict, reconciliation
-stops under RFC 020 §16.
+This matrix was the required review boundary before the RFC 020 apex prose was
+edited. It preserves the dated S1 inventory, discrepancy classifications, REC
+ledger, and S2 instructions as reconciliation provenance; it does not itself
+declare the apex trio current. Unless a passage is explicitly labeled as the
+current candidate state, “current,” future-tense instructions, and S2
+dispositions below describe the 2026-07-15 inventory/reconciliation stage. If
+review finds a code-versus-approved-design conflict, reconciliation still stops
+under RFC 020 §16.
 
 ## 1. Authority and comparison rules
 
@@ -24,10 +32,19 @@ The comparison uses the authority order accepted in RFC 020 §11:
 4. code and tests are implementation evidence, not automatic authority;
 5. a mismatch without an approving RFC is a blocker, not a prose-edit license.
 
-The target last-reconciled repository release remains **v0.20.0**. Recovery
-implementation after that release is described separately and must not be
-misrepresented as shipped. The project owner has not selected or authorized a
-corrective release version.
+At the S1 inventory snapshot, the target last-reconciled repository release
+remained **v0.20.0**. Recovery implementation after that release was described
+separately and could not be represented as shipped. At that time, the project
+owner had not selected or authorized a corrective release version.
+
+**Current candidate state (2026-07-17).** The project owner subsequently
+selected **0.20.1** and made its bounded preparation durable. The apex trio now
+proposes an identical **v0.20.1** shared marker, but that marker remains
+explicitly draft. Shipped implementation scope remains RFCs 001-018; RFC 019
+and RFC 020 remain Accepted and unshipped. Corrected exact-revision local
+evidence, tagged-revision evidence, joint S6 review, and the project-owner
+release decision remain pending. This annotation changes no runtime semantics,
+public API, or shipped-scope claim.
 
 ## 2. Requirements-section coverage
 
@@ -129,7 +146,7 @@ not mean the edit is optional.
 
 | ID | Affected ID/section | Prior rule or claim | Reconciled rule or claim | Approving RFC | Compatibility impact | Reconciled release |
 |---|---|---|---|---|---|---|
-| REC-001 | All apex currency blocks | v0.13.1 is current; RFC 009/010 follow | Last reconciled repository release is v0.20.0; implemented RFCs through 018 are included; RFC 019/020 recovery is unshipped/in progress | RFC 009-020 | Documentation-only status correction | v0.20.0 |
+| REC-001 | All apex currency blocks | v0.13.1 is current; RFC 009/010 follow | S1/S2 reconciled the implemented RFC 001-018 scope through the v0.20.0 inventory; after owner version selection, the shared draft candidate marker advances to proposed v0.20.1 while RFC 019/020 remain unshipped/in progress | RFC 009-020 | Documentation-only status/candidate correction; no shipped-scope change | v0.20.0 S2 snapshot; proposed v0.20.1 candidate |
 | REC-002 | Roadmap §§1.1-1.2 | Accepted/frozen RFC remains Proposed in `proposed/` | Loeres uses Proposed → Accepted → Implemented and the `accepted/` folder | RFC 000 as amended; RFC 020 §11.4 | Governance/documentation; no runtime/API impact | corrective baseline after v0.20.0 |
 | REC-003 | CI-001..010, REL-001..008; external design §1.9; roadmap §5 | `check`/`release-gate` alias and green release gate | `check` is the developer aggregate; RFC 019 candidate gate is separate and remains fail-closed until joint closeout | RFC 019 | Operational tooling already implemented; no runtime API impact | corrective baseline after v0.20.0 |
 | REC-004 | G-004/005; requirements §5.4.3; external design §3.5; roadmap Milestone 3 | No std-side numerical kernel exists | One dynamic box projected-first-order kernel ships through RFC 016 | RFC 016 | Additive cluster API already shipped; prose reconciliation | v0.14.0 / reconciled at v0.20.0 |
@@ -165,15 +182,20 @@ reconciliation and handled by a separate RFC.
 - Panic audits and tests are not formal proof of panic freedom.
 - Supply-chain vulnerability/license scanning and enforced artifact-size
   thresholds remain outside the corrective baseline.
-- RFC 019 package construction, clean extraction, tagged-revision evidence, and
-  release/readiness approval remain incomplete and fail-closed.
+- At the S1 inventory snapshot, RFC 019 package construction, clean extraction,
+  tagged-revision evidence, and release/readiness approval were incomplete.
+  Local package and clean-extraction mechanics were subsequently accepted, but
+  corrected exact-revision evidence, tagged-revision evidence, and
+  release/readiness approval remain pending and fail-closed.
 
-## 8. S2 edit boundary after matrix approval
+## 8. Historical S2 edit boundary recorded at matrix approval
 
-If this matrix is accepted, S2 must update the three apex documents atomically:
+The following instructions governed the S2 update after the original matrix
+was accepted:
 
-1. use identical currency metadata: last reconciled release v0.20.0, RFCs
-   001-018 implemented, RFC 019/020 recovery tracked but not shipped;
+1. use identical currency metadata for the then-current S2 snapshot: last
+   reconciled release v0.20.0, RFCs 001-018 implemented, RFC 019/020 recovery
+   tracked but not shipped;
 2. apply apex-owned REC-001 through REC-010 and REC-014 without changing stable
    IDs; retain REC-011 through REC-013 and REC-015 for S3 supporting artifacts;
 3. preserve historical milestone facts while clearly separating current state;
@@ -182,3 +204,10 @@ If this matrix is accepted, S2 must update the three apex documents atomically:
 6. leave supporting threat model, READMEs, RFC index, and currency automation to
    S3/S4, but do not mark the apex trio current until those supporting changes
    are consistent.
+
+The later owner-selected v0.20.1 candidate supersedes only item 1's historical
+version marker. The apex trio now consistently proposes v0.20.1 while retaining
+the same RFC 001-018 shipped scope, Accepted/unshipped RFC 019/020 state, and
+draft activation boundary. Tagged evidence, joint S6 review, and the
+project-owner release decision remain required before current-marker
+activation.
