@@ -14,7 +14,8 @@ index, and handoff state without making an unconditional pre-release claim.
 
 The key invariant is that no tracked activation edit occurs after the
 canonical release tag. The same finalization bytes are conditional before the
-owner release decision and current after the complete predicate becomes true.
+authorized distribution event and current when that event makes the complete
+activation predicate true.
 
 ## 2. Scope followed
 
@@ -26,7 +27,8 @@ Planned implementation is limited to:
 4. owner-selected `0.20.2` release-local preparation;
 5. one atomic exact finalization revision;
 6. separate local and tagged evidence reviews;
-7. an explicit owner actual-release decision.
+7. explicit owner release authorization followed by an authorized distribution
+   event.
 
 Runtime source, APIs, behavior, features, dependencies, publication automation,
 credential handling, and tag mutation are out of scope.
@@ -44,9 +46,10 @@ authorized by this proposed handoff.
 
 ## 4. Design decisions and assumptions
 
-- Conditional-finalization predicate `P` requires exact tree/tag identity,
-  accepted tagged evidence, architecture release Go, and owner actual-release
-  Go.
+- Distribution-authorization predicate `Q` requires exact tree/tag identity,
+  accepted tagged evidence, architecture release Go, and owner release
+  authorization. Activation predicate `P` additionally requires the
+  owner-authorized distribution event.
 - `0.20.2` is owner-selected; availability must be rechecked before
   finalization and tag creation.
 - `0.20.1` stays local, immutable, unpublished, and blocked.

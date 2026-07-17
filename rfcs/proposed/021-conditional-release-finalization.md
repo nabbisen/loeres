@@ -132,32 +132,41 @@ source/package/clean-extraction suite.
 **Architecture acceptance (`A`).** Acceptance of the exact `F`, its local
 evidence, conditional semantics, and later its tagged evidence.
 
-**Owner activation decision (`O`).** The project owner's explicit Go for actual
-release/distribution of exact tag `T` after tagged evidence is accepted.
+**Owner release authorization (`O`).** The project owner's explicit Go to
+release/distribute exact tag `T` after tagged evidence is accepted.
 
 **Distribution (`D`).** Owner-authorized external publication of the canonical
 tag and/or a release object. Registry publication remains a separately named
 decision.
 
-## 8. Conditional activation predicate
+## 8. Conditional authorization and activation predicates
+
+Distribution is authorized only when:
+
+```text
+Q = exact_tree(F)
+    AND canonical_tag(T = 0.20.2, T^{commit} = F)
+    AND tagged_evidence_accepted(E)
+    AND architecture_release_go(A)
+    AND owner_release_authorization(O)
+```
 
 The conditional release state becomes effective only when:
 
 ```text
-P = exact_tree(F)
-    AND canonical_tag(T = 0.20.2, T^{commit} = F)
-    AND tagged_evidence_accepted(E)
-    AND architecture_release_go(A)
-    AND owner_actual_release_go(O)
+P = Q AND owner_authorized_distribution_of(T, F)
 ```
 
 Before `P` is true, `F` is a **release-finalization candidate**. Its staged
 current-marker and Implemented status are not effective shipped-state claims.
-After `P` is true, those same tracked declarations are current for released
-artifact `0.20.2`; no post-tag edit is needed.
+When `Q` is true, the owner may perform exactly the separately authorized
+distribution action. That distribution makes `P` true, and the same tracked
+declarations become current for released artifact `0.20.2`; no post-tag edit
+is needed.
 
-Distribution must not occur before `P`. Distribution does not make a failed
-predicate true retroactively.
+Distribution must not occur before `Q`. Distribution cannot repair a false
+`Q`, authorize a different action, or make a failed prerequisite true
+retroactively.
 
 ## 9. Required release-local wording
 
@@ -171,8 +180,8 @@ documents, equivalent to:
 ```text
 Release-finalization marker for 0.20.2.
 Current when this exact tree is distributed under canonical tag 0.20.2 after
-accepted tag-bound evidence, architecture release Go, and project-owner actual
-release Go; otherwise a non-current finalization candidate.
+accepted tag-bound evidence, architecture release Go, and project-owner release
+authorization; otherwise a non-current finalization candidate.
 Implemented scope after activation: RFCs 001-020.
 ```
 
@@ -255,11 +264,13 @@ Only after architecture accepts Q2 and grants narrow tag authority:
 Only after architecture accepts Q3:
 
 1. Architecture issues explicit release Go for exact `T`/`F`/`E`.
-2. The project owner issues explicit actual-release Go (`O`).
-3. Predicate `P` becomes true.
-4. The owner may separately authorize branch/tag push, remote workflow,
-   GitHub release, registry publication, or certification. Each action remains
-   distinct; none is inferred from another.
+2. The project owner issues explicit release authorization (`O`) and names the
+   allowed distribution action(s); predicate `Q` becomes true.
+3. The owner performs an authorized distribution action for exact `T`/`F`;
+   predicate `P` becomes true at that release event.
+4. Branch/tag push, remote workflow, GitHub release, registry publication, and
+   certification remain distinct actions; authority for one is not inferred
+   for another.
 5. No tracked post-tag activation edit is required or permitted.
 
 ## 12. Candidate identity and tag rules
@@ -320,7 +331,8 @@ tagged artifact.
 Design-review gates:
 
 1. RFC lifecycle/index and Markdown-link checks.
-2. Review of predicate `P`, lifecycle exception, rollback, and exact ordering.
+2. Review of predicates `Q`/`P`, lifecycle exception, rollback, and exact
+   ordering.
 3. Confirmation that `0.20.1` remains blocked and immutable.
 4. Confirmation that no runtime/public API change is authorized.
 
