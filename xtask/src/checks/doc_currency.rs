@@ -30,6 +30,39 @@ const STALE_PHRASES: &[&str] = &[
     "workspace is treated as reset-required",
 ];
 
+const CONDITIONAL_CURRENT_DOCS: &[&str] = &[
+    "CHANGELOG.md",
+    "README.md",
+    "ROADMAP.md",
+    "docs/src/introduction.md",
+    "docs/src/threat-model.md",
+    "docs/src/recovery-roadmap.md",
+    "docs/src/specifications.md",
+    "docs/specs/loeres-reconciliation-traceability-v020.md",
+    "docs/specs/loeres-requirements-v1.md",
+    "docs/specs/loeres-external-design-v1.md",
+    "docs/specs/loeres-roadmap-milestones-v1.md",
+    "rfcs/handoffs/019-release-integrity-and-msrv-recovery/implementation-handoff.md",
+    "rfcs/handoffs/020-normative-documentation-authority-and-currency/implementation-handoff.md",
+    "rfcs/handoffs/021-conditional-release-finalization/implementation-handoff.md",
+];
+
+const CONDITIONAL_BOUNDARY_MARKERS: &[&str] = &[
+    "Before external predicate `P` succeeds",
+    "After `P` succeeds",
+    "Tracked bytes alone do not establish whether `P` occurred",
+    "GitHub release creation, registry publication, and certification remain separately authorized",
+];
+
+const CONDITIONAL_STALE_PHRASES: &[&str] = &[
+    "The last externally activated repository release is v0.20.0",
+    "Package/release readiness remains No-Go pending",
+    "The repository remains No-Go for release/readiness claims",
+    "Exact clean-tree Q2 evidence and review remain pending",
+    "The owner must first make this atomic Q2 tree one clean exact revision",
+    "actual release remain unestablished and unauthorized",
+];
+
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ApexCurrency {
     release: String,
@@ -67,6 +100,7 @@ fn validate_repository() -> Vec<String> {
     check_book_navigation(&mut errors);
     check_release_local_paths(&mut errors);
     check_stale_ledger(&mut errors);
+    check_conditional_current_prose(conditional.as_ref(), &mut errors);
     errors
 }
 
@@ -522,6 +556,39 @@ fn stale_phrases_in(source: &str, label: &str, errors: &mut Vec<String>) {
     }
 }
 
+fn check_conditional_current_prose(
+    conditional: Option<&ConditionalMetadata>,
+    errors: &mut Vec<String>,
+) {
+    if conditional.is_none() {
+        return;
+    }
+    for path in CONDITIONAL_CURRENT_DOCS {
+        let Some(source) = read_required(path, errors) else {
+            continue;
+        };
+        conditional_current_prose_in(&source, path, errors);
+    }
+}
+
+fn conditional_current_prose_in(source: &str, label: &str, errors: &mut Vec<String>) {
+    let normalized = normalize_whitespace(source);
+    for marker in CONDITIONAL_BOUNDARY_MARKERS {
+        if !normalized.contains(&normalize_whitespace(marker)) {
+            errors.push(format!(
+                "CONDITIONAL CURRENT PROSE: {label} is missing `{marker}`"
+            ));
+        }
+    }
+    for phrase in CONDITIONAL_STALE_PHRASES {
+        if normalized.contains(&normalize_whitespace(phrase)) {
+            errors.push(format!(
+                "CONDITIONAL CURRENT PROSE: {label} retains stale unconditional phrase `{phrase}`"
+            ));
+        }
+    }
+}
+
 fn current_before_historical(source: &str) -> &str {
     source
         .split_once("### Historical completion:")
@@ -562,8 +629,9 @@ fn bounded_value(source: &str, prefix: &str, suffix: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        current_before_historical, index_status_matches, parse_apex_currency,
-        parse_conditional_apex_currency, parse_design_freeze, stale_phrases_in,
+        conditional_current_prose_in, current_before_historical, index_status_matches,
+        parse_apex_currency, parse_conditional_apex_currency, parse_design_freeze,
+        stale_phrases_in,
     };
     use crate::checks::conditional_finalization::ConditionalMetadata;
 
@@ -805,5 +873,27 @@ workflow_terminal_timeout_minutes = 120
         let mut errors = Vec::new();
         stale_phrases_in(current_before_historical(source), "synthetic", &mut errors);
         assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn conditional_current_prose_accepts_complete_timeless_boundary() {
+        let source = "Before external predicate `P` succeeds, this is non-current.\n\
+            After `P` succeeds, these same bytes are current.\n\
+            Tracked bytes alone do not establish whether `P` occurred.\n\
+            GitHub release creation, registry publication, and certification remain separately authorized.";
+        let mut errors = Vec::new();
+        conditional_current_prose_in(source, "synthetic", &mut errors);
+        assert!(errors.is_empty());
+    }
+
+    #[test]
+    fn conditional_current_prose_rejects_missing_branch_and_stale_no_go() {
+        let source = "Before external predicate `P` succeeds, this is non-current.\n\
+            Tracked bytes alone do not establish whether `P` occurred.\n\
+            GitHub release creation, registry publication, and certification remain separately authorized.\n\
+            The repository remains No-Go for release/readiness claims.";
+        let mut errors = Vec::new();
+        conditional_current_prose_in(source, "synthetic", &mut errors);
+        assert_eq!(errors.len(), 2);
     }
 }

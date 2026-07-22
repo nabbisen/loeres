@@ -22,9 +22,15 @@ this file is a short summary.
 > immutable local tag as an unpublished blocked candidate. Reviews 031/032
 > accepted RFC 021 S1/S2, and the project owner authorized one atomic Q2
 > finalization revision. Active metadata, the canonical conditional apex
-> block, and conditionally staged RFC 019/020/021 paths now form that candidate
-> tree; none proves external activation. Exact clean-tree evidence and review,
-> tags, distribution, and actual release remain pending.
+> block, and conditionally staged RFC 019/020/021 paths form the exact
+> finalization tree; none proves external activation. Before external predicate
+> `P` succeeds, v0.20.0 remains the last externally activated repository
+> release and this exact `0.20.2` tree is a non-current No-Go finalization
+> candidate. After `P` succeeds, these same immutable bytes are the activated
+> `0.20.2` release with RFCs 001-021 implemented. Tracked bytes alone do not
+> establish whether `P` occurred. GitHub release creation, registry
+> publication, and certification remain separately authorized; none is implied
+> by `P`.
 > New public-boundary implementation waits until R2 closes.
 
 ## Phases
@@ -42,7 +48,7 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, bounded conformance, and cache/trust fixtures (RFCs 010–013, 017).
 
-## Current status (released v0.20.0; v0.20.2 conditional-finalization tree)
+## Current status (v0.20.2 conditional-finalization tree)
 
 RFCs 001-018 are implemented. The current numerical breadth is one
 box/bound-constrained projected-first-order family on device and cluster.
@@ -52,11 +58,14 @@ the gateway is mock-only, and validation caching is process-local. RFCs
 019/020/021 are implementation-complete and conditionally staged under the
 exact RFC 021 predicate. Immutable local tag `0.20.1` and its accepted evidence
 remain historical blocked-candidate evidence only. The `0.20.2` metadata,
-apex, lifecycle, index, and release-local prose are one candidate state: before
-external predicate `P` succeeds it is non-current, and stored paths do not
-prove activation. Package/release readiness remains No-Go pending a clean
-exact Q2 revision and local evidence review, later tag-bound evidence, release
-Go, owner authorization, and successful distribution.
+apex, lifecycle, index, and release-local prose are one conditional state.
+Before external predicate `P` succeeds, v0.20.0 remains the last externally
+activated repository release and this exact `0.20.2` tree is a non-current
+No-Go finalization candidate. After `P` succeeds, these same immutable bytes
+are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
+alone do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision

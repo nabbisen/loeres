@@ -1,13 +1,18 @@
 # RFC 019 - Implementation Handoff
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../done/019-release-integrity-and-msrv-recovery.md)
-**Handoff state.** Implemented (conditional finalization for 0.20.2). Reviews
-031/032 accepted RFC 021 S1/S2, and the project owner authorized one atomic Q2
-revision. Exact clean-tree Q2 evidence and review remain pending.
-**Target.** Exact untagged `0.20.2` conditional-finalization revision.
-Immutable local tag `0.20.1` remains unpublished and blocked. No tag creation
-or mutation, push, publication, GitHub release, certification, or actual
-release is authorized by this handoff.
+**Handoff state.** Implemented (conditional finalization for 0.20.2).
+**Target.** Exact `0.20.2` conditional-finalization bytes. Immutable local tag
+`0.20.1` is historical, unpublished blocked-candidate evidence and is never
+moved or reused.
+
+Before external predicate `P` succeeds, v0.20.0 remains the last externally
+activated repository release and this exact `0.20.2` tree is a non-current
+No-Go finalization candidate. After `P` succeeds, these same immutable bytes
+are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
+alone do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`.
 
 ## 1. Summary
 
@@ -261,15 +266,13 @@ delta. It cannot replace or extend the accepted evidence for immutable tag
   closeout prose is post-tag governance state and is not part of its archive.
 - The tag signing key is not independently certified by the local GPG trust
   database.
-- Exact clean-tree Q2 local evidence and architecture acceptance, later
-  tag-bound evidence, release Go, owner distribution authorization, remote
-  push/CI, publication, GitHub release, and certification remain pending.
+- Tracked state cannot establish local/tag-bound evidence acceptance,
+  architecture release Go, owner authorization, remote acceptance, or workflow
+  success; external evidence determines whether `P` succeeded.
 
-## 8. Recommended next step
+## 8. Conditional operation boundary
 
-After the project owner makes the atomic Q2 tree one exact clean revision, run
-the complete local and intended-tag gates against that revision and submit the
-revision plus evidence for architecture review. Do not move or recreate tag
-`0.20.1`, create tag `0.20.2`, push, publish, create a GitHub release, certify,
-or claim an actual release before separate Q2 acceptance and later narrow
-owner authority.
+Before `P`, follow RFC 021's accepted-evidence and owner-authorization sequence
+without moving `0.20.1` or inferring readiness from tracked state. After `P`,
+the same bytes require no activation edit. Branch pushes, GitHub release
+creation, registry publication, and certification remain separate actions.

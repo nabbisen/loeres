@@ -43,10 +43,13 @@ blocked unpublished candidate under RFC 021. The project owner selected
 Q2 finalization revision. The apex trio now carries the identical canonical
 RFC 021 conditional block, and RFCs 019/020/021 are implementation-complete and
 conditionally staged in `done/` under the tracked metadata. Before external
-predicate `P` succeeds, this is a non-current candidate and shipped scope
-remains RFCs 001-018. Exact local/tagged evidence, later architecture
-decisions, owner release authorization, and successful distribution remain
-pending. This annotation changes no runtime semantics or public API.
+predicate `P` succeeds, v0.20.0 remains the last externally activated
+repository release and this exact `0.20.2` tree is a non-current No-Go
+finalization candidate. After `P` succeeds, these same immutable bytes are the
+activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes alone
+do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`. This annotation changes no runtime semantics or public API.
 
 ## 2. Requirements-section coverage
 
@@ -186,9 +189,8 @@ reconciliation and handled by a separate RFC.
   thresholds remain outside the corrective baseline.
 - At the S1 inventory snapshot, RFC 019 package construction, clean extraction,
   tagged-revision evidence, and release/readiness approval were incomplete.
-  Local package and clean-extraction mechanics were subsequently accepted, but
-  corrected exact-revision evidence, tagged-revision evidence, and
-  release/readiness approval remain pending and fail-closed.
+  This is dated construction history; RFC 021's conditional boundary, stated
+  above, governs the unchanged finalization bytes.
 
 ## 8. Historical S2 edit boundary recorded at matrix approval
 
@@ -209,7 +211,6 @@ was accepted:
 
 The later owner-selected `0.20.2` finalization supersedes only item 1's
 historical version marker. The apex trio now consistently carries RFC 021's
-conditional block, while RFCs 019/020/021 are conditionally staged and the
-shipped scope remains RFCs 001-018 until external predicate `P` succeeds.
-Exact local/tagged evidence, architecture decisions, owner authorization, and
-successful distribution remain required before current-marker activation.
+conditional block, while RFCs 019/020/021 are conditionally staged. Predicate
+`P`, rather than tracked state, determines whether these bytes are non-current
+or activated.

@@ -1,13 +1,17 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
 **RFC.** [`021-conditional-release-finalization.md`](../../done/021-conditional-release-finalization.md)
-**Handoff state.** Implemented (conditional finalization for 0.20.2). Review
-031 accepted corrected S1, review 032 accepted exact S2 `60a6611...`, and the
-project owner authorized one atomic Q2 finalization revision on 2026-07-22.
-Exact clean-tree Q2 evidence and architecture review remain pending; Q3 and
-later stages remain unauthorized.
+**Handoff state.** Implemented (conditional finalization for 0.20.2).
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
+
+Before external predicate `P` succeeds, v0.20.0 remains the last externally
+activated repository release and this exact `0.20.2` tree is a non-current
+No-Go finalization candidate. After `P` succeeds, these same immutable bytes
+are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
+alone do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`.
 
 ## 1. Summary
 
@@ -43,14 +47,10 @@ Planned implementation is limited to:
 Runtime source, APIs, behavior, features, dependencies, publication automation,
 credential handling, and tag mutation are out of scope.
 
-The current owner authorization is narrower than the complete plan above. S1
-and S2 are accepted. Q2 may create one atomic tracked revision containing the
-reviewed metadata instance, canonical conditional apex blocks, RFC 019/020/021
-`done/` moves and exact Status fields, index/link state, and synchronized
-release-local documentation. After the owner makes that tree one clean exact
-revision, Q2 includes complete local validation and intended-tag evidence for
-architecture review. Tag creation, distribution, publication, certification,
-and release remain unauthorized.
+S1 and S2 acceptance and Q2 construction authorization are dated historical
+inputs to these bytes. Before `P`, later actions require the exact external
+evidence and authorizations defined by RFC 021. After `P`, the same tracked
+state is the activated release and requires no documentation transition.
 
 ## 3. Files changed
 
@@ -213,7 +213,8 @@ was deliberately not run or claimed: its successful use belongs to clean exact
 Q2 finalization evidence after the tracked metadata, canonical conditional
 apex block, and atomic lifecycle state exist.
 
-Observed while constructing the authorized Q2 worktree:
+Historical construction evidence observed on 2026-07-22 for the first Q2
+revision, before architecture review 033 identified the B13 prose defect:
 
 - `cargo test -p xtask conditional_finalization`: passed, 8 focused tests;
 - `cargo fmt --all -- --check`: passed;
@@ -231,9 +232,34 @@ Observed while constructing the authorized Q2 worktree:
 - `mdbook build docs`: passed; generated `docs/book/` was removed; and
 - `git diff --check`: passed.
 
-These are worktree construction checks, not exact clean-revision evidence.
-The complete gate and `release-gate --intended-tag 0.20.2` must be run only
-after the project owner commits this whole atomic tree and it is clean.
+Those results were worktree construction checks, not exact clean-revision
+evidence. The first exact revision later received its own complete evidence;
+review 033 rejected its release-local prose and required fresh evidence for
+the corrected bytes.
+
+Observed for the review-033 B13 correction worktree on 2026-07-22:
+
+- the bounded conditional-current-prose regression adds representative
+  before-`P`/after-`P`, tracked-state non-inference, separately authorized
+  optional-action, and stale-unconditional-phrase assertions;
+- `cargo fmt --all -- --check`: passed;
+- `cargo test -p xtask`: passed, 61 tests;
+- `cargo xtask check-rfcs`, `cargo xtask doc-currency`, and
+  `cargo xtask link-audit`: passed; the link audit scanned 56 Markdown files;
+- `mdbook build docs`: passed and generated `docs/book/` was removed;
+- all-target/all-feature workspace Clippy with warnings denied: passed;
+- all-feature workspace tests and all doc-test targets: passed, including 71
+  core, 22 static-backend, 23 std-backend, 85 cluster, 32 device, and 61 xtask
+  unit tests;
+- exact Rust 1.85 all-feature workspace checking: passed;
+- `cargo xtask check`: passed with mandatory profiles 2/2, conformance 12/12,
+  advisory-unavailable soft-float/RISC-V, and documented-only WASM/AArch64;
+  and
+- `git diff --check`: passed before this evidence note was added.
+
+These are correction-worktree observations. Fresh exact local evidence belongs
+to the new clean owner-durable revision and cannot reuse the evidence for the
+review-033-rejected revision.
 
 ## 6. Generated artifacts
 
@@ -243,14 +269,15 @@ temporary state and are removed by their test guards. The generated mdBook
 output was removed after validation.
 
 Q2 adds the tracked conditional metadata instance and the synchronized
-release-local finalization state. Its release archive and private local
-evidence must be generated only after the owner creates the exact clean Q2
-revision. Q2 creates no tag or distribution artifact.
+release-local finalization state. Release archives and private evidence are
+external artifacts generated only for an exact clean revision; tracked bytes
+do not reveal whether they exist. Q2 itself creates no tag or distribution
+artifact.
 
 ## 7. Known limitations
 
-- The current worktree is not Q2 evidence until the owner makes it one exact
-  clean revision and the complete gates bind their outputs to that revision.
+- Tracked state is not Q2, tag-bound, or distribution evidence; those facts are
+  established externally against the exact revision or tag.
 - A conditionally staged `done/` state is intentionally narrow and must not
   become a general substitute for shipped lifecycle state.
 - Tag-bound evidence still occurs after tag creation; the protocol reduces
@@ -259,14 +286,11 @@ revision. Q2 creates no tag or distribution artifact.
 - Remote tag acceptance followed by workflow no-start, cancellation, timeout,
   gate failure, or artifact-upload failure is a partial-distribution incident;
   `P` remains false and the remote tag is not rewritten.
-- No actual release is authorized.
+- Optional post-activation actions remain separately authorized.
 
-## 8. Recommended next step
+## 8. Conditional operation boundary
 
-Make the entire atomic Q2 worktree owner-durable as one revision. Then run the
-complete clean-tree and `release-gate --intended-tag 0.20.2` evidence, and
-submit the exact revision/evidence for architecture review against RFC 021,
-reviews 031/032, the amended RFC 000/019/020 protocol, and this handoff. Do not
-create tag `0.20.2`, push, publish, certify, or perform any release action until
-Q2 is accepted and the project owner later receives and grants narrow Q3
-authority.
+Before `P`, follow RFC 021's accepted-evidence and owner-authorization sequence
+without moving `0.20.1` or inferring readiness from tracked state. After `P`,
+the same bytes require no activation edit. Branch pushes, GitHub release
+creation, registry publication, and certification remain separate actions.

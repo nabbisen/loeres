@@ -7,12 +7,14 @@ sign-off (see RFC 000 and the requirements specification).
 
 ## [0.20.2] — 2026-07-22 — RFC 021 conditional finalization
 
-Version 0.20.2 is staged in RFC 021's exact conditional-finalization state.
-Before external predicate `P` succeeds, it is a non-current untagged candidate;
-only successful distribution of this exact tree under canonical tag `0.20.2`
-after accepted local/tagged evidence, architecture release Go, and explicit
-project-owner authorization makes the same bytes current. Stored metadata and
-lifecycle paths do not prove that activation occurred.
+Version 0.20.2 uses RFC 021's exact conditional-finalization state. Before
+external predicate `P` succeeds, v0.20.0 remains the last externally activated
+repository release and this exact `0.20.2` tree is a non-current No-Go
+finalization candidate. After `P` succeeds, these same immutable bytes are the
+activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes alone
+do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`.
 
 ### Finalization state
 
@@ -30,15 +32,17 @@ lifecycle paths do not prove that activation occurred.
 - Retained immutable local tag `0.20.1` as an unpublished blocked candidate;
   it is never moved, reused, pushed, or treated as the `0.20.2` release.
 
-### Explicitly pending
+### Conditional activation boundary
 
-- The owner must first make this atomic Q2 tree one clean exact revision; only
-  then may its intended-tag and complete local evidence be created for review.
-- Architecture must accept that exact revision and evidence before the owner
-  may receive separate narrow authority to create local tag `0.20.2`.
-- Tagged evidence, release Go, owner distribution authorization, tag push,
-  workflow success, GitHub release, registry publication, certification, and
-  actual release remain unestablished and unauthorized.
+- Predicate `P` includes accepted local and tag-bound evidence, architecture
+  release Go, explicit project-owner distribution authorization, remote
+  acceptance of canonical tag `0.20.2`, and successful completion of its
+  inseparable release workflow under RFC 021.
+- Failure before `P` completes leaves these bytes a non-current candidate and
+  invokes RFC 021's fail-closed or partial-distribution handling; it never
+  permits a post-tag activation edit or tag movement.
+- Branch pushes, GitHub release creation, registry publication, and
+  certification are outside `P` and require their own authorization.
 
 ## [0.20.1] — 2026-07-17 — RFC 019/RFC 020 architecture recovery (candidate)
 

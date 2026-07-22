@@ -25,8 +25,15 @@
 > It does **not** include broad LP/QP/SOCP solver parity, a concrete native
 > adapter, a persistent/distributed cache, universal bitwise determinism, or
 > broad throughput/large-N/multi-tenant stress evidence. The RFC 019 release
-> package gate remains intentionally fail-closed until RFC 021's later exact
-> finalization and evidence stages.
+> package gate follows RFC 021's conditional boundary.
+
+Before external predicate `P` succeeds, v0.20.0 remains the last externally
+activated repository release and this exact `0.20.2` tree is a non-current
+No-Go finalization candidate. After `P` succeeds, these same immutable bytes
+are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
+alone do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`.
 
 ---
 

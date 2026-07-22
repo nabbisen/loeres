@@ -4,11 +4,14 @@
 
 > **Publication and recovery status.** Repository state does not establish that
 > every workspace crate or its hosted documentation is published or current, so
-> external registry/documentation badges are intentionally omitted. The last
-> externally activated repository release is v0.20.0. RFCs 019/020/021 are
-> conditionally staged for `0.20.2`; their metadata, apex, and `done/` paths do
-> not prove external activation. Release/package readiness remains No-Go and
-> fail-closed pending the RFC 021 evidence and authorization sequence.
+> external registry/documentation badges are intentionally omitted. Before
+> external predicate `P` succeeds, v0.20.0 remains the last externally
+> activated repository release and this exact `0.20.2` tree is a non-current
+> No-Go finalization candidate. After `P` succeeds, these same immutable bytes
+> are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked
+> bytes alone do not establish whether `P` occurred. GitHub release creation,
+> registry publication, and certification remain separately authorized; none
+> is implied by `P`.
 
 **One optimization contract, two worlds — high-throughput server solving and deterministic `no_std` edge solving, without letting either contaminate the other.**
 

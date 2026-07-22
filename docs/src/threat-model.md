@@ -124,9 +124,13 @@ is advisory until owner RFCs freeze thresholds. Dependency vulnerability and
 license-policy scanning are not enforced in the corrective baseline.
 
 RFC 019's package/readiness gate is distinct from the developer aggregate and
-remains intentionally fail-closed until integrated documentation, preflight,
-tagged-revision, clean-extraction, retained-evidence, and approval requirements
-are met. The repository remains No-Go for release/readiness claims.
+follows RFC 021's conditional boundary. Before external predicate `P`
+succeeds, v0.20.0 remains the last externally activated repository release and
+this exact `0.20.2` tree is a non-current No-Go finalization candidate. After
+`P` succeeds, these same immutable bytes are the activated `0.20.2` release
+with RFCs 001-021 implemented. Tracked bytes alone do not establish whether
+`P` occurred. GitHub release creation, registry publication, and certification
+remain separately authorized; none is implied by `P`.
 
 ## Residual risks and future work
 

@@ -19,8 +19,16 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > validation evidence caching. It does not ship broad dynamic LP/QP/SOCP model
 > builders, a concrete native solver adapter, a persistent/distributed cache, or
 > broad throughput/large-N/multi-tenant stress evidence. Target and conformance
-> evidence are scoped as described below. RFC 019 release packaging remains
-> fail-closed until RFC 021's later exact finalization and evidence stages.
+> evidence are scoped as described below. RFC 019 release packaging follows
+> RFC 021's conditional boundary.
+
+Before external predicate `P` succeeds, v0.20.0 remains the last externally
+activated repository release and this exact `0.20.2` tree is a non-current
+No-Go finalization candidate. After `P` succeeds, these same immutable bytes
+are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
+alone do not establish whether `P` occurred. GitHub release creation, registry
+publication, and certification remain separately authorized; none is implied
+by `P`.
 
 ---
 
@@ -1383,11 +1391,11 @@ access expensive. *(Design finalized in v0.6.1; implemented in v0.7.0.)*
 
 ## 7. RFC Roadmap Derived from This External Design
 
-RFCs 001-018 are implemented and shipped through v0.20.0. RFCs 019/020/021 are
-implementation-complete and conditionally staged for `0.20.2`; before external
-predicate `P` succeeds their stored lifecycle paths are not shipped-behavior
-proof. The detailed roadmap is normative for sequencing/status and records
-historical departures.
+RFCs 001-018 were implemented and shipped through v0.20.0. RFCs 019/020/021 are
+implementation-complete and conditionally staged for `0.20.2`. Their stored
+lifecycle paths are not proof of which RFC 021 predicate branch applies. The
+detailed roadmap is normative for sequencing/status and records historical
+departures.
 
 | RFC range | Implemented external-design contribution |
 |---|---|
@@ -1507,8 +1515,7 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-RFCs 001-018 form the shipped v0.20.0 baseline. RFCs 019/020/021 are
+RFCs 001-018 form the historical shipped v0.20.0 baseline. RFCs 019/020/021 are
 implementation-complete and conditionally staged for `0.20.2` under RFC 021.
-Before external predicate `P` succeeds, the tree remains a non-current
-release-finalization candidate; the release package and actual release remain
-No-Go.
+The before-`P`/after-`P` boundary at the top of this specification governs
+these same immutable bytes without a post-tag documentation edit.
