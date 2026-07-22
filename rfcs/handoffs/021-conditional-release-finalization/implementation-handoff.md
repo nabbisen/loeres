@@ -1,10 +1,11 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
 **RFC.** [`021-conditional-release-finalization.md`](../../accepted/021-conditional-release-finalization.md)
-**Handoff state.** Bounded S1 implemented; architecture review 027 froze the
-design, review 029 accepted the Q0.5 lifecycle baseline and granted S1 Go, and
-the project owner authorized execution on 2026-07-18. S1 implementation review
-is pending. S2 and later stages remain unauthorized.
+**Handoff state.** Bounded S1 corrected after architecture review 030 found
+B11/B12; rereview is pending. Architecture review 027 froze the design, review
+029 accepted the Q0.5 lifecycle baseline and granted S1 Go, and the project
+owner authorized execution on 2026-07-18. S2 and later stages remain
+unauthorized.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
@@ -18,6 +19,12 @@ The key invariant is that no tracked activation edit occurs after the
 canonical release tag. The same finalization bytes are conditional before the
 authorized distribution event and current when that event makes the complete
 activation predicate true.
+
+Review 030 accepted the S1 scope, schema, preflight, RFC amendments, and gate
+evidence but rejected two fail-closed details. The corrected validators now
+require one canonical conditional apex block with no legacy draft block or
+extra statement, and exactly one canonical Status field in each conditionally
+staged RFC.
 
 ## 2. Scope followed
 
@@ -71,6 +78,10 @@ Bounded S1 changes:
 No conditional metadata instance, version change, apex/current-state change,
 RFC lifecycle move, workflow change, or release artifact is part of S1.
 
+The review-030 correction changes only the two validator modules above plus
+this synchronized handoff. It does not revise the accepted RFC semantics or
+expand S1 authority.
+
 ## 4. Design decisions and assumptions
 
 - Distribution-authorization predicate `Q` requires matching conditional
@@ -110,13 +121,20 @@ RFC lifecycle move, workflow change, or release artifact is part of S1.
 - The optional file must be tracked in `HEAD` before intended-tag mode can
   pass. This prevents an untracked worktree-only file from influencing release
   evidence.
+- Conditional apex parsing uses canonical normalized-block equality, not
+  required-substring presence. It rejects the legacy RFC 020 draft marker,
+  duplicate markers, extra or unconditional claims, and fields displaced
+  outside the bounded block.
+- Conditional lifecycle parsing counts every `**Status.**` field and requires
+  exactly one field equal to the canonical conditional Status. Duplicate,
+  conflicting, missing, and ordinary Implemented Status values fail closed.
 
 ## 5. Tests and gates run
 
 Observed for the bounded S1 implementation worktree:
 
 - `cargo fmt --all -- --check`: passed;
-- `cargo test -p xtask`: passed, 56 tests;
+- `cargo test -p xtask`: passed, 59 tests;
 - `cargo xtask check-rfcs`: passed;
 - `cargo xtask doc-currency`: passed;
 - `cargo +stable clippy --workspace --all-features --all-targets -- -D
@@ -126,6 +144,11 @@ Observed for the bounded S1 implementation worktree:
 - `cargo +1.85.0 check --workspace --all-features`: passed;
 - `cargo xtask check`: passed, including link audit of 56 Markdown files; and
 - `mdbook build docs`: passed; generated `docs/book/` was removed.
+
+The 59 focused tests include the B11 retained-legacy-block, identical extra
+statement, unconditional release claim, displaced field cases; the B12
+conflicting, duplicate, missing, and ordinary Status cases; and the
+non-blocking no-finish distribution observation suggested by review 030.
 
 The first workspace-test invocation reached successful unit suites but rustdoc
 could not write to the environment's read-only `/tmp`. The same command was
@@ -145,8 +168,8 @@ removed after validation.
 
 ## 7. Known limitations
 
-- S1 implementation still requires architecture review before S2 can be
-  considered.
+- The B11/B12 correction still requires architecture rereview before S1 can be
+  accepted or S2 considered.
 - A conditionally staged `done/` state is intentionally narrow and must not
   become a general substitute for shipped lifecycle state.
 - Tag-bound evidence still occurs after tag creation; the protocol reduces
@@ -159,9 +182,9 @@ removed after validation.
 
 ## 8. Recommended next step
 
-Make this bounded S1 implementation owner-durable, then submit the exact
-revision for focused architecture review against RFC 021, the amended RFC
-000/019/020 protocol, and this handoff. Do not begin S2
+Make the narrow B11/B12 correction owner-durable, then submit the exact
+revision for focused architecture rereview against review 030, RFC 021, the
+amended RFC 000/019/020 protocol, and this handoff. Do not begin S2
 version/apex/changelog/roadmap preparation or any later lifecycle, tag, push,
-publication, or release action until that review is accepted and the project
+publication, or release action until S1 rereview is accepted and the project
 owner separately authorizes S2.

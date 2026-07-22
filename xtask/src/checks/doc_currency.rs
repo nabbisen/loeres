@@ -17,6 +17,8 @@ const APEX_DOCS: &[&str] = &[
 
 const RFC_FOLDERS: &[&str] = &["proposed", "accepted", "done", "archive"];
 
+const LEGACY_APEX_MARKER: &str = "**RFC 020 shared currency metadata (draft).**";
+
 const STALE_PHRASES: &[&str] = &[
     "current as of v0.13.1",
     "current as of repository release v0.13.1",
@@ -175,13 +177,15 @@ fn parse_apex_currency(source: &str) -> Result<ApexCurrency, String> {
 }
 
 fn extract_shared_currency_block(source: &str) -> Result<String, String> {
-    const MARKER: &str = "**RFC 020 shared currency metadata (draft).**";
-    if source.matches(MARKER).count() != 1 {
+    if source.matches(LEGACY_APEX_MARKER).count() != 1 {
         return Err("expected exactly one shared draft metadata marker".to_owned());
     }
 
     let lines = source.lines().collect::<Vec<_>>();
-    let Some(start) = lines.iter().position(|line| line.contains(MARKER)) else {
+    let Some(start) = lines
+        .iter()
+        .position(|line| line.contains(LEGACY_APEX_MARKER))
+    else {
         return Err("missing shared draft metadata marker".to_owned());
     };
     if !lines[start].trim_start().starts_with('>') {
@@ -210,6 +214,9 @@ fn parse_conditional_apex_currency(
     metadata: &ConditionalMetadata,
 ) -> Result<ApexCurrency, String> {
     metadata.validate()?;
+    if source.contains(LEGACY_APEX_MARKER) {
+        return Err("legacy RFC 020 draft metadata must be absent in conditional mode".to_owned());
+    }
     if source
         .matches(conditional_finalization::APEX_MARKER)
         .count()
@@ -236,25 +243,29 @@ fn parse_conditional_apex_currency(
         block.push(*line);
     }
     let normalized_block = normalize_whitespace(&block.join("\n"));
-    for marker in [
-        format!(
-            "Release-finalization marker for **{}**",
-            metadata.release_version
-        ),
-        format!("Canonical tag: **{}**", metadata.canonical_tag),
-        "Current only when this exact tree is distributed under the canonical tag after accepted tag-bound evidence, architecture release Go, and project-owner release authorization".to_owned(),
-        "otherwise a non-current release-finalization candidate".to_owned(),
-        "Implemented scope after activation: **RFCs 001-021**".to_owned(),
-        "Stored lifecycle paths do not prove external activation".to_owned(),
-    ] {
-        if !normalized_block.contains(&marker) {
-            return Err(format!("missing conditional apex field `{marker}`"));
-        }
+    let expected = canonical_conditional_apex_block(metadata);
+    if normalized_block != expected {
+        return Err("conditional apex block differs from the canonical RFC 021 block".to_owned());
     }
     Ok(ApexCurrency {
         release: format!("v{}", metadata.release_version),
         normalized_block,
     })
+}
+
+fn canonical_conditional_apex_block(metadata: &ConditionalMetadata) -> String {
+    normalize_whitespace(&format!(
+        "> {}\n\
+         > Release-finalization marker for **{}**. Canonical tag: **{}**.\n\
+         > Current only when this exact tree is distributed under the canonical tag after accepted\n\
+         > tag-bound evidence, architecture release Go, and project-owner release authorization;\n\
+         > otherwise a non-current release-finalization candidate.\n\
+         > Implemented scope after activation: **RFCs 001-021**.\n\
+         > Stored lifecycle paths do not prove external activation.",
+        conditional_finalization::APEX_MARKER,
+        metadata.release_version,
+        metadata.canonical_tag,
+    ))
 }
 
 fn check_rfc_index(errors: &mut Vec<String>) {
@@ -673,6 +684,36 @@ workflow_terminal_timeout_minutes = 120
                 parse_conditional_apex_currency(&source, &valid_conditional_metadata()).is_err()
             );
         }
+    }
+
+    #[test]
+    fn conditional_apex_rejects_legacy_or_extra_claims() {
+        let legacy = format!(
+            "{}\n\n> **RFC 020 shared currency metadata (draft).** retained",
+            valid_conditional_apex()
+        );
+        let extra = valid_conditional_apex().replace(
+            "> Stored lifecycle paths do not prove external activation.",
+            "> Extra statement copied to every apex document.\n\
+             > Stored lifecycle paths do not prove external activation.",
+        );
+        let unconditional = valid_conditional_apex().replace(
+            "> Stored lifecycle paths do not prove external activation.",
+            "> This release is current and released.\n\
+             > Stored lifecycle paths do not prove external activation.",
+        );
+        for source in [legacy, extra, unconditional] {
+            assert!(
+                parse_conditional_apex_currency(&source, &valid_conditional_metadata()).is_err()
+            );
+        }
+    }
+
+    #[test]
+    fn conditional_apex_rejects_required_field_displaced_outside_block() {
+        let source = valid_conditional_apex().replace(" Canonical tag: **0.20.2**.", "")
+            + "\n\nCanonical tag: **0.20.2**.";
+        assert!(parse_conditional_apex_currency(&source, &valid_conditional_metadata()).is_err());
     }
 
     #[test]

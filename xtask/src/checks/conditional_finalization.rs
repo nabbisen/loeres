@@ -162,13 +162,13 @@ pub(crate) fn validate_lifecycle(root: &Path, metadata: &ConditionalMetadata) ->
             }
         };
         let expected_source = format!("**Status.** {CONDITIONAL_STATUS}");
-        let status_count = source
+        let statuses = source
             .lines()
-            .filter(|line| *line == expected_source)
-            .count();
-        if status_count != 1 {
+            .filter(|line| line.starts_with("**Status.**"))
+            .collect::<Vec<_>>();
+        if statuses.len() != 1 || statuses[0] != expected_source {
             errors.push(format!(
-                "CONDITIONAL RFC {number}: expected one exact `{expected_source}` status, found {status_count}"
+                "CONDITIONAL RFC {number}: expected exactly one Status field equal to `{expected_source}`, found {statuses:?}"
             ));
         }
 
@@ -395,9 +395,37 @@ workflow_terminal_timeout_minutes = 120
         assert!(
             errors
                 .iter()
-                .any(|error| error.contains("expected one exact"))
+                .any(|error| error.contains("expected exactly one Status field"))
         );
         assert!(errors.iter().any(|error| error.contains("unreviewed use")));
+    }
+
+    #[test]
+    fn lifecycle_requires_one_exact_status_field_total() {
+        let metadata = ConditionalMetadata::parse(&valid_metadata()).unwrap();
+        let expected = format!("**Status.** {CONDITIONAL_STATUS}");
+        for statuses in [
+            format!("{expected}\n**Status.** Implemented (v0.20.2)"),
+            format!("{expected}\n{expected}"),
+            "No status field".to_owned(),
+            "**Status.** Implemented (v0.20.2)".to_owned(),
+        ] {
+            let fixture = LifecycleFixture::valid();
+            fs::write(
+                fixture
+                    .root
+                    .join("rfcs/done/019-release-integrity-and-msrv-recovery.md"),
+                format!("# RFC 019\n\n{statuses}\n"),
+            )
+            .unwrap();
+            let errors = validate_lifecycle(&fixture.root, &metadata);
+            assert!(
+                errors
+                    .iter()
+                    .any(|error| error.contains("expected exactly one Status field")),
+                "accepted invalid Status fields: {statuses}"
+            );
+        }
     }
 
     fn successful_observation() -> DistributionObservation {
@@ -432,6 +460,10 @@ workflow_terminal_timeout_minutes = 120
         let mut no_start = successful_observation();
         no_start.workflow_started_at_minutes = None;
         assert!(!observed_distribution_succeeded(no_start));
+
+        let mut no_finish = successful_observation();
+        no_finish.workflow_finished_at_minutes = None;
+        assert!(!observed_distribution_succeeded(no_finish));
 
         for conclusion in [
             WorkflowConclusion::Cancelled,
