@@ -1,11 +1,10 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
 **RFC.** [`021-conditional-release-finalization.md`](../../accepted/021-conditional-release-finalization.md)
-**Handoff state.** Bounded S1 corrected after architecture review 030 found
-B11/B12; rereview is pending. Architecture review 027 froze the design, review
-029 accepted the Q0.5 lifecycle baseline and granted S1 Go, and the project
-owner authorized execution on 2026-07-18. S2 and later stages remain
-unauthorized.
+**Handoff state.** Corrected S1 accepted by architecture review 031 at
+`77484c51...`; B11/B12 are closed. The project owner authorized bounded S2
+release-local preparation on 2026-07-22. S2 review is pending; Q2 and later
+stages remain unauthorized.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
@@ -43,13 +42,13 @@ Planned implementation is limited to:
 Runtime source, APIs, behavior, features, dependencies, publication automation,
 credential handling, and tag mutation are out of scope.
 
-The current owner authorization is narrower than the complete plan above. After
-architecture accepts the Q0.5/S0.5 lifecycle baseline, bounded S1 may implement
-only the host-side intended-tag preflight, conditional metadata/lifecycle
-validation, focused tests, and normative RFC 000/019/020 protocol amendments
-accepted by review 027. S2 version/apex/changelog/roadmap preparation and every
-later finalization, tag, distribution, publication, certification, or release
-stage remain unauthorized.
+The current owner authorization is narrower than the complete plan above. S1
+is accepted. Bounded S2 may prepare workspace/lock version `0.20.2`, the
+matching changelog candidate, draft/not-current apex metadata, current
+roadmaps, and RFC 019/020/021 handoffs for review. It must keep active
+conditional metadata absent and RFCs 019/020/021 in `accepted/`. Q2 atomic
+finalization, intended-tag evidence, tags, distribution, publication,
+certification, and release remain unauthorized.
 
 ## 3. Files changed
 
@@ -81,6 +80,21 @@ RFC lifecycle move, workflow change, or release artifact is part of S1.
 The review-030 correction changes only the two validator modules above plus
 this synchronized handoff. It does not revise the accepted RFC semantics or
 expand S1 authority.
+
+Bounded S2 changes only:
+
+- `Cargo.toml` and `Cargo.lock` workspace/member version metadata;
+- `CHANGELOG.md` with an explicitly untagged, not-released `0.20.2` candidate
+  entry;
+- the apex trio's identical RFC 020 draft block and draft Status lines;
+- `ROADMAP.md`, `docs/src/recovery-roadmap.md`,
+  `docs/src/specifications.md`, and the current portions of the detailed
+  roadmap; and
+- RFC 019/020/021 handoffs.
+
+S2 does not add `release/conditional-finalization.toml`, the canonical Q2 apex
+block, RFC lifecycle moves, evidence, tags, workflow changes, or release
+actions.
 
 ## 4. Design decisions and assumptions
 
@@ -131,7 +145,8 @@ expand S1 authority.
 
 ## 5. Tests and gates run
 
-Observed for the bounded S1 implementation worktree:
+Observed for the bounded S1 implementation worktree and retained as historical
+tooling evidence:
 
 - `cargo fmt --all -- --check`: passed;
 - `cargo test -p xtask`: passed, 59 tests;
@@ -150,26 +165,45 @@ statement, unconditional release claim, displaced field cases; the B12
 conflicting, duplicate, missing, and ordinary Status cases; and the
 non-blocking no-finish distribution observation suggested by review 030.
 
-The first workspace-test invocation reached successful unit suites but rustdoc
-could not write to the environment's read-only `/tmp`. The same command was
-rerun with a workspace-local `TMPDIR` and passed completely.
+The first S1 workspace-test invocation reached successful unit suites but
+rustdoc could not write to the environment's read-only `/tmp`. The same
+command was rerun with a workspace-local `TMPDIR` and passed completely.
 
-`cargo xtask release-gate --intended-tag 0.20.2` was not run: S2 has not added
-the tracked metadata, workspace/changelog version `0.20.2`, or clean exact
-finalization tree that the command must require. Running it now could only
-produce an expected precondition failure and is not S1 release evidence.
+Observed for the bounded S2 preparation worktree on 2026-07-22:
+
+- `cargo fmt --all -- --check`: passed;
+- `cargo test -p xtask`: passed, 59 tests;
+- `cargo xtask doc-currency`: passed;
+- `cargo xtask check-rfcs`: passed;
+- `cargo xtask link-audit`: passed, 56 Markdown files;
+- `cargo +stable clippy --workspace --all-features --all-targets -- -D
+  warnings`: passed;
+- `TMPDIR="$PWD/target/tmp" cargo +stable test --workspace --all-features`:
+  passed, including all unit and doc-test targets;
+- `cargo +1.85.0 check --workspace --all-features`: passed;
+- `cargo xtask check`: passed, including 12/12 conformance fixtures and the
+  advisory size baseline;
+- `mdbook build docs`: passed; generated `docs/book/` was removed; and
+- `git diff --check`: passed after the S2 documentation update.
+
+The S2 checks observed workspace/member version `0.20.2`, the identical legacy
+RFC 020 draft apex grammar, all three RFCs still in `accepted/`, and active
+conditional metadata absent. `cargo xtask release-gate --intended-tag 0.20.2`
+was deliberately not run or claimed: its successful use belongs to clean exact
+Q2 finalization evidence after the tracked metadata, canonical conditional
+apex block, and atomic lifecycle state exist.
 
 ## 6. Generated artifacts
 
 No release archive, evidence directory, metadata instance, tag, or generated
-documentation is owned by S1. Test fixture directories are gate-local temporary
-state and are removed by their test guards. The generated mdBook output was
-removed after validation.
+documentation is owned by S1 or S2. Test fixture directories are gate-local
+temporary state and are removed by their test guards. The generated mdBook
+output was removed after validation.
 
 ## 7. Known limitations
 
-- The B11/B12 correction still requires architecture rereview before S1 can be
-  accepted or S2 considered.
+- S2 documentation/version preparation requires review before Q2 can be
+  considered.
 - A conditionally staged `done/` state is intentionally narrow and must not
   become a general substitute for shipped lifecycle state.
 - Tag-bound evidence still occurs after tag creation; the protocol reduces
@@ -182,9 +216,9 @@ removed after validation.
 
 ## 8. Recommended next step
 
-Make the narrow B11/B12 correction owner-durable, then submit the exact
-revision for focused architecture rereview against review 030, RFC 021, the
-amended RFC 000/019/020 protocol, and this handoff. Do not begin S2
-version/apex/changelog/roadmap preparation or any later lifecycle, tag, push,
-publication, or release action until S1 rereview is accepted and the project
-owner separately authorizes S2.
+Make the bounded S2 preparation owner-durable, then submit the exact revision
+for focused documentation/architecture review against RFC 021, review 031, the
+amended RFC 000/019/020 protocol, and this handoff. Do not add active
+conditional metadata or begin Q2 lifecycle/apex finalization, intended-tag
+evidence, tag creation, push, publication, certification, or release action
+until separately reviewed and authorized.

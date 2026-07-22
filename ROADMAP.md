@@ -17,9 +17,12 @@ this file is a short summary.
 > supporting documentation, corrected S4 semantic currency checks, S5
 > integration, and RFC 019 S4/S5 gate implementation are owner-durable.
 > Architecture review 024 accepted the non-publishing tagged evidence for
-> canonical tag `0.20.1` at `ed282545...`. The bounded post-tag S6/R2 closeout
-> delta is now being prepared for separate review; final closeout remains
-> pending, and the apex currency marker remains draft.
+> canonical tag `0.20.1` at `ed282545...`, but RFC 021 later classified that
+> immutable local tag as an unpublished blocked candidate. Review 031 accepted
+> RFC 021 S1 tooling, and the project owner authorized bounded `0.20.2` S2
+> release-local preparation. Active conditional metadata is absent, RFCs
+> 019/020/021 remain Accepted, the apex currency marker remains draft, and the
+> `release-gate` stays fail-closed until later exact finalization evidence.
 > New public-boundary implementation waits until R2 closes.
 
 ## Phases
@@ -37,21 +40,21 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, bounded conformance, and cache/trust fixtures (RFCs 010–013, 017).
 
-## Current status (released v0.20.0; prepared candidate v0.20.1)
+## Current status (released v0.20.0; untagged v0.20.2 S2 candidate preparation)
 
 RFCs 001-018 are implemented. The current numerical breadth is one
 box/bound-constrained projected-first-order family on device and cluster.
 Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
 throughput, or adversarial parity claim is made. Observability is metadata-only,
-the gateway is mock-only, and validation caching is process-local. RFCs 019/020
-remain accepted recovery contracts. Their integrated tagged
-source/package/clean-extraction evidence for canonical tag `0.20.1` at
-`ed282545...` was accepted with notes by architecture review 024. The current
-tracked closeout-preparation edits are necessarily post-tag governance state
-and are not part of that immutable archive. Joint S6/R2 closeout, apex
-activation, RFC moves, and the project-owner release decision remain pending.
-Package/release readiness therefore remains No-Go; `0.20.1` is a tagged
-candidate, not an actual release.
+the gateway is mock-only, and validation caching is process-local. RFCs
+019/020/021 remain accepted recovery/finalization contracts. Immutable local
+tag `0.20.1` and its accepted evidence remain historical blocked-candidate
+evidence only. Review 031 accepted RFC 021 S1, and owner-authorized S2 prepares
+workspace version `0.20.2` plus draft release-local documentation. It does not
+add conditional metadata, activate the apex marker, move RFCs, establish
+intended-tag evidence, or create a tag. Package/release readiness therefore
+remains No-Go pending separately reviewed Q2 finalization and later evidence,
+authorization, and successful distribution.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision

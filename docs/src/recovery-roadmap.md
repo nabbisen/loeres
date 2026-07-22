@@ -159,8 +159,8 @@ Exit criteria:
 - evidence is retained in the review/release package;
 - RFC 019 and RFC 020 closeout sections identify the observed revision;
 - the project owner approves any tag or release operation separately;
-- only then may the v0.20.0 No-Go baseline be superseded by a v0.20.1
-  Go/No-Go review.
+- only a later RFC 021 finalization/evidence review may supersede the v0.20.0
+  No-Go baseline with the owner-selected `0.20.2` candidate.
 
 ## Milestone R3 — Assurance expansion
 
@@ -211,11 +211,12 @@ the owner-authorized R0.5 `accepted/` transition completed on 2026-07-15. The
 R1 corrective implementation, RFC 020 S1-S5 reconciliation, and RFC 019 S1-S5
 gate baseline are owner-durable. Architecture review 024 accepted the
 non-publishing tagged source/package/clean-extraction evidence for canonical
-tag `0.20.1` at `ed282545...`. R2 is now in bounded post-tag closeout
-preparation. The closeout delta is later repository-governance state and is not
-part of the immutable tagged archive. The apex shared metadata intentionally
-remains draft, and RFCs 019/020 remain Accepted, until joint S6/R2 review and
-the separate project-owner closeout and release decisions are complete.
+tag `0.20.1` at `ed282545...`, but RFC 021 later classified that immutable
+local tag as an unpublished blocked candidate. Review 031 accepted RFC 021 S1,
+and the project owner authorized bounded S2 release-local preparation for
+`0.20.2`. The apex shared metadata remains draft, active conditional metadata
+is absent, and RFCs 019/020/021 remain Accepted until separately reviewed Q2
+atomic finalization and later evidence/authorization stages.
 RFC 019 S2 began as a fail-closed candidate/package skeleton. The completed
 gate now separates the developer aggregate from `release-gate`, validates
 candidate metadata and a commit-derived regular-file manifest, constructs and

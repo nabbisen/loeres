@@ -2,12 +2,13 @@
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../accepted/019-release-integrity-and-msrv-recovery.md)
 **Handoff state.** Accepted; S1-S5 and the integrated RFC 020 baseline are
-owner-durable. Architecture review 024 accepted the non-publishing evidence
-for canonical tag `0.20.1` at `ed282545...` and authorized preparation of the
-tracked joint S6/R2 closeout delta. Final closeout remains pending.
-**Target.** Post-tag closeout preparation for corrective candidate v0.20.1.
-No tag mutation, push, publication, GitHub release, certification, lifecycle
-activation, or actual release is authorized by this handoff.
+owner-durable. RFC 021 review 031 accepted conditional-finalization tooling,
+and the project owner authorized bounded `0.20.2` S2 release-local preparation.
+Q2 finalization and all release actions remain blocked.
+**Target.** Untagged corrective candidate `0.20.2` S2 preparation. Immutable
+local tag `0.20.1` remains unpublished and blocked. No tag mutation, push,
+publication, GitHub release, certification, lifecycle activation, or actual
+release is authorized by this handoff.
 
 ## 1. Summary
 
@@ -52,16 +53,18 @@ Expected implementation files:
 Do not edit runtime crate production files. If implementation needs unrelated
 files, stop and request scope review.
 
-The v0.20.1 candidate-preparation step is limited to workspace/lockfile version
-metadata, the matching changelog candidate entry, shared draft currency
-metadata, current recovery roadmaps, and the two recovery handoffs. RFC files
-remain in `accepted/`, and runtime crate production files remain untouched.
+The RFC 021 S2 `0.20.2` candidate-preparation step is limited to
+workspace/lockfile version metadata, the matching changelog candidate entry,
+shared draft currency metadata, current recovery roadmaps, and RFC 019/020/021
+handoffs. The active conditional metadata file remains absent, RFC files remain
+in `accepted/`, and runtime crate production files remain untouched.
 
 ## 4. Design decisions and assumptions
 
 - Declared MSRV stays Rust 1.85.0.
-- Canonical Git tags are unprefixed SemVer (`0.20.1`), preserving repository
-  history. Archive names retain `loeres-v<version>.tar.gz`.
+- Canonical Git tags are unprefixed SemVer (`0.20.2` is the intended future
+  tag), preserving repository history. Archive names retain
+  `loeres-v<version>.tar.gz`.
 - `cargo xtask check` is the developer aggregate.
 - `cargo xtask release-gate` is the complete release-candidate aggregate and
   must avoid recursive repackaging in the extracted tree.
@@ -259,14 +262,15 @@ delta. It cannot replace or extend the accepted evidence for immutable tag
   closeout prose is post-tag governance state and is not part of its archive.
 - The tag signing key is not independently certified by the local GPG trust
   database.
-- Joint S6/R2 review, owner closeout/release decisions, remote push/CI,
-  publication, GitHub release, and certification remain pending.
+- RFC 021 Q2 finalization, local/tagged evidence, architecture decisions, owner
+  release authorization, remote push/CI, publication, GitHub release, and
+  certification remain pending.
 
 ## 8. Recommended next step
 
-After the project owner makes this bounded post-tag joint S6/R2 preparation
-durable, submit its exact resulting revision and the observed gate record for
-architecture review. Keep RFCs 019/020 in `accepted/` and the apex marker
-draft. Do not move or recreate tag `0.20.1`, activate lifecycle state, push,
-publish, create a GitHub release, certify, or claim an actual release before
-the separate review and project-owner decision.
+After the project owner makes bounded RFC 021 S2 preparation durable, submit
+its exact resulting revision and observed gate record for documentation
+review. Keep RFCs 019/020/021 in `accepted/`, the active conditional metadata
+absent, and the apex marker draft. Do not move or recreate tag `0.20.1`, create
+tag `0.20.2`, activate lifecycle state, produce Q2 evidence, push, publish,
+create a GitHub release, certify, or claim an actual release.

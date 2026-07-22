@@ -37,13 +37,15 @@ remained **v0.20.0**. Recovery implementation after that release was described
 separately and could not be represented as shipped. At that time, the project
 owner had not selected or authorized a corrective release version.
 
-**Current candidate state (2026-07-17).** The project owner subsequently
-selected **0.20.1** and made its bounded preparation durable. The apex trio now
-proposes an identical **v0.20.1** shared marker, but that marker remains
-explicitly draft. Shipped implementation scope remains RFCs 001-018; RFC 019
-and RFC 020 remain Accepted and unshipped. Corrected exact-revision local
-evidence, tagged-revision evidence, joint S6 review, and the project-owner
-release decision remain pending. This annotation changes no runtime semantics,
+**Current candidate state (2026-07-22).** Immutable local tag `0.20.1` is a
+blocked unpublished candidate under RFC 021. The project owner selected
+**0.20.2** and authorized bounded S2 release-local preparation after review 031
+accepted S1 tooling. The apex trio proposes an identical **v0.20.2** shared
+marker, but that marker remains explicitly draft. Shipped implementation scope
+remains RFCs 001-018; RFCs 019/020/021 remain Accepted and unshipped. Active
+conditional metadata, Q2 atomic finalization, local/tagged evidence, later
+architecture decisions, owner release authorization, and successful
+distribution remain pending. This annotation changes no runtime semantics,
 public API, or shipped-scope claim.
 
 ## 2. Requirements-section coverage
@@ -146,7 +148,7 @@ not mean the edit is optional.
 
 | ID | Affected ID/section | Prior rule or claim | Reconciled rule or claim | Approving RFC | Compatibility impact | Reconciled release |
 |---|---|---|---|---|---|---|
-| REC-001 | All apex currency blocks | v0.13.1 is current; RFC 009/010 follow | S1/S2 reconciled the implemented RFC 001-018 scope through the v0.20.0 inventory; after owner version selection, the shared draft candidate marker advances to proposed v0.20.1 while RFC 019/020 remain unshipped/in progress | RFC 009-020 | Documentation-only status/candidate correction; no shipped-scope change | v0.20.0 S2 snapshot; proposed v0.20.1 candidate |
+| REC-001 | All apex currency blocks | v0.13.1 is current; RFC 009/010 follow | RFC 020 reconciled implemented RFC 001-018 through v0.20.0; RFC 021 S2 advances the shared draft marker to proposed v0.20.2 while RFCs 019/020/021 remain Accepted, unshipped, and inactive | RFC 009-021 | Documentation-only status/candidate correction; no shipped-scope change | v0.20.0 snapshot; proposed v0.20.2 candidate |
 | REC-002 | Roadmap §§1.1-1.2 | Accepted/frozen RFC remains Proposed in `proposed/` | Loeres uses Proposed → Accepted → Implemented and the `accepted/` folder | RFC 000 as amended; RFC 020 §11.4 | Governance/documentation; no runtime/API impact | corrective baseline after v0.20.0 |
 | REC-003 | CI-001..010, REL-001..008; external design §1.9; roadmap §5 | `check`/`release-gate` alias and green release gate | `check` is the developer aggregate; RFC 019 candidate gate is separate and remains fail-closed until joint closeout | RFC 019 | Operational tooling already implemented; no runtime API impact | corrective baseline after v0.20.0 |
 | REC-004 | G-004/005; requirements §5.4.3; external design §3.5; roadmap Milestone 3 | No std-side numerical kernel exists | One dynamic box projected-first-order kernel ships through RFC 016 | RFC 016 | Additive cluster API already shipped; prose reconciliation | v0.14.0 / reconciled at v0.20.0 |
@@ -205,9 +207,9 @@ was accepted:
    S3/S4, but do not mark the apex trio current until those supporting changes
    are consistent.
 
-The later owner-selected v0.20.1 candidate supersedes only item 1's historical
-version marker. The apex trio now consistently proposes v0.20.1 while retaining
-the same RFC 001-018 shipped scope, Accepted/unshipped RFC 019/020 state, and
-draft activation boundary. Tagged evidence, joint S6 review, and the
-project-owner release decision remain required before current-marker
-activation.
+The later owner-selected `0.20.2` candidate supersedes only item 1's historical
+version marker. The apex trio now consistently proposes `v0.20.2` while
+retaining the same RFC 001-018 shipped scope, Accepted/unshipped RFC 019/020/021
+state, and draft activation boundary. RFC 021 Q2 atomic finalization,
+local/tagged evidence, architecture decisions, owner authorization, and
+successful distribution remain required before current-marker activation.

@@ -14,7 +14,7 @@ members = [
 # state alone does not establish external registry publication; workspace
 # metadata and CHANGELOG.md define the release-local version baseline.
 [workspace.package]
-version = "0.20.1"
+version = "0.20.2"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"

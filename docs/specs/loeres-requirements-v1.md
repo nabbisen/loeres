@@ -5,18 +5,19 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted v1; RFC 020 S2 reconciliation draft (not yet the current marker)
+**Status:** Accepted v1; RFC 020 reconciliation draft (not yet the current marker); RFC 021 S2 candidate preparation
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
-> repository release: **v0.20.1**. Implemented scope: **RFCs 001-018** in
-> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020** in
-> `../../rfcs/accepted/`; this work is unshipped and in progress. Open proposals
-> are roadmap items only. Activation as the current marker is pending tagged
-> revision evidence, joint S6 closeout review, and the project-owner release
-> decision. Until then, this block is a review candidate and does not assert
-> that repository documentation is fully current.
+> repository release: **v0.20.2**. Implemented scope: **RFCs 001-018** in
+> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020**, plus
+> sequencing RFC 021, in `../../rfcs/accepted/`; this work is unshipped and in
+> progress. Open proposals are roadmap items only. Activation as the current
+> marker is pending the exact RFC 021 Q2 finalization revision, local and tagged
+> evidence, architecture decisions, owner authorization, and successful
+> distribution. Until then, this block is a review candidate and does not
+> assert that repository documentation is fully current.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,
@@ -26,7 +27,8 @@
 > It does **not** include broad LP/QP/SOCP solver parity, a concrete native
 > adapter, a persistent/distributed cache, universal bitwise determinism, or
 > broad throughput/large-N/multi-tenant stress evidence. The RFC 019 release
-> package gate remains intentionally fail-closed during joint recovery closeout.
+> package gate remains intentionally fail-closed until RFC 021's later exact
+> finalization and evidence stages.
 
 ---
 
@@ -879,9 +881,10 @@ Edge release gates must include:
 
 `cargo xtask check` is the developer aggregate. The RFC 019 candidate
 `cargo xtask release-gate` is a distinct package/readiness gate and remains
-fail-closed until the RFC 019/RFC 020 joint closeout supplies the required
-preflight, clean-extraction, tagged-revision, and approval evidence. A passing
-developer aggregate must not be reported as release approval.
+fail-closed until RFC 021's exact finalization sequence supplies the required
+intended-tag preflight, clean extraction, tagged-revision evidence,
+architecture decisions, owner authorization, and successful distribution. A
+passing developer aggregate must not be reported as release approval.
 
 Before publishing any crate version:
 
