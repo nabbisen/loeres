@@ -5,19 +5,17 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted v1; RFC 020 reconciliation draft (not yet the current marker); RFC 021 S2 candidate preparation
+**Status:** Accepted v1; RFC 021 conditional release-finalization state for 0.20.2
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
-> **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
-> repository release: **v0.20.2**. Implemented scope: **RFCs 001-018** in
-> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020**, plus
-> sequencing RFC 021, in `../../rfcs/accepted/`; this work is unshipped and in
-> progress. Open proposals are roadmap items only. Activation as the current
-> marker is pending the exact RFC 021 Q2 finalization revision, local and tagged
-> evidence, architecture decisions, owner authorization, and successful
-> distribution. Until then, this block is a review candidate and does not
-> assert that repository documentation is fully current.
+> **RFC 021 conditional release-finalization metadata.**
+> Release-finalization marker for **0.20.2**. Canonical tag: **0.20.2**.
+> Current only when this exact tree is distributed under the canonical tag after accepted
+> tag-bound evidence, architecture release Go, and project-owner release authorization;
+> otherwise a non-current release-finalization candidate.
+> Implemented scope after activation: **RFCs 001-021**.
+> Stored lifecycle paths do not prove external activation.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,
@@ -1121,9 +1119,10 @@ solver family, not the broad family list in §5.4.3.
 ### 12.5 Phase 4 — Implementation Baseline
 
 Baseline implementation proceeds only for items backed by accepted requirements
-and RFCs. RFCs 001-018 provide the implemented v0.20.0 baseline across all five
-crates. RFC 019/RFC 020 recovery work is accepted but unshipped and does not
-expand the runtime surface.
+and RFCs. RFCs 001-018 provide the shipped v0.20.0 baseline across all five
+crates. RFCs 019/020/021 are implementation-complete and conditionally staged
+for `0.20.2`; before external predicate `P` succeeds they do not expand shipped
+scope or the runtime surface.
 
 Possible baseline implementation scope:
 

@@ -193,7 +193,12 @@ pub(crate) fn validate_lifecycle(root: &Path, metadata: &ConditionalMetadata) ->
             continue;
         }
         if let Ok(source) = fs::read_to_string(&path) {
-            if source.contains(CONDITIONAL_STATUS) {
+            let expected_source = format!("**Status.** {CONDITIONAL_STATUS}");
+            if source
+                .lines()
+                .take_while(|line| !line.starts_with("## "))
+                .any(|line| line == expected_source)
+            {
                 errors.push(format!(
                     "CONDITIONAL RFC ALLOWLIST: unreviewed use at {}",
                     path.display()
@@ -360,6 +365,13 @@ workflow_terminal_timeout_minutes = 120
     fn lifecycle_accepts_only_the_atomic_reviewed_three_rfc_move() {
         let fixture = LifecycleFixture::valid();
         let metadata = ConditionalMetadata::parse(&valid_metadata()).unwrap();
+        fs::write(
+            fixture.root.join("rfcs/done/000-policy.md"),
+            format!(
+                "# RFC 000\n\n**Status.** Implemented\n\n## Policy\n\n```markdown\n**Status.** {CONDITIONAL_STATUS}\n```\n"
+            ),
+        )
+        .unwrap();
         assert!(validate_lifecycle(&fixture.root, &metadata).is_empty());
     }
 

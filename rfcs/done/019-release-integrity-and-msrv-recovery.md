@@ -1,6 +1,6 @@
 # RFC 019 - Release Integrity and MSRV Recovery
 
-**Status.** Accepted (design frozen 2026-07-15)
+**Status.** Implemented (conditional finalization for 0.20.2)
 **Design approval.** Independent architecture R0 re-review accepted; project owner authorized R0.5 activation on 2026-07-15.
 **Tracks.** Architecture recovery milestones R0-R2; audit blockers B1-B3 and documentation-build evidence N5.
 **Touches.** `xtask/`, `.github/workflows/`, release documentation, packaging verification, MSRV evidence, and corrective-release records.
@@ -431,12 +431,11 @@ RFC 019 is complete only when:
 10. an architect review accepts the closeout evidence;
 11. any tag or release action is separately authorized by the project owner.
 
-## 18. S6 closeout preparation (post-tag; pending)
+## 18. Historical 0.20.1 S6 closeout preparation
 
-This section is a closeout-preparation record, not a completion declaration.
-RFC 019 remains Accepted and the repository remains No-Go for release/readiness
-claims until the complete joint S6/R2 delta receives architecture review and
-the project owner makes the separate closeout and release decisions.
+This section records the earlier `0.20.1` closeout-preparation stage, not the
+current lifecycle state. At that stage RFC 019 remained Accepted and the
+repository remained No-Go pending joint S6/R2 review and owner decisions.
 
 The canonical annotated and signed Git tag `0.20.1` peels to
 `ed282545fe12de7827377c690a3e7024f0f4fbeb`. Architecture review 024 accepted
@@ -466,4 +465,18 @@ governance revision and are not contained in the accepted tagged archive. They
 describe evidence for the tagged artifact; they do not alter, supplement, or
 retroactively certify its file set. Final S6 closure, movement to `done/`, apex
 activation, push, publication, GitHub release, certification, and actual
-release remain pending separate review and project-owner authority.
+release were still pending at that historical stage.
+
+## 19. RFC 021 conditional finalization for 0.20.2
+
+RFC 021 supersedes the failed post-tag sequencing above without altering the
+immutable `0.20.1` tag. RFC 019 is now implementation-complete and staged with
+RFCs 020/021 in `done/` under the exact tracked `0.20.2` conditional metadata.
+Its path and Status do not prove external activation.
+
+Before `0.20.2` can become current, the owner must make the atomic Q2 tree one
+exact clean revision, the complete intended-tag/local evidence must pass for
+that revision, and architecture must accept it. Local tag creation, tag-bound
+evidence, release Go, owner distribution authorization, successful
+distribution, publication, certification, and actual release remain later
+separately gated actions.

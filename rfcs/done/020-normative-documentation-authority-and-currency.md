@@ -1,6 +1,6 @@
 # RFC 020 - Normative Documentation Authority and Currency
 
-**Status.** Accepted (design frozen 2026-07-15)
+**Status.** Implemented (conditional finalization for 0.20.2)
 **Design approval.** Independent architecture R0 re-review accepted; project owner authorized R0.5 activation on 2026-07-15.
 **Tracks.** Architecture recovery milestones R0-R2; audit blocker B4 and documentation findings N1, N2, and N6.
 **Touches.** `docs/specs/`, `docs/src/`, `README.md`, `ROADMAP.md`, crate READMEs, `rfcs/README.md`, changelog cross-references, and documentation consistency checks.
@@ -456,12 +456,12 @@ RFC 020 is complete only when:
 13. RFC 019's tagged-revision/clean-extraction evidence closes before any new
     public-boundary implementation begins.
 
-## 19. S6 closeout preparation (post-tag; pending)
+## 19. Historical 0.20.1 S6 closeout preparation
 
-This section records preparation for joint S6/R2 review; it does not mark RFC
-020 implemented. RFC 020 remains in `accepted/`, the shared apex metadata
-remains a reconciliation draft rather than the current marker, and new
-public-boundary implementation remains blocked.
+This section records the earlier `0.20.1` joint S6/R2 preparation; it does not
+describe the current lifecycle state. At that stage RFC 020 remained in
+`accepted/`, the shared apex metadata remained draft, and new public-boundary
+implementation remained blocked.
 
 Architecture review 024 accepted RFC 019's non-publishing evidence for
 canonical unprefixed tag `0.20.1`, which peels to
@@ -489,8 +489,19 @@ passing. The aggregate reported mandatory profiles 2/2 and conformance 12/12,
 with the accepted advisory classifications unchanged. Generated `docs/book/`
 output was removed.
 
-Final joint S6/R2 closure still requires owner durability for this delta,
-architecture review of its exact resulting revision, and a separate
-project-owner decision. Until then, the apex current marker, RFC moves,
-release-readiness claims, push, publication, GitHub release, certification, and
-actual release remain blocked.
+At that historical stage, joint S6/R2 closure still required owner durability,
+architecture review, and a separate project-owner decision.
+
+## 20. RFC 021 conditional finalization for 0.20.2
+
+RFC 020 is now implementation-complete and staged with RFCs 019/021 in `done/`
+under the exact tracked `0.20.2` conditional metadata. The apex trio carries
+one canonical RFC 021 block: before external predicate `P` succeeds it is a
+non-current release-finalization candidate, and stored documentation or
+lifecycle state does not prove activation.
+
+The atomic Q2 tree still requires one exact clean revision, complete local and
+intended-tag evidence, and architecture acceptance. Tag creation, tag-bound
+evidence, release Go, owner distribution authorization, successful
+distribution, publication, certification, and actual release remain later
+separately gated actions.

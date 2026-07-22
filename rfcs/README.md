@@ -17,9 +17,7 @@ None currently.
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [019](accepted/019-release-integrity-and-msrv-recovery.md) | Release Integrity and MSRV Recovery | Accepted (design frozen 2026-07-15) | Architecture recovery R0-R2: restore Rust 1.85, canonical unprefixed tags, complete tagged-revision gates, package/clean-extraction evidence. [Handoff](handoffs/019-release-integrity-and-msrv-recovery/implementation-handoff.md). |
-| [020](accepted/020-normative-documentation-authority-and-currency.md) | Normative Documentation Authority and Currency | Accepted (design frozen 2026-07-15) | Architecture recovery R0-R2: establish authority/conflict rules and reconcile the apex trio, threat model, indexes, and READMEs with v0.20.x. [Handoff](handoffs/020-normative-documentation-authority-and-currency/implementation-handoff.md). |
-| [021](accepted/021-conditional-release-finalization.md) | Conditional Release Finalization | Accepted (design frozen 2026-07-18) | Recovery sequencing correction for owner-selected `0.20.2`: exact finalization revision, conditional apex/lifecycle activation, local/tagged evidence, and fail-closed owner release order. [Handoff](handoffs/021-conditional-release-finalization/implementation-handoff.md). |
+None currently.
 
 ## Done RFCs
 
@@ -44,6 +42,9 @@ None currently.
 | [016](done/016-std-side-projected-first-order-cluster-kernel.md) | Std-Side Projected First-Order Cluster Kernel | Implemented (v0.14.0) | `loeres-cluster` `model`/`solve`; first std-side numerical kernel — dynamic box/bound-constrained projected first-order over `DenseVector` (`ClusterProjectedFirstOrderProblem`, `ClusterProjectedFirstOrderWorkspace`, `ProjectedFirstOrderConfig`, `solve_projected_first_order_dyn`, `ClusterProjectedFirstOrderJob`), step-norm convergence aligned with RFC 006, `ProjectedFirstOrderSolveRecord { report, checked_scope, finite }` with explicit `Scanned` / `Trusted(..)` / `DomainInapplicable` finite evidence, plugged into the RFC 008 `ClusterJob` seam. Process-local caching followed in RFC 015. |
 | [017](done/017-trusted-cache-conformance-fixtures.md) | Trusted/Cache Conformance Fixtures | Implemented (v0.20.0) | Extends RFC 013 conformance with enforced RFC 015 trusted/cache fixture states: cache hit/miss, insufficient scope, stale epoch, wrong identity, current-iterate scan retention, hot-loop fail-safe retention, and reusable-cache rejection cases. |
 | [018](done/018-cluster-solve-test-helper-cleanup.md) | Cluster Solve Test Helper Cleanup | Implemented (v0.20.0) | Small test-only cleanup for `loeres-cluster` solve tests: removed the opaque `kinds()` helper while preserving feature-gated sequential/parallel and sync/async comparisons. |
+| [019](done/019-release-integrity-and-msrv-recovery.md) | Release Integrity and MSRV Recovery | Implemented (conditional finalization for 0.20.2) | Implementation complete and staged under RFC 021's exact release predicate; stored lifecycle state does not prove external activation. [Handoff](handoffs/019-release-integrity-and-msrv-recovery/implementation-handoff.md). |
+| [020](done/020-normative-documentation-authority-and-currency.md) | Normative Documentation Authority and Currency | Implemented (conditional finalization for 0.20.2) | Documentation reconciliation complete and staged under RFC 021's exact release predicate; stored lifecycle state does not prove external activation. [Handoff](handoffs/020-normative-documentation-authority-and-currency/implementation-handoff.md). |
+| [021](done/021-conditional-release-finalization.md) | Conditional Release Finalization | Implemented (conditional finalization for 0.20.2) | Exact finalization state is staged for `0.20.2`; local/tagged evidence, release Go, owner authorization, and successful distribution remain external prerequisites. [Handoff](handoffs/021-conditional-release-finalization/implementation-handoff.md). |
 
 ## Archived RFCs
 

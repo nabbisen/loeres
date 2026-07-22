@@ -1,10 +1,11 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
-**RFC.** [`021-conditional-release-finalization.md`](../../accepted/021-conditional-release-finalization.md)
-**Handoff state.** Corrected S1 accepted by architecture review 031 at
-`77484c51...`; B11/B12 are closed. The project owner authorized bounded S2
-release-local preparation on 2026-07-22. S2 review is pending; Q2 and later
-stages remain unauthorized.
+**RFC.** [`021-conditional-release-finalization.md`](../../done/021-conditional-release-finalization.md)
+**Handoff state.** Implemented (conditional finalization for 0.20.2). Review
+031 accepted corrected S1, review 032 accepted exact S2 `60a6611...`, and the
+project owner authorized one atomic Q2 finalization revision on 2026-07-22.
+Exact clean-tree Q2 evidence and architecture review remain pending; Q3 and
+later stages remain unauthorized.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
@@ -43,12 +44,13 @@ Runtime source, APIs, behavior, features, dependencies, publication automation,
 credential handling, and tag mutation are out of scope.
 
 The current owner authorization is narrower than the complete plan above. S1
-is accepted. Bounded S2 may prepare workspace/lock version `0.20.2`, the
-matching changelog candidate, draft/not-current apex metadata, current
-roadmaps, and RFC 019/020/021 handoffs for review. It must keep active
-conditional metadata absent and RFCs 019/020/021 in `accepted/`. Q2 atomic
-finalization, intended-tag evidence, tags, distribution, publication,
-certification, and release remain unauthorized.
+and S2 are accepted. Q2 may create one atomic tracked revision containing the
+reviewed metadata instance, canonical conditional apex blocks, RFC 019/020/021
+`done/` moves and exact Status fields, index/link state, and synchronized
+release-local documentation. After the owner makes that tree one clean exact
+revision, Q2 includes complete local validation and intended-tag evidence for
+architecture review. Tag creation, distribution, publication, certification,
+and release remain unauthorized.
 
 ## 3. Files changed
 
@@ -68,9 +70,9 @@ Bounded S1 changes:
   only when that metadata exists;
 - `rfcs/done/000-rfc-lifecycle-policy.md` incorporates the narrow lifecycle
   exception and exact Status qualifier;
-- `rfcs/accepted/019-release-integrity-and-msrv-recovery.md` incorporates
+- `rfcs/done/019-release-integrity-and-msrv-recovery.md` incorporates
   intended-tag and partial-distribution semantics;
-- `rfcs/accepted/020-normative-documentation-authority-and-currency.md`
+- `rfcs/done/020-normative-documentation-authority-and-currency.md`
   incorporates conditional apex/currency semantics; and
 - this handoff records S1 traceability and evidence.
 
@@ -95,6 +97,24 @@ Bounded S2 changes only:
 S2 does not add `release/conditional-finalization.toml`, the canonical Q2 apex
 block, RFC lifecycle moves, evidence, tags, workflow changes, or release
 actions.
+
+Atomic Q2 changes:
+
+- adds `release/conditional-finalization.toml` with the exact reviewed schema;
+- replaces all three legacy draft apex blocks with the canonical RFC 021
+  conditional block;
+- moves RFCs 019/020/021 from `accepted/` to `done/`, gives each the one exact
+  conditional Status, and synchronizes `rfcs/README.md` plus affected links;
+- updates the root README, book introduction, changelog,
+  root/detailed/recovery roadmaps, traceability, specifications index, threat
+  model, and RFC 019/020/021 handoffs to the same external-activation boundary;
+- corrects the conditional allowlist scan to inspect actual top metadata
+  Status fields, so RFC 000 may normatively document the exact qualifier
+  without being misclassified as an unreviewed conditional RFC. A focused
+  regression test retains rejection of a real unreviewed Status use.
+
+Q2 makes no runtime/API, dependency, workflow, credential, tag, distribution,
+publication, certification, or actual-release change.
 
 ## 4. Design decisions and assumptions
 
@@ -193,6 +213,28 @@ was deliberately not run or claimed: its successful use belongs to clean exact
 Q2 finalization evidence after the tracked metadata, canonical conditional
 apex block, and atomic lifecycle state exist.
 
+Observed while constructing the authorized Q2 worktree:
+
+- `cargo test -p xtask conditional_finalization`: passed, 8 focused tests;
+- `cargo fmt --all -- --check`: passed;
+- `cargo test -p xtask`: passed, 59 tests;
+- `cargo +stable clippy --workspace --all-features --all-targets -- -D
+  warnings`: passed;
+- `TMPDIR="$PWD/target/tmp" cargo +stable test --workspace --all-features`:
+  passed, including all unit and doc-test targets;
+- `cargo +1.85.0 check --workspace --all-features`: passed;
+- `cargo xtask check-rfcs`: passed and reported conditional structure staged
+  without inferring external activation; and
+- `cargo xtask doc-currency`: passed with the same non-inference report;
+- `cargo xtask check`: passed, including 12/12 conformance fixtures and the
+  advisory size baseline;
+- `mdbook build docs`: passed; generated `docs/book/` was removed; and
+- `git diff --check`: passed.
+
+These are worktree construction checks, not exact clean-revision evidence.
+The complete gate and `release-gate --intended-tag 0.20.2` must be run only
+after the project owner commits this whole atomic tree and it is clean.
+
 ## 6. Generated artifacts
 
 No release archive, evidence directory, metadata instance, tag, or generated
@@ -200,10 +242,15 @@ documentation is owned by S1 or S2. Test fixture directories are gate-local
 temporary state and are removed by their test guards. The generated mdBook
 output was removed after validation.
 
+Q2 adds the tracked conditional metadata instance and the synchronized
+release-local finalization state. Its release archive and private local
+evidence must be generated only after the owner creates the exact clean Q2
+revision. Q2 creates no tag or distribution artifact.
+
 ## 7. Known limitations
 
-- S2 documentation/version preparation requires review before Q2 can be
-  considered.
+- The current worktree is not Q2 evidence until the owner makes it one exact
+  clean revision and the complete gates bind their outputs to that revision.
 - A conditionally staged `done/` state is intentionally narrow and must not
   become a general substitute for shipped lifecycle state.
 - Tag-bound evidence still occurs after tag creation; the protocol reduces
@@ -216,9 +263,10 @@ output was removed after validation.
 
 ## 8. Recommended next step
 
-Make the bounded S2 preparation owner-durable, then submit the exact revision
-for focused documentation/architecture review against RFC 021, review 031, the
-amended RFC 000/019/020 protocol, and this handoff. Do not add active
-conditional metadata or begin Q2 lifecycle/apex finalization, intended-tag
-evidence, tag creation, push, publication, certification, or release action
-until separately reviewed and authorized.
+Make the entire atomic Q2 worktree owner-durable as one revision. Then run the
+complete clean-tree and `release-gate --intended-tag 0.20.2` evidence, and
+submit the exact revision/evidence for architecture review against RFC 021,
+reviews 031/032, the amended RFC 000/019/020 protocol, and this handoff. Do not
+create tag `0.20.2`, push, publish, certify, or perform any release action until
+Q2 is accepted and the project owner later receives and grants narrow Q3
+authority.

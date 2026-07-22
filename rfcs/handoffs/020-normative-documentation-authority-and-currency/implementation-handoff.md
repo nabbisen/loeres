@@ -1,13 +1,12 @@
 # RFC 020 - Implementation Handoff
 
-**RFC.** [`020-normative-documentation-authority-and-currency.md`](../../accepted/020-normative-documentation-authority-and-currency.md)
-**Handoff state.** Accepted; R0.5 lifecycle activation and S1-S5 are
-owner-durable. RFC 021 review 031 accepted conditional-finalization tooling,
-and the project owner authorized bounded `0.20.2` S2 release-local preparation.
-Apex currency remains draft; Q2 finalization and release remain blocked.
-**Target.** Untagged `0.20.2` S2 preparation with RFC 019/RFC 021; no active
-conditional metadata, lifecycle/current-marker activation, publication, or
-actual release.
+**RFC.** [`020-normative-documentation-authority-and-currency.md`](../../done/020-normative-documentation-authority-and-currency.md)
+**Handoff state.** Implemented (conditional finalization for 0.20.2). Reviews
+031/032 accepted RFC 021 S1/S2, and the project owner authorized one atomic Q2
+revision. Exact clean-tree Q2 evidence and review remain pending.
+**Target.** Exact untagged `0.20.2` conditional-finalization revision with RFC
+019/RFC 021; stored lifecycle and apex state do not prove external
+activation, publication, or actual release.
 
 ## 1. Summary
 
@@ -56,12 +55,11 @@ Expected implementation files:
 
 Runtime crate production source is evidence to inspect, not a target to edit.
 
-RFC 021 S2 candidate preparation changes only the shared draft currency
-version and pending-activation reason, current recovery roadmaps, changelog
-candidate record, workspace/lockfile version metadata, and RFC 019/020/021
-handoffs. It does not add the active conditional metadata file or canonical Q2
-apex block, and it does not change normative requirements, public-boundary
-decisions, runtime code, or RFC lifecycle state.
+RFC 021 Q2 atomically replaces the draft apex marker with the reviewed
+conditional block, adds the active metadata, stages RFC 019/020/021 with exact
+conditional Status/index/link state, and synchronizes changelog, roadmaps,
+traceability, threat model, specifications index, and handoffs. It does not
+change normative public-boundary decisions or runtime code.
 
 ## 4. Design decisions and assumptions
 
@@ -185,15 +183,15 @@ No generated archive is owned by RFC 020; RFC 019 owns packaging.
   observed, record uncertainty rather than infer publication state.
 - The immutable `0.20.1` tag identifies `ed282545...`; the tracked S6/R2
   preparation delta is a later governance revision and is not in its archive.
-- RFC 021 Q2 finalization, apex activation, RFC moves, local/tagged evidence,
-  owner release authorization, remote push/CI, publication, GitHub release,
-  and certification remain pending.
+- Exact clean-tree Q2 local evidence and architecture acceptance, later
+  tag-bound evidence, release Go, owner distribution authorization, remote
+  push/CI, publication, GitHub release, and certification remain pending.
 
 ## 8. Recommended next step
 
-After the project owner makes bounded RFC 021 S2 preparation durable, submit
-its exact resulting revision for documentation review. Keep the shared apex
-metadata draft, keep RFCs 019/020/021 in `accepted/`, and keep active
-conditional metadata absent. Do not move or recreate tag `0.20.1`, create tag
-`0.20.2`, activate the current marker, produce Q2 evidence, push, publish,
-create a GitHub release, certify, or claim an actual release.
+After the project owner makes the atomic Q2 tree one exact clean revision, run
+the documentation, lifecycle, and intended-tag evidence against that revision
+and submit it for architecture review. Do not move or recreate tag `0.20.1`,
+create tag `0.20.2`, push, publish, create a GitHub release, certify, or claim
+an actual release before separate Q2 acceptance and later narrow owner
+authority.

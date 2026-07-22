@@ -1,16 +1,17 @@
 # Threat Model
 
 This chapter describes the implemented v0.20.0 device, cluster, validation,
-telemetry, and gateway boundaries plus the accepted RFC 019/RFC 020 recovery
-state. It separates implemented controls from release gates, residual risks,
-and future work. It is not a formal security proof, safety certification, or
-claim that the repository is release-ready.
+telemetry, and gateway boundaries plus the RFC 019/020/021 conditional
+finalization state for `0.20.2`. It separates implemented controls from release
+gates, residual risks, and future work. It is not a formal security proof,
+safety certification, or claim that the repository is release-ready.
 
 Release-local normative sources are
 `docs/specs/loeres-requirements-v1.md`,
-`docs/specs/loeres-external-design-v1.md`, implemented RFCs under
-`rfcs/done/`, and accepted recovery RFCs under `rfcs/accepted/`. If those
-sources conflict, affected implementation stops under RFC 020's conflict rule.
+`docs/specs/loeres-external-design-v1.md` and RFCs under `rfcs/done/`. RFCs
+019/020/021 use RFC 021's conditional Status: their stored paths do not prove
+external activation. If these sources conflict, affected implementation stops
+under RFC 020's conflict rule.
 
 ## Trust boundaries
 

@@ -1,13 +1,12 @@
 # RFC 019 - Implementation Handoff
 
-**RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../accepted/019-release-integrity-and-msrv-recovery.md)
-**Handoff state.** Accepted; S1-S5 and the integrated RFC 020 baseline are
-owner-durable. RFC 021 review 031 accepted conditional-finalization tooling,
-and the project owner authorized bounded `0.20.2` S2 release-local preparation.
-Q2 finalization and all release actions remain blocked.
-**Target.** Untagged corrective candidate `0.20.2` S2 preparation. Immutable
-local tag `0.20.1` remains unpublished and blocked. No tag mutation, push,
-publication, GitHub release, certification, lifecycle activation, or actual
+**RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../done/019-release-integrity-and-msrv-recovery.md)
+**Handoff state.** Implemented (conditional finalization for 0.20.2). Reviews
+031/032 accepted RFC 021 S1/S2, and the project owner authorized one atomic Q2
+revision. Exact clean-tree Q2 evidence and review remain pending.
+**Target.** Exact untagged `0.20.2` conditional-finalization revision.
+Immutable local tag `0.20.1` remains unpublished and blocked. No tag creation
+or mutation, push, publication, GitHub release, certification, or actual
 release is authorized by this handoff.
 
 ## 1. Summary
@@ -53,11 +52,11 @@ Expected implementation files:
 Do not edit runtime crate production files. If implementation needs unrelated
 files, stop and request scope review.
 
-The RFC 021 S2 `0.20.2` candidate-preparation step is limited to
-workspace/lockfile version metadata, the matching changelog candidate entry,
-shared draft currency metadata, current recovery roadmaps, and RFC 019/020/021
-handoffs. The active conditional metadata file remains absent, RFC files remain
-in `accepted/`, and runtime crate production files remain untouched.
+RFC 021 Q2 atomically adds the reviewed conditional metadata, canonical apex
+blocks, exact RFC 019/020/021 lifecycle/status/index state, synchronized
+release-local prose and handoffs, and the narrow allowlist-validator correction
+needed to distinguish RFC 000's normative Status example from actual RFC
+metadata. Runtime crate production files remain untouched.
 
 ## 4. Design decisions and assumptions
 
@@ -262,15 +261,15 @@ delta. It cannot replace or extend the accepted evidence for immutable tag
   closeout prose is post-tag governance state and is not part of its archive.
 - The tag signing key is not independently certified by the local GPG trust
   database.
-- RFC 021 Q2 finalization, local/tagged evidence, architecture decisions, owner
-  release authorization, remote push/CI, publication, GitHub release, and
-  certification remain pending.
+- Exact clean-tree Q2 local evidence and architecture acceptance, later
+  tag-bound evidence, release Go, owner distribution authorization, remote
+  push/CI, publication, GitHub release, and certification remain pending.
 
 ## 8. Recommended next step
 
-After the project owner makes bounded RFC 021 S2 preparation durable, submit
-its exact resulting revision and observed gate record for documentation
-review. Keep RFCs 019/020/021 in `accepted/`, the active conditional metadata
-absent, and the apex marker draft. Do not move or recreate tag `0.20.1`, create
-tag `0.20.2`, activate lifecycle state, produce Q2 evidence, push, publish,
-create a GitHub release, certify, or claim an actual release.
+After the project owner makes the atomic Q2 tree one exact clean revision, run
+the complete local and intended-tag gates against that revision and submit the
+revision plus evidence for architecture review. Do not move or recreate tag
+`0.20.1`, create tag `0.20.2`, push, publish, create a GitHub release, certify,
+or claim an actual release before separate Q2 acceptance and later narrow
+owner authority.

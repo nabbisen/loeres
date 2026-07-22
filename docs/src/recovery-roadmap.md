@@ -212,11 +212,13 @@ R1 corrective implementation, RFC 020 S1-S5 reconciliation, and RFC 019 S1-S5
 gate baseline are owner-durable. Architecture review 024 accepted the
 non-publishing tagged source/package/clean-extraction evidence for canonical
 tag `0.20.1` at `ed282545...`, but RFC 021 later classified that immutable
-local tag as an unpublished blocked candidate. Review 031 accepted RFC 021 S1,
-and the project owner authorized bounded S2 release-local preparation for
-`0.20.2`. The apex shared metadata remains draft, active conditional metadata
-is absent, and RFCs 019/020/021 remain Accepted until separately reviewed Q2
-atomic finalization and later evidence/authorization stages.
+local tag as an unpublished blocked candidate. Reviews 031/032 accepted RFC
+021 S1/S2, and the project owner authorized one atomic Q2 revision for
+`0.20.2`. That candidate tree now carries active conditional metadata, the
+canonical apex block, and all three RFCs conditionally staged in `done/`.
+Stored state does not prove external activation. Exact clean-tree local
+evidence and architecture review, tag-bound evidence, release Go, owner
+authorization, and successful distribution remain pending.
 RFC 019 S2 began as a fail-closed candidate/package skeleton. The completed
 gate now separates the developer aggregate from `release-gate`, validates
 candidate metadata and a commit-derived regular-file manifest, constructs and

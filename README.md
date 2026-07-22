@@ -5,9 +5,10 @@
 > **Publication and recovery status.** Repository state does not establish that
 > every workspace crate or its hosted documentation is published or current, so
 > external registry/documentation badges are intentionally omitted. The last
-> reconciled repository release is v0.20.0. RFCs 019/020 recovery is accepted
-> but unshipped, the apex current marker remains draft, and release/package
-> readiness remains No-Go and fail-closed.
+> externally activated repository release is v0.20.0. RFCs 019/020/021 are
+> conditionally staged for `0.20.2`; their metadata, apex, and `done/` paths do
+> not prove external activation. Release/package readiness remains No-Go and
+> fail-closed pending the RFC 021 evidence and authorization sequence.
 
 **One optimization contract, two worlds — high-throughput server solving and deterministic `no_std` edge solving, without letting either contaminate the other.**
 
@@ -80,9 +81,10 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — implemented contracts `000`–`018` live in
-  [`rfcs/done/`](rfcs/done/); accepted, unshipped recovery RFCs `019`/`020`
-  live in [`rfcs/accepted/`](rfcs/accepted/); review-active work lives in
+- RFCs: [`rfcs/`](rfcs/) — shipped contracts `000`–`018` and conditionally
+  staged RFCs `019`–`021` live in [`rfcs/done/`](rfcs/done/); the latter use
+  RFC 021's exact conditional Status and do not prove activation. Accepted work
+  lives in [`rfcs/accepted/`](rfcs/accepted/) and review-active work in
   [`rfcs/proposed/`](rfcs/proposed/) when present. See the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.

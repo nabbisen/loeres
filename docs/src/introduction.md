@@ -33,9 +33,11 @@ This book summarizes the architecture and threat model. The authoritative,
 detailed design lives in the specifications under `docs/specs/` and in the RFC
 set under `rfcs/`.
 
-The last reconciled repository release is v0.20.0: RFCs 001-018 are
-implemented, while accepted RFCs 019/020 are unshipped recovery work. Current
-solver breadth is one box/bound-constrained projected-first-order family on
-device and cluster. The gateway is mock-only, validation caching is
-process-local, and conformance is a bounded smoke corpus. The repository remains
-No-Go for package/release readiness while recovery evidence is incomplete.
+The last externally activated repository release is v0.20.0: RFCs 001-018 are
+shipped, while RFCs 019/020/021 are conditionally staged for `0.20.2` under
+RFC 021. Their metadata and `done/` paths do not prove external activation.
+Current solver breadth is one box/bound-constrained projected-first-order
+family on device and cluster. The gateway is mock-only, validation caching is
+process-local, and conformance is a bounded smoke corpus. The repository
+remains No-Go for package/release readiness while exact evidence and later
+authorization stages are incomplete.

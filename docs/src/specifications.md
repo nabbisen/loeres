@@ -11,12 +11,13 @@ contributors edit those documents directly; readers can browse them here.
 
 ## Specifications (`docs/specs/`)
 
-> **Currency warning.** The apex trio retains the reviewed RFC 020
-> reconciliation as an explicit draft/not-current marker, now prepared for the
-> owner-authorized RFC 021 S2 `0.20.2` candidate. Review 031 accepted the S1
-> conditional-finalization tooling. Active conditional metadata, atomic RFC
-> moves, Q2 evidence, tags, distribution, and actual release remain absent and
-> blocked. On conflict, stop affected public-boundary work rather than silently
+> **Currency warning.** The apex trio carries RFC 021's exact conditional
+> release-finalization block for `0.20.2`. Metadata and RFC 019/020/021
+> lifecycle state are staged atomically, but stored repository state does not
+> prove external activation. Before predicate `P` succeeds this remains a
+> non-current candidate. Exact local/tagged evidence, architecture decisions,
+> owner authorization, distribution, and actual release remain separately
+> gated. On conflict, stop affected public-boundary work rather than silently
 > choosing code or prose. See the
 > [Architecture Recovery Roadmap](recovery-roadmap.md).
 
@@ -35,8 +36,9 @@ contributors edit those documents directly; readers can browse them here.
 - RFC lifecycle policy (release-local):
   `rfcs/done/000-rfc-lifecycle-policy.md`
   ([moving-branch navigation](https://github.com/nabbisen/loeres/blob/main/rfcs/done/000-rfc-lifecycle-policy.md)).
-- Accepted recovery/finalization RFCs (release-local): `rfcs/accepted/` — RFC
-  019, RFC 020, and RFC 021 are design-frozen contracts.
+- Conditionally staged recovery/finalization RFCs (release-local):
+  `rfcs/done/` — RFC 019, RFC 020, and RFC 021 use RFC 021's exact conditional
+  Status; their paths do not prove external activation.
 - [Accepted RFCs on the moving development branch](https://github.com/nabbisen/loeres/tree/main/rfcs/accepted)
   — navigation only; use the release-local path for normative review.
 - [Proposed RFCs](https://github.com/nabbisen/loeres/tree/main/rfcs/proposed) — review-active designs; none currently.

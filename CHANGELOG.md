@@ -5,37 +5,40 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.20.2] — 2026-07-22 — RFC 021 conditional finalization (candidate preparation)
+## [0.20.2] — 2026-07-22 — RFC 021 conditional finalization
 
-Version 0.20.2 is an untagged release-finalization candidate under RFC 021. It
-is not released, release-ready, current, published, or conditionally activated.
-Architecture review 031 accepted the bounded S1 tooling and recommended S2;
-the project owner separately authorized only release-local S2 preparation.
+Version 0.20.2 is staged in RFC 021's exact conditional-finalization state.
+Before external predicate `P` succeeds, it is a non-current untagged candidate;
+only successful distribution of this exact tree under canonical tag `0.20.2`
+after accepted local/tagged evidence, architecture release Go, and explicit
+project-owner authorization makes the same bytes current. Stored metadata and
+lifecycle paths do not prove that activation occurred.
 
-### Prepared in S1 and S2
+### Finalization state
 
 - Added the host-only, non-mutating `release-gate --intended-tag 0.20.2`
   preflight and fail-closed conditional metadata, lifecycle, and apex
   validators. These tools do not infer external activation from tracked state.
-- Bound the future one-release schema to version/tag `0.20.2`, authoritative
+- Bound the active one-release schema to version/tag `0.20.2`, authoritative
   remote `origin`, exact RFC set `[19, 20, 21]`, the reviewed distribution
   bundle, and the 30/120-minute workflow boundaries.
-- Prepared workspace/lockfile version consistency and release-local draft
-  changelog, apex, roadmap, and handoff state for later exact finalization.
+- Replaced the legacy draft apex marker with the canonical conditional block
+  and staged RFCs 019/020/021 together in `done/` with their exact conditional
+  Status, synchronized index, links, roadmaps, traceability, and handoffs.
+- Kept runtime APIs, solver behavior, features, dependencies, and release
+  workflow unchanged.
 - Retained immutable local tag `0.20.1` as an unpublished blocked candidate;
   it is never moved, reused, pushed, or treated as the `0.20.2` release.
 
 ### Explicitly pending
 
-- `release/conditional-finalization.toml` is intentionally absent during S2.
-- The apex trio remains draft/not-current, and RFCs 019/020/021 remain
-  Accepted rather than conditionally staged in `done/`.
-- Q2 must later create one separately reviewed atomic finalization revision
-  containing the metadata instance, canonical conditional apex blocks,
-  synchronized lifecycle/index state, and all release-local wording.
-- No intended-tag evidence, tag creation, push, workflow execution, GitHub
-  release, registry publication, certification, or actual release is
-  authorized or claimed.
+- The owner must first make this atomic Q2 tree one clean exact revision; only
+  then may its intended-tag and complete local evidence be created for review.
+- Architecture must accept that exact revision and evidence before the owner
+  may receive separate narrow authority to create local tag `0.20.2`.
+- Tagged evidence, release Go, owner distribution authorization, tag push,
+  workflow success, GitHub release, registry publication, certification, and
+  actual release remain unestablished and unauthorized.
 
 ## [0.20.1] — 2026-07-17 — RFC 019/RFC 020 architecture recovery (candidate)
 

@@ -1,19 +1,17 @@
 # Loeres External Design Specification v1
 
-Status: Accepted v1; RFC 020 reconciliation draft (not yet the current marker); RFC 021 S2 candidate preparation
+Status: Accepted v1; RFC 021 conditional release-finalization state for 0.20.2
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **RFC 020 shared currency metadata (draft).** Proposed last-reconciled
-> repository release: **v0.20.2**. Implemented scope: **RFCs 001-018** in
-> `../../rfcs/done/`. Accepted recovery work: **RFC 019 and RFC 020**, plus
-> sequencing RFC 021, in `../../rfcs/accepted/`; this work is unshipped and in
-> progress. Open proposals are roadmap items only. Activation as the current
-> marker is pending the exact RFC 021 Q2 finalization revision, local and tagged
-> evidence, architecture decisions, owner authorization, and successful
-> distribution. Until then, this block is a review candidate and does not
-> assert that repository documentation is fully current.
+> **RFC 021 conditional release-finalization metadata.**
+> Release-finalization marker for **0.20.2**. Canonical tag: **0.20.2**.
+> Current only when this exact tree is distributed under the canonical tag after accepted
+> tag-bound evidence, architecture release Go, and project-owner release authorization;
+> otherwise a non-current release-finalization candidate.
+> Implemented scope after activation: **RFCs 001-021**.
+> Stored lifecycle paths do not prove external activation.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
 > orchestration, one dynamic box/bound-constrained projected-first-order kernel,
@@ -1385,9 +1383,11 @@ access expensive. *(Design finalized in v0.6.1; implemented in v0.7.0.)*
 
 ## 7. RFC Roadmap Derived from This External Design
 
-RFCs 001-018 are implemented and shipped through v0.20.0. RFC 019/RFC 020
-are accepted recovery contracts, not shipped behavior. The detailed roadmap is
-normative for sequencing/status and records historical departures.
+RFCs 001-018 are implemented and shipped through v0.20.0. RFCs 019/020/021 are
+implementation-complete and conditionally staged for `0.20.2`; before external
+predicate `P` succeeds their stored lifecycle paths are not shipped-behavior
+proof. The detailed roadmap is normative for sequencing/status and records
+historical departures.
 
 | RFC range | Implemented external-design contribution |
 |---|---|
@@ -1398,7 +1398,7 @@ normative for sequencing/status and records historical departures.
 | 012-013 | Validation vocabulary and bounded cross-layer conformance fixtures. |
 | 015-017 | Process-local validation cache, one dynamic PFO kernel, and cache/trust conformance. |
 | 018 | Cluster solve test maintainability; no public design change. |
-| 019-020 | Accepted, unshipped recovery: release integrity and normative documentation currency. |
+| 019-021 | Conditional `0.20.2` finalization: release integrity, normative documentation currency, and fail-closed release sequencing; stored state does not prove external activation. |
 
 ### 7.1 Milestone 1: Core and Mathematical Interfaces
 
@@ -1507,7 +1507,8 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-RFCs 001-018 form the implemented v0.20.0 baseline. RFCs 019/020/021 are
-accepted, unshipped recovery/finalization work. Workspace version `0.20.2` and
-the draft apex marker are S2 candidate preparation only; the release package
-gate and actual release remain No-Go.
+RFCs 001-018 form the shipped v0.20.0 baseline. RFCs 019/020/021 are
+implementation-complete and conditionally staged for `0.20.2` under RFC 021.
+Before external predicate `P` succeeds, the tree remains a non-current
+release-finalization candidate; the release package and actual release remain
+No-Go.
