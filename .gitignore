@@ -23,3 +23,6 @@ target
 # custom
 /.git-exclude/
 *.local.json
+
+# build output
+/docs/book/
