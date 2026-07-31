@@ -15,9 +15,14 @@ None currently.
 
 ## Accepted RFCs
 
+Design-frozen implementation contracts. Implementation is authorized; shipped
+behavior is not yet claimed.
+
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [022](accepted/022-architecture-review-evidence-index.md) | Architecture Review Evidence Index | Accepted (design frozen 2026-07-31) | Tracked, hash-pinned identity register for the architecture reviews cited by normative documents; fail-closed citation resolution, hash verification reported unavailable when the maintainer-held corpus is absent. Evidence identity only — never a lifecycle. See the [evidence index](review-evidence-index.md). |
+| [023](accepted/023-user-facing-surface-and-obligation-closure.md) | User-Facing Surface and Documented-Obligation Closure | Accepted (design frozen 2026-07-31) | Closes three unmet documented obligations: workspace-excluded `examples/` with a resolved-graph isolation assertion, `TERMS_OF_USE.md` engineering-use limits (resolves OQ-012), and the missing user-guide/verification book pages. |
+| [024](accepted/024-post-release-documentation-steady-state.md) | Post-Release Documentation Steady State | Accepted (design frozen 2026-07-31) | `doc-currency` admitted only a `0.20.2`-pinned conditional apex form and an expired pre-release draft form, so no ordinary commit could pass the gate after a release. Adds a two-field last-released/this-tree apex form, derives implemented scope from the RFC lifecycle, and retires the one-release conditional apparatus. Blocks RFC 022 §15/§16 and the post-release version bump. |
 
 ## Done RFCs
 
