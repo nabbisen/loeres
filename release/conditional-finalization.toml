@@ -1,9 +1,0 @@
-schema_version = 1
-release_version = "0.20.2"
-canonical_tag = "0.20.2"
-phase = "release-finalization-candidate"
-authoritative_remote = "origin"
-distribution_bundle = "tag-push-release-workflow-v1"
-conditional_rfcs = [19, 20, 21]
-workflow_start_timeout_minutes = 30
-workflow_terminal_timeout_minutes = 120

@@ -33,12 +33,8 @@ This book summarizes the architecture and threat model. The authoritative,
 detailed design lives in the specifications under `docs/specs/` and in the RFC
 set under `rfcs/`.
 
-Before external predicate `P` succeeds, v0.20.0 remains the last externally
-activated repository release and this exact `0.20.2` tree is a non-current
-No-Go finalization candidate. After `P` succeeds, these same immutable bytes
-are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
-alone do not establish whether `P` occurred. GitHub release creation, registry
-publication, and certification remain separately authorized; none is implied
-by `P`. Current solver breadth is one box/bound-constrained projected-first-
-order family on device and cluster. The gateway is mock-only, validation
-caching is process-local, and conformance is a bounded smoke corpus.
+Repository release `0.20.2` is released and carries RFCs 001-021; this tree
+is `0.20.3` in development and is not itself a release. Current solver
+breadth is one box/bound-constrained projected-first- order family on device
+and cluster. The gateway is mock-only, validation caching is process-local,
+and conformance is a bounded smoke corpus.

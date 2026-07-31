@@ -13,17 +13,12 @@ contributors edit those documents directly; readers can browse them here.
 
 > **Currency warning.** The apex trio carries RFC 021's exact conditional
 > release-finalization block for `0.20.2`. Metadata and RFC 019/020/021
-> lifecycle state are staged atomically, but stored repository state does not
-> prove external activation. Before external predicate `P` succeeds, v0.20.0
-> remains the last externally activated repository release and this exact
-> `0.20.2` tree is a non-current No-Go finalization candidate. After `P`
-> succeeds, these same immutable bytes are the activated `0.20.2` release with
-> RFCs 001-021 implemented. Tracked bytes alone do not establish whether `P`
-> occurred. GitHub release creation, registry publication, and certification
-> remain separately authorized; none is implied by `P`. On conflict, stop
-> affected public-boundary work rather than silently choosing code or prose.
-> See the
-> [Architecture Recovery Roadmap](recovery-roadmap.md).
+> lifecycle state are staged atomically, but stored repository state does
+> not prove external activation. Repository release `0.20.2` is released and
+> carries RFCs 001-021; this tree is `0.20.3` in development and is not
+> itself a release. On conflict, stop affected public-boundary work rather
+> than silently choosing code or prose. See the [Architecture Recovery
+> Roadmap](recovery-roadmap.md).
 
 - Requirements (release-local): `docs/specs/loeres-requirements-v1.md`
   ([moving-branch navigation](https://github.com/nabbisen/loeres/blob/main/docs/specs/loeres-requirements-v1.md)).

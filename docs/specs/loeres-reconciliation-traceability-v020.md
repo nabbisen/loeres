@@ -39,17 +39,13 @@ owner had not selected or authorized a corrective release version.
 
 **Current candidate state (2026-07-22).** Immutable local tag `0.20.1` is a
 blocked unpublished candidate under RFC 021. The project owner selected
-**0.20.2**; reviews 031/032 accepted S1/S2 and the owner authorized one atomic
-Q2 finalization revision. The apex trio now carries the identical canonical
-RFC 021 conditional block, and RFCs 019/020/021 are implementation-complete and
-conditionally staged in `done/` under the tracked metadata. Before external
-predicate `P` succeeds, v0.20.0 remains the last externally activated
-repository release and this exact `0.20.2` tree is a non-current No-Go
-finalization candidate. After `P` succeeds, these same immutable bytes are the
-activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes alone
-do not establish whether `P` occurred. GitHub release creation, registry
-publication, and certification remain separately authorized; none is implied
-by `P`. This annotation changes no runtime semantics or public API.
+**0.20.2**; reviews 031/032 accepted S1/S2 and the owner authorized one
+atomic Q2 finalization revision. The apex trio now carries the identical
+canonical RFC 021 conditional block, and RFCs 019/020/021 are
+implementation-complete and conditionally staged in `done/` under the
+tracked metadata. Repository release `0.20.2` is released and carries RFCs
+001-021; this tree is `0.20.3` in development and is not itself a release.
+This annotation changes no runtime semantics or public API.
 
 ## 2. Requirements-section coverage
 

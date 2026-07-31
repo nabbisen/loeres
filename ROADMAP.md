@@ -7,31 +7,25 @@ this file is a short summary.
 
 > **Architecture recovery notice (2026-07-15).** An independent architecture
 > audit found four blockers in the v0.20.0 baseline: broken declared MSRV,
-> release-tag/workflow mismatch, incomplete tag-revision gates, and materially
-> stale normative specifications. v0.20.0 remains **No-Go** for release-readiness
-> claims. The dependency-gated corrective schedule is the
+> release-tag/workflow mismatch, incomplete tag-revision gates, and
+> materially stale normative specifications. v0.20.0 remains **No-Go** for
+> release-readiness claims. The dependency-gated corrective schedule is the
 > [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). RFC 019 and
 > RFC 020 own the blocking recovery and were Accepted (design frozen
-> 2026-07-15) before conditional Q2 staging. R0.5 lifecycle activation, the RFC
-> 019 S1-S3 baseline, the RFC 020 S1 traceability matrix,
-> reviewed S2 apex reconciliation, corrected S3
-> supporting documentation, corrected S4 semantic currency checks, S5
-> integration, and RFC 019 S4/S5 gate implementation are owner-durable.
-> Architecture review 024 accepted the non-publishing tagged evidence for
-> canonical tag `0.20.1` at `ed282545...`, but RFC 021 later classified that
-> immutable local tag as an unpublished blocked candidate. Reviews 031/032
-> accepted RFC 021 S1/S2, and the project owner authorized one atomic Q2
-> finalization revision. Active metadata, the canonical conditional apex
-> block, and conditionally staged RFC 019/020/021 paths form the exact
-> finalization tree; none proves external activation. Before external predicate
-> `P` succeeds, v0.20.0 remains the last externally activated repository
-> release and this exact `0.20.2` tree is a non-current No-Go finalization
-> candidate. After `P` succeeds, these same immutable bytes are the activated
-> `0.20.2` release with RFCs 001-021 implemented. Tracked bytes alone do not
-> establish whether `P` occurred. GitHub release creation, registry
-> publication, and certification remain separately authorized; none is implied
-> by `P`.
-> New public-boundary implementation waits until R2 closes.
+> 2026-07-15) before conditional Q2 staging. R0.5 lifecycle activation, the
+> RFC 019 S1-S3 baseline, the RFC 020 S1 traceability matrix, reviewed S2
+> apex reconciliation, corrected S3 supporting documentation, corrected S4
+> semantic currency checks, S5 integration, and RFC 019 S4/S5 gate
+> implementation are owner-durable. Architecture review 024 accepted the
+> non-publishing tagged evidence for canonical tag `0.20.1` at
+> `ed282545...`, but RFC 021 later classified that immutable local tag as an
+> unpublished blocked candidate. Reviews 031/032 accepted RFC 021 S1/S2, and
+> the project owner authorized one atomic Q2 finalization revision. Active
+> metadata, the canonical conditional apex block, and conditionally staged
+> RFC 019/020/021 paths form the exact finalization tree; none proves
+> external activation. Repository release `0.20.2` is released and carries
+> RFCs 001-021; this tree is `0.20.3` in development and is not itself a
+> release. New public-boundary implementation waits until R2 closes.
 
 ## Phases
 
@@ -53,19 +47,14 @@ this file is a short summary.
 RFCs 001-018 are implemented. The current numerical breadth is one
 box/bound-constrained projected-first-order family on device and cluster.
 Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
-throughput, or adversarial parity claim is made. Observability is metadata-only,
-the gateway is mock-only, and validation caching is process-local. RFCs
-019/020/021 are implementation-complete and conditionally staged under the
-exact RFC 021 predicate. Immutable local tag `0.20.1` and its accepted evidence
-remain historical blocked-candidate evidence only. The `0.20.2` metadata,
-apex, lifecycle, index, and release-local prose are one conditional state.
-Before external predicate `P` succeeds, v0.20.0 remains the last externally
-activated repository release and this exact `0.20.2` tree is a non-current
-No-Go finalization candidate. After `P` succeeds, these same immutable bytes
-are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
-alone do not establish whether `P` occurred. GitHub release creation, registry
-publication, and certification remain separately authorized; none is implied
-by `P`.
+throughput, or adversarial parity claim is made. Observability is metadata-
+only, the gateway is mock-only, and validation caching is process-local.
+RFCs 019/020/021 are implementation-complete and conditionally staged under
+the exact RFC 021 predicate. Immutable local tag `0.20.1` and its accepted
+evidence remain historical blocked-candidate evidence only. The `0.20.2`
+metadata, apex, lifecycle, index, and release-local prose are one
+conditional state. Repository release `0.20.2` is released and carries RFCs
+001-021; this tree is `0.20.3` in development and is not itself a release.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision

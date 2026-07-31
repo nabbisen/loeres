@@ -5,13 +5,10 @@ Layer: External Design
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
-> **RFC 021 conditional release-finalization metadata.**
-> Release-finalization marker for **0.20.2**. Canonical tag: **0.20.2**.
-> Current only when this exact tree is distributed under the canonical tag after accepted
-> tag-bound evidence, architecture release Go, and project-owner release authorization;
-> otherwise a non-current release-finalization candidate.
-> Implemented scope after activation: **RFCs 001-021**.
-> Stored lifecycle paths do not prove external activation.
+> **Release currency metadata.**
+> Last released repository release: **0.20.2**.
+> This tree: **0.20.3** (unreleased).
+> Implemented scope: **RFCs 001-021**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
 > orchestration, one dynamic box/bound-constrained projected-first-order kernel,
@@ -22,13 +19,8 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > evidence are scoped as described below. RFC 019 release packaging follows
 > RFC 021's conditional boundary.
 
-Before external predicate `P` succeeds, v0.20.0 remains the last externally
-activated repository release and this exact `0.20.2` tree is a non-current
-No-Go finalization candidate. After `P` succeeds, these same immutable bytes
-are the activated `0.20.2` release with RFCs 001-021 implemented. Tracked bytes
-alone do not establish whether `P` occurred. GitHub release creation, registry
-publication, and certification remain separately authorized; none is implied
-by `P`.
+Repository release `0.20.2` is released and carries RFCs 001-021; this tree
+is `0.20.3` in development and is not itself a release.
 
 ---
 

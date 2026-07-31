@@ -5,12 +5,15 @@ use std::path::{Component, Path};
 use std::process::Command;
 
 use super::{
-    basic, check_rfcs, conditional_finalization, conformance, doc_currency, feature_matrix,
-    link_audit, no_std, panic_audit, public_api, size_budget, target_profiles, unsafe_audit,
-    zero_bleed,
+    basic, check_rfcs, conformance, doc_currency, feature_matrix, link_audit, no_std, panic_audit,
+    public_api, size_budget, target_profiles, unsafe_audit, zero_bleed,
 };
 
 mod package;
+
+/// The single reviewed remote to which a canonical tag may be published
+/// (RFC 021 §7 "authoritative release remote"; retained by RFC 024).
+const AUTHORITATIVE_REMOTE: &str = "origin";
 
 pub fn run_developer() -> bool {
     run_developer_named("check")
@@ -177,16 +180,6 @@ fn release_preflight(mode: &ReleaseMode) -> Result<Candidate, String> {
     }
     let entries = tracked_manifest().map_err(|error| format!("MANIFEST: {error}"))?;
     package::require_release_inputs(&entries).map_err(|error| format!("MANIFEST: {error}"))?;
-    if matches!(reference, CandidateRef::IntendedTag(_))
-        && !entries
-            .iter()
-            .any(|entry| entry.path == conditional_finalization::METADATA_PATH)
-    {
-        return Err(format!(
-            "MANIFEST: intended-tag mode requires tracked `{}` in HEAD",
-            conditional_finalization::METADATA_PATH
-        ));
-    }
     let revision =
         git_output(&["rev-parse", "HEAD"]).map_err(|error| format!("REVISION: {error}"))?;
     eprintln!("  version: {version}");
@@ -285,32 +278,31 @@ fn validate_intended_tag(tag: &str, version: &str) -> Result<CandidateRef, Strin
         return Err("--intended-tag is host-only and forbidden in a tag run".to_owned());
     }
 
-    let metadata = conditional_finalization::load_optional(Path::new("."))?.ok_or_else(|| {
-        format!(
-            "intended-tag mode requires reviewed `{}`",
-            conditional_finalization::METADATA_PATH
-        )
-    })?;
-    validate_intended_binding(tag, version, &metadata)?;
+    // RFC 024: the preflight no longer depends on one-release conditional
+    // metadata. Every RFC 021 §7 property is preserved, sourced from the
+    // ordinary apex block and the workspace manifest instead.
+    let last_released = doc_currency::ordinary_last_released()?;
+    validate_intended_binding(tag, version, &last_released)?;
 
     require_local_tag_absent(tag)?;
-    require_remote_tag_absent(&metadata.authoritative_remote, tag)?;
+    require_remote_tag_absent(AUTHORITATIVE_REMOTE, tag)?;
     Ok(CandidateRef::IntendedTag(tag.to_owned()))
 }
 
-fn validate_intended_binding(
-    tag: &str,
-    version: &str,
-    metadata: &conditional_finalization::ConditionalMetadata,
-) -> Result<(), String> {
-    parse_stable_version(tag)?;
+fn validate_intended_binding(tag: &str, version: &str, last_released: &str) -> Result<(), String> {
+    let intended = parse_stable_version(tag)?;
     if tag != version {
         return Err(format!(
             "intended tag `{tag}` does not match workspace version `{version}`"
         ));
     }
-    if metadata.release_version != version || metadata.canonical_tag != tag {
-        return Err("conditional metadata does not bind the intended version/tag".to_owned());
+    let released = parse_stable_version(last_released).map_err(|error| {
+        format!("apex last-released `{last_released}` is not a canonical version: {error}")
+    })?;
+    if intended <= released {
+        return Err(format!(
+            "intended tag `{tag}` does not advance past last released `{last_released}`"
+        ));
     }
     Ok(())
 }
@@ -555,24 +547,6 @@ mod tests {
         parse_tracked_manifest, validate_archive_path, validate_intended_binding,
         validate_remote_push_urls, validate_remote_tag_listing,
     };
-    use crate::checks::conditional_finalization::ConditionalMetadata;
-
-    fn valid_conditional_metadata() -> ConditionalMetadata {
-        ConditionalMetadata::parse(
-            r#"
-schema_version = 1
-release_version = "0.20.2"
-canonical_tag = "0.20.2"
-phase = "release-finalization-candidate"
-authoritative_remote = "origin"
-distribution_bundle = "tag-push-release-workflow-v1"
-conditional_rfcs = [19, 20, 21]
-workflow_start_timeout_minutes = 30
-workflow_terminal_timeout_minutes = 120
-"#,
-        )
-        .unwrap()
-    }
 
     #[test]
     fn canonical_tags_are_stable_unprefixed_semver() {
@@ -624,10 +598,14 @@ workflow_terminal_timeout_minutes = 120
 
     #[test]
     fn intended_tag_binding_and_local_collision_are_fail_closed() {
-        let metadata = valid_conditional_metadata();
-        assert!(validate_intended_binding("0.20.2", "0.20.2", &metadata).is_ok());
-        assert!(validate_intended_binding("0.20.3", "0.20.2", &metadata).is_err());
-        assert!(validate_intended_binding("0.20.2", "0.20.3", &metadata).is_err());
+        // Tag must equal the workspace version and advance past last released.
+        assert!(validate_intended_binding("0.20.3", "0.20.3", "0.20.2").is_ok());
+        assert!(validate_intended_binding("0.20.3", "0.20.2", "0.20.2").is_err());
+        assert!(validate_intended_binding("0.20.2", "0.20.3", "0.20.2").is_err());
+        // Never re-release or regress past what already shipped.
+        assert!(validate_intended_binding("0.20.2", "0.20.2", "0.20.2").is_err());
+        assert!(validate_intended_binding("0.20.1", "0.20.1", "0.20.2").is_err());
+        assert!(validate_intended_binding("0.20.3", "0.20.3", "not-a-version").is_err());
 
         assert!(classify_local_tag_status("0.20.2", Some(1)).is_ok());
         assert!(classify_local_tag_status("0.20.2", Some(0)).is_err());

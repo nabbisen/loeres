@@ -19,6 +19,13 @@ const RFC_FOLDERS: &[&str] = &["proposed", "accepted", "done", "archive"];
 
 const LEGACY_APEX_MARKER: &str = "**RFC 020 shared currency metadata (draft).**";
 
+/// RFC 024 ordinary post-release apex marker.
+///
+/// The block it introduces records the last released version and this tree's
+/// version separately. Conflating them was blocker B6; RFC 021 separated them
+/// for one finalization window, and RFC 024 makes the separation ordinary.
+const ORDINARY_APEX_MARKER: &str = "**Release currency metadata.**";
+
 const STALE_PHRASES: &[&str] = &[
     "current as of v0.13.1",
     "current as of repository release v0.13.1",
@@ -65,8 +72,75 @@ const CONDITIONAL_STALE_PHRASES: &[&str] = &[
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 struct ApexCurrency {
+    /// The version this tree carries. Bound to `workspace.package.version`.
     release: String,
+    /// The last version actually released. Never greater than `release`.
+    last_released: String,
     normalized_block: String,
+}
+
+/// Parse `vX.Y.Z` or `X.Y.Z` into comparable components.
+fn parse_version_triple(value: &str) -> Option<(u32, u32, u32)> {
+    let trimmed = value.strip_prefix('v').unwrap_or(value);
+    let mut parts = trimmed.split('.');
+    let major = parts.next()?.parse().ok()?;
+    let minor = parts.next()?.parse().ok()?;
+    let patch = parts.next()?.parse().ok()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some((major, minor, patch))
+}
+
+/// Highest RFC number recorded as implemented in `rfcs/done/`.
+///
+/// Derived rather than hard-coded: a literal scope is exactly why the
+/// pre-release apex form expired the moment `0.20.2` shipped (RFC 024 §11.4).
+fn implemented_scope(errors: &mut Vec<String>) -> Option<String> {
+    let entries = match fs::read_dir(Path::new("rfcs").join("done")) {
+        Ok(entries) => entries,
+        Err(error) => {
+            errors.push(format!("RFC SCOPE: cannot read rfcs/done: {error}"));
+            return None;
+        }
+    };
+    let mut highest = None;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        if !name.ends_with(".md") {
+            continue;
+        }
+        if let Ok(number) = name.chars().take(3).collect::<String>().parse::<u32>() {
+            highest = Some(highest.map_or(number, |current: u32| current.max(number)));
+        }
+    }
+    match highest {
+        Some(highest) => Some(format!("RFCs 001-{highest:03}")),
+        None => {
+            errors.push("RFC SCOPE: rfcs/done contains no numbered RFC".to_owned());
+            None
+        }
+    }
+}
+
+/// Last released version recorded by the ordinary apex block.
+///
+/// Used by the release-candidate preflight so intended-tag validation depends
+/// on reviewed normative documentation rather than one-release metadata.
+pub(crate) fn ordinary_last_released() -> Result<String, String> {
+    let path = APEX_DOCS
+        .first()
+        .ok_or_else(|| "no apex document configured".to_owned())?;
+    let source =
+        fs::read_to_string(path).map_err(|error| format!("cannot read {path}: {error}"))?;
+    let block = extract_currency_block(&source, ORDINARY_APEX_MARKER)?;
+    bounded_value(
+        &normalize_whitespace(&block),
+        "Last released repository release: **",
+        "**",
+    )
+    .ok_or_else(|| format!("{path} has no last-released field"))
 }
 
 pub fn run() -> bool {
@@ -138,15 +212,17 @@ fn check_apex_currency(
     conditional: Option<&ConditionalMetadata>,
     errors: &mut Vec<String>,
 ) {
+    let scope = implemented_scope(errors);
     let mut found = Vec::new();
     for path in APEX_DOCS {
         let source = match read_required(path, errors) {
             Some(source) => source,
             None => continue,
         };
-        let parsed = match conditional {
-            Some(metadata) => parse_conditional_apex_currency(&source, metadata),
-            None => parse_apex_currency(&source),
+        let parsed = match (conditional, scope.as_deref()) {
+            (Some(metadata), _) => parse_conditional_apex_currency(&source, metadata),
+            (None, Some(scope)) => parse_ordinary_apex_currency(&source, scope),
+            (None, None) => continue,
         };
         match parsed {
             Ok(currency) => {
@@ -179,51 +255,85 @@ fn check_apex_currency(
     }
 }
 
-fn parse_apex_currency(source: &str) -> Result<ApexCurrency, String> {
-    let header = source.lines().take(16).collect::<Vec<_>>().join(" ");
-    let header_lower = header.to_ascii_lowercase();
-    if !header_lower.contains("reconciliation draft (not yet the current marker)") {
-        return Err("missing draft/not-current status qualifier".to_owned());
+/// Parse the RFC 024 ordinary apex block.
+///
+/// Unlike the retired forms this does not hard-code a scope or a version. It
+/// asserts the block's internal consistency; the caller binds `release` to the
+/// workspace version.
+fn parse_ordinary_apex_currency(
+    source: &str,
+    expected_scope: &str,
+) -> Result<ApexCurrency, String> {
+    if source.contains(LEGACY_APEX_MARKER) {
+        return Err("retired RFC 020 draft metadata must be absent".to_owned());
+    }
+    if source.contains(conditional_finalization::APEX_MARKER) {
+        return Err("retired RFC 021 conditional metadata must be absent".to_owned());
     }
 
-    let block = extract_shared_currency_block(source)?;
+    let block = extract_currency_block(source, ORDINARY_APEX_MARKER)?;
     let normalized_block = normalize_whitespace(&block);
-    if !normalized_block.contains("Implemented scope: **RFCs 001-018**") {
-        return Err("missing implemented RFC 001-018 scope".to_owned());
-    }
-    if !normalized_block.contains("Accepted recovery work: **RFC 019 and RFC 020**") {
-        return Err("missing accepted RFC 019/RFC 020 recovery scope".to_owned());
-    }
-    if !normalized_block.contains("this work is unshipped and in progress") {
-        return Err("missing unshipped/in-progress recovery qualifier".to_owned());
-    }
-    if !normalized_block.contains("Activation as the current marker is pending") {
-        return Err("missing pending current-marker activation qualifier".to_owned());
+
+    let last_released = bounded_value(
+        &normalized_block,
+        "Last released repository release: **",
+        "**",
+    )
+    .ok_or_else(|| "missing last-released field".to_owned())?;
+    let release = bounded_value(&normalized_block, "This tree: **", "**")
+        .ok_or_else(|| "missing this-tree field".to_owned())?;
+
+    let Some(last_triple) = parse_version_triple(&last_released) else {
+        return Err(format!("last-released `{last_released}` is not `X.Y.Z`"));
+    };
+    let Some(tree_triple) = parse_version_triple(&release) else {
+        return Err(format!("this-tree `{release}` is not `X.Y.Z`"));
+    };
+    if tree_triple < last_triple {
+        return Err(format!(
+            "this-tree `{release}` precedes last-released `{last_released}`"
+        ));
     }
 
-    let prefix = "Proposed last-reconciled repository release: **";
-    let release = bounded_value(&normalized_block, prefix, "**")
-        .ok_or_else(|| "missing proposed last-reconciled release field".to_owned())?;
+    // The released/unreleased qualifier must agree with the two versions, so a
+    // tree can never silently describe itself as released while ahead of the
+    // last release.
+    let expected_qualifier = if tree_triple == last_triple {
+        "(released)"
+    } else {
+        "(unreleased)"
+    };
+    if !normalized_block.contains(&format!("This tree: **{release}** {expected_qualifier}")) {
+        return Err(format!(
+            "this-tree qualifier must be `{expected_qualifier}` for `{release}` against `{last_released}`"
+        ));
+    }
+
+    let scope_field = format!("Implemented scope: **{expected_scope}**");
+    if !normalized_block.contains(&scope_field) {
+        return Err(format!(
+            "missing or stale scope field; expected `{scope_field}`"
+        ));
+    }
+
     Ok(ApexCurrency {
-        release,
+        release: format!("v{release}"),
+        last_released,
         normalized_block,
     })
 }
 
-fn extract_shared_currency_block(source: &str) -> Result<String, String> {
-    if source.matches(LEGACY_APEX_MARKER).count() != 1 {
-        return Err("expected exactly one shared draft metadata marker".to_owned());
+fn extract_currency_block(source: &str, marker: &str) -> Result<String, String> {
+    if source.matches(marker).count() != 1 {
+        return Err(format!("expected exactly one `{marker}` metadata marker"));
     }
 
     let lines = source.lines().collect::<Vec<_>>();
-    let Some(start) = lines
-        .iter()
-        .position(|line| line.contains(LEGACY_APEX_MARKER))
-    else {
-        return Err("missing shared draft metadata marker".to_owned());
+    let Some(start) = lines.iter().position(|line| line.contains(marker)) else {
+        return Err(format!("missing `{marker}` metadata marker"));
     };
     if !lines[start].trim_start().starts_with('>') {
-        return Err("shared draft metadata marker is not in a blockquote".to_owned());
+        return Err(format!("`{marker}` metadata marker is not in a blockquote"));
     }
 
     let mut block = Vec::new();
@@ -283,6 +393,7 @@ fn parse_conditional_apex_currency(
     }
     Ok(ApexCurrency {
         release: format!("v{}", metadata.release_version),
+        last_released: metadata.release_version.clone(),
         normalized_block,
     })
 }
@@ -463,6 +574,9 @@ fn check_root_roadmap(errors: &mut Vec<String>) {
         Some(source) => source,
         None => return,
     };
+    // Normalized: a bounded marker must survive ordinary re-wrapping, otherwise
+    // the check enforces line breaks rather than content.
+    let normalized = normalize_whitespace(&source);
     for marker in [
         "RFC 019",
         "RFC 020",
@@ -473,7 +587,7 @@ fn check_root_roadmap(errors: &mut Vec<String>) {
         "reviewed S2 apex reconciliation",
         "owner-durable",
     ] {
-        if !source.contains(marker) {
+        if !normalized.contains(&normalize_whitespace(marker)) {
             errors.push(format!(
                 "ROADMAP RECOVERY: missing bounded marker `{marker}`"
             ));
@@ -560,14 +674,35 @@ fn check_conditional_current_prose(
     conditional: Option<&ConditionalMetadata>,
     errors: &mut Vec<String>,
 ) {
-    if conditional.is_none() {
-        return;
-    }
     for path in CONDITIONAL_CURRENT_DOCS {
         let Some(source) = read_required(path, errors) else {
             continue;
         };
-        conditional_current_prose_in(&source, path, errors);
+        match conditional {
+            Some(_) => conditional_current_prose_in(&source, path, errors),
+            // RFC 024: once the conditional apparatus is retired the boundary
+            // prose describes a resolved condition. Requiring its absence is
+            // what stops it being copied forward into the next release.
+            None => retired_conditional_prose_in(&source, path, errors),
+        }
+    }
+}
+
+fn retired_conditional_prose_in(source: &str, label: &str, errors: &mut Vec<String>) {
+    let normalized = normalize_whitespace(source);
+    for marker in CONDITIONAL_BOUNDARY_MARKERS {
+        if normalized.contains(&normalize_whitespace(marker)) {
+            errors.push(format!(
+                "RETIRED CONDITIONAL PROSE: {label} still carries `{marker}`"
+            ));
+        }
+    }
+    for phrase in CONDITIONAL_STALE_PHRASES {
+        if normalized.contains(&normalize_whitespace(phrase)) {
+            errors.push(format!(
+                "RETIRED CONDITIONAL PROSE: {label} retains stale phrase `{phrase}`"
+            ));
+        }
     }
 }
 
@@ -630,18 +765,18 @@ fn bounded_value(source: &str, prefix: &str, suffix: &str) -> Option<String> {
 mod tests {
     use super::{
         conditional_current_prose_in, current_before_historical, index_status_matches,
-        parse_apex_currency, parse_conditional_apex_currency, parse_design_freeze,
-        stale_phrases_in,
+        parse_conditional_apex_currency, parse_design_freeze, parse_ordinary_apex_currency,
+        retired_conditional_prose_in, stale_phrases_in,
     };
     use crate::checks::conditional_finalization::ConditionalMetadata;
 
-    fn valid_apex(release: &str) -> String {
+    fn valid_apex(last_released: &str, this_tree: &str, qualifier: &str) -> String {
         format!(
-            "# Spec\nStatus: Accepted v1; RFC 020 S2 reconciliation draft (not yet the current marker)\n\n\
-             > **RFC 020 shared currency metadata (draft).** Proposed last-reconciled\n\
-             > repository release: **{release}**. Implemented scope: **RFCs 001-018** in done.\n\
-             > Accepted recovery work: **RFC 019 and RFC 020**; this work is unshipped and in progress.\n\
-             > Activation as the current marker is pending review."
+            "# Spec\nStatus: Accepted v1\n\n\
+             > **Release currency metadata.**\n\
+             > Last released repository release: **{last_released}**.\n\
+             > This tree: **{this_tree}** {qualifier}.\n\
+             > Implemented scope: **RFCs 001-021**."
         )
     }
 
@@ -675,51 +810,95 @@ workflow_terminal_timeout_minutes = 120
     }
 
     #[test]
-    fn apex_parser_accepts_bounded_shared_fields() {
-        let parsed = parse_apex_currency(&valid_apex("v0.20.0")).unwrap();
-        assert_eq!(parsed.release, "v0.20.0");
-        assert!(
-            parsed
-                .normalized_block
-                .contains("Implemented scope: **RFCs 001-018**")
+    fn ordinary_apex_accepts_unreleased_tree_ahead_of_last_release() {
+        let parsed = parse_ordinary_apex_currency(
+            &valid_apex("0.20.2", "0.20.3", "(unreleased)"),
+            "RFCs 001-021",
+        )
+        .unwrap();
+        assert_eq!(parsed.release, "v0.20.3");
+        assert_eq!(parsed.last_released, "0.20.2");
+    }
+
+    #[test]
+    fn ordinary_apex_accepts_released_tree_at_the_last_release() {
+        let parsed = parse_ordinary_apex_currency(
+            &valid_apex("0.20.3", "0.20.3", "(released)"),
+            "RFCs 001-021",
+        )
+        .unwrap();
+        assert_eq!(parsed.release, "v0.20.3");
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_tree_behind_the_last_release() {
+        let source = valid_apex("0.20.3", "0.20.2", "(unreleased)");
+        assert!(parse_ordinary_apex_currency(&source, "RFCs 001-021").is_err());
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_released_qualifier_while_ahead() {
+        let source = valid_apex("0.20.2", "0.20.3", "(released)");
+        assert!(parse_ordinary_apex_currency(&source, "RFCs 001-021").is_err());
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_unreleased_qualifier_at_the_release() {
+        let source = valid_apex("0.20.3", "0.20.3", "(unreleased)");
+        assert!(parse_ordinary_apex_currency(&source, "RFCs 001-021").is_err());
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_scope_disagreeing_with_the_lifecycle() {
+        let source = valid_apex("0.20.2", "0.20.3", "(unreleased)");
+        assert!(parse_ordinary_apex_currency(&source, "RFCs 001-022").is_err());
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_retired_markers() {
+        let legacy = valid_apex("0.20.2", "0.20.3", "(unreleased)")
+            + "\n\n> **RFC 020 shared currency metadata (draft).** leftover";
+        assert!(parse_ordinary_apex_currency(&legacy, "RFCs 001-021").is_err());
+        let conditional = valid_apex("0.20.2", "0.20.3", "(unreleased)")
+            + "\n\n> **RFC 021 conditional release-finalization metadata.** leftover";
+        assert!(parse_ordinary_apex_currency(&conditional, "RFCs 001-021").is_err());
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_duplicate_markers() {
+        let source = valid_apex("0.20.2", "0.20.3", "(unreleased)")
+            + "\n\n> **Release currency metadata.** duplicate";
+        assert!(parse_ordinary_apex_currency(&source, "RFCs 001-021").is_err());
+    }
+
+    #[test]
+    fn ordinary_apex_rejects_field_displaced_outside_block() {
+        let source = valid_apex("0.20.2", "0.20.3", "(unreleased)")
+            .replace("> Last released repository release: **0.20.2**.\n", "")
+            + "\n\nHistorical: Last released repository release: **0.20.2**.";
+        assert!(parse_ordinary_apex_currency(&source, "RFCs 001-021").is_err());
+    }
+
+    #[test]
+    fn retired_prose_check_rejects_leftover_conditional_boundary() {
+        let mut errors = Vec::new();
+        retired_conditional_prose_in(
+            "Before external predicate `P` succeeds, things are pending.",
+            "doc.md",
+            &mut errors,
         );
+        assert!(!errors.is_empty());
     }
 
     #[test]
-    fn apex_parser_rejects_missing_draft_qualifier() {
-        let source = valid_apex("v0.20.0").replace(
-            "reconciliation draft (not yet the current marker)",
-            "reconciliation current",
+    fn retired_prose_check_accepts_plain_released_wording() {
+        let mut errors = Vec::new();
+        retired_conditional_prose_in(
+            "0.20.2 is released; 0.20.3 is in development.",
+            "doc.md",
+            &mut errors,
         );
-        assert!(parse_apex_currency(&source).is_err());
-    }
-
-    #[test]
-    fn apex_parser_rejects_missing_recovery_scope() {
-        let source = valid_apex("v0.20.0").replace("RFC 019 and RFC 020", "RFC 019");
-        assert!(parse_apex_currency(&source).is_err());
-    }
-
-    #[test]
-    fn apex_parser_rejects_incomplete_implemented_scope() {
-        let source = valid_apex("v0.20.0").replace("RFCs 001-018", "RFCs 001-017");
-        assert!(parse_apex_currency(&source).is_err());
-    }
-
-    #[test]
-    fn apex_parser_rejects_duplicate_shared_markers() {
-        let mut source = valid_apex("v0.20.0");
-        source.push_str("\n\n> **RFC 020 shared currency metadata (draft).** duplicate");
-        assert!(parse_apex_currency(&source).is_err());
-    }
-
-    #[test]
-    fn apex_parser_rejects_field_displaced_outside_shared_block() {
-        let source = valid_apex("v0.20.0").replace(
-            "Proposed last-reconciled\n> repository release: **v0.20.0**.",
-            "Last-reconciled\n> repository release: **v0.20.0**.",
-        ) + "\n\nHistorical note: Proposed last-reconciled repository release: **v0.20.0**.";
-        assert!(parse_apex_currency(&source).is_err());
+        assert!(errors.is_empty());
     }
 
     #[test]
