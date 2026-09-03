@@ -1,7 +1,7 @@
 # RFC 024 - Post-Release Documentation Steady State
 
 **Status.** Accepted (design frozen 2026-07-31)
-**Design approval.** Author-performed adversarial review pass (see RFC 022 §17 on the role-separation compromise); project owner authorized the `accepted/` transition on 2026-07-31. **Amendment 1 (§0) is pending independent architecture re-review; implementation of the amended provisions is not authorized until that re-review accepts.**
+**Design approval.** Author-performed adversarial review pass (see RFC 022 §17 on the role-separation compromise); project owner authorized the `accepted/` transition on 2026-07-31. Independent architecture review 036 returned DESIGN REVISION REQUIRED against the first implementation; **Amendment 1 (§0)** corrects its two design blockers and was **conditionally approved by independent re-review 037**, whose two textual conditions (N1 canonical rendering, N2 lineage-field meaning) are folded in at §0.1-§0.2. Implementation of the amended provisions is authorized for the **implementer tier**, not for this RFC's author (reviews 036 and 037 both so direct). Closeout evidence returns to independent review.
 **Tracks.** Blocker discovered during RFC 022 implementation: the documentation
 currency checker cannot represent the state of the repository after a release.
 Blocks RFC 022 §15/§16 and register item I-6.
@@ -78,6 +78,33 @@ released is answered by the canonical tag on the authoritative remote and its
 retained workflow evidence, not by a sentence in a specification. `CHANGELOG.md`
 carries the human-readable release narrative.
 
+**The lineage field is an ordering anchor, not a live pointer (re-review 037,
+N2).** `Preceding released version` is hand-asserted and checked only by the
+strict inequality, so it can understate how many releases have occurred — advance
+`this tree` across several real releases without updating it and `0.20.4 >
+0.20.2` still holds. Re-review 037 offered two resolutions: derive it, or narrow
+what it claims. **This RFC narrows it.**
+
+The field is an **ordering anchor**: a released version that provably precedes
+this tree. It is not a pointer to the most recent release. `CHANGELOG.md` is
+authoritative for "what shipped and when" — RFC 020 §11.1 already assigns it that
+role — and the canonical tag on the authoritative remote plus its retained
+workflow evidence remain the proof that a release occurred.
+
+Derivation was rejected for a concrete reason the re-review did not have to hand:
+it cannot be done from CHANGELOG headings as they exist. `## [0.20.1]` names a
+version that was tagged, quarantined, and **never released**, and `## [0.20.3]`
+will be added as an unreleased record (review 036, B4). "Most recent heading" is
+therefore already wrong today, and deriving correctly would require introducing a
+machine-readable released/unreleased marker convention in `CHANGELOG.md` — a new
+cross-file contract, which is a design addition rather than the short textual fix
+re-review 037 asked for. It stays available as a future focused RFC if the anchor
+is observed to rot in practice.
+
+Note also what actually protects against re-releasing a shipped version: the
+local and remote tag-collision checks in the intended-tag preflight, not this
+field. The anchor is defense in depth, and is now described as such.
+
 ### 0.2 Implemented scope binds an exact set (review B2)
 
 **Defect.** §11.4 required scope to be derived rather than hard-coded, and the
@@ -102,10 +129,39 @@ rediscovered as a bug: RFC 000 governs the RFC directory itself, not the
 product's implemented scope. Its number is reserved and never re-used, but it is
 not a scope member.
 
+**Canonical rendering rule (re-review 037, N1).** The prose above did not state
+the minimum contiguous-run length, so `{020, 021}` could be rendered either
+`020-021` or `020, 021` and two defensible readings could disagree byte-for-byte
+against a checker that compares exactly. The rule is therefore fixed: **every
+maximal run of two or more consecutive numbers collapses to `NNN-NNN`**; only an
+isolated number stands alone. There is no threshold to remember and exactly one
+rendering per set. `{001..018, 021, 024}` renders as `RFCs 001-018, 021, 024`;
+`{020, 021}` renders as `RFCs 020-021`, never `RFCs 020, 021`.
+
 Today's derived value is unchanged (`RFCs 001-021`), so this changes no
 documentation now. It changes what happens the first time an RFC is withdrawn.
 
-### 0.3 Consequences for the queued correction series
+### 0.3 The lifecycle exception this amendment exercised
+
+Amending in place was accepted by re-review 037 as a practical necessity:
+returning RFC 024 to `proposed/` while its rejected implementation sits committed
+would create an RFC 000 contradiction — implementation existing against a
+Proposed RFC, which that folder's rule forbids.
+
+But the re-review is right that the exception is written down nowhere, and that
+this RFC's own §12 rejects widening a frozen RFC for a neighbouring case. The
+distinguishing condition is recorded here so it is not reconstructed later from
+an untracked review: **an Accepted RFC that has not reached `done/` may be
+corrected in place through a numbered, dated `Amendment N` section, when the
+correction narrowly patches already-committed partial work, provided the Status
+line names the pending re-review and withholds implementation authorization for
+the amended provisions.** Nothing outside the RFC's own file depends on its text
+before `done/`, which is what separates this from amending a shipped contract.
+
+This is a one-off exercised under review, not a general licence. Codifying it
+into RFC 000 or RFC 020 is a tracked follow-up, not settled by this RFC.
+
+### 0.4 Consequences for the queued correction series
 
 §11.1, §11.4, §13, and §16 are updated in place to match. Implementation of the
 amended provisions is blocked until independent re-review accepts this amendment.
@@ -247,7 +303,8 @@ comma-separated, with contiguous runs collapsed to `NNN-NNN`. A maximum is not a
 set. RFC 000 is excluded from the field because it governs the RFC directory
 itself, not the product's implemented scope. Withdrawal and supersession are
 ordinary RFC 000 lifecycle events, so a gap must be representable rather than a
-gate failure.
+gate failure. Every maximal run of two or more consecutive numbers collapses to
+`NNN-NNN`; only an isolated number stands alone (§0.2).
 
 ## 12. Rejected alternatives
 
@@ -271,7 +328,8 @@ gate failure.
    than passing vacuously.
 3. Scope-set tests: an accepted gap, an archived gap, a missing number, and
    malformed filenames each fail; a contiguous set and a set with gaps each
-   render and validate canonically; RFC 000 is excluded.
+   render and validate canonically; the two-element boundary run renders as
+   `NNN-NNN` and the comma-separated pair is rejected; RFC 000 is excluded.
 4. Intended-tag preflight tests: tag equal to workspace version and exceeding
    preceding released passes; tag not exceeding it fails; existing local or
    remote tag fails; all without the conditional metadata present. **The
@@ -328,4 +386,8 @@ RFC 024 is complete only when:
 9. every current-facing conditional claim is retired, with RFC 021 protocol
    history preserved as explicitly historical (review 036 B1); and
 10. `CHANGELOG.md` carries an unreleased record for this tree's version and the
-    observed `0.20.2` release chronology (review 036 B4).
+    observed `0.20.2` release chronology (review 036 B4);
+11. the canonical set rendering admits exactly one representation per set, with
+    the two-element boundary fixed (re-review 037 N1); and
+12. the lineage field is documented as an ordering anchor rather than a live
+    pointer to the most recent release (re-review 037 N2).
