@@ -3,7 +3,10 @@
 **Status.** Accepted (design frozen 2026-07-31)
 **Design approval.** Author-performed adversarial review pass (see §17 on the
 role-separation compromise); project owner authorized the `accepted/` transition
-on 2026-07-31.
+on 2026-07-31. **Amendment 1 (§0, 2026-09-09)** adds author-tier provenance to
+the index after the reviews 036/037 incident and records that the index binds
+non-normative input; it carries the architect's review and awaits no further
+design gate. Implementation is authorized for the implementer tier.
 **Tracks.** Post-recovery traceability defect found during the 0.20.2 onboarding
 review; extends RFC 020's normative-authority charge to review evidence.
 **Touches.** `rfcs/review-evidence-index.md` (new), `rfcs/README.md`, `xtask`
@@ -22,6 +25,81 @@ documentation checks, and the citation surfaces in `rfcs/done/`,
 * **Prior art:** RFC 000 (lifecycle and index integrity), RFC 019 (release
   evidence), RFC 020 (normative authority and currency), RFC 021 (conditional
   finalization).
+
+## 0. Amendment 1 — 2026-09-09
+
+RFC 022 was frozen on 2026-07-31. Between then and implementation, an incident
+occurred that its design does not survive unchanged.
+
+**The incident.** Reviews 036 and 037 were requested as independent architecture
+reviews, cited as such in RFC 024's Status line and in two commit messages, and
+acted upon — one of their recommendations was adopted into a normative document.
+The project owner then identified that both were produced by the **implementer
+tier**, which reports findings but holds no design-review authority. The adopted
+recommendation had to be reversed: it would have violated RFC 020 §11.3.
+
+**Why the frozen design does not catch this.** §11.1 registers reference number,
+date, subject, SHA-256, and a cited flag. It binds *which document* a citation
+refers to. It records nothing about *who wrote it*, so authority was inferred
+from a filename and a requested title. A hash-pinned index would have proved the
+right document was cited while saying nothing about whether that document could
+approve anything.
+
+### 0.1 The index records provenance
+
+Each row gains an **author tier**, drawn from a closed set:
+
+| Value | Meaning |
+|---|---|
+| `owner` | The human project owner |
+| `architect` | Design authority (high-capability role) |
+| `implementer` | Implementer tier — findings and recommendations only |
+| `external` | A genuinely independent third party |
+| `unrecorded` | Provenance not established |
+
+**`unrecorded` is mandatory where provenance is genuinely unknown, and guessing
+is forbidden.** Reviews 036 and 037 are `implementer` on direct owner statement.
+For the pre-existing corpus, provenance was not captured at request time and
+must not be reconstructed by inference from filenames, titles, or tone. A
+retroactively guessed tier would be a fabricated authority claim — the precise
+failure this amendment exists to prevent, committed by the fix.
+
+New reviews record tier **at request time**, in the request document, not
+afterwards. Provenance is cheap to capture and expensive to reconstruct.
+
+### 0.2 The index binds non-normative input
+
+RFC 020 §11.1 already classifies archived review bundles as *"Historical/private
+review input. Not a public normative source."* RFC 022 as frozen never says so,
+and its §1 framing — normative documents "cite reviews as the authority for
+design acceptance" — sits awkwardly against that classification.
+
+Both are true and the distinction matters: a review is evidence that a decision
+was considered, never the source of its authority. Design authority rests with
+the architect role and approval with the project owner. The index therefore
+binds the identity of **input**, so a reader can reach what a decision rested on
+— it does not make that input normative, and no citation may imply it does.
+
+**The rule:** prose must not state that a review *accepted*, *approved*, or
+*authorized* anything unless the referenced row's tier is `architect`, `owner`,
+or `external`. A row tiered `implementer` or `unrecorded` may only be cited as
+having *found*, *reported*, or *recommended*.
+
+Enforcement is bounded, and this is stated honestly rather than overclaimed:
+the checker validates that every row carries a tier from the closed set. The
+authority-verb rule is human review's to apply, consistent with §11.3's existing
+position on what a bounded check can and cannot establish.
+
+### 0.3 Lifecycle note
+
+This is the second in-place amendment of an Accepted RFC, under a condition
+slightly wider than the one RFC 024 §0.4 recorded: that exception covered a
+correction narrowly patching already-committed partial work, whereas RFC 022 has
+no implementation at all. Amending an accepted-but-entirely-unimplemented RFC is
+the least disruptive possible moment — nothing outside its own file depends on
+the frozen text — but the condition is now demonstrably broader than one
+sentence in another RFC records. That strengthens the standing recommendation to
+codify the exception into RFC 000 or RFC 020 rather than accrete it case by case.
 
 ## 1. Summary
 
@@ -105,7 +183,8 @@ only and is appropriate for a patch release.
 
 A single tracked file, `rfcs/review-evidence-index.md`, registers one row per
 review document: reference number, date, subject, SHA-256 of the file contents,
-and whether the reference is cited by a tracked normative document.
+**author tier (§0.1)**, and whether the reference is cited by a tracked
+normative document.
 
 The SHA-256 is the integrity anchor. It lets a future maintainer — or an auditor
 holding a copy of the corpus from any source — prove that the document in hand is
@@ -131,6 +210,8 @@ Two distinct assertions, with deliberately different strengths:
 | Assertion | Strength | Rationale |
 |---|---|---|
 | Every review reference in a tracked normative document resolves to an index row | **Enforced, fail-closed** | Depends only on tracked bytes; holds in a clean extraction |
+| Every index row carries an author tier from the closed set | **Enforced, fail-closed** | Depends only on tracked bytes (§0.1) |
+| No citation asserts approval for an `implementer`/`unrecorded` row | **Human review** | Requires reading the surrounding prose; a bounded checker cannot judge it (§0.2) |
 | Each registered SHA-256 matches the corresponding file | **Verified when the corpus is present; reported unavailable otherwise** | The corpus is maintainer-held and legitimately absent from an extraction |
 
 Reporting an absent corpus as *unavailable* rather than *passed* follows RFC
@@ -196,7 +277,8 @@ for exactly the reason that external references would break silently.
 2. Focused tests: a citation with no index row fails; an index row whose hash
    mismatches a present corpus fails; an absent corpus reports unavailable and
    does not pass; a reference format not matching the citation grammar is
-   reported rather than silently ignored.
+   reported rather than silently ignored; a row with a missing tier, or a tier
+   outside the closed set, fails.
 3. `cargo xtask check-rfcs` and `link-audit` — index registered in
    `rfcs/README.md`, all relative links resolve.
 4. `cargo fmt --all -- --check`; all-target/all-feature Clippy with warnings
@@ -271,6 +353,11 @@ RFC 022 is complete only when:
 3. hash verification runs when the corpus is present and reports unavailable —
    never passed — when it is absent;
 4. the index carries no lifecycle, status, or approval semantics;
+4a. every row carries an author tier from the closed set, `unrecorded` is used
+    wherever provenance was not captured, and no tier is inferred retroactively
+    (§0.1);
+4b. the index states that it binds non-normative input and does not confer
+    authority (§0.2, RFC 020 §11.1);
 5. `rfcs/README.md` registers the index and all links resolve;
 6. the RFC 021 conditional apparatus is retired per §15, in this release or a
    separately reviewed one that precedes it;
