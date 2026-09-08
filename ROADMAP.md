@@ -5,27 +5,29 @@ automated verification, not by calendar dates. The authoritative, detailed plan
 lives in [`docs/specs/loeres-roadmap-milestones-v1.md`](docs/specs/loeres-roadmap-milestones-v1.md);
 this file is a short summary.
 
-> **Architecture recovery notice (2026-07-15).** An independent architecture
-> audit found four blockers in the v0.20.0 baseline: broken declared MSRV,
-> release-tag/workflow mismatch, incomplete tag-revision gates, and
-> materially stale normative specifications. v0.20.0 remains **No-Go** for
-> release-readiness claims. The dependency-gated corrective schedule is the
-> [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). RFC 019 and
-> RFC 020 own the blocking recovery and were Accepted (design frozen
-> 2026-07-15) before conditional Q2 staging. R0.5 lifecycle activation, the
-> RFC 019 S1-S3 baseline, the RFC 020 S1 traceability matrix, reviewed S2
-> apex reconciliation, corrected S3 supporting documentation, corrected S4
+> **Architecture recovery notice (2026-07-15, resolved 2026-07-30).** An
+> independent architecture audit found four blockers in the v0.20.0 baseline:
+> broken declared MSRV, release-tag/workflow mismatch, incomplete
+> tag-revision gates, and materially stale normative specifications. v0.20.0
+> was **No-Go** for release-readiness claims. The dependency-gated corrective
+> schedule was the [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md).
+> RFC 019 and RFC 020 owned the blocking recovery and were Accepted (design
+> frozen 2026-07-15) before Q2 staging. R0.5 lifecycle activation, the RFC
+> 019 S1-S3 baseline, the RFC 020 S1 traceability matrix, reviewed S2 apex
+> reconciliation, corrected S3 supporting documentation, corrected S4
 > semantic currency checks, S5 integration, and RFC 019 S4/S5 gate
 > implementation are owner-durable. Architecture review 024 accepted the
 > non-publishing tagged evidence for canonical tag `0.20.1` at
-> `ed282545...`, but RFC 021 later classified that immutable local tag as an
-> unpublished blocked candidate. Reviews 031/032 accepted RFC 021 S1/S2, and
-> the project owner authorized one atomic Q2 finalization revision. Active
-> metadata, the canonical conditional apex block, and conditionally staged
-> RFC 019/020/021 paths form the exact finalization tree; none proves
-> external activation. Repository release `0.20.2` is released and carries
-> RFCs 001-021; this tree is `0.20.3` in development and is not itself a
-> release. New public-boundary implementation waits until R2 closes.
+> `ed282545...`, but RFC 021 later classified that immutable local tag as a
+> permanently blocked, unpublished candidate (audit blocker B6). Reviews
+> 031/032 accepted RFC 021 S1/S2, the project owner authorized one atomic Q2
+> finalization revision, and that revision released successfully on
+> 2026-07-30 as repository release `0.20.2`: the canonical tag peeled to the
+> finalization revision, the release workflow reached a successful terminal
+> conclusion, and its required evidence upload succeeded. Repository release
+> `0.20.2` carries RFCs 001-021; this tree is `0.20.3` in development and is
+> not itself a release. RFC 024 subsequently retired the one-release
+> conditional apparatus from ordinary post-release development.
 
 ## Phases
 
@@ -42,19 +44,21 @@ this file is a short summary.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, bounded conformance, and cache/trust fixtures (RFCs 010–013, 017).
 
-## Current status (v0.20.2 conditional-finalization tree)
+## Current status (0.20.3 development tree)
 
-RFCs 001-018 are implemented. The current numerical breadth is one
+RFCs 001-021 are implemented. The current numerical breadth is one
 box/bound-constrained projected-first-order family on device and cluster.
 Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
 throughput, or adversarial parity claim is made. Observability is metadata-
 only, the gateway is mock-only, and validation caching is process-local.
-RFCs 019/020/021 are implementation-complete and conditionally staged under
-the exact RFC 021 predicate. Immutable local tag `0.20.1` and its accepted
-evidence remain historical blocked-candidate evidence only. The `0.20.2`
-metadata, apex, lifecycle, index, and release-local prose are one
-conditional state. Repository release `0.20.2` is released and carries RFCs
-001-021; this tree is `0.20.3` in development and is not itself a release.
+RFCs 019/020/021 shipped in repository release `0.20.2`, released 2026-07-30
+under RFC 021's conditional-finalization protocol; immutable local tag
+`0.20.1` and its accepted evidence remain historical blocked-candidate
+evidence only and are never reused. This `0.20.3` tree is in development and
+is not itself a release; it carries RFC 024's ordinary post-release apex
+form, which retires the one-release conditional apparatus and records this
+tree's identity and the release it was last reconciled against (`0.20.2`),
+not release status.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision
@@ -185,6 +189,6 @@ cluster `ValidateAllInputs` baselines; fail-closed cases compare structured
 9. RFC 013 — conformance corpus and numerical parity policy. **Resolved — implemented (v0.18.0); enforced smoke corpus for device/cluster projected-first-order parity, with extended/adversarial placeholders staged.**
 10. RFC 015 — trusted pipeline validation cache. **Resolved — implemented (v0.19.0); cluster-only model identity, mutation epochs, validation evidence cache, and carrier-only cached `f64` projected-first-order solving, with fail-closed mutation epochs.**
 11. RFC 017 — trusted/cache conformance fixtures. **Resolved — implemented (v0.20.0); enforced smoke fixtures now cover RFC 015 validation-cache hit/miss, stale trust, scan-retention, and cache-insert rejection behavior.**
-12. RFC 019 — release integrity and MSRV recovery. **Implemented (conditional finalization for 0.20.2) — release gates and package evidence are complete locally but remain subject to RFC 021's exact external predicate.**
-13. RFC 020 — normative documentation authority and currency. **Implemented (conditional finalization for 0.20.2) — reconciliation is staged in the exact Q2 tree; stored state does not prove external activation.**
-14. RFC 021 — conditional release finalization. **Implemented (conditional finalization for 0.20.2) — Q2 tree preparation is authorized; exact local/tagged evidence and every release action remain separately gated.**
+12. RFC 019 — release integrity and MSRV recovery. **Resolved — implemented and shipped in `0.20.2` (released 2026-07-30); release gates and package evidence closed under RFC 021's protocol.**
+13. RFC 020 — normative documentation authority and currency. **Resolved — implemented and shipped in `0.20.2`; the apex trio reconciliation is current, and RFC 024 keeps it current across ordinary post-release development.**
+14. RFC 021 — conditional release finalization. **Resolved — implemented and shipped in `0.20.2`; the conditional-finalization protocol released successfully, and RFC 024 retires its apparatus from ordinary development going forward.**

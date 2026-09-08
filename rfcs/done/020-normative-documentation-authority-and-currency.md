@@ -1,6 +1,6 @@
 # RFC 020 - Normative Documentation Authority and Currency
 
-**Status.** Implemented (conditional finalization for 0.20.2)
+**Status.** Implemented (v0.20.2)
 **Design approval.** Independent architecture R0 re-review accepted; project owner authorized R0.5 activation on 2026-07-15.
 **Tracks.** Architecture recovery milestones R0-R2; audit blocker B4 and documentation findings N1, N2, and N6.
 **Touches.** `docs/specs/`, `docs/src/`, `README.md`, `ROADMAP.md`, crate READMEs, `rfcs/README.md`, changelog cross-references, and documentation consistency checks.
@@ -494,14 +494,19 @@ architecture review, and a separate project-owner decision.
 
 ## 20. RFC 021 conditional finalization for 0.20.2
 
-RFC 020 is now implementation-complete and staged with RFCs 019/021 in `done/`
-under the exact tracked `0.20.2` conditional metadata. The apex trio carries
-one canonical RFC 021 block: before external predicate `P` succeeds it is a
-non-current release-finalization candidate, and stored documentation or
-lifecycle state does not prove activation.
+RFC 020 was staged with RFCs 019/021 in `done/` under the exact tracked
+`0.20.2` conditional metadata. The apex trio carried one canonical RFC 021
+block: before external predicate `P` succeeded it was a non-current
+release-finalization candidate, and stored documentation or lifecycle state
+did not by itself prove activation.
 
-The atomic Q2 tree still requires one exact clean revision, complete local and
-intended-tag evidence, and architecture acceptance. Tag creation, tag-bound
-evidence, release Go, owner distribution authorization, successful
-distribution, publication, certification, and actual release remain later
-separately gated actions.
+The atomic Q2 tree required one exact clean revision, complete local and
+intended-tag evidence, and architecture acceptance — all completed. Tag
+creation, tag-bound evidence, release Go, owner distribution authorization,
+and successful distribution followed.
+
+**Resolution (2026-07-30).** Repository release `0.20.2` released
+successfully under RFC 021's protocol, carrying RFCs 001-021. RFC 024
+subsequently retired the conditional-finalization apparatus from ordinary
+post-release development; publication, GitHub release, and certification
+remain separately authorized and have not been sought.

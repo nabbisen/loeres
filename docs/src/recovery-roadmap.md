@@ -1,8 +1,12 @@
 # Architecture Recovery Roadmap
 
-Status: Accepted recovery plan following the independent architecture audit and
-R0 design freeze dated 2026-07-15. R0.5 lifecycle activation is complete; this
-document does not claim that the R1/R2 blockers are already resolved.
+Status: Recovery plan following the independent architecture audit and R0
+design freeze dated 2026-07-15. R0.5 lifecycle activation, R1 corrective
+implementation, and R2 release evidence closure are complete: repository
+release `0.20.2` shipped 2026-07-30 under RFC 021's protocol, carrying RFCs
+001-021. This document is retained as the historical record of the recovery
+program and its milestones; RFC 024 subsequently retired the R2-era
+one-release conditional apparatus from ordinary post-release development.
 
 ## Purpose
 
@@ -180,8 +184,10 @@ individually after R0 review rather than combined into one unreviewable program.
 
 ## Milestone R4 — Next public capability
 
-No new solver family, public modeling surface, real FFI adapter, or edge/cluster
-public API expansion may enter implementation before R2 closes. The next
+R2 closed 2026-07-30 (`0.20.2` released), satisfying this milestone's entry
+criterion. No new solver family, public modeling surface, real FFI adapter, or
+edge/cluster public API expansion may enter implementation without a
+separately approved capability RFC — none has been approved yet. The next
 capability RFC must state:
 
 - the user problem and non-goals;
@@ -212,22 +218,27 @@ completed on 2026-07-15. The R1 corrective implementation, RFC 020 S1-S5
 reconciliation, and RFC 019 S1-S5 gate baseline are owner-durable.
 Architecture review 024 accepted the non-publishing tagged
 source/package/clean-extraction evidence for canonical tag `0.20.1` at
-`ed282545...`, but RFC 021 later classified that immutable local tag as an
-unpublished blocked candidate. Reviews 031/032 accepted RFC 021 S1/S2, and
-the project owner authorized one atomic Q2 revision for `0.20.2`. That exact
-tree carries active conditional metadata, the canonical apex block, and all
-three RFCs conditionally staged in `done/`. Repository release `0.20.2` is
-released and carries RFCs 001-021; this tree is `0.20.3` in development and
-is not itself a release. RFC 019 S2 began as a fail-closed candidate/package
-skeleton. The completed gate now separates the developer aggregate from
-`release-gate`, validates candidate metadata and a commit-derived regular-
-file manifest, constructs and checks the root-layout archive, verifies
-extracted Git-object content/modes, and repeats the applicable suite in a
-clean extraction. The accepted tagged evidence proves the immutable
-candidate; it does not itself certify or publish a release. RFC 019 S3
-aligns CI, the exact MSRV workflow, and the non-publishing release workflow
-with the accepted command profiles. The release selector uses the canonical
-unprefixed tag family, action references are full reviewed SHAs, and mdBook
-is pinned to 0.5.4. The workflow may retain successful gate evidence but
-still has no publication or GitHub-release step; certification is separately
-authorized.
+`ed282545...`, but RFC 021 later classified that immutable local tag as a
+permanently blocked, unpublished candidate (audit blocker B6). Reviews
+031/032 accepted RFC 021 S1/S2, the project owner authorized one atomic Q2
+revision for `0.20.2`, and that exact tree released successfully on
+2026-07-30: the canonical tag `0.20.2` peeled to the finalization revision,
+the release workflow reached a successful terminal conclusion, and its
+required evidence upload succeeded. Repository release `0.20.2` carries RFCs
+001-021. RFC 024 subsequently retired the one-release conditional apparatus:
+the apex trio now records this tree's identity and the release it was last
+reconciled against, never release status, so no post-tag documentation edit
+is needed for future releases either. RFC 019 S2 began as a fail-closed
+candidate/package skeleton. The completed gate separates the developer
+aggregate from `release-gate`, validates candidate metadata and a
+commit-derived regular-file manifest, constructs and checks the root-layout
+archive, verifies extracted Git-object content/modes, and repeats the
+applicable suite in a clean extraction. The accepted tagged evidence proved
+the immutable candidate; it did not itself certify or publish a release —
+that step, RFC 021's owner-authorized `D_release` bundle, is what completed
+2026-07-30. RFC 019 S3 aligned CI, the exact MSRV workflow, and the
+non-publishing release workflow with the accepted command profiles. The
+release selector uses the canonical unprefixed tag family, action references
+are full reviewed SHAs, and mdBook is pinned to 0.5.4. The workflow retains
+successful gate evidence but has no publication or GitHub-release step;
+certification remains separately authorized and has not been sought.

@@ -13,6 +13,12 @@ mod package;
 
 /// The single reviewed remote to which a canonical tag may be published
 /// (RFC 021 §7 "authoritative release remote"; retained by RFC 024).
+///
+/// Changing this value is an architecture-reviewed governance change, not a
+/// routine refactor: RFC 021 §7 required ambiguity about the release remote
+/// to fail closed, and moving this out of reviewed metadata into a tracked
+/// code constant (RFC 024) preserves that only if edits to it get the same
+/// review weight as any other release-governance change.
 const AUTHORITATIVE_REMOTE: &str = "origin";
 
 pub fn run_developer() -> bool {
@@ -281,27 +287,31 @@ fn validate_intended_tag(tag: &str, version: &str) -> Result<CandidateRef, Strin
     // RFC 024: the preflight no longer depends on one-release conditional
     // metadata. Every RFC 021 §7 property is preserved, sourced from the
     // ordinary apex block and the workspace manifest instead.
-    let last_released = doc_currency::ordinary_last_released()?;
-    validate_intended_binding(tag, version, &last_released)?;
+    let last_reconciled = doc_currency::ordinary_last_reconciled_release()?;
+    validate_intended_binding(tag, version, &last_reconciled)?;
 
     require_local_tag_absent(tag)?;
     require_remote_tag_absent(AUTHORITATIVE_REMOTE, tag)?;
     Ok(CandidateRef::IntendedTag(tag.to_owned()))
 }
 
-fn validate_intended_binding(tag: &str, version: &str, last_released: &str) -> Result<(), String> {
+fn validate_intended_binding(
+    tag: &str,
+    version: &str,
+    last_reconciled: &str,
+) -> Result<(), String> {
     let intended = parse_stable_version(tag)?;
     if tag != version {
         return Err(format!(
             "intended tag `{tag}` does not match workspace version `{version}`"
         ));
     }
-    let released = parse_stable_version(last_released).map_err(|error| {
-        format!("apex last-released `{last_released}` is not a canonical version: {error}")
+    let reconciled = parse_stable_version(last_reconciled).map_err(|error| {
+        format!("apex last-reconciled `{last_reconciled}` is not a canonical version: {error}")
     })?;
-    if intended <= released {
+    if intended <= reconciled {
         return Err(format!(
-            "intended tag `{tag}` does not advance past last released `{last_released}`"
+            "intended tag `{tag}` does not advance past last reconciled release `{last_reconciled}`"
         ));
     }
     Ok(())

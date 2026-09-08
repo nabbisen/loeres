@@ -1,10 +1,11 @@
 # RFC 019 - Implementation Handoff
 
 **RFC.** [`019-release-integrity-and-msrv-recovery.md`](../../done/019-release-integrity-and-msrv-recovery.md)
-**Handoff state.** Implemented (conditional finalization for 0.20.2).
-**Target.** Exact `0.20.2` conditional-finalization bytes. Immutable local tag
-`0.20.1` is historical, unpublished blocked-candidate evidence and is never
-moved or reused.
+**Handoff state.** Implemented (v0.20.2). Shipped 2026-07-30 under RFC 021's
+conditional-finalization protocol, described below as executed.
+**Target.** Repository release `0.20.2`. Immutable local tag `0.20.1` is
+historical, unpublished blocked-candidate evidence and is never moved or
+reused.
 
 Repository release `0.20.2` is released and carries RFCs 001-021; this tree
 is `0.20.3` in development and is not itself a release.

@@ -37,15 +37,13 @@ remained **v0.20.0**. Recovery implementation after that release was described
 separately and could not be represented as shipped. At that time, the project
 owner had not selected or authorized a corrective release version.
 
-**Current candidate state (2026-07-22).** Immutable local tag `0.20.1` is a
-blocked unpublished candidate under RFC 021. The project owner selected
-**0.20.2**; reviews 031/032 accepted S1/S2 and the owner authorized one
-atomic Q2 finalization revision. The apex trio now carries the identical
-canonical RFC 021 conditional block, and RFCs 019/020/021 are
-implementation-complete and conditionally staged in `done/` under the
-tracked metadata. Repository release `0.20.2` is released and carries RFCs
-001-021; this tree is `0.20.3` in development and is not itself a release.
-This annotation changes no runtime semantics or public API.
+**Candidate state as recorded 2026-07-22 (superseded — see §9).** Immutable
+local tag `0.20.1` was a blocked unpublished candidate under RFC 021. The
+project owner had selected **0.20.2**; reviews 031/032 accepted S1/S2 and the
+owner authorized one atomic Q2 finalization revision. At that stage the apex
+trio carried the identical canonical RFC 021 conditional block, and RFCs
+019/020/021 sat in `done/` awaiting the tracked metadata's activation
+predicate. This annotation changed no runtime semantics or public API.
 
 ## 2. Requirements-section coverage
 
@@ -205,8 +203,17 @@ was accepted:
    S3/S4, but do not mark the apex trio current until those supporting changes
    are consistent.
 
-The later owner-selected `0.20.2` finalization supersedes only item 1's
-historical version marker. The apex trio now consistently carries RFC 021's
-conditional block, while RFCs 019/020/021 are conditionally staged. Predicate
-`P`, rather than tracked state, determines whether these bytes are non-current
-or activated.
+The later owner-selected `0.20.2` finalization superseded only item 1's
+historical version marker. At that S2 stage the apex trio consistently carried
+RFC 021's conditional block, while RFCs 019/020/021 were conditionally staged
+pending predicate `P`.
+
+## 9. Final disposition (2026-07-30, recorded 2026-07-31)
+
+Predicate `P` succeeded 2026-07-30: repository release `0.20.2` released
+under RFC 021's protocol, carrying RFCs 001-021. RFC 024 subsequently retired
+the RFC 021 conditional apparatus from ordinary post-release development; the
+apex trio now records this tree's identity and the release it was last
+reconciled against, not a conditional predicate. Every section above this one
+remains the dated historical record of the S1/S2 reconciliation and is not
+rewritten to match this outcome.

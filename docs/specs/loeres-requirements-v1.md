@@ -5,13 +5,13 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted v1; RFC 021 conditional release-finalization state for 0.20.2
+**Status:** Accepted v1; current for repository release 0.20.3
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Release currency metadata.**
-> Last released repository release: **0.20.2**.
-> This tree: **0.20.3** (unreleased).
+> This tree: **0.20.3**.
+> Last reconciled repository release: **0.20.2**.
 > Implemented scope: **RFCs 001-021**.
 >
 > The implemented baseline includes the core contracts, static storage and the
@@ -21,11 +21,12 @@
 > caching, target-profile evidence classes, and bounded conformance fixtures.
 > It does **not** include broad LP/QP/SOCP solver parity, a concrete native
 > adapter, a persistent/distributed cache, universal bitwise determinism, or
-> broad throughput/large-N/multi-tenant stress evidence. The RFC 019 release
-> package gate follows RFC 021's conditional boundary.
+> broad throughput/large-N/multi-tenant stress evidence. RFC 024 retired the
+> RFC 021 conditional apparatus after `0.20.2` shipped; the release package
+> gate now uses the ordinary steady-state form.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
+tree is `0.20.3` in development and is not itself a release.
 
 ---
 
@@ -1119,9 +1120,9 @@ solver family, not the broad family list in §5.4.3.
 
 Baseline implementation proceeds only for items backed by accepted requirements
 and RFCs. RFCs 001-018 provide the shipped v0.20.0 baseline across all five
-crates. RFCs 019/020/021 are implementation-complete and conditionally staged
-for `0.20.2`; before external predicate `P` succeeds they do not expand shipped
-scope or the runtime surface.
+crates. RFCs 019/020/021 are implemented and shipped in `0.20.2`; they are
+release-integrity, documentation-authority, and release-governance recovery
+work and do not expand the runtime surface.
 
 Possible baseline implementation scope:
 

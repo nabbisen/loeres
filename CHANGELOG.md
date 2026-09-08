@@ -5,7 +5,27 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.20.3] — unreleased — RFC 024 Amendment 1: post-release documentation steady state
+
+**Release status:** unreleased
+
+This tree corrects RFC 024's documentation-currency checker (blockers B1-B4
+and N1/N2 from review 036/re-review 037; see the RFC 024 developer handoff).
+`doc-currency` now recognizes one permanent post-release apex form instead of
+a one-release conditional mode: the apex block records this tree's identity
+and the release this documentation was last reconciled against, never release
+status (Amendment 1 §0.1), and the implemented-scope field binds the exact
+`rfcs/done/` set rather than a hard-coded or highest-number-derived range
+(Amendment 1 §0.2). Every current-facing claim that the RFC 021 conditional
+apparatus is still active or pending has been retired; the protocol's history
+remains, described as history. `CHANGELOG.md` release-status markers now give
+`doc-currency` a machine-checkable ground truth for which past version a
+lineage claim may name. No runtime crate source, public API, feature,
+dependency boundary, solver behavior, or release workflow changed.
+
 ## [0.20.2] — 2026-07-22 — RFC 021 conditional finalization
+
+**Release status:** released (tagged 2026-07-22, distributed 2026-07-30)
 
 Version 0.20.2 uses RFC 021's exact conditional-finalization state.
 Repository release `0.20.2` is released and carries RFCs 001-021; this tree
@@ -41,13 +61,20 @@ is `0.20.3` in development and is not itself a release.
 
 ## [0.20.1] — 2026-07-17 — RFC 019/RFC 020 architecture recovery (candidate)
 
-Version 0.20.1 is a tagged corrective candidate and remains No-Go for
-release/readiness claims pending joint S6/R2 closeout review and the separate
-project-owner release decision. These changes are documentation and
-release-integrity recovery work; they do not change runtime crate APIs, solver
-semantics, features, publication, or package approval. The immutable tag
-contains revision `ed282545...`; this closeout-preparation wording is post-tag
-governance state and is not part of that archive.
+**Release status:** withdrawn candidate
+
+Version 0.20.1 is an immutable tagged corrective candidate that was never
+published. Joint S6/R2 closeout review found its own tagged bytes said
+release-readiness was No-Go and RFCs 019/020 were Accepted and unshipped, so
+it could never honestly be called the finished release (audit blocker B6);
+RFC 021 formally classified it as a permanently blocked, unpublished
+candidate, and `0.20.2` shipped as the corrected release under RFC 021's
+conditional-finalization protocol instead. These changes are documentation
+and release-integrity recovery work; they do not change runtime crate APIs,
+solver semantics, features, publication, or package approval. The immutable
+tag contains revision `ed282545...`; this closeout-preparation wording is
+post-tag governance state and is not part of that archive. `0.20.1` must
+never be moved, reused, pushed, or treated as a release.
 
 ### Documentation reconciliation
 
@@ -56,8 +83,9 @@ governance state and is not part of that archive.
   RFC 020 currency marker explicitly draft. Corrected supporting documents and
   semantic checks and the S5 integrated baseline are owner-durable. Architecture
   review 024 accepted the clean tagged source/package/clean-extraction evidence
-  for canonical tag `0.20.1` at `ed282545...`; S6/R2 closeout and the owner
-  release decision remain pending.
+  for canonical tag `0.20.1` at `ed282545...`; S6/R2 closeout later found that
+  evidence insufficient for release (blocker B6) and the owner authorized the
+  RFC 021 conditional-finalization protocol that shipped `0.20.2` instead.
 - Updated supporting threat/security, recovery, root/crate, RFC-index, book,
   and manifest-comment surfaces to distinguish implemented controls from
   narrow evidence, residual risk, and future work.

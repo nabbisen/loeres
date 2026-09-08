@@ -1,13 +1,13 @@
 # Loeres External Design Specification v1
 
-Status: Accepted v1; RFC 021 conditional release-finalization state for 0.20.2
+Status: Accepted v1; current for repository release 0.20.3
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
 > **Release currency metadata.**
-> Last released repository release: **0.20.2**.
-> This tree: **0.20.3** (unreleased).
+> This tree: **0.20.3**.
+> Last reconciled repository release: **0.20.2**.
 > Implemented scope: **RFCs 001-021**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
@@ -16,11 +16,12 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > validation evidence caching. It does not ship broad dynamic LP/QP/SOCP model
 > builders, a concrete native solver adapter, a persistent/distributed cache, or
 > broad throughput/large-N/multi-tenant stress evidence. Target and conformance
-> evidence are scoped as described below. RFC 019 release packaging follows
-> RFC 021's conditional boundary.
+> evidence are scoped as described below. RFC 024 retired the RFC 021
+> conditional apparatus after `0.20.2` shipped; RFC 019 release packaging now
+> uses the ordinary steady-state form.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
+tree is `0.20.3` in development and is not itself a release.
 
 ---
 
@@ -1383,11 +1384,10 @@ access expensive. *(Design finalized in v0.6.1; implemented in v0.7.0.)*
 
 ## 7. RFC Roadmap Derived from This External Design
 
-RFCs 001-018 were implemented and shipped through v0.20.0. RFCs 019/020/021 are
-implementation-complete and conditionally staged for `0.20.2`. Their stored
-lifecycle paths are not proof of which RFC 021 predicate branch applies. The
-detailed roadmap is normative for sequencing/status and records historical
-departures.
+RFCs 001-018 were implemented and shipped through v0.20.0. RFCs 019/020/021
+are implemented and shipped in `0.20.2`, which released 2026-07-30 under RFC
+021's conditional-finalization protocol. The detailed roadmap is normative for
+sequencing/status and records historical departures.
 
 | RFC range | Implemented external-design contribution |
 |---|---|
@@ -1398,7 +1398,7 @@ departures.
 | 012-013 | Validation vocabulary and bounded cross-layer conformance fixtures. |
 | 015-017 | Process-local validation cache, one dynamic PFO kernel, and cache/trust conformance. |
 | 018 | Cluster solve test maintainability; no public design change. |
-| 019-021 | Conditional `0.20.2` finalization: release integrity, normative documentation currency, and fail-closed release sequencing; stored state does not prove external activation. |
+| 019-021 | Shipped `0.20.2` finalization: release integrity, normative documentation currency, and fail-closed release sequencing under RFC 021's conditional-finalization protocol. |
 
 ### 7.1 Milestone 1: Core and Mathematical Interfaces
 
@@ -1507,7 +1507,9 @@ The device side is static, explicit, bounded, no-alloc, and panic-averse.
 
 The core side is mathematical, storage-free, no-alloc, and capability-oriented.
 
-RFCs 001-018 form the historical shipped v0.20.0 baseline. RFCs 019/020/021 are
-implementation-complete and conditionally staged for `0.20.2` under RFC 021.
-The before-`P`/after-`P` boundary at the top of this specification governs
-these same immutable bytes without a post-tag documentation edit.
+RFCs 001-018 form the historical shipped v0.20.0 baseline. RFCs 019/020/021
+shipped in `0.20.2` under RFC 021's conditional-finalization protocol, which
+released 2026-07-30. RFC 024 retires that protocol's apparatus from ordinary
+development: the currency block at the top of this specification records this
+tree's identity and the release it was last reconciled against, not release
+status, so it stays true without a post-tag edit.

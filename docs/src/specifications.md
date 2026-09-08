@@ -11,14 +11,13 @@ contributors edit those documents directly; readers can browse them here.
 
 ## Specifications (`docs/specs/`)
 
-> **Currency warning.** The apex trio carries RFC 021's exact conditional
-> release-finalization block for `0.20.2`. Metadata and RFC 019/020/021
-> lifecycle state are staged atomically, but stored repository state does
-> not prove external activation. Repository release `0.20.2` is released and
-> carries RFCs 001-021; this tree is `0.20.3` in development and is not
-> itself a release. On conflict, stop affected public-boundary work rather
-> than silently choosing code or prose. See the [Architecture Recovery
-> Roadmap](recovery-roadmap.md).
+> **Currency notice.** The apex trio carries RFC 024's ordinary post-release
+> block: this tree's identity and the release this documentation was last
+> reconciled against, never release status. Repository release `0.20.2`
+> shipped 2026-07-30 and carries RFCs 001-021; this tree is `0.20.3` in
+> development and is not itself a release. On conflict, stop affected
+> public-boundary work rather than silently choosing code or prose. See the
+> [Architecture Recovery Roadmap](recovery-roadmap.md).
 
 - Requirements (release-local): `docs/specs/loeres-requirements-v1.md`
   ([moving-branch navigation](https://github.com/nabbisen/loeres/blob/main/docs/specs/loeres-requirements-v1.md)).
@@ -35,9 +34,9 @@ contributors edit those documents directly; readers can browse them here.
 - RFC lifecycle policy (release-local):
   `rfcs/done/000-rfc-lifecycle-policy.md`
   ([moving-branch navigation](https://github.com/nabbisen/loeres/blob/main/rfcs/done/000-rfc-lifecycle-policy.md)).
-- Conditionally staged recovery/finalization RFCs (release-local):
-  `rfcs/done/` — RFC 019, RFC 020, and RFC 021 use RFC 021's exact conditional
-  Status; their paths do not prove external activation.
+- Recovery and release-finalization RFCs (release-local): `rfcs/done/` — RFC
+  019, RFC 020, and RFC 021 are implemented and shipped in repository release
+  `0.20.2`.
 - [Accepted RFCs on the moving development branch](https://github.com/nabbisen/loeres/tree/main/rfcs/accepted)
   — navigation only; use the release-local path for normative review.
 - [Proposed RFCs](https://github.com/nabbisen/loeres/tree/main/rfcs/proposed) — review-active designs; none currently.

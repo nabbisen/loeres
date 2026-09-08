@@ -1,11 +1,13 @@
 # RFC 021 - Conditional Release Finalization Handoff
 
 **RFC.** [`021-conditional-release-finalization.md`](../../done/021-conditional-release-finalization.md)
-**Handoff state.** Implemented (conditional finalization for 0.20.2).
+**Handoff state.** Implemented (v0.20.2). The conditional-finalization
+protocol defined here released `0.20.2` successfully on 2026-07-30, described
+below as executed.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this tree
 is `0.20.3` in development and is not itself a release.
 
 ## 1. Summary

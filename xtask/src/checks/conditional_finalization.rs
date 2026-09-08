@@ -1,9 +1,13 @@
 //! Bounded RFC 021 conditional-release metadata and predicate validation.
 //!
-//! The tracked metadata file is intentionally optional before RFC 021 S2. If
-//! it exists, every field is fail-closed and bound to the one reviewed
-//! `0.20.2` correction. Repository bytes can describe a candidate, but they
-//! can never prove that the external distribution predicate became true.
+//! `0.20.2` released under this protocol on 2026-07-30. RFC 024 retires the
+//! one-release apparatus from the steady-state gate path (§11.3): the
+//! metadata file no longer exists, and nothing in `doc-currency` or
+//! `release-gate`'s ordinary path calls into this module. It is retained,
+//! unmodified, as the implemented record of RFC 021 and its own test suite,
+//! not as active machinery. `check_conditional_finalization` in
+//! `check_rfcs.rs` still calls `load_optional`/`validate_lifecycle`; both are
+//! no-ops once the metadata file is absent, which is the steady state.
 
 use std::collections::BTreeSet;
 use std::fs;
@@ -13,6 +17,10 @@ use serde::Deserialize;
 
 pub(crate) const METADATA_PATH: &str = "release/conditional-finalization.toml";
 pub(crate) const CONDITIONAL_STATUS: &str = "Implemented (conditional finalization for 0.20.2)";
+/// Retained as the historical record of the RFC 021 apex marker text; no
+/// longer referenced outside this module now that RFC 024 retires the
+/// conditional apex form from the active gate path.
+#[allow(dead_code)]
 pub(crate) const APEX_MARKER: &str = "**RFC 021 conditional release-finalization metadata.**";
 
 const EXPECTED_SCHEMA_VERSION: u32 = 1;

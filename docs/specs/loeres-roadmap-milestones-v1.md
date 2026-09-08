@@ -1,23 +1,24 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted v1; RFC 021 conditional release-finalization state for 0.20.2
+Status: Accepted v1; current for repository release 0.20.3
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
 > **Release currency metadata.**
-> Last released repository release: **0.20.2**.
-> This tree: **0.20.3** (unreleased).
+> This tree: **0.20.3**.
+> Last reconciled repository release: **0.20.2**.
 > Implemented scope: **RFCs 001-021**.
 >
 > Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
 > dense/CSR storage, orchestration, one dynamic projected-first-order kernel,
 > metadata-only observability, a safe mock gateway seam, and process-local
 > validation caching. Cross-layer conformance is an enforced bounded smoke
-> corpus, not broad numerical parity. RFC 019 release packaging follows RFC
-> 021's conditional boundary.
+> corpus, not broad numerical parity. RFC 024 retired the RFC 021 conditional
+> apparatus after `0.20.2` shipped; RFC 019 release packaging now uses the
+> ordinary steady-state form.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
+tree is `0.20.3` in development and is not itself a release.
 
 ---
 
@@ -42,7 +43,7 @@ is `0.20.3` in development and is not itself a release.
 | RFC 015 — validation evidence cache | Implemented since v0.19.0 | Model identity/mutation epoch cache; process-local only; per-call and hot-loop checks remain. |
 | RFC 016 — dynamic PFO kernel | Implemented since v0.14.0 | One box/bound-constrained projected-first-order cluster kernel; no generic LP/QP/SOCP surface. |
 | RFC 018 — cluster solve test split | Implemented in v0.20.0 | Maintainability-only; no public behavior change. |
-| RFC 019/020/021 — recovery and conditional finalization | Implemented (conditional finalization for 0.20.2) | The same bytes are non-current before `P` and the activated 0.20.2 release after `P`; tracked state cannot establish which branch applies. |
+| RFC 019/020/021 — recovery and release finalization | Implemented; shipped in 0.20.2 (released 2026-07-30) | Release-integrity/MSRV recovery, normative documentation currency, and the RFC 021 conditional-finalization protocol that shipped this release. RFC 024 retires that protocol's apparatus from ordinary post-release development. |
 
 ## 0. Purpose and Roadmap Principle
 
@@ -1038,14 +1039,17 @@ A release candidate may be cut only when:
 - documentation describes the split between cluster and device without suggesting runtime mode switching;
 - any public `v1.0` or stability release has explicit project owner approval.
 
-**Current recovery disposition: conditional.** Review 024 accepted tag-bound
+**Current recovery disposition: complete.** Review 024 accepted tag-bound
 evidence for immutable local candidate `0.20.1` at `ed282545...`; RFC 021 later
-blocked that artifact from release. Reviews 031/032 accepted S1/S2, and the
-project owner authorized the atomic `0.20.2` Q2 finalization revision.
-Conditional metadata, apex, lifecycle, index, and release-local state are held
-together. The before-`P`/after-`P` boundary at the top of this specification
-governs these same bytes; developer or local candidate checks do not establish
-which branch applies.
+blocked that artifact from release (audit blocker B6). Reviews 031/032 accepted
+S1/S2, the project owner authorized the atomic `0.20.2` Q2 finalization
+revision, and that revision released successfully on 2026-07-30 under RFC
+021's protocol: the canonical tag peeled to the finalization revision, the
+release workflow reached a successful terminal conclusion, and the required
+evidence upload succeeded. RFC 024 subsequently retired the one-release
+conditional apparatus from ordinary development; the currency block at the top
+of this specification now records lineage, not release status, and needs no
+post-tag edit going forward.
 
 ### 5.10 Roadmap Completion Matrix
 
@@ -1056,7 +1060,7 @@ which branch applies.
 | Phase 2 | Device | RFC 004, 005, 006 | Device solver runs on selected no-std target with zero-bleed and size gates passing. | ✅ complete — RFC 004 (v0.8.0) / 005 (v0.9.0) / 006 (v0.10.0, hardened v0.10.1); kernel runs on `thumbv7em-none-eabihf` under test; zero-bleed, `no-std`, and `panic-audit` gates pass; footprint evidence recorded (RFC 006 §7.1) |
 | Phase 3 | Cluster | RFC 007, 008, 009, 012, 015, 016 | Dynamic backend, one cluster kernel, orchestration, cache, observation, and dependency isolation exist; broad scale/isolation/native-adapter criteria remain. | ◐ partially complete through v0.20.0 |
 | Integration | Cross-layer verification | RFC 013, 017 and `xtask` gates | Bounded device/cluster PFO and cache/trust fixtures preserve separation; broad parity remains future. | ◐ bounded smoke baseline implemented through v0.20.0 |
-| Recovery | Release integrity, documentation currency, and conditional finalization | RFC 019, 020, 021 | Package gate, normative currency, lifecycle, and RFC 021 evidence close under the reviewed predicate. | Conditional: non-current before `P`; activated 0.20.2 after `P`; tracked state is not predicate evidence. |
+| Recovery | Release integrity, documentation currency, and release finalization | RFC 019, 020, 021 | Package gate, normative currency, lifecycle, and RFC 021 evidence closed under the reviewed predicate. | ✅ complete — `0.20.2` released 2026-07-30; RFC 024 retired the conditional apparatus from ordinary development. |
 
 ---
 
@@ -1071,9 +1075,9 @@ R2. No public capability expansion may enter implementation before R2 closes.
 | R0 — design freeze | Audit blockers classified | RFC 019/RFC 020 define bounded recovery, gates, rollback, and handoffs | Complete: independent architecture review accepted both designs. |
 | R0.5 — lifecycle activation | R0 accepted and owner authorizes transition | Five-folder lifecycle, `accepted/`, index/link/tool agreement | Complete: both recovery RFCs are durably Accepted. |
 | R1 — corrective baseline | R0.5 complete | Exact Rust 1.85 repair, release-gate skeleton, traceability matrix, atomic documentation reconciliation, semantic currency checks | Complete: integrated revision `525b5fd` and local evidence accepted by review 021; runtime APIs/solver semantics unchanged. |
-| R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | RFC 021 conditional state: the same bytes are non-current before `P` and activated after `P`; tracked state alone cannot select the branch. |
+| R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | Complete: `0.20.2` released 2026-07-30 under RFC 021's conditional-finalization protocol; canonical tag, successful workflow, and evidence upload observed. |
 | R3 — assurance expansion | R1 baseline settled; each candidate separately reviewed | Optional follow-on RFCs for enforced budgets/portability, supply chain/stress, wider numerical conformance, and maintainability | Candidate scope only; not approved implementation. |
-| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Blocked by R2; no capability is selected. |
+| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Entry criterion satisfied (R2 closed); no capability RFC has been separately approved. |
 
 R1 exit requires audit blockers B1-B4 corrected, exact MSRV/stable/docs gates
 observed, current public names and RFC status consistent, no contradicted

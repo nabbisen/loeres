@@ -1,11 +1,13 @@
 # RFC 020 - Implementation Handoff
 
 **RFC.** [`020-normative-documentation-authority-and-currency.md`](../../done/020-normative-documentation-authority-and-currency.md)
-**Handoff state.** Implemented (conditional finalization for 0.20.2).
-**Target.** Exact `0.20.2` conditional-finalization bytes with RFC 019/RFC 021.
+**Handoff state.** Implemented (v0.20.2). Shipped 2026-07-30 with RFC 019/RFC
+021 under RFC 021's conditional-finalization protocol, described below as
+executed.
+**Target.** Repository release `0.20.2` with RFC 019/RFC 021.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
+tree is `0.20.3` in development and is not itself a release.
 
 ## 1. Summary
 

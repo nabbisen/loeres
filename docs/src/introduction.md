@@ -35,6 +35,6 @@ set under `rfcs/`.
 
 Repository release `0.20.2` is released and carries RFCs 001-021; this tree
 is `0.20.3` in development and is not itself a release. Current solver
-breadth is one box/bound-constrained projected-first- order family on device
+breadth is one box/bound-constrained projected-first-order family on device
 and cluster. The gateway is mock-only, validation caching is process-local,
 and conformance is a bounded smoke corpus.

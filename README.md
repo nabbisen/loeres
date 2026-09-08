@@ -79,11 +79,11 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 ## More Detail
 
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — shipped contracts `000`–`018` and conditionally
-  staged RFCs `019`–`021` live in [`rfcs/done/`](rfcs/done/); the latter use
-  RFC 021's exact conditional Status and do not prove activation. Accepted work
-  lives in [`rfcs/accepted/`](rfcs/accepted/) and review-active work in
-  [`rfcs/proposed/`](rfcs/proposed/) when present. See the [RFC index](rfcs/README.md).
+- RFCs: [`rfcs/`](rfcs/) — shipped contracts `000`–`021` live in
+  [`rfcs/done/`](rfcs/done/). Accepted work (design frozen, implementation
+  authorized or in review) lives in [`rfcs/accepted/`](rfcs/accepted/) and
+  review-active work in [`rfcs/proposed/`](rfcs/proposed/) when present. See
+  the [RFC index](rfcs/README.md).
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
 - Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
 - Roadmap & status: [`ROADMAP.md`](ROADMAP.md).

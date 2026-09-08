@@ -1,6 +1,6 @@
 # RFC 021 - Conditional Release Finalization
 
-**Status.** Implemented (conditional finalization for 0.20.2)
+**Status.** Implemented (v0.20.2)
 **Design approval.** Independent architecture review 027 accepted; project
 owner authorized Q0.5/S0.5 and S1 on 2026-07-18, S2 on 2026-07-22, and the
 atomic Q2 finalization revision on 2026-07-22 after reviews 031/032.
