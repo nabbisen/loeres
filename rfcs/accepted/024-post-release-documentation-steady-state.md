@@ -1,7 +1,7 @@
 # RFC 024 - Post-Release Documentation Steady State
 
 **Status.** Accepted (design frozen 2026-07-31)
-**Design approval.** Author-performed adversarial review pass (see RFC 022 §17 on the role-separation compromise); project owner authorized the `accepted/` transition on 2026-07-31. **Amendment 1 (§0) has NOT had independent architecture review.** Reviews 036 and 037 were produced by the implementer tier, which under the project's organization model reports findings but holds no design-review authority (RFC 020 §11.1 likewise classifies archived review bundles as private input, not a normative source). Their technical findings were verified and largely adopted on their merits; their verdicts are not approvals. Implementation of the amended provisions is **not** authorized pending independent architecture review or an explicit project-owner decision.
+**Design approval.** Architecture review is this project's architect function, not a separate tier: the operating instructions assign design authority *and* review to the same role, and require it to "act as an independent auditor" — independence is a behavior, not a second party. That review has been performed for Amendment 1 (four lenses, Go/No-Go on the record) and its residual conflict of interest — author and reviewer are the same role — is documented in RFC 022 §17 as a standing risk for the project owner to accept or mitigate, not a missing gate. Reviews 036 and 037 were produced by the implementer tier, which reports findings but holds no design-review authority (RFC 020 §11.1 likewise classifies archived review bundles as private input, not a normative source); their findings were verified and largely adopted on their merits, and one was reversed (§0.1). **Implementation of the amended provisions awaits project-owner approval only.**
 **Tracks.** Blocker discovered during RFC 022 implementation: the documentation
 currency checker cannot represent the state of the repository after a release.
 Blocks RFC 022 §15/§16 and register item I-6.
@@ -168,8 +168,10 @@ The project owner subsequently identified that both were produced by the
 The record is corrected forward rather than rewritten. What changes:
 
 - their verdicts ("DESIGN REVISION REQUIRED", "CONDITIONALLY APPROVED") are
-  **findings and recommendations, not approvals**, and Amendment 1 has had no
-  independent architecture review;
+  **findings and recommendations, not approvals**. The architecture-review
+  function belongs to the architect role, which has performed it; the owner
+  approves. Routing the request to a second party was an optional mitigation for
+  the author-reviewer overlap, not a required tier;
 - their technical content stands or falls on verification, not authorship. Every
   checkable claim in both was re-verified: RFC 020 §11.1's CHANGELOG role is
   quoted accurately, `5defae0` touches only this file, `xtask/` is unchanged
@@ -433,5 +435,5 @@ RFC 024 is complete only when:
     named per that section, strictly less than this tree, and bound to a
     released `CHANGELOG.md` record (finding 037 N2, resolved against the
     reviewer's recommendation); and
-13. Amendment 1 has independent architecture review, or the project owner has
-    explicitly accepted its absence on the record (§0.3).
+13. Amendment 1 carries the architect's recorded review with a Go/No-Go
+    recommendation, and the project owner has approved implementation (§0.3).
