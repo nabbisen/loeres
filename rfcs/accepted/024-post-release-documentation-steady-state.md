@@ -1,7 +1,7 @@
 # RFC 024 - Post-Release Documentation Steady State
 
 **Status.** Accepted (design frozen 2026-07-31)
-**Design approval.** Author-performed adversarial review pass (see RFC 022 §17 on the role-separation compromise); project owner authorized the `accepted/` transition on 2026-07-31. Independent architecture review 036 returned DESIGN REVISION REQUIRED against the first implementation; **Amendment 1 (§0)** corrects its two design blockers and was **conditionally approved by independent re-review 037**, whose two textual conditions (N1 canonical rendering, N2 lineage-field meaning) are folded in at §0.1-§0.2. Implementation of the amended provisions is authorized for the **implementer tier**, not for this RFC's author (reviews 036 and 037 both so direct). Closeout evidence returns to independent review.
+**Design approval.** Author-performed adversarial review pass (see RFC 022 §17 on the role-separation compromise); project owner authorized the `accepted/` transition on 2026-07-31. **Amendment 1 (§0) has NOT had independent architecture review.** Reviews 036 and 037 were produced by the implementer tier, which under the project's organization model reports findings but holds no design-review authority (RFC 020 §11.1 likewise classifies archived review bundles as private input, not a normative source). Their technical findings were verified and largely adopted on their merits; their verdicts are not approvals. Implementation of the amended provisions is **not** authorized pending independent architecture review or an explicit project-owner decision.
 **Tracks.** Blocker discovered during RFC 022 implementation: the documentation
 currency checker cannot represent the state of the repository after a release.
 Blocks RFC 022 §15/§16 and register item I-6.
@@ -22,9 +22,12 @@ surfaces.
 
 ## 0. Amendment 1 — 2026-07-31
 
-Independent architecture review 036 returned **DESIGN REVISION REQUIRED** against
-the first implementation of this RFC. Two of its four blockers are defects in
-this frozen design rather than in its implementation. This amendment corrects
+Review 036 returned **DESIGN REVISION REQUIRED** against the first implementation
+of this RFC. It was requested as an independent architecture review and later
+identified as implementer-tier output (§0.3), so its verdict is a finding rather
+than an approval — but its four blockers were reproduced directly and are
+genuine. Two of them are defects in this frozen design rather than in its
+implementation. This amendment corrects
 them. The original text is retained below and updated in place; §0 records what
 changed and why, so the defect and its correction remain legible.
 
@@ -51,11 +54,11 @@ is a new thing to get wrong. It also leaves a `(released)` claim in tracked byte
 
 ```text
 This tree: **0.20.3**
-Preceding released version: **0.20.2**
+Last reconciled repository release: **0.20.2**
 Implemented scope: **RFCs 001-021**
 ```
 
-The invariant becomes **strict**: `this tree > preceding released`, always, with
+The invariant becomes **strict**: `this tree > last reconciled`, always, with
 no mode, no exception, and no authenticated context to establish. Equality is
 never valid in a tracked tree.
 
@@ -67,8 +70,8 @@ That instability is exactly why RFC 021 needed conditional wording, and this RFC
 inherited the problem while claiming to have escaped it.
 
 The amended fields are stable across `P`. "This tree is `0.20.3`" is a fact about
-the bytes. "The preceding released version is `0.20.2`" is a historical fact that
-no later event changes. The tagged artifact stays true forever with no post-tag
+the bytes. "The last reconciled repository release is `0.20.2`" is a fact fixed at
+authoring time that no later distribution changes. The tagged artifact stays true forever with no post-tag
 edit — the property RFC 021 fought for, obtained without its machinery.
 
 The repository therefore makes **no claim about whether this tree's own version
@@ -78,32 +81,46 @@ released is answered by the canonical tag on the authoritative remote and its
 retained workflow evidence, not by a sentence in a specification. `CHANGELOG.md`
 carries the human-readable release narrative.
 
-**The lineage field is an ordering anchor, not a live pointer (re-review 037,
-N2).** `Preceding released version` is hand-asserted and checked only by the
-strict inequality, so it can understate how many releases have occurred — advance
-`this tree` across several real releases without updating it and `0.20.4 >
-0.20.2` still holds. Re-review 037 offered two resolutions: derive it, or narrow
-what it claims. **This RFC narrows it.**
+**The lineage field must remain a currency claim (finding 037-N2, resolved
+against the reviewer's recommendation).** The field as first amended was hand-asserted and checked only by the strict inequality, so it could
+understate how many releases had occurred. Review 037 offered two resolutions —
+derive it, or narrow it to a mere ordering anchor — and preferred narrowing. The
+first amendment adopted that. **It is wrong, and is reversed here.**
 
-The field is an **ordering anchor**: a released version that provably precedes
-this tree. It is not a pointer to the most recent release. `CHANGELOG.md` is
-authoritative for "what shipped and when" — RFC 020 §11.1 already assigns it that
-role — and the canonical tag on the authoritative remote plus its retained
-workflow evidence remain the proof that a release occurred.
+`RFC 020 §11.3` requires that each apex specification state its **last reconciled
+repository release**. That is an unconditional currency obligation from a shipped
+`done/` RFC. A field explicitly permitted to go stale does not satisfy it, so
+narrowing would have silently loosened an earlier accepted constraint — the
+precise thing roadmap §1.5 forbids, and the same defect class as B2. Neither
+review caught this; the reviewer recommended the option that causes it.
 
-Derivation was rejected for a concrete reason the re-review did not have to hand:
-it cannot be done from CHANGELOG headings as they exist. `## [0.20.1]` names a
-version that was tagged, quarantined, and **never released**, and `## [0.20.3]`
-will be added as an unreleased record (review 036, B4). "Most recent heading" is
-therefore already wrong today, and deriving correctly would require introducing a
-machine-readable released/unreleased marker convention in `CHANGELOG.md` — a new
-cross-file contract, which is a design addition rather than the short textual fix
-re-review 037 asked for. It stays available as a future focused RFC if the anchor
-is observed to rot in practice.
+The cost argument for narrowing was also wrong. It held that deriving from
+`CHANGELOG.md` needs a new released/unreleased marker convention, because
+`## [0.20.1]` names a version that was tagged, quarantined, and **never
+released**, so "most recent heading" is wrong today. The premise is correct — but
+review 036's own blocker B4 *already* requires "the correct current/unreleased
+changelog record for `0.20.3`" and a changelog that "cleanly separates released
+`0.20.2` history from unreleased `0.20.3` work." The convention is therefore
+already a required deliverable, and deriving against it is nearly free.
 
-Note also what actually protects against re-releasing a shipped version: the
-local and remote tag-collision checks in the intended-tag preflight, not this
-field. The anchor is defense in depth, and is now described as such.
+**Adopted resolution.** The field takes RFC 020 §11.3's own name and meaning:
+
+```text
+This tree: **0.20.3**
+Last reconciled repository release: **0.20.2**
+Implemented scope: **RFCs 001-021**
+```
+
+It must name a version carried by a `CHANGELOG.md` record marked released, it
+must be strictly less than *this tree*, and `doc-currency` must check both. This
+is stable across `P` in the sense §0.1 requires — "the release this document was
+last reconciled against" is a fact fixed at authoring time that no later
+distribution changes — while satisfying §11.3 by construction and applying B2's
+own diagnosis to the sibling field.
+
+The tag-collision checks in the intended-tag preflight remain the authoritative
+protection against re-releasing a shipped version; this field is defense in depth
+and a currency marker, not the primary guard.
 
 ### 0.2 Implemented scope binds an exact set (review B2)
 
@@ -141,7 +158,29 @@ rendering per set. `{001..018, 021, 024}` renders as `RFCs 001-018, 021, 024`;
 Today's derived value is unchanged (`RFCs 001-021`), so this changes no
 documentation now. It changes what happens the first time an RFC is withdrawn.
 
-### 0.3 The lifecycle exception this amendment exercised
+### 0.3 Provenance correction for reviews 036 and 037
+
+Reviews 036 and 037 were requested as independent architecture reviews and cited
+as such in this RFC's earlier Status line and in commits `5defae0` and `55554df`.
+The project owner subsequently identified that both were produced by the
+**implementer tier**. Those citations were therefore inaccurate.
+
+The record is corrected forward rather than rewritten. What changes:
+
+- their verdicts ("DESIGN REVISION REQUIRED", "CONDITIONALLY APPROVED") are
+  **findings and recommendations, not approvals**, and Amendment 1 has had no
+  independent architecture review;
+- their technical content stands or falls on verification, not authorship. Every
+  checkable claim in both was re-verified: RFC 020 §11.1's CHANGELOG role is
+  quoted accurately, `5defae0` touches only this file, `xtask/` is unchanged
+  since `a27c2c7`, and no existing scope statement in the repository counts RFC
+  000. B1-B4 and N1 were reproduced directly and are genuine;
+- one recommendation is **reversed** on architectural grounds (037-N2, §0.1),
+  which is the concrete reason the distinction matters: the implementer tier
+  proposed a resolution that would have violated RFC 020 §11.3, and adopting it
+  on the strength of its verdict would have shipped a monotonicity regression.
+
+### 0.4 The lifecycle exception this amendment exercised
 
 Amending in place was accepted by re-review 037 as a practical necessity:
 returning RFC 024 to `proposed/` while its rejected implementation sits committed
@@ -161,7 +200,7 @@ before `done/`, which is what separates this from amending a shipped contract.
 This is a one-off exercised under review, not a general licence. Codifying it
 into RFC 000 or RFC 020 is a tracked follow-up, not settled by this RFC.
 
-### 0.4 Consequences for the queued correction series
+### 0.5 Consequences for the queued correction series
 
 §11.1, §11.4, §13, and §16 are updated in place to match. Implementation of the
 amended provisions is blocked until independent re-review accepts this amendment.
@@ -249,12 +288,13 @@ the block records identity and lineage, never release status)*:
 
 ```text
 This tree: **0.20.3**
-Preceding released version: **0.20.2**
+Last reconciled repository release: **0.20.2**
 Implemented scope: **RFCs 001-021**
 ```
 
-`doc-currency` asserts that *this tree* equals the workspace version, that
-*preceding released* is **strictly less** than it, that the implemented scope
+`doc-currency` asserts that *this tree* equals the workspace version, that *last
+reconciled repository release* is **strictly less** than it and names a version
+carried by a `CHANGELOG.md` record marked released (§0.1), that the implemented scope
 matches the exact RFC lifecycle set (§11.4), and that the block is identical
 across all three apex documents.
 
@@ -320,7 +360,7 @@ gate failure. Every maximal run of two or more consecutive numbers collapses to
 ## 13. Verification gates
 
 1. `cargo xtask doc-currency` — passing on a post-release tree where *this tree*
-   strictly exceeds *preceding released*.
+   strictly exceeds *last reconciled*.
 2. Focused tests: apex/workspace version disagreement fails; *preceding
    released* equal to or exceeding *this tree* fails (equality is never valid,
    §0.1); apex blocks differing across the trio fails; implemented scope
@@ -331,7 +371,7 @@ gate failure. Every maximal run of two or more consecutive numbers collapses to
    render and validate canonically; the two-element boundary run renders as
    `NNN-NNN` and the comma-separated pair is rejected; RFC 000 is excluded.
 4. Intended-tag preflight tests: tag equal to workspace version and exceeding
-   preceding released passes; tag not exceeding it fails; existing local or
+   the last reconciled release passes; tag not exceeding it fails; existing local or
    remote tag fails; all without the conditional metadata present. **The
    end-to-end `cargo xtask release-gate --intended-tag <version>` command must
    be observed reaching and passing apex binding and both collision checks** —
@@ -370,8 +410,8 @@ the tree it describes; the ordinary form applies from the next release forward.
 RFC 024 is complete only when:
 
 1. `doc-currency` recognizes an ordinary post-release apex form and passes on a
-   tree whose version strictly exceeds the preceding released version;
-2. the apex block records this-tree and preceding-released versions distinctly,
+   tree whose version strictly exceeds the last reconciled repository release;
+2. the apex block records this-tree and last-reconciled versions distinctly,
    both are asserted, and no tracked tree can assert equality or claim its own
    release status;
 3. implemented scope binds the exact `done/` set, excluding RFC 000, and can
@@ -389,5 +429,9 @@ RFC 024 is complete only when:
     observed `0.20.2` release chronology (review 036 B4);
 11. the canonical set rendering admits exactly one representation per set, with
     the two-element boundary fixed (re-review 037 N1); and
-12. the lineage field is documented as an ordering anchor rather than a live
-    pointer to the most recent release (re-review 037 N2).
+12. the lineage field satisfies RFC 020 §11.3 as a checked currency claim —
+    named per that section, strictly less than this tree, and bound to a
+    released `CHANGELOG.md` record (finding 037 N2, resolved against the
+    reviewer's recommendation); and
+13. Amendment 1 has independent architecture review, or the project owner has
+    explicitly accepted its absence on the record (§0.3).
