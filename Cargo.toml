@@ -10,7 +10,7 @@ members = [
 ]
 
 # Shared metadata inherited by every member via `field.workspace = true`.
-# Member crates expose implemented public APIs through RFCs 001-018. Repository
+# Member crates expose implemented public APIs through RFCs 001-021. Repository
 # state alone does not establish external registry publication; workspace
 # metadata and CHANGELOG.md define the release-local version baseline.
 [workspace.package]

@@ -15,7 +15,11 @@ pub fn run() -> bool {
     ok
 }
 
-fn collect_md(dir: &Path, out: &mut Vec<PathBuf>) {
+/// Every tracked Markdown file under `dir`, skipping `.git`, `.git-exclude`,
+/// and `target`. Shared with `review_evidence`, which must derive its
+/// citation scan from the documents themselves rather than a fixed list
+/// (RFC 022 §8).
+pub(crate) fn collect_md(dir: &Path, out: &mut Vec<PathBuf>) {
     let entries = match std::fs::read_dir(dir) {
         Ok(entries) => entries,
         Err(_) => return,

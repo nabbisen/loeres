@@ -27,16 +27,18 @@ cargo clippy --workspace --all-features -- -D warnings
 ## Verification gates (`xtask`)
 
 ```sh
-cargo xtask zero-bleed     # no forbidden server <-> edge dependency edge exists
-cargo xtask no-std         # edge crates build for thumbv7em-none-eabihf (no std/alloc)
-cargo xtask doc-currency   # bounded RFC 020 metadata/lifecycle/navigation assertions
-cargo xtask check          # canonical developer architecture aggregate
-cargo xtask release-gate   # complete non-publishing RFC 019 candidate evidence
+cargo xtask zero-bleed       # no forbidden server <-> edge dependency edge exists
+cargo xtask no-std           # edge crates build for thumbv7em-none-eabihf (no std/alloc)
+cargo xtask doc-currency     # bounded RFC 020/024 apex metadata/lifecycle/navigation assertions
+cargo xtask review-evidence  # RFC 022 architecture-review citation and provenance integrity
+cargo xtask check            # canonical developer architecture aggregate
+cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidence
 ```
 
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
 `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
-`size-budget`, `unsafe-audit`, `conformance`, `doc-currency`, and `link-audit`.
+`size-budget`, `unsafe-audit`, `conformance`, `doc-currency`, `review-evidence`,
+and `link-audit`.
 The aggregate summary labels commands as enforced, advisory/reporting, or
 owner-RFC hooks; threshold-less baselines and missing future corpora are not
 reported as enforced verification passes.
@@ -84,6 +86,38 @@ RFC 017 extends the enforced smoke corpus with validation-cache conformance
 fixtures. `schema_version = 2` fixtures exercise cache hit/miss, insufficient
 scope, stale/wrong evidence, current-iterate scan retention, hot-loop
 numerical-domain retention, and reusable-cache insertion rejection.
+
+RFC 024 gives `doc-currency` a permanent post-release apex form: the shared
+apex block records this tree's identity (`This tree`) and the release this
+documentation was last reconciled against (`Last reconciled repository
+release`), never release status, with a strict `>` invariant and no equality
+case. `Implemented scope` binds the exact `rfcs/done/` set, excluding RFC 000,
+rendered as a canonical compact set (a run of two or more consecutive numbers
+collapses to `NNN-NNN`). The one-release RFC 021 conditional apparatus is
+retired from this path; its module is retained only as the implemented record
+of that RFC.
+
+RFC 022 adds `review-evidence`. Normative documents cite architecture reviews
+as evidence, not authority; the check resolves every `review NNN` /
+`reviews NNN/NNN` citation in a tracked Markdown document against
+`rfcs/review-evidence-index.md`, and requires every index row to carry an
+author tier from a closed set (`owner`, `architect`, `implementer`,
+`external`, `unrecorded`). Both are enforced, fail-closed. Hash verification
+against the maintainer-held corpus (`.git-exclude/reviewed/`) runs when the
+corpus is present and reports `unavailable` — never a pass — when it is
+absent, such as in a clean extraction. A citation-shaped token that does not
+match the recognized grammar is reported as a near-miss finding rather than
+silently ignored, but does not by itself fail the gate.
+
+## Release version convention
+
+After a release ships, `main`'s workspace version is bumped to the next patch
+immediately, in the first ordinary post-release commit — never left at the
+released value, which would let a later commit claim to be that release. The
+released version itself is set authoritatively only in the release's own
+finalization revision, which is what gets tagged; it is never edited into an
+already-tagged commit. See RFC 024 for the apex-currency mechanics this
+convention keeps green.
 
 ## Workflow
 

@@ -73,6 +73,16 @@ release, or publish a crate without separate explicit project-owner authority.
 Generated local evidence remains gate-owned ignored workspace state and must
 not be committed as repository content.
 
+### Post-release version convention
+
+Once a release ships, `main`'s workspace version is bumped to the next patch
+in the first ordinary commit that follows — never left at the released value,
+which would let a later commit claim to be that release. The released version
+itself is set only in the release's own finalization revision, the one that
+gets tagged, and is never edited into an already-tagged commit afterward. See
+`docs/src/development.md` and RFC 024 for the apex-currency mechanics this
+convention keeps satisfied.
+
 ## License
 
 By contributing, you agree that your contributions are licensed under the

@@ -11,6 +11,7 @@ pub mod no_std;
 pub mod panic_audit;
 pub mod public_api;
 pub mod release_gate;
+pub mod review_evidence;
 pub mod size_budget;
 pub mod target_profiles;
 pub mod unsafe_audit;

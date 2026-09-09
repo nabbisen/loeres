@@ -7,6 +7,11 @@ RFC numbers are stable forever. Moving an RFC between `proposed/`, `accepted/`,
 number or slug. Loeres uses RFC 000's five-folder variant: implementation may
 start only from `accepted/`.
 
+Normative documents cite architecture reviews as evidence that a decision was
+considered. The [review evidence index](review-evidence-index.md) resolves
+each citation to a hash-pinned, tiered identity record; it binds evidence
+identity only and confers no authority (RFC 022).
+
 ## Proposed RFCs
 
 | RFC | Title | Status | Notes |
