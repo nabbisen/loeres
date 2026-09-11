@@ -3,7 +3,7 @@
 **Status.** Accepted (design frozen 2026-07-31)
 **Design approval.** Author-performed adversarial review pass (see §17 on the
 role-separation compromise); project owner authorized the `accepted/` transition
-on 2026-07-31. **Amendment 1 (§0, 2026-09-09)** adds author-tier provenance and **Amendment 2 (§0.4, 2026-09-12)** adds corpus↔index coverage symmetry to
+on 2026-07-31. **Amendment 1 (§0, 2026-09-09)** adds author-tier provenance and **Amendment 2 (§0.4, 2026-09-12)** adds corpus↔index coverage symmetry, and **Amendment 3 (§0.5, 2026-09-12)** enforces the cited column and row count to
 the index after the reviews 036/037 incident and records that the index binds
 non-normative input; it carries the architect's review and awaits no further
 design gate. Implementation is authorized for the implementer tier.
@@ -115,6 +115,30 @@ for the same reason as hash verification. The §11.3 table and §13 tests are
 updated accordingly. Registering a review remains a hand edit; this makes
 forgetting it a gate failure rather than a silent drift.
 
+
+### 0.5 Amendment 3 — 2026-09-12: cited-column symmetry and row count
+
+Two tightenings, both raised by the implementer tier against the index as
+landed and both accepted on their merits.
+
+**Cited-column symmetry.** The checker derives the true cited set at run time
+and prints its size, but never compares it to the `Cited in release` ticks. A
+citation added to a tracked document left the column stale with no failure —
+observed when RFC 024 §0.5 cited review 038 and the count moved 12→13 without
+the tick following. That is the hole Amendment 2 closed for rows, still open for
+the column. The checker must assert that the set of ticked rows equals the
+derived cited set, failing on either direction. This depends only on tracked
+bytes, so it holds in a clean extraction and needs no availability branch.
+
+**Row count equals file count.** Set equality lets a duplicated *row* satisfy
+symmetry, and a copy-paste while registering a review is a likelier slip than
+two byte-identical documents. When the corpus is present, the number of
+registered rows must equal the number of corpus files. This compares hash
+counts, not reference numbers: §11.7's two `Ref 001` rows carry distinct hashes
+and remain legitimate. It is not a uniqueness rule on `Ref`.
+
+Stating a known-unenforced column in the index prose was the right interim
+handling; with enforcement the statement is replaced, not kept.
 
 ## 1. Summary
 
@@ -229,6 +253,8 @@ Two distinct assertions, with deliberately different strengths:
 | No citation asserts approval for an `implementer`/`unrecorded` row | **Human review** | Requires reading the surrounding prose; a bounded checker cannot judge it (§0.2) |
 | Each registered SHA-256 matches the corresponding file | **Verified when the corpus is present; reported unavailable otherwise** | The corpus is maintainer-held and legitimately absent from an extraction |
 | Every corpus file is registered (corpus↔index coverage symmetry) | **Enforced when the corpus is present; reported unavailable otherwise** | Added by Amendment 2 (§0.4): the index goes stale on every review written, and only a count comparison stops that being remembered rather than enforced |
+| The `Cited in release` ticks equal the cited set the checker derives | **Enforced, fail-closed** | Amendment 3 (§0.5): depends only on tracked bytes, holds in a clean extraction; the column had the same remembered-not-enforced hole Amendment 2 closed for rows |
+| Registered row count equals corpus file count | **Enforced when the corpus is present; reported unavailable otherwise** | Amendment 3 (§0.5): set equality alone lets a duplicated row pass; compares hash counts, not `Ref` values (§11.7's shared `Ref 001` stays legitimate) |
 
 Reporting an absent corpus as *unavailable* rather than *passed* follows RFC
 011's evidence-class discipline and RFC 019's refusal to promote advisory
@@ -295,7 +321,9 @@ for exactly the reason that external references would break silently.
    does not pass; a reference format not matching the citation grammar is
    reported rather than silently ignored; a row with a missing tier, or a tier
    outside the closed set, fails; a corpus file present but unregistered fails,
-   and matched corpus/index sets pass (§0.4).
+   and matched corpus/index sets pass (§0.4); a cited-but-unticked row and a
+   ticked-but-uncited row each fail; a duplicated row fails the row-count
+   check while two distinct-hash rows sharing a `Ref` pass (§0.5).
 3. `cargo xtask check-rfcs` and `link-audit` — index registered in
    `rfcs/README.md`, all relative links resolve.
 4. `cargo fmt --all -- --check`; all-target/all-feature Clippy with warnings
