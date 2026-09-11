@@ -3,7 +3,7 @@
 **Status.** Accepted (design frozen 2026-07-31)
 **Design approval.** Author-performed adversarial review pass (see §17 on the
 role-separation compromise); project owner authorized the `accepted/` transition
-on 2026-07-31. **Amendment 1 (§0, 2026-09-09)** adds author-tier provenance to
+on 2026-07-31. **Amendment 1 (§0, 2026-09-09)** adds author-tier provenance and **Amendment 2 (§0.4, 2026-09-12)** adds corpus↔index coverage symmetry to
 the index after the reviews 036/037 incident and records that the index binds
 non-normative input; it carries the architect's review and awaits no further
 design gate. Implementation is authorized for the implementer tier.
@@ -100,6 +100,21 @@ the least disruptive possible moment — nothing outside its own file depends on
 the frozen text — but the condition is now demonstrably broader than one
 sentence in another RFC records. That strengthens the standing recommendation to
 codify the exception into RFC 000 or RFC 020 rather than accrete it case by case.
+### 0.4 Amendment 2 — 2026-09-12: coverage symmetry (review 039 F3)
+
+Hash verification as frozen is row→file only: each registered hash must exist
+in the corpus. A corpus file that is present but **unregistered** passes
+silently. Architect review 039 demonstrated the consequence by accident —
+writing that review into the corpus made 52 files against 51 rows and the gate
+still passed. The index goes stale on every review written, which is routine.
+
+When the corpus is present, the checker must also assert that every corpus file
+is registered: the set of corpus hashes and the set of registered hashes must be
+equal. When the corpus is absent this is reported `unavailable`, never passed,
+for the same reason as hash verification. The §11.3 table and §13 tests are
+updated accordingly. Registering a review remains a hand edit; this makes
+forgetting it a gate failure rather than a silent drift.
+
 
 ## 1. Summary
 
@@ -213,6 +228,7 @@ Two distinct assertions, with deliberately different strengths:
 | Every index row carries an author tier from the closed set | **Enforced, fail-closed** | Depends only on tracked bytes (§0.1) |
 | No citation asserts approval for an `implementer`/`unrecorded` row | **Human review** | Requires reading the surrounding prose; a bounded checker cannot judge it (§0.2) |
 | Each registered SHA-256 matches the corresponding file | **Verified when the corpus is present; reported unavailable otherwise** | The corpus is maintainer-held and legitimately absent from an extraction |
+| Every corpus file is registered (corpus↔index coverage symmetry) | **Enforced when the corpus is present; reported unavailable otherwise** | Added by Amendment 2 (§0.4): the index goes stale on every review written, and only a count comparison stops that being remembered rather than enforced |
 
 Reporting an absent corpus as *unavailable* rather than *passed* follows RFC
 011's evidence-class discipline and RFC 019's refusal to promote advisory
@@ -278,7 +294,8 @@ for exactly the reason that external references would break silently.
    mismatches a present corpus fails; an absent corpus reports unavailable and
    does not pass; a reference format not matching the citation grammar is
    reported rather than silently ignored; a row with a missing tier, or a tier
-   outside the closed set, fails.
+   outside the closed set, fails; a corpus file present but unregistered fails,
+   and matched corpus/index sets pass (§0.4).
 3. `cargo xtask check-rfcs` and `link-audit` — index registered in
    `rfcs/README.md`, all relative links resolve.
 4. `cargo fmt --all -- --check`; all-target/all-feature Clippy with warnings
