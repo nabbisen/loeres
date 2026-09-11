@@ -218,7 +218,23 @@ sentence as a permanent prohibition:
 - leaving a conditional claim in a shipped Status line indefinitely would be
   the B1 defect this RFC exists to retire.
 
-### 0.6 Consequences for the queued correction series
+### 0.6 Amendment 2 — 2026-09-12: remove the retired module (review 038 F2)
+
+§11.3 as written retained `conditional_finalization.rs` "as the implemented
+record of RFC 021", and the implementation kept its `APEX_MARKER` alive under
+`#[allow(dead_code)]` beside a duplicate literal in `doc_currency`. The project
+owner's rule is explicit: **remove unused code; do not suppress it.** Dead code
+is technical debt, and a lint suppression is a promise to carry it.
+
+The record of RFC 021 is RFC 021's own document and git history, not live code.
+`check_rfcs` calls the module only when `release/conditional-finalization.toml`
+exists, and RFC 024 deleted that file permanently, so the entire module (≈500
+lines) and its call site are unreachable. Both are removed. `doc_currency` keeps
+its single `RETIRED_CONDITIONAL_APEX_MARKER` constant as the guard that the
+retired marker never reappears — one owner for that string, no duplication, no
+suppression. §11.3 and §16 item 5 are updated to match.
+
+### 0.7 Consequences for the queued correction series
 
 §11.1, §11.4, §13, and §16 are updated in place to match. Implementation of the
 amended provisions is blocked until independent re-review accepts this amendment.
@@ -339,9 +355,8 @@ conditional apparatus again.
 ### 11.3 Retiring the one-release apparatus
 
 `release/conditional-finalization.toml` is removed, and with it the requirement
-that it be present. The `conditional_finalization` module and its tests are
-retained as the implemented record of RFC 021, but nothing in the steady-state
-gate path requires it.
+that it be present. The `conditional_finalization` module, its tests, and its `check_rfcs` call site are
+removed (Amendment 2, §0.6); RFC 021's document and git history are its record.
 
 The intended-tag preflight in `release_gate` currently hard-fails when the
 metadata is absent. It is re-expressed against the ordinary apex form: the
@@ -436,8 +451,8 @@ RFC 024 is complete only when:
    represent gaps;
 4. the intended-tag preflight preserves every RFC 021 §7 property without
    requiring the conditional metadata;
-5. the conditional metadata file is removed and no steady-state check requires
-   it;
+5. the conditional metadata file and the `conditional_finalization` module are
+   removed, with no `#[allow(dead_code)]` left behind (§0.6);
 6. the conditional apparatus is not generalized to ordinary development;
 7. no runtime API, behavior, feature, or dependency boundary changes; and
 8. the `0.20.2` artifact is unmodified;

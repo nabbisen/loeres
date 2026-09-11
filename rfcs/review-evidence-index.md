@@ -116,11 +116,11 @@ separate, reviewed pass.
 | `035` | 2026-07-22 | rfc021 q3 tag bound evidence review | `042b52ea6304e2304b627e72a9859514b86e3f0cc447c078ea85ec979b5bd63d` | `unrecorded` |  |
 | `036` | 2026-07-31 | rfc024 implementation architecture review | `949e3356e6685fd35328fa70b07637f48bcde6dffeae60e16ee5c489428496fb` | `implementer` | ✓ |
 | `037` | 2026-07-31 | rfc024 amendment1 rereview | `caaeda6ab04d8c17f898eea2ffa5ae54a3445e02c56925fc30a417135a2a7ae9` | `implementer` | ✓ |
-| `038` | 2026-09-09 | rfc024 implementation architect review | `bfb95d2773463ca8f3321e8868b2337f659212b153607e962e302d4f09afac62` | `unrecorded` | ✓ |
-| `039` | 2026-09-09 | rfc022 implementation architect review | `9383c42eb538c59ea9b7c1f034427e4ecbe8bf04d40cbed8509946e9638e6591` | `unrecorded` | ✓ |
-| `040` | 2026-09-12 | rfc022 followups architect review | `d6c723ae87ec95913a7baead5c086432ea5c06005a6f23dbc981b5a9667c19d7` | `unrecorded` |  |
-| `041` | 2026-09-12 | rfc022 amendment2 architect review | `c677e43f3d02be37abea06d01e418a626b22ca0a4bde87387aae256b84c4d0e1` | `unrecorded` |  |
-| `042` | 2026-09-12 | rfc022 index currency architect review | `17086cc062c18d8c8540af115a6d6b5f22aeb442e6323790e983ff5425467c95` | `unrecorded` |  |
+| `038` | 2026-09-09 | rfc024 implementation architect review | `bfb95d2773463ca8f3321e8868b2337f659212b153607e962e302d4f09afac62` | `architect` | ✓ |
+| `039` | 2026-09-09 | rfc022 implementation architect review | `9383c42eb538c59ea9b7c1f034427e4ecbe8bf04d40cbed8509946e9638e6591` | `architect` | ✓ |
+| `040` | 2026-09-12 | rfc022 followups architect review | `d6c723ae87ec95913a7baead5c086432ea5c06005a6f23dbc981b5a9667c19d7` | `architect` |  |
+| `041` | 2026-09-12 | rfc022 amendment2 architect review | `c677e43f3d02be37abea06d01e418a626b22ca0a4bde87387aae256b84c4d0e1` | `architect` |  |
+| `042` | 2026-09-12 | rfc022 index currency architect review | `17086cc062c18d8c8540af115a6d6b5f22aeb442e6323790e983ff5425467c95` | `architect` |  |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
@@ -146,18 +146,10 @@ separate, reviewed pass.
   `cargo xtask review-evidence` reports; this line is a hand-maintained echo of
   it.
 - Unresolved citations: **0**
-- Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
+- Rows tiered `architect`: **5** (`038`–`042`, direct project-owner statement,
+  2026-09-12). Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
   statement); all other rows are `unrecorded` because provenance was not
   captured at request time and must not be reconstructed by inference.
-- Rows awaiting owner confirmation: `038`, `039`, `040`, `041`, and `042`. Each carries a
-  `Reviewer author tier` field in its own text, and the architect has attested
-  first-hand to authoring `038` through `042`. None is recorded from that alone: a tier taken
-  from an artifact's own self-description is the inference §0.1 forbids, and it
-  is what made `036`/`037` look independent. The `036`/`037` precedent set
-  tiers on project-owner statement, so these stay `unrecorded` until the owner
-  states otherwise — a one-row edit plus these counts, per row.
-
-`Ref` mirrors the numeric prefix used by in-repository citations. Pre-recovery
-reviews predate that numbering and carry `—`; they are registered for
-completeness and are not cited by tracked documents. Two preparation reviews
-share `Ref 001`; they are disambiguated by date.
+- No rows await owner confirmation. Tiers for `038`–`042` were set on the
+  project owner's direct statement (2026-09-12), not on the reviews'
+  self-description, consistent with the `036`/`037` precedent.
