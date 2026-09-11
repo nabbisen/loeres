@@ -108,20 +108,29 @@ pub fn run() -> bool {
         eprintln!("  NEAR-MISS (reported, not blocking): {finding}");
     }
 
-    match corpus_hashes(Path::new(CORPUS_DIR)) {
-        Some(hashes) => {
+    match corpus_files(Path::new(CORPUS_DIR)) {
+        Some(corpus) => {
+            let hashes: BTreeSet<String> = corpus.iter().map(|file| file.sha256.clone()).collect();
+            // row -> file: each registered hash must exist in the corpus.
             for error in verify_hashes(&rows, &hashes) {
                 eprintln!("  HASH: {error}");
                 ok = false;
             }
+            // file -> row: and every corpus file must be registered, so that
+            // forgetting to register a review is a gate failure rather than
+            // silent drift (Amendment 2 §0.4).
+            for error in unregistered_corpus_files(&corpus, &rows) {
+                eprintln!("  COVERAGE: {error}");
+                ok = false;
+            }
             eprintln!(
-                "  hash verification: corpus present, {} file(s)",
-                hashes.len()
+                "  hash verification and coverage symmetry: corpus present, {} file(s)",
+                corpus.len()
             );
         }
         None => {
             eprintln!(
-                "  hash verification: unavailable (corpus absent at {CORPUS_DIR}; this is not a pass)"
+                "  hash verification and coverage symmetry: unavailable (corpus absent at {CORPUS_DIR}; this is not a pass)"
             );
         }
     }
@@ -130,7 +139,10 @@ pub fn run() -> bool {
         "  {}",
         summary_line(rows.len(), distinct_cited.len(), near_miss_findings.len())
     );
-    eprintln!("[review-evidence] {}", if ok { "PASS" } else { "FAIL" });
+    eprintln!(
+        "[review-evidence] {}",
+        verdict_line(ok, near_miss_findings.len())
+    );
     ok
 }
 
@@ -148,6 +160,18 @@ fn summary_line(registered: usize, resolved: usize, near_misses: usize) -> Strin
     format!(
         "{registered} review document(s) registered, {resolved} distinct citation(s) resolved, {near_miss_note}"
     )
+}
+
+/// The verdict token, carrying a non-zero near-miss count so the terminal's
+/// last line shows it (architect review 040, answer 3). A near miss never
+/// changes the verdict itself.
+fn verdict_line(ok: bool, near_misses: usize) -> String {
+    let verdict = if ok { "PASS" } else { "FAIL" };
+    if near_misses == 0 {
+        verdict.to_owned()
+    } else {
+        format!("{verdict} ({near_misses} near-miss)")
+    }
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -254,23 +278,58 @@ fn verify_hashes(rows: &[IndexRow], corpus_hashes: &BTreeSet<String>) -> Vec<Str
         .collect()
 }
 
+/// Every corpus file that is present but whose content hash appears in no
+/// index row — the coverage-symmetry half of hash verification, required when
+/// the corpus is present by Amendment 2 (§0.4). Without it, forgetting to
+/// register a newly written review is silent drift instead of a gate failure,
+/// which architect review 039 demonstrated by accident.
+fn unregistered_corpus_files(corpus: &[CorpusFile], rows: &[IndexRow]) -> Vec<String> {
+    let registered: BTreeSet<&str> = rows.iter().map(|row| row.sha256.as_str()).collect();
+    corpus
+        .iter()
+        .filter(|file| !registered.contains(file.sha256.as_str()))
+        .map(|file| {
+            format!(
+                "corpus file `{}` (SHA-256 `{}`) is present but registered by no index row",
+                file.name, file.sha256
+            )
+        })
+        .collect()
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+struct CorpusFile {
+    name: String,
+    sha256: String,
+}
+
 /// `None` when the corpus directory does not exist (legitimately absent from
 /// a clean extraction — reported `unavailable`, never treated as a pass).
 /// Shells out to the system `sha256sum`, matching `release_gate::package`'s
 /// existing convention rather than adding a hashing crate dependency.
-fn corpus_hashes(root: &Path) -> Option<BTreeSet<String>> {
+///
+/// Returns one entry per file rather than a hash set so the count reported is
+/// the true file count and an unregistered file can be named.
+fn corpus_files(root: &Path) -> Option<Vec<CorpusFile>> {
     let entries = fs::read_dir(root).ok()?;
-    let mut hashes = BTreeSet::new();
+    let mut files = Vec::new();
     for entry in entries.flatten() {
         let path = entry.path();
         if path.extension().and_then(|ext| ext.to_str()) != Some("md") {
             continue;
         }
-        if let Some(hash) = sha256sum(&path) {
-            hashes.insert(hash);
-        }
+        let Some(sha256) = sha256sum(&path) else {
+            continue;
+        };
+        let name = path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or_default()
+            .to_owned();
+        files.push(CorpusFile { name, sha256 });
     }
-    Some(hashes)
+    files.sort_by(|left, right| left.name.cmp(&right.name));
+    Some(files)
 }
 
 fn sha256sum(path: &Path) -> Option<String> {
@@ -388,8 +447,9 @@ fn clean_word(word: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        IndexRow, classify_token, corpus_hashes, find_citations_in_line, parse_index_rows,
-        summary_line, unresolved_citations, validate_tiers, verify_hashes,
+        CorpusFile, IndexRow, classify_token, corpus_files, find_citations_in_line,
+        parse_index_rows, summary_line, unregistered_corpus_files, unresolved_citations,
+        validate_tiers, verdict_line, verify_hashes,
     };
     use std::collections::BTreeSet;
     use std::fs;
@@ -641,16 +701,64 @@ mod tests {
     }
 
     #[test]
-    fn corpus_hashes_reports_none_when_the_directory_is_absent() {
+    fn corpus_files_reports_none_when_the_directory_is_absent() {
         let missing = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../target/xtask-tests/definitely-absent-corpus");
-        assert!(corpus_hashes(&missing).is_none());
+        assert!(corpus_files(&missing).is_none());
     }
 
     #[test]
-    fn corpus_hashes_recomputes_present_files() {
+    fn corpus_files_recomputes_present_files_with_their_names() {
         let (fixture, expected_hash) = CorpusFixture::with_one_file(b"review body text");
-        let hashes = corpus_hashes(&fixture.root).unwrap();
-        assert!(hashes.contains(&expected_hash));
+        let files = corpus_files(&fixture.root).unwrap();
+        assert_eq!(files.len(), 1);
+        assert_eq!(files[0].name, "001-example.md");
+        assert_eq!(files[0].sha256, expected_hash);
+    }
+
+    #[test]
+    fn a_present_but_unregistered_corpus_file_fails_coverage_symmetry() {
+        let corpus = vec![
+            CorpusFile {
+                name: "001-registered.md".to_owned(),
+                sha256: "aaaa".to_owned(),
+            },
+            CorpusFile {
+                name: "040-just-written.md".to_owned(),
+                sha256: "dddd".to_owned(),
+            },
+        ];
+        let rows = vec![IndexRow {
+            reference: Some("001".to_owned()),
+            sha256: "aaaa".to_owned(),
+            tier: "unrecorded".to_owned(),
+        }];
+        let errors = unregistered_corpus_files(&corpus, &rows);
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("040-just-written.md"));
+    }
+
+    #[test]
+    fn matched_corpus_and_index_sets_pass_coverage_symmetry() {
+        let corpus = vec![CorpusFile {
+            name: "001-registered.md".to_owned(),
+            sha256: "aaaa".to_owned(),
+        }];
+        let rows = vec![IndexRow {
+            reference: Some("001".to_owned()),
+            sha256: "aaaa".to_owned(),
+            tier: "unrecorded".to_owned(),
+        }];
+        assert!(unregistered_corpus_files(&corpus, &rows).is_empty());
+        let hashes: BTreeSet<String> = corpus.iter().map(|file| file.sha256.clone()).collect();
+        assert!(verify_hashes(&rows, &hashes).is_empty());
+    }
+
+    #[test]
+    fn verdict_line_carries_a_non_zero_near_miss_count_without_changing_the_verdict() {
+        assert_eq!(verdict_line(true, 0), "PASS");
+        assert_eq!(verdict_line(true, 2), "PASS (2 near-miss)");
+        assert_eq!(verdict_line(false, 0), "FAIL");
+        assert_eq!(verdict_line(false, 1), "FAIL (1 near-miss)");
     }
 }
