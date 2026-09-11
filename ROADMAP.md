@@ -29,6 +29,15 @@ this file is a short summary.
 > not itself a release. RFC 024 subsequently retired the one-release
 > conditional apparatus from ordinary post-release development.
 
+## Next (approved 2026-09-12)
+
+Consolidation, then capability: land the authorized RFC 022–024 follow-ups and
+RFC 023, add RFC 025 (codified amendment rule) and RFC 026 (enforced supply-chain
+gate), cut **`0.21.0`** as the clean baseline, then open R4 with **RFC 027** — a
+storage-agnostic QP contract in `loeres::problem` and a bounded polyhedral
+projection extending the projected-first-order kernels to `Ax ≤ b`. Detailed
+sequencing: detailed roadmap §7.
+
 ## Phases
 
 - **Phase 0 — Repository & policy foundation.** Workspace skeleton, crate layout,

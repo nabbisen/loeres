@@ -16,7 +16,9 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [025](proposed/025-in-place-amendment-of-accepted-rfcs.md) | In-Place Amendment of Accepted RFCs | Proposed | Codifies the exception exercised by RFC 024 §0.4 and RFC 022 §0.3 as one RFC 000 section: Accepted-not-done RFCs may carry numbered amendments; `done/` RFCs are superseded, never amended. Consolidation C.1. |
+| [026](proposed/026-supply-chain-gate.md) | Supply-Chain Gate | Proposed | `cargo deny` advisories/licenses/bans/sources as an **enforced** gate in `check` and `release-gate`; lands before any new dependency. Consolidation C.1. |
+| [027](proposed/027-qp-contract-and-constrained-kernel.md) | QP Contract and Linearly Constrained Projected Kernel | Proposed | Activates `loeres::problem` with storage-agnostic QP traits (PF-002; PF-001 contract-only) and extends the PFO kernels with a bounded Hildreth/Dykstra polyhedral projection for `Ax ≤ b`; `m = 0` reproduces RFC 006/016 exactly. IPM excluded. Needs independent numerical review before freeze. R4 first capability. |
 
 ## Accepted RFCs
 

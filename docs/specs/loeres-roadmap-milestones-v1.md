@@ -1076,8 +1076,8 @@ R2. No public capability expansion may enter implementation before R2 closes.
 | R0.5 — lifecycle activation | R0 accepted and owner authorizes transition | Five-folder lifecycle, `accepted/`, index/link/tool agreement | Complete: both recovery RFCs are durably Accepted. |
 | R1 — corrective baseline | R0.5 complete | Exact Rust 1.85 repair, release-gate skeleton, traceability matrix, atomic documentation reconciliation, semantic currency checks | Complete: integrated revision `525b5fd` and local evidence accepted by review 021; runtime APIs/solver semantics unchanged. |
 | R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | Complete: `0.20.2` released 2026-07-30 under RFC 021's conditional-finalization protocol; canonical tag, successful workflow, and evidence upload observed. |
-| R3 — assurance expansion | R1 baseline settled; each candidate separately reviewed | Optional follow-on RFCs for enforced budgets/portability, supply chain/stress, wider numerical conformance, and maintainability | Candidate scope only; not approved implementation. |
-| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Entry criterion satisfied (R2 closed); no capability RFC has been separately approved. |
+| R3 — assurance expansion | R1 baseline settled; each candidate separately reviewed | Optional follow-on RFCs for enforced budgets/portability, supply chain/stress, wider numerical conformance, and maintainability | Bounded slice approved 2026-09-12: supply-chain gate (RFC 026) lands in `0.21.0`; remaining candidates stay unapproved. |
+| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Theme approved 2026-09-12: QP contract and linearly constrained projected kernel (RFC 027, proposed). Design freeze awaits independent numerical review; implementation follows `0.21.0`. |
 
 R1 exit requires audit blockers B1-B4 corrected, exact MSRV/stable/docs gates
 observed, current public names and RFC status consistent, no contradicted
@@ -1097,6 +1097,23 @@ conformance fixtures. This is retrospective mitigation, not proof of universal
 bit identity, WCET, panic freedom, or broad numerical parity.
 
 ---
+
+## Section 7: Post-Recovery Roadmap (approved 2026-09-12)
+
+The recovery program is closed and the planned RFC set (001–021) is exhausted;
+under the operating model this triggered a joint replanning discussion. The
+project owner's objective is **"finally clean, safe and secure, robust and
+sophisticated design."** The approved sequence:
+
+| Step | Content | Release |
+|---|---|---|
+| C.1 Consolidation | Land RFC 023 (examples, terms, guides), RFC 022 Amendment 3, RFC 024 Amendment 2 (dead module removal); RFC 025 (codify in-place amendment); RFC 026 (supply-chain gate, enforced) | — |
+| C.2 Clean baseline | Cut **`0.21.0`**: first release with examples, engineering-use terms, evidence index, steady-state currency, supply-chain gate, and no dead code. Minor, because examples and terms are user-visible. | `0.21.0` |
+| C.3 First capability | RFC 027: `loeres::problem` QP contract (PF-002; PF-001 contract-only) and a bounded Hildreth/Dykstra polyhedral projection extending the PFO kernels to `Ax ≤ b` on device and cluster. Interior-point excluded. Independent numerical review precedes design freeze. | first minor after `0.21.0` |
+
+Assessment against the objective at approval time: clean, safe, secure, robust
+are achieved or one step away; **sophisticated is not** — one solver family is a
+well-governed skeleton. C.3 is the first step that changes that.
 
 ## Appendix A: RFC Dependency Graph
 
