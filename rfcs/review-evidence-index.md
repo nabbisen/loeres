@@ -49,16 +49,27 @@ output only by direct project-owner statement, well after one of their
 recommendations had already been adopted and had to be reversed. New reviews
 must record their tier in the request document itself, at request time.
 
-**Verification.** `cargo xtask check` enforces two assertions, fail-closed:
-every review reference appearing in a tracked normative document resolves to
-a row below, and every row carries a tier from the closed set. When the
-maintainer-held corpus is present under `.git-exclude/reviewed/`, the same
-check recomputes each row's SHA-256 and reports a mismatch; when the corpus
-is absent — as in a clean extraction — hash verification is reported as
-**unavailable**, never as passed. A citation shaped like a review reference
-but not matching the recognized grammar is reported as a near-miss finding
-rather than silently ignored, so an unrecognized citation format cannot
-escape enforcement quietly.
+**Verification.** `cargo xtask check` enforces two assertions from tracked
+bytes alone, fail-closed: every review reference appearing in a tracked
+normative document resolves to a row below, and every row carries a tier from
+the closed set.
+
+Two further assertions need the maintainer-held corpus under
+`.git-exclude/reviewed/`, and are enforced when it is present: each row's
+SHA-256 is recomputed and a mismatch fails, and **coverage is symmetric** —
+every corpus file must be registered by some row, so forgetting to register a
+newly written review fails the gate rather than drifting silently (Amendment 2,
+§0.4). When the corpus is absent — as in a clean extraction — both are reported
+**unavailable**, never as passed.
+
+A citation shaped like a review reference but not matching the recognized
+grammar is reported as a near-miss finding rather than silently ignored, so an
+unrecognized citation format cannot escape enforcement quietly. Near misses do
+not fail the gate; the count appears in the summary and verdict lines.
+
+Not enforced: the **Cited in release** column below is hand-maintained. The
+checker derives the true cited set at run time and reports its size, but does
+not compare that set against these ticks.
 
 **Disposition is deliberately absent from v1.** Recording an outcome per
 review requires reading each document; transcribing it from the prose that
@@ -105,7 +116,7 @@ separate, reviewed pass.
 | `035` | 2026-07-22 | rfc021 q3 tag bound evidence review | `042b52ea6304e2304b627e72a9859514b86e3f0cc447c078ea85ec979b5bd63d` | `unrecorded` |  |
 | `036` | 2026-07-31 | rfc024 implementation architecture review | `949e3356e6685fd35328fa70b07637f48bcde6dffeae60e16ee5c489428496fb` | `implementer` | ✓ |
 | `037` | 2026-07-31 | rfc024 amendment1 rereview | `caaeda6ab04d8c17f898eea2ffa5ae54a3445e02c56925fc30a417135a2a7ae9` | `implementer` | ✓ |
-| `038` | 2026-09-09 | rfc024 implementation architect review | `bfb95d2773463ca8f3321e8868b2337f659212b153607e962e302d4f09afac62` | `unrecorded` |  |
+| `038` | 2026-09-09 | rfc024 implementation architect review | `bfb95d2773463ca8f3321e8868b2337f659212b153607e962e302d4f09afac62` | `unrecorded` | ✓ |
 | `039` | 2026-09-09 | rfc022 implementation architect review | `9383c42eb538c59ea9b7c1f034427e4ecbe8bf04d40cbed8509946e9638e6591` | `unrecorded` | ✓ |
 | `040` | 2026-09-12 | rfc022 followups architect review | `d6c723ae87ec95913a7baead5c086432ea5c06005a6f23dbc981b5a9667c19d7` | `unrecorded` |  |
 | `041` | 2026-09-12 | rfc022 amendment2 architect review | `c677e43f3d02be37abea06d01e418a626b22ca0a4bde87387aae256b84c4d0e1` | `unrecorded` |  |
@@ -125,10 +136,14 @@ separate, reviewed pass.
 ## Summary
 
 - Registered review documents: **54**
-- Distinct review references cited by tracked normative documents: **12**
+- Distinct review references cited by tracked normative documents: **13**
   (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`,
-  `039` — the last added by RFC 022 Amendment 2, which cites review 039 as the
-  finding behind the coverage-symmetry requirement)
+  `038`, `039`). The two most recent additions are both self-referential in the
+  useful sense: RFC 022 Amendment 2 cites review 039 as the finding behind the
+  coverage-symmetry requirement, and RFC 024 §0.5 cites review 038 as the
+  finding behind its Status-line rationale. The authoritative count is whatever
+  `cargo xtask review-evidence` reports; this line is a hand-maintained echo of
+  it.
 - Unresolved citations: **0**
 - Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
   statement); all other rows are `unrecorded` because provenance was not
