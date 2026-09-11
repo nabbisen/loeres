@@ -64,6 +64,17 @@ manifest; passes on the current tree; missing tool fails.
 
 S0 freeze → S1 `deny.toml` + gate → S2 CI pin → S3 docs → S6 closeout with `0.21.0`.
 
+## 14a. Supersession note (implementation review 044)
+
+RFC 020 §12.4 requires the threat model to state that "supply-chain checks
+[are] not yet enforced." This RFC makes that clause false. RFC 020 is shipped and
+is **not** edited (RFC 025's rule: `done/` RFCs are superseded, never amended);
+this section records that RFC 026 supersedes that single clause of RFC 020
+§12.4 and nothing else in it. The `0.21.0` changelog record carries a security
+note: RUSTSEC-2026-0204 (`crossbeam-epoch 0.9.18`, reached via `parallel-rayon`)
+was present and unseen for as long as the gate was "not configured", and was
+remediated by the advisory's own fix (`0.9.21`, in-range) on 2026-09-12.
+
 ## 15. Exit criteria
 
 Enforced in `check` and `release-gate`; CI green; "N/A — not configured" removed
