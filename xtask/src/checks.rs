@@ -13,6 +13,7 @@ pub mod public_api;
 pub mod release_gate;
 pub mod review_evidence;
 pub mod size_budget;
+pub mod supply_chain;
 pub mod target_profiles;
 pub mod unsafe_audit;
 pub mod util;

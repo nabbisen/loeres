@@ -6,7 +6,8 @@ use std::process::Command;
 
 use super::{
     basic, check_rfcs, conformance, doc_currency, feature_matrix, link_audit, no_std, panic_audit,
-    public_api, review_evidence, size_budget, target_profiles, unsafe_audit, zero_bleed,
+    public_api, review_evidence, size_budget, supply_chain, target_profiles, unsafe_audit,
+    zero_bleed,
 };
 
 mod package;
@@ -166,6 +167,7 @@ fn run_developer_named(name: &str) -> bool {
         ("panic-audit", GateKind::Enforced, panic_audit::run()),
         ("size-budget", GateKind::Advisory, size_budget::run()),
         ("unsafe-audit", GateKind::Enforced, unsafe_audit::run()),
+        ("supply-chain", GateKind::Enforced, supply_chain::run()),
         ("conformance", GateKind::Enforced, conformance::run(&[])),
         ("link-audit", GateKind::Enforced, link_audit::run()),
     ];

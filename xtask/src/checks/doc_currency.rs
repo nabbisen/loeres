@@ -44,6 +44,13 @@ const STALE_PHRASES: &[&str] = &[
     "phase 0 skeleton",
     "all solver engines remain in design",
     "workspace is treated as reset-required",
+    // RFC 026 made the supply-chain gate enforced; these are the exact
+    // phrasings that carried "not configured" from v0.14 until then, kept so
+    // the claim cannot return to a current-facing document.
+    "cargo audit/deny: n/a",
+    "cargo audit/cargo deny: n/a",
+    "supply-chain vulnerability/license checks and enforced artifact",
+    "dependency vulnerability and license-policy scanning are not enforced",
 ];
 
 /// Documents that must no longer carry present-tense claims that the RFC 021

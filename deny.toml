@@ -1,0 +1,65 @@
+# Supply-chain policy (RFC 026).
+#
+# Four checks, all enforced by `cargo xtask supply-chain`, which is itself
+# enforced in `cargo xtask check` and in `release-gate`'s source-tree and
+# clean-extraction suites. A missing `cargo-deny` is an environment defect and
+# fails the gate; it is not a legitimate absence (RFC 026 §11).
+#
+# No entry here may be relaxed to make the current tree pass. If the tree fails,
+# that is a finding to report.
+
+[graph]
+# Evaluate every target rather than only the host, so an edge-only or
+# platform-specific dependency cannot enter unexamined.
+all-features = true
+
+[advisories]
+# RustSec database. Vulnerabilities, unmaintained crates, and unsound crates all
+# fail; a yanked crate fails rather than warning.
+version = 2
+yanked = "deny"
+ignore = []
+
+[licenses]
+# Allow-list only: anything outside this set fails, and a crate whose license
+# cannot be determined fails as well (cargo-deny denies unlicensed crates by
+# default under config version 2 — there is no opt-out key to set).
+version = 2
+confidence-threshold = 0.93
+# Suppresses only the "this allowed license was not encountered" notice, so an
+# allow-list entry kept for future dependencies does not produce warning noise
+# that could hide a real finding. It permits no license: the allow-list below is
+# still exhaustive and everything outside it fails.
+unused-allowed-license = "allow"
+allow = [
+    "Apache-2.0",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Unicode-3.0",
+    "Zlib",
+]
+exceptions = []
+
+[bans]
+# Duplicate versions of one crate fail. Each skip must carry the reason it is
+# unavoidable; an empty list is the goal state and the current state.
+multiple-versions = "deny"
+wildcards = "deny"
+# `deny` lists crates that must never appear at all. Empty: the project has no
+# banned-crate history to encode, and inventing entries would be policy theatre.
+deny = []
+# Reason-commented skip list. Keep empty unless a duplicate is genuinely
+# unavoidable through a transitive dependency the project does not control, and
+# state which dependency forces it.
+skip = []
+skip-tree = []
+
+[sources]
+# crates.io only. An unknown registry or any git dependency fails, so a
+# dependency cannot be introduced from an unreviewed source.
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+allow-git = []

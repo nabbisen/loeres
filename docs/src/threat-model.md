@@ -113,15 +113,29 @@ computing base. FFI remains forbidden in core/static/device crates.
 ## Repository and release gates
 
 The developer aggregate checks dependency isolation, edge target builds,
-feature profiles, RFC/index links, public APIs, panic-prone source patterns,
-unsafe markers, bounded conformance fixtures, and documentation links. Mandatory
-host/hard-float target evidence is distinct from advisory-installed soft-float
-and RISC-V profiles and documented-only WASM/AArch64 profiles.
+feature profiles, RFC/index links, review-evidence citations and provenance,
+public APIs, panic-prone source patterns, unsafe markers, dependency
+advisories/licenses/bans/sources, bounded conformance fixtures, and
+documentation links. Mandatory host/hard-float target evidence is distinct from
+advisory-installed soft-float and RISC-V profiles and documented-only
+WASM/AArch64 profiles.
 
-These source scans can miss generated code, build-script behavior, external
-tool behavior, runtime resource exhaustion, and semantic defects. Size evidence
-is advisory until owner RFCs freeze thresholds. Dependency vulnerability and
-license-policy scanning are not enforced in the corrective baseline.
+Dependency vulnerability, license, ban, and source policy **is** enforced, from
+RFC 026: `cargo xtask supply-chain` runs `cargo deny` against the tracked
+`deny.toml` and fails on a RustSec advisory, a license outside the allow-list, a
+duplicate or wildcard dependency, or a non-crates.io source. It also asserts
+that each edge crate has an empty external dependency set with default features
+off, which is a second, independent zero-bleed witness. A missing `cargo-deny`
+fails the gate rather than reporting a benign absence, because an absent tool is
+an environment defect rather than expected.
+
+Its limits are worth naming: the advisory database only knows what has been
+reported, an allow-listed license is a policy statement rather than a legal
+review, and the gate says nothing about the behaviour of the dependency code it
+admits. These source and metadata scans can also miss generated code,
+build-script behavior, external tool behavior, runtime resource exhaustion, and
+semantic defects. Size evidence remains advisory until owner RFCs freeze
+thresholds.
 
 RFC 019's package/readiness gate is distinct from the developer aggregate
 and follows RFC 021's conditional boundary. Repository release `0.20.2` is
@@ -132,8 +146,9 @@ is not itself a release.
 
 - Broad throughput, large-N, multi-tenant, memory-pressure, cancellation-latency,
   and denial-of-service stress evidence is absent.
-- Supply-chain vulnerability/license checks and enforced artifact/
-  monomorphization thresholds remain future assurance work.
+- Enforced artifact/monomorphization thresholds remain future assurance work.
+  Supply-chain advisory, license, ban, and source policy is now enforced (RFC
+  026), but its coverage is bounded as described above.
 - Extended/adversarial, ill-conditioned, property/fuzz, objective, and residual
   conformance coverage remains limited or absent.
 - Advisory/documented-only target profiles are not mandatory tested support.

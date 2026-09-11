@@ -359,6 +359,7 @@ struct ToolVersions {
     git: String,
     tar: String,
     sha256sum: String,
+    cargo_deny: String,
 }
 
 impl ToolVersions {
@@ -371,6 +372,9 @@ impl ToolVersions {
             git: command_output(root, "git", &["--version"])?,
             tar: first_line(&command_output(root, "tar", &["--version"])?).to_owned(),
             sha256sum: first_line(&command_output(root, "sha256sum", &["--version"])?).to_owned(),
+            // RFC 026: the supply-chain gate is enforced, so the tool that
+            // runs it belongs in the evidence bundle beside the compiler.
+            cargo_deny: command_output(root, "cargo", &["deny", "--version"])?,
         })
     }
 }
@@ -418,7 +422,7 @@ fn render_evidence(
          - Extracted Git-object content and executable-mode identity: {extracted_result}.\n\
          - Clean-extraction complete applicable suite: {clean_suite_result}.\n\n\
          ## Tool versions\n\n\
-         ```text\n{stable_rustc}\n{msrv_rustc}\n{cargo}\n{mdbook}\n{git}\n{tar}\n{sha256sum}\n```\n\n\
+         ```text\n{stable_rustc}\n{msrv_rustc}\n{cargo}\n{mdbook}\n{git}\n{tar}\n{sha256sum}\n{cargo_deny}\n```\n\n\
          ## Evidence classes\n\n\
          Source-tree and clean-extraction results are separate phases of the same command.\n\
          Target-profile advisory-unavailable/documented-only and size-budget advisory\n\
@@ -440,6 +444,7 @@ fn render_evidence(
         git = tools.git,
         tar = tools.tar,
         sha256sum = tools.sha256sum,
+        cargo_deny = tools.cargo_deny,
     )
 }
 
@@ -563,6 +568,7 @@ mod tests {
             git: "git version test".to_owned(),
             tar: "tar test".to_owned(),
             sha256sum: "sha256sum test".to_owned(),
+            cargo_deny: "cargo-deny test".to_owned(),
         }
     }
 

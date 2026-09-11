@@ -31,6 +31,7 @@ cargo xtask zero-bleed       # no forbidden server <-> edge dependency edge exis
 cargo xtask no-std           # edge crates build for thumbv7em-none-eabihf (no std/alloc)
 cargo xtask doc-currency     # bounded RFC 020/024 apex metadata/lifecycle/navigation assertions
 cargo xtask review-evidence  # RFC 022 architecture-review citation and provenance integrity
+cargo xtask supply-chain     # RFC 026 dependency advisories, licenses, bans, sources
 cargo xtask check            # canonical developer architecture aggregate
 cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidence
 ```
@@ -38,7 +39,7 @@ cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidenc
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
 `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
 `size-budget`, `unsafe-audit`, `conformance`, `doc-currency`, `review-evidence`,
-and `link-audit`.
+`supply-chain`, and `link-audit`.
 The aggregate summary labels commands as enforced, advisory/reporting, or
 owner-RFC hooks; threshold-less baselines and missing future corpora are not
 reported as enforced verification passes.
@@ -108,6 +109,26 @@ corpus is present and reports `unavailable` — never a pass — when it is
 absent, such as in a clean extraction. A citation-shaped token that does not
 match the recognized grammar is reported as a near-miss finding rather than
 silently ignored, but does not by itself fail the gate.
+
+RFC 026 adds `supply-chain`, enforced in the aggregate and in `release-gate`'s
+source-tree and clean-extraction suites. It runs `cargo deny --all-features
+check` against the tracked `deny.toml`: RustSec advisories, an exhaustive
+license allow-list, duplicate/wildcard bans, and crates.io-only sources. It then
+runs `cargo deny check bans` per edge crate with `--no-default-features` and
+asserts each has an empty external dependency set — a second zero-bleed witness
+independent of the `zero-bleed` gate's internal-edge scan.
+
+Install the tool before running the aggregate:
+
+```sh
+cargo install cargo-deny --version 0.20.2 --locked
+```
+
+If `cargo-deny` is absent the gate reports `unavailable` **and fails**. That is
+deliberately unlike RFC 022's maintainer-held review corpus, which is
+legitimately missing from a clean extraction: a missing tool is an environment
+defect. Policy lives in `deny.toml` and is never relaxed to make a tree pass — a
+failing tree is a finding, not a reason to add a skip.
 
 ## Release version convention
 

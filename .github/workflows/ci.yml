@@ -26,3 +26,14 @@ jobs:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - run: cargo xtask zero-bleed
+  supply-chain:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+      # Pinned: the gate fails when cargo-deny is absent (RFC 026 §11), so the
+      # version that enforces policy is part of the reviewed environment rather
+      # than whatever the runner happens to resolve.
+      - run: cargo install cargo-deny --version 0.20.2 --locked
+      - run: cargo deny --version
+      - run: cargo xtask supply-chain
