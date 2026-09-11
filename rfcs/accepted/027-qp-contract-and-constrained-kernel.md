@@ -1,6 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-09-12)
+**Design approval.** Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
