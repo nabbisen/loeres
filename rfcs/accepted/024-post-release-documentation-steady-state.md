@@ -202,7 +202,23 @@ before `done/`, which is what separates this from amending a shipped contract.
 This is a one-off exercised under review, not a general licence. Codifying it
 into RFC 000 or RFC 020 is a tracked follow-up, not settled by this RFC.
 
-### 0.5 Consequences for the queued correction series
+### 0.5 Editing shipped RFC Status lines (review 038 F1)
+
+The implementation changed RFCs 019/020/021 from `Implemented (conditional
+finalization for 0.20.2)` to `Implemented (v0.20.2)`. RFC 021 §11 Q4 step 8
+says "No tracked post-tag activation edit is required or permitted." The edit
+is correct, and the reason is recorded here so a later reader does not read that
+sentence as a permanent prohibition:
+
+- the prohibition is scoped to the Q4 finalization sequence, which closed on
+  2026-07-30 when `P` became true;
+- the `0.20.2` tagged artifact is immutable and untouched — the edit lives on
+  the `0.20.3` development line;
+- `Implemented (vX.Y.Z)` is RFC 000's prescribed form once shipped;
+- leaving a conditional claim in a shipped Status line indefinitely would be
+  the B1 defect this RFC exists to retire.
+
+### 0.6 Consequences for the queued correction series
 
 §11.1, §11.4, §13, and §16 are updated in place to match. Implementation of the
 amended provisions is blocked until independent re-review accepts this amendment.
