@@ -127,12 +127,27 @@ pub fn run() -> bool {
     }
 
     eprintln!(
-        "  {} review document(s) registered, {} distinct citation(s) resolved",
-        rows.len(),
-        distinct_cited.len()
+        "  {}",
+        summary_line(rows.len(), distinct_cited.len(), near_miss_findings.len())
     );
     eprintln!("[review-evidence] {}", if ok { "PASS" } else { "FAIL" });
     ok
+}
+
+/// The one-line summary. The near-miss count appears here, not only in the
+/// finding lines above, so a non-zero count is visible without reading the log
+/// body — a near miss does not fail the gate (RFC 022 §11.4 says *reported*,
+/// not *fails*), which would otherwise make it easy to lose in CI output
+/// (architect review 039, F2).
+fn summary_line(registered: usize, resolved: usize, near_misses: usize) -> String {
+    let near_miss_note = if near_misses == 0 {
+        "no near-miss citation format".to_owned()
+    } else {
+        format!("{near_misses} near-miss citation format(s) reported above")
+    };
+    format!(
+        "{registered} review document(s) registered, {resolved} distinct citation(s) resolved, {near_miss_note}"
+    )
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -374,7 +389,7 @@ fn clean_word(word: &str) -> &str {
 mod tests {
     use super::{
         IndexRow, classify_token, corpus_hashes, find_citations_in_line, parse_index_rows,
-        unresolved_citations, validate_tiers, verify_hashes,
+        summary_line, unresolved_citations, validate_tiers, verify_hashes,
     };
     use std::collections::BTreeSet;
     use std::fs;
@@ -450,6 +465,17 @@ mod tests {
             unresolved,
             vec![("ROADMAP.md".to_owned(), "099".to_owned())]
         );
+    }
+
+    #[test]
+    fn summary_line_surfaces_a_non_zero_near_miss_count() {
+        let clean = summary_line(52, 11, 0);
+        assert!(clean.contains("52 review document(s) registered"));
+        assert!(clean.contains("11 distinct citation(s) resolved"));
+        assert!(clean.contains("no near-miss citation format"));
+
+        let with_near_misses = summary_line(52, 11, 3);
+        assert!(with_near_misses.contains("3 near-miss citation format(s) reported above"));
     }
 
     #[test]

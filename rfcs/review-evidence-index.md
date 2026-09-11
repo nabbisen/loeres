@@ -106,6 +106,7 @@ separate, reviewed pass.
 | `036` | 2026-07-31 | rfc024 implementation architecture review | `949e3356e6685fd35328fa70b07637f48bcde6dffeae60e16ee5c489428496fb` | `implementer` | ✓ |
 | `037` | 2026-07-31 | rfc024 amendment1 rereview | `caaeda6ab04d8c17f898eea2ffa5ae54a3445e02c56925fc30a417135a2a7ae9` | `implementer` | ✓ |
 | `038` | 2026-09-09 | rfc024 implementation architect review | `bfb95d2773463ca8f3321e8868b2337f659212b153607e962e302d4f09afac62` | `unrecorded` |  |
+| `039` | 2026-09-09 | rfc022 implementation architect review | `9383c42eb538c59ea9b7c1f034427e4ecbe8bf04d40cbed8509946e9638e6591` | `unrecorded` |  |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
@@ -121,13 +122,20 @@ separate, reviewed pass.
 
 ## Summary
 
-- Registered review documents: **51**
+- Registered review documents: **52**
 - Distinct review references cited by tracked normative documents: **11**
   (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`)
 - Unresolved citations: **0**
 - Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
   statement); all other rows are `unrecorded` because provenance was not
   captured at request time and must not be reconstructed by inference.
+- Rows awaiting owner confirmation: `038` and `039`. Both carry a
+  `Reviewer author tier` field in their own text, and the architect has
+  attested first-hand to authoring `038`. Neither is recorded from that alone:
+  a tier taken from an artifact's own self-description is the inference §0.1
+  forbids, and it is what made `036`/`037` look independent. They stay
+  `unrecorded` until the project owner states otherwise, which is a one-row
+  edit plus these counts.
 
 `Ref` mirrors the numeric prefix used by in-repository citations. Pre-recovery
 reviews predate that numbering and carry `—`; they are registered for
