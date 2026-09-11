@@ -121,6 +121,7 @@ separate, reviewed pass.
 | `040` | 2026-09-12 | rfc022 followups architect review | `d6c723ae87ec95913a7baead5c086432ea5c06005a6f23dbc981b5a9667c19d7` | `architect` |  |
 | `041` | 2026-09-12 | rfc022 amendment2 architect review | `c677e43f3d02be37abea06d01e418a626b22ca0a4bde87387aae256b84c4d0e1` | `architect` |  |
 | `042` | 2026-09-12 | rfc022 index currency architect review | `17086cc062c18d8c8540af115a6d6b5f22aeb442e6323790e983ff5425467c95` | `architect` |  |
+| `043` | 2026-09-12 | rfc027 design review | `046aa262f30bc7c8251df3b78bb86e8aeec5605c0aac92b6685cbce2a29a8a09` | `architect` |  |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
@@ -136,7 +137,7 @@ separate, reviewed pass.
 
 ## Summary
 
-- Registered review documents: **55**
+- Registered review documents: **56**
 - Distinct review references cited by tracked normative documents: **13**
   (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`,
   `038`, `039`). The two most recent additions are both self-referential in the
@@ -146,8 +147,9 @@ separate, reviewed pass.
   `cargo xtask review-evidence` reports; this line is a hand-maintained echo of
   it.
 - Unresolved citations: **0**
-- Rows tiered `architect`: **5** (`038`–`042`, direct project-owner statement,
-  2026-09-12). Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
+- Rows tiered `architect`: **6** (`038`–`043`; `038`–`042` on direct project-owner
+  statement 2026-09-12, `043` on the owner's explicit authorization of the
+  architect to perform that review, same date). Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
   statement); all other rows are `unrecorded` because provenance was not
   captured at request time and must not be reconstructed by inference.
 - No rows await owner confirmation. Tiers for `038`–`042` were set on the

@@ -1,6 +1,7 @@
 # RFC 026 - Supply-Chain Gate
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-09-12)
+**Design approval.** Architect review (author-performed adversarial pass, tier `architect`); project owner authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** Consolidation step C.1; requirements SEC-S-003/REL-005 posture; the "N/A — not configured" entry carried since v0.14.
 **Touches.** `deny.toml` (new), `xtask` (one gate), `.github/workflows/ci.yml`, `docs/src/verification.md` / `development.md`.
 

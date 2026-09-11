@@ -1,6 +1,7 @@
 # RFC 025 - In-Place Amendment of Accepted RFCs
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-09-12)
+**Design approval.** Architect review (author-performed adversarial pass, tier `architect`); project owner authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** Register item I-14; consolidation step C.1 of the 2026-09-12 roadmap decision.
 **Touches.** `rfcs/done/000-rfc-lifecycle-policy.md` (one narrow section, following the RFC 021 precedent), `rfcs/README.md`.
 
