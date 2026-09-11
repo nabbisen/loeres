@@ -108,6 +108,7 @@ separate, reviewed pass.
 | `038` | 2026-09-09 | rfc024 implementation architect review | `bfb95d2773463ca8f3321e8868b2337f659212b153607e962e302d4f09afac62` | `unrecorded` |  |
 | `039` | 2026-09-09 | rfc022 implementation architect review | `9383c42eb538c59ea9b7c1f034427e4ecbe8bf04d40cbed8509946e9638e6591` | `unrecorded` | ✓ |
 | `040` | 2026-09-12 | rfc022 followups architect review | `d6c723ae87ec95913a7baead5c086432ea5c06005a6f23dbc981b5a9667c19d7` | `unrecorded` |  |
+| `041` | 2026-09-12 | rfc022 amendment2 architect review | `c677e43f3d02be37abea06d01e418a626b22ca0a4bde87387aae256b84c4d0e1` | `unrecorded` |  |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
@@ -123,7 +124,7 @@ separate, reviewed pass.
 
 ## Summary
 
-- Registered review documents: **53**
+- Registered review documents: **54**
 - Distinct review references cited by tracked normative documents: **12**
   (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`,
   `039` — the last added by RFC 022 Amendment 2, which cites review 039 as the
@@ -132,9 +133,9 @@ separate, reviewed pass.
 - Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
   statement); all other rows are `unrecorded` because provenance was not
   captured at request time and must not be reconstructed by inference.
-- Rows awaiting owner confirmation: `038`, `039`, and `040`. Each carries a
+- Rows awaiting owner confirmation: `038`, `039`, `040`, and `041`. Each carries a
   `Reviewer author tier` field in its own text, and the architect has attested
-  first-hand to authoring `038`. None is recorded from that alone: a tier taken
+  first-hand to authoring `038` through `041`. None is recorded from that alone: a tier taken
   from an artifact's own self-description is the inference §0.1 forbids, and it
   is what made `036`/`037` look independent. The `036`/`037` precedent set
   tiers on project-owner statement, so these stay `unrecorded` until the owner
