@@ -19,10 +19,9 @@ const RFC_FOLDERS: &[&str] = &["proposed", "accepted", "done", "archive"];
 const LEGACY_APEX_MARKER: &str = "**RFC 020 shared currency metadata (draft).**";
 
 /// Retired RFC 021 conditional apex marker. RFC 024 §11.3 retires the
-/// one-release apparatus; this string must never reappear in a tracked apex
-/// document, so it is checked for directly rather than re-importing the
-/// (retained-as-historical-record, no-longer-called) `conditional_finalization`
-/// module into the steady-state gate path.
+/// one-release apparatus and Amendment 2 (§0.6) removes its module outright, so
+/// this constant is the single owner of the string: the guard that the retired
+/// marker never reappears in a tracked apex document.
 const RETIRED_CONDITIONAL_APEX_MARKER: &str =
     "**RFC 021 conditional release-finalization metadata.**";
 

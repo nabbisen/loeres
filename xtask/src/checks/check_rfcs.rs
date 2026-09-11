@@ -4,8 +4,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::conditional_finalization;
-
 #[derive(Clone, Debug)]
 struct RfcFile {
     number: String,
@@ -25,32 +23,8 @@ pub fn run() -> bool {
     ok &= check_status_fields(&rfcs);
     ok &= check_readme_index(&rfcs);
     ok &= check_markdown_links(&rfc_markdown_files());
-    ok &= check_conditional_finalization();
     eprintln!("[check-rfcs] {}", if ok { "PASS" } else { "FAIL" });
     ok
-}
-
-fn check_conditional_finalization() -> bool {
-    let metadata = match conditional_finalization::load_optional(Path::new(".")) {
-        Ok(None) => return true,
-        Ok(Some(metadata)) => metadata,
-        Err(error) => {
-            eprintln!("  CONDITIONAL METADATA: {error}");
-            return false;
-        }
-    };
-    let errors = conditional_finalization::validate_lifecycle(Path::new("."), &metadata);
-    for error in &errors {
-        eprintln!("  {error}");
-    }
-    if errors.is_empty() {
-        eprintln!(
-            "  conditional finalization structure is staged; external activation is not inferred"
-        );
-        true
-    } else {
-        false
-    }
 }
 
 fn check_governed_directories() -> bool {

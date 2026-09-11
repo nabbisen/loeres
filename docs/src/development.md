@@ -94,9 +94,12 @@ documentation was last reconciled against (`Last reconciled repository
 release`), never release status, with a strict `>` invariant and no equality
 case. `Implemented scope` binds the exact `rfcs/done/` set, excluding RFC 000,
 rendered as a canonical compact set (a run of two or more consecutive numbers
-collapses to `NNN-NNN`). The one-release RFC 021 conditional apparatus is
-retired from this path; its module is retained only as the implemented record
-of that RFC.
+collapses to `NNN-NNN`). The one-release RFC 021 conditional apparatus is gone:
+its metadata file, its `xtask` module, and that module's call site were all
+removed (Amendment 2, §0.6). RFC 021's own document and git history are its
+record — unused code is deleted rather than suppressed, so nothing is carried
+under a lint allowance. `doc-currency` keeps one constant for the retired apex
+marker, as the guard that it never reappears.
 
 RFC 022 adds `review-evidence`. Normative documents cite architecture reviews
 as evidence, not authority; the check resolves every `review NNN` /
