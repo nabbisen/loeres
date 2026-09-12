@@ -12,6 +12,9 @@ const REQUIRED_FILES: &[&str] = &[
     "Cargo.lock",
     "LICENSE",
     "NOTICE",
+    // RFC 023 §11.4: the engineering-use terms are a user-facing obligation of
+    // the release, not a convenience file.
+    "TERMS_OF_USE.md",
     ".github/workflows/ci.yml",
     ".github/workflows/msrv.yml",
     ".github/workflows/release.yml",
@@ -32,7 +35,17 @@ pub(super) fn require_release_inputs(entries: &[TrackedEntry]) -> Result<(), Str
             ));
         }
     }
-    for prefix in ["crates/", "xtask/", "docs/", "rfcs/", "conformance/"] {
+    // `examples/` joins the families because the clean extraction now runs the
+    // RFC 023 examples gate; an extraction missing them would fail there with a
+    // per-example finding instead of naming the absent family here.
+    for prefix in [
+        "crates/",
+        "xtask/",
+        "docs/",
+        "rfcs/",
+        "conformance/",
+        "examples/",
+    ] {
         if !paths.iter().any(|path| path.starts_with(prefix)) {
             return Err(format!("required release input family `{prefix}` is empty"));
         }
@@ -612,6 +625,7 @@ mod tests {
             "docs/src/index.md",
             "rfcs/README.md",
             "conformance/README.md",
+            "examples/device-box-pfo/Cargo.toml",
         ] {
             if !entries.iter().any(|entry| entry.path == path) {
                 entries.push(entry(path));

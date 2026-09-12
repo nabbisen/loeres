@@ -12,8 +12,15 @@ crates/loeres-backend-static   # no_std, no alloc — fixed-size storage / views
 crates/loeres-device           # no_std, no alloc — deterministic edge solvers
 crates/loeres-backend-std      # std — dynamic storage (server-only)
 crates/loeres-cluster          # std — server solving / orchestration
+examples/                      # runnable examples, excluded from the workspace (RFC 023)
 xtask/                         # repository automation (never a library dependency)
 ```
+
+The two crates under `examples/` are **not** workspace members. They are listed
+in the root manifest's `[workspace] exclude` and carry their own lockfiles, so
+each one's resolved dependency graph is independent evidence of isolation rather
+than a product of shared resolution. Build one with
+`cargo build --locked --manifest-path examples/<name>/Cargo.toml`.
 
 ## Everyday commands
 
@@ -32,6 +39,7 @@ cargo xtask no-std           # edge crates build for thumbv7em-none-eabihf (no s
 cargo xtask doc-currency     # bounded RFC 020/024 apex metadata/lifecycle/navigation assertions
 cargo xtask review-evidence  # RFC 022 architecture-review citation and provenance integrity
 cargo xtask supply-chain     # RFC 026 dependency advisories, licenses, bans, sources
+cargo xtask examples         # RFC 023 per-example build and resolved-graph isolation
 cargo xtask check            # canonical developer architecture aggregate
 cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidence
 ```
@@ -39,7 +47,7 @@ cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidenc
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
 `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
 `size-budget`, `unsafe-audit`, `conformance`, `doc-currency`, `review-evidence`,
-`supply-chain`, and `link-audit`.
+`supply-chain`, `examples`, and `link-audit`.
 The aggregate summary labels commands as enforced, advisory/reporting, or
 owner-RFC hooks; threshold-less baselines and missing future corpora are not
 reported as enforced verification passes.
@@ -143,6 +151,22 @@ deliberately unlike RFC 022's maintainer-held review corpus, which is
 legitimately missing from a clean extraction: a missing tool is an environment
 defect. Policy lives in `deny.toml` and is never relaxed to make a tree pass — a
 failing tree is a finding, not a reason to add a skip.
+
+RFC 023 adds `examples`, enforced in the aggregate and in `release-gate`'s
+source-tree and clean-extraction suites. Per example it builds the crate under
+its declared feature set with `--locked`, then reads the **resolved** dependency
+graph against that example's own lockfile and asserts no forbidden crate appears
+in it. Resolved, not declared: a manifest lists direct dependencies while the
+resolve shows what is reachable, including transitively and through feature
+activation. The device forbidden set is external design §1.1's —
+`loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, `tracing`. An absent
+example directory, manifest, lockfile, or `src/main.rs` fails; a gate that passes
+when its subject is missing proves nothing.
+
+What this establishes is **dependency reachability**, not bare-metal
+buildability. An example is a host program and its own `main` may use `std`; the
+edge crates remain `#![no_std]` with no `alloc`, and that claim belongs to
+`no-std` against `thumbv7em-none-eabihf`. Keep the two apart in prose.
 
 ## Release version convention
 

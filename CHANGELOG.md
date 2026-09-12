@@ -5,7 +5,7 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.20.3] — unreleased — RFC 024 Amendment 1: post-release documentation steady state
+## [0.20.3] — unreleased — post-recovery consolidation: RFCs 022-026
 
 **Release status:** unreleased
 
@@ -22,6 +22,91 @@ remains, described as history. `CHANGELOG.md` release-status markers now give
 `doc-currency` a machine-checkable ground truth for which past version a
 lineage claim may name. No runtime crate source, public API, feature,
 dependency boundary, solver behavior, or release workflow changed.
+
+### RFC 026 — enforced supply-chain gate
+
+- Added `cargo xtask supply-chain` and the tracked `deny.toml`: RustSec
+  advisories, an exhaustive license allow-list, duplicate/wildcard bans, and
+  crates.io-only sources, run with `--all-features`. `cargo-deny` is a pinned
+  tool (`0.20.2`), never a workspace dependency.
+- Each edge crate additionally runs `cargo deny check bans` with
+  `--no-default-features` and must reach an empty external dependency set — a
+  second zero-bleed witness independent of the `zero-bleed` gate's internal-edge
+  scan.
+- A missing `cargo-deny` reports `unavailable` **and fails**: a missing tool is
+  an environment defect, unlike RFC 022's maintainer-held review corpus, which is
+  legitimately absent from a clean extraction.
+- On arrival the gate found RUSTSEC-2026-0204 in `crossbeam-epoch 0.9.18`,
+  reached through `crossbeam-deque → rayon-core → rayon → loeres-cluster`.
+  Remediated with the advisory's own fix — `crossbeam-epoch` updated to `0.9.21`
+  — with no ignore entry, no skip, and no policy relaxation.
+- The threat model records supply-chain scanning as an enforced control with
+  stated limits, rather than as a residual risk.
+
+### RFC 024 Amendment 2 — the retired conditional module is removed
+
+- Deleted `xtask`'s conditional-finalization module and its call site. RFC 021's
+  one-release apparatus is gone from live code; the RFC document and git history
+  are its record. Nothing was retained under a lint allowance.
+- `doc-currency` keeps one constant for the retired apex marker, as the guard
+  that it never reappears.
+
+### RFC 022 Amendment 3 — the cited column and row count are enforced
+
+- `review-evidence` now asserts that the index's **Cited in release** ticks equal
+  the cited set it derives from tracked documents, failing in either direction,
+  and that a ticked row carries a reference number at all. These depend only on
+  tracked bytes, so they hold in a clean extraction.
+- When the maintainer-held corpus is present, the registered row count must equal
+  the corpus file count. Hash verification and coverage symmetry both reason over
+  sets, so a row entered twice is invisible to each; the count catches it.
+- The index prose that declared the column known-unenforced is replaced rather
+  than kept.
+
+### RFC 025 — in-place amendment of Accepted RFCs is codified
+
+- RFC 000 gains one narrow section, beside the RFC 021 exception: an RFC in
+  `accepted/` may be corrected in place through a numbered, dated
+  `0.N Amendment` section under stated conditions, while an RFC in `done/` is
+  superseded by a new RFC rather than amended.
+- `check-rfcs` enforces the `done/` half fail-closed, at any heading level.
+- RFC 024 §0.4 and RFC 022 §0.3 now reference that section instead of each
+  stating a condition of its own.
+
+### RFC 023 — user-facing surface and obligation closure
+
+- Added two example crates, **excluded from the workspace** with their own
+  lockfiles: `examples/cluster-batch-solve/` (batch solve under
+  `parallel-rayon`, per-item outcomes including a non-converged item handled as
+  an `Ok` status) and `examples/device-box-pfo/` (fixed-size box-constrained
+  solve, caller-owned typed workspace, workspace reuse across calls). Excluded
+  rather than members so each example's resolved dependency graph is its own
+  evidence instead of a product of feature unification.
+- Added `cargo xtask examples`: each example builds under its declared feature
+  set, and its **resolved** graph — read against its own lockfile, not parsed
+  from its manifest — must carry no forbidden crate. The device forbidden set is
+  `loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, `tracing`. An absent
+  example fails rather than passing vacuously. Enforced in the developer
+  aggregate and in `release-gate`'s source and clean-extraction suites.
+- Added `TERMS_OF_USE.md`, stating the engineering limitations for integrators:
+  no safety certification, panic-averse rather than panic-free, target-scoped
+  determinism, one solver family, bounded smoke conformance, server-side
+  boundaries, pre-1.0 instability, and integrator responsibility. It complements
+  the Apache-2.0 warranty disclaimer rather than restating it, and every
+  limitation it records is already stated elsewhere in the project. This
+  resolves requirements **OQ-012**.
+- Added the user-facing book section — `cluster-user-guide.md`,
+  `device-user-guide.md`, `verification.md` — ahead of the maintainer section in
+  `SUMMARY.md`, closing the persona gap. `verification.md` summarizes the
+  existing gate set and its evidence classes and introduces no new claim.
+- Renamed the device example path from requirements §4.1's `device-fixed-qp/` to
+  `device-box-pfo/`, amending §4.1 and external design §1.1 atomically: no QP
+  contract ships, OQ-001 resolved the family to bounded box projected
+  first-order, and a directory name must not claim a family the project does not
+  have.
+- No runtime crate source, public API, feature, or dependency boundary changed.
+  Both examples were written against the existing public surface with no
+  widening.
 
 ## [0.20.2] — 2026-07-22 — RFC 021 conditional finalization
 

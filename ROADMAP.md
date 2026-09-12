@@ -69,6 +69,20 @@ form, which retires the one-release conditional apparatus and records this
 tree's identity and the release it was last reconciled against (`0.20.2`),
 not release status.
 
+The `0.21.0` consolidation is underway in this tree. RFC 026 added an enforced
+supply-chain gate (advisories, licenses, bans, sources, plus a per-edge-crate
+zero-external-dependency assertion); RFC 024 Amendment 2 removed the retired
+RFC 021 conditional module rather than suppressing it; RFC 022 Amendment 3 made
+the evidence index's cited column and row count enforced assertions; RFC 025
+codified in-place amendment of Accepted RFCs into RFC 000 with a `check-rfcs`
+assertion that a shipped RFC carries no amendment. RFC 023 closed the three
+user-facing obligations that `0.20.2` shipped without: two workspace-excluded
+example crates with a `cargo xtask examples` gate asserting each one's resolved
+dependency graph, `TERMS_OF_USE.md` (resolving requirements OQ-012), and the
+user-facing book section that closes the persona gap. §5.9's example criterion is
+satisfied by the gate rather than waived. RFC 027 remains next, after `0.21.0`
+is cut.
+
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision
 unless the current-status paragraph above repeats them.

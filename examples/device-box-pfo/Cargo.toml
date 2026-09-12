@@ -1,0 +1,21 @@
+# RFC 023 §11.1: excluded from the root workspace on purpose, with its own
+# lockfile, so this crate's resolved dependency graph is independent evidence
+# that a device integrator reaches no server-side crate. See the root
+# `[workspace] exclude` comment.
+[package]
+name = "device-box-pfo"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "Fixed-size box-constrained projected first-order solve on the edge path (RFC 023 example)"
+
+# Edge crates only, each with default features off: `owned-arrays` is the one
+# feature this example needs (external design §1.4). Nothing here pulls
+# `loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, or `tracing`, and
+# `cargo xtask examples` asserts that against the resolved graph, not this file.
+[dependencies]
+loeres = { path = "../../crates/loeres", default-features = false }
+loeres-device = { path = "../../crates/loeres-device", default-features = false, features = ["owned-arrays"] }
+loeres-backend-static = { path = "../../crates/loeres-backend-static", default-features = false, features = ["owned-arrays"] }

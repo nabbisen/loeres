@@ -9,6 +9,17 @@ members = [
     "xtask",
 ]
 
+# RFC 023 §11.1: the examples are deliberately NOT members. As members they
+# would share one lockfile and participate in feature unification, so a device
+# example could resolve cluster-side crates through a sibling and still compile
+# — the isolation claim would be an artifact of the build graph rather than a
+# property of the example. Excluded, each example's resolved graph is its own
+# evidence, which is what `cargo xtask examples` asserts.
+exclude = [
+    "examples/cluster-batch-solve",
+    "examples/device-box-pfo",
+]
+
 # Shared metadata inherited by every member via `field.workspace = true`.
 # Member crates expose implemented public APIs through RFCs 001-021. Repository
 # state alone does not establish external registry publication; workspace

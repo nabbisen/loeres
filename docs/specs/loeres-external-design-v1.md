@@ -158,7 +158,7 @@ loeres/
 ├── examples/
 │   ├── cluster-dynamic-qp/
 │   ├── cluster-batch-solve/
-│   ├── device-fixed-qp/
+│   ├── device-box-pfo/
 │   └── device-static-workspace/
 ├── xtask/
 │   └── src/

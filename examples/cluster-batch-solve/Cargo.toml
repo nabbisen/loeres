@@ -1,0 +1,18 @@
+# RFC 023 §11.1: excluded from the root workspace on purpose, with its own
+# lockfile, so this crate's resolved dependency graph is its own evidence. See
+# the root `[workspace] exclude` comment.
+[package]
+name = "cluster-batch-solve"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "Batch projected first-order solve on the server path (RFC 023 example)"
+
+# Server-side feature set from external design §1.4: `loeres-cluster` with
+# `parallel-rayon`, `loeres-backend-std` with `dense`.
+[dependencies]
+loeres = { path = "../../crates/loeres", default-features = false }
+loeres-cluster = { path = "../../crates/loeres-cluster", default-features = false, features = ["parallel-rayon"] }
+loeres-backend-std = { path = "../../crates/loeres-backend-std", default-features = false, features = ["dense"] }

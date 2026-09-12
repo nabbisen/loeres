@@ -235,7 +235,7 @@ loeres/
 │   └── loeres-device/
 ├── examples/
 │   ├── cluster-batch-solve/
-│   └── device-fixed-qp/
+│   └── device-box-pfo/
 ├── xtask/
 └── .github/
     ├── workflows/
@@ -244,6 +244,15 @@ loeres/
     ├── CODE_OF_CONDUCT.md
     └── ISSUE_TEMPLATE/
 ```
+
+The device example path above was amended from `device-fixed-qp/` to
+`device-box-pfo/` by RFC 023 §11.3. The original name predates OQ-001's
+resolution to a bounded box projected-first-order family, and no QP contract
+ships; keeping it would put a claim the project does not support into a
+user-facing directory name. RFC 020's conflict rule applies — stale prose is
+reconciled to the later resolved scope rather than propagated. The examples are
+excluded from the workspace rather than members, so that each one's resolved
+dependency graph is independent evidence of isolation (RFC 023 §11.1).
 
 ### 4.2 Required Crate Responsibilities
 
@@ -1201,7 +1210,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | OQ-009 | **Partially resolved/deferred (RFC 009).** A safe mock gateway and default-off seam ship; a concrete native adapter does not. |
 | OQ-010 | **Partially resolved/open at formal-proof level (RFC 010/011).** Audits and target gates provide panic-averse evidence, not formal panic freedom. |
 | OQ-011 | **Resolved as scoped policy (RFC 011).** Claims are target-profile-scoped; broad cross-target bit identity remains unsupported. |
-| OQ-012 | **Open.** No dedicated safety-critical engineering-use disclaimer currently satisfies this documentation requirement. |
+| OQ-012 | **Resolved (RFC 023).** `TERMS_OF_USE.md` states the engineering limitations — no safety certification, panic-averse rather than panic-free, target-scoped determinism, one solver family, bounded smoke conformance, server-side boundaries, pre-1.0 instability, integrator responsibility — complementing the Apache-2.0 warranty disclaimer rather than restating it. Every limitation it records is stated elsewhere in the project; it consolidates for integrators and introduces nothing. |
 
 ---
 

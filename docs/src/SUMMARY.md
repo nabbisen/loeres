@@ -2,6 +2,12 @@
 
 [Introduction](introduction.md)
 
+# Users & Integrators
+
+- [Cluster User Guide](cluster-user-guide.md)
+- [Device User Guide](device-user-guide.md)
+- [Verification & Evidence](verification.md)
+
 # Maintainers & Contributors
 
 - [Architecture](architecture.md)
