@@ -126,6 +126,7 @@ separate, reviewed pass.
 | `042` | 2026-09-12 | rfc022 index currency architect review | `17086cc062c18d8c8540af115a6d6b5f22aeb442e6323790e983ff5425467c95` | `architect` |  |
 | `043` | 2026-09-12 | rfc027 design review | `046aa262f30bc7c8251df3b78bb86e8aeec5605c0aac92b6685cbce2a29a8a09` | `architect` | ✓ |
 | `044` | 2026-09-12 | rfc026 and rfc024 am2 architect review | `0b49007e10966da1c1c70aafe97724078819680812832e897d2ef2709155f126` | `architect` | ✓ |
+| `045` | 2026-09-12 | rfc022am3 rfc025 rfc023 architect review | `a39cd02d1eea6facdbe7e98c895318b4968c4ccf07e402bfc7c99564f4b46f05` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
@@ -141,7 +142,7 @@ separate, reviewed pass.
 
 ## Summary
 
-- Registered review documents: **57**
+- Registered review documents: **58**
 - Distinct review references cited by tracked normative documents: **15**
   (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`,
   `038`, `039`, `043`, `044`). Several of the recent additions are
@@ -154,7 +155,7 @@ separate, reviewed pass.
   **Cited in release** ticks in the table, by contrast, are now themselves
   enforced against the derived set (Amendment 3, §0.5).
 - Unresolved citations: **0**
-- Rows tiered `architect`: **7** (`038`–`044`; `038`–`042` on direct project-owner
+- Rows tiered `architect`: **8** (`038`–`045`; `038`–`042` on direct project-owner
   statement 2026-09-12, `043` on the owner's explicit authorization of the
   architect to perform that review, same date). Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
   statement); all other rows are `unrecorded` because provenance was not

@@ -1,7 +1,7 @@
 # RFC 023 - User-Facing Surface and Documented-Obligation Closure
 
 **Status.** Accepted (design frozen 2026-07-31)
-**Design approval.** Author-performed adversarial review pass (see RFC 022 §17
+**Design approval.** Amendment 1 (§0, 2026-09-12) by architect review 045.  Author-performed adversarial review pass (see RFC 022 §17
 on the role-separation compromise); project owner authorized the `accepted/`
 transition on 2026-07-31.
 **Tracks.** Unmet documented obligations identified in the 0.20.2 onboarding
@@ -19,6 +19,23 @@ and an `xtask` example-isolation check.
 * **Proposed release:** Corrective/additive release after `0.20.2`; exact
   version and tag require project-owner approval.
 * **Relationship to RFC 022:** Independent scope; may share a release vehicle.
+
+## 0. Amendment 1 — 2026-09-12 (architect review 045)
+
+**Isolation mechanism.** §11.3.1 named `cargo metadata`. The implementation uses
+`cargo tree --locked --manifest-path <example> --edges normal,build,dev --prefix
+none` and is accepted: it reads the same resolve, from the example's own lockfile,
+over the whole set including build and dev edges, and it avoids adding a JSON
+dependency to a repository whose supply-chain policy exists to keep the graph
+small. `cargo metadata` remains acceptable if a JSON parser is ever justified;
+the requirement is the resolved graph, not the command.
+
+**Reconciled prose.** External design §1.1 forbade `std`/`alloc` to a device
+example, conflicting with §11.2; it listed `cluster-dynamic-qp/` and
+`device-static-workspace/`, which this RFC neither ships nor mentioned. §1.1 is
+reconciled in the same change: the forbidden set is the five crates; a cluster
+QP example moves to RFC 027 (Amendment 1); the static-workspace example is
+removed as redundant with `device-box-pfo/`.
 
 ## 1. Summary
 

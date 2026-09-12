@@ -1,7 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
 **Status.** Accepted (design frozen 2026-09-12)
-**Design approval.** Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
+**Design approval.** Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
@@ -13,6 +13,17 @@
 * **Target Environment:** Core contracts; device and cluster kernels.
 * **Proposed release:** first minor after `0.21.0`.
 * **Depends on:** RFC 026 (supply-chain gate) landed first; `0.21.0` cut.
+
+## 0. Amendment 1 — 2026-09-12 (architect review 045)
+
+External design §1.1 listed a `cluster-dynamic-qp/` example that RFC 023 did not
+ship because no QP contract exists. It becomes this RFC's deliverable, in slice
+S5: `examples/cluster-qp-constrained/`, workspace-excluded like the RFC 023
+examples, building a `QuadraticProgram` with box and linear-inequality
+constraints, solving through the cluster kernel, and printing the terminal
+constraint violation beside the status. The `examples` gate covers it. Named for
+what it demonstrates, per RFC 023 §11.3's rule against directory names that
+claim more than ships. Exit criterion 9 added.
 
 ## 1. Summary
 
@@ -218,4 +229,6 @@ RFC 026 landed; `0.21.0` cut. Nothing in RFCs 022–025 blocks design work.
 5. no new dependency, or RFC 026 gate green on the one that was justified;
 6. panic-audit, zero-bleed, no-std, MSRV, size-budget report green;
 7. numerical review recorded with tier;
-8. §11.6 limitations stated in every user-facing surface.
+8. §11.6 limitations stated in every user-facing surface; and
+9. `examples/cluster-qp-constrained/` exists, is workspace-excluded, passes the
+   `examples` gate, and prints the terminal constraint violation (§0).

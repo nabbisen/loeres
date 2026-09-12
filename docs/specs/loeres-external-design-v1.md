@@ -156,10 +156,8 @@ loeres/
 │   ├── loeres-cluster/
 │   └── loeres-device/
 ├── examples/
-│   ├── cluster-dynamic-qp/
 │   ├── cluster-batch-solve/
-│   ├── device-box-pfo/
-│   └── device-static-workspace/
+│   └── device-box-pfo/
 ├── xtask/
 │   └── src/
 └── .github/
@@ -173,7 +171,7 @@ loeres/
     └── ISSUE_TEMPLATE/
 ```
 
-The `examples/` directory must be split by execution environment. A device example must not depend on `loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, `tracing`, `std`, or `alloc`.
+The `examples/` directory must be split by execution environment. A device example's resolved dependency graph must not reach `loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, or `tracing`; the `examples` gate asserts this on the resolved graph. An example is a host program and may use `std` in its own binary — that does not weaken the edge crates' `no_std`/no-`alloc` guarantee, which the `no-std` gate proves separately (RFC 023 §11.2, reconciling the earlier wording that forbade `std`/`alloc` to the example itself). The example set is two: `cluster-batch-solve/` and `device-box-pfo/` (requirements §4.1). A cluster QP example is an RFC 027 deliverable and is named there when the contract it demonstrates ships; a separate `device-static-workspace/` example was removed as redundant with `device-box-pfo/`, which already demonstrates caller-owned workspace reuse.
 
 The `xtask/` crate may use `std` because it is a repository automation tool. It must never become a dependency of any library crate.
 
