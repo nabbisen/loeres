@@ -236,9 +236,17 @@ An RFC in `done/` is never amended in place — it is superseded by a new RFC.
 
 Nothing outside an Accepted RFC's own file depends on its frozen text until
 `done/`; a shipped contract does. The boundary is therefore `done/`, not
-implementation state. `cargo xtask check-rfcs` enforces the second half
-fail-closed: no file under `rfcs/done/` may carry a `## 0.N Amendment` heading.
-RFC 025 records the two cases that motivated this section.
+implementation state.
+
+An RFC amended while Accepted carries that record with it into `done/` — the
+amendment section is history, not a live edit, and deleting it at transition time
+would destroy exactly what condition (2) exists to preserve. So `cargo xtask
+check-rfcs` enforces **accountability rather than absence**, fail-closed: every
+`0.N Amendment` heading in a file under `rfcs/done/` must be named by that file's
+Status line. Appending an amendment to a shipped RFC and leaving the Status line
+untouched fails; doing both is not detectable from tracked bytes and belongs to
+condition (4)'s recorded review. RFC 025 records the two cases that motivated this
+section and, in its own §0, the defect in the first version of this assertion.
 
 ## Status field inside each RFC
 
