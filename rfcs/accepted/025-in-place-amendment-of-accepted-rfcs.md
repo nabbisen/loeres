@@ -13,6 +13,40 @@
 * **Target Environment:** Repository governance.
 * **Proposed release:** `0.21.0` consolidation release.
 
+## 0. Amendment 1 — 2026-09-12 (architect review 047)
+
+**Defect.** §13 required "a `check-rfcs` assertion that a `done/` RFC contains no
+`## 0.N Amendment` heading **added after its Implemented status**." The developer
+handoff I wrote dropped the final clause and asked for absence; the implementer
+built absence; I reviewed it and accepted it. The assertion therefore forbids the
+*presence* of an amendment heading where the rule forbids its *addition after
+shipping* — so every RFC that legitimately used this RFC's own rule while
+Accepted is permanently barred from ever reaching `done/`. It surfaced the first
+time such a transition was attempted: the `0.21.0` finalization revision, where
+RFCs 022, 023, and 024 could not move.
+
+**Correction.** The assertion becomes **accountability, not absence**. A `done/`
+RFC may carry `0.N Amendment` headings **only if its Status line names them**.
+That is §11's own condition (3) made mechanical: it works from tracked bytes
+alone, holds in a clean extraction, needs no dates and no git history, permits
+the legitimate pre-shipping record, and catches the realistic failure — appending
+an amendment to a shipped RFC and leaving the Status line untouched.
+
+**Residual, stated rather than implied.** It does not catch an editor who amends
+a shipped RFC *and* updates its Status line to match. Nothing readable from
+tracked bytes can: §11 condition (4) already places that in the architect's
+recorded review, and this amendment does not pretend otherwise.
+
+**Rejected: dating amendments against the release.** Comparing each heading's
+date to the `CHANGELOG.md` date of the version in the Status line is mechanically
+stronger for a *future* post-ship amendment, and it was considered seriously. It
+is rejected for now because an amendment dated the same day as the finalization
+revision — which is every amendment in `0.21.0` — is indistinguishable either
+way, so it buys nothing at the point of need; it adds a cross-file dependency and
+date arithmetic to a governance rule; and the residual above survives it. It
+remains available as a strengthening if a genuine post-ship amendment is ever
+attempted.
+
 ## 1. Summary
 
 RFC 000 defines states and folders; it does not say whether an Accepted RFC's
@@ -58,7 +92,10 @@ implementation state, which resolves the two conditions RFC 024 §0.4 and RFC 02
 ## 13. Verification gates
 
 `check-rfcs`, `link-audit`, `doc-currency`; a `check-rfcs` assertion that a `done/`
-RFC contains no `## 0.N Amendment` heading added after its Implemented status.
+RFC's `0.N Amendment` headings are each named by its Status line (§0, Amendment
+1). Absence is *not* asserted: an RFC amended while Accepted carries that record
+into `done/` legitimately, and a `done/` RFC whose Status line does not account
+for a heading it carries fails closed.
 
 ## 14. Sprint plan
 
@@ -66,5 +103,7 @@ S0 design freeze → S1 RFC 000 section + `check-rfcs` assertion → S6 closeout
 
 ## 15. Exit criteria
 
-RFC 000 carries the section; the assertion exists and is tested; RFC 024 §0.4 and
-RFC 022 §0.3 reference it instead of describing the condition themselves.
+RFC 000 carries the section; the Status-line accountability assertion exists and
+is tested — including an amended RFC reaching `done/` with its Status line naming
+the amendments (pass) and not naming them (fail); RFC 024 §0.4 and RFC 022 §0.3
+reference it instead of describing the condition themselves.

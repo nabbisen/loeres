@@ -128,6 +128,7 @@ separate, reviewed pass.
 | `044` | 2026-09-12 | rfc026 and rfc024 am2 architect review | `0b49007e10966da1c1c70aafe97724078819680812832e897d2ef2709155f126` | `architect` | ✓ |
 | `045` | 2026-09-12 | rfc022am3 rfc025 rfc023 architect review | `a275815a4699872ae723bee9c21c311a4bb63b09acab7cdd7d546c135af3e315` | `architect` | ✓ |
 | `046` | 2026-09-12 | rfc023am2 and 045 followups architect review | `614985a822cb9678ca2d8f8aff6443bd8d5b15521ef114b744388c6349beec2b` | `architect` |  |
+| `047` | 2026-09-12 | rfc025 assertion defect architect review | `fcbbd0382ec011c7f9522a1ee4985294e51ac3c8578c17969e3117c13c93fa42` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
