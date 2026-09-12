@@ -37,6 +37,29 @@ reconciled in the same change: the forbidden set is the five crates; a cluster
 QP example moves to RFC 027 (Amendment 1); the static-workspace example is
 removed as redundant with `device-box-pfo/`.
 
+## 0.2 Amendment 2 — 2026-09-12 (architect review 045 addendum): self-rooted examples
+
+**Defect, found by the release gate.** `release-gate` extracts the candidate to
+`.git-exclude/tmp/release-gate/extracted` — nested inside the repository. From an
+example directory cargo searches upward for a workspace; the extraction's root
+manifest *excludes* the example, so cargo keeps walking and finds the **outer
+repository's** `Cargo.toml`, which neither lists nor excludes that path:
+
+```
+error: current package believes it's in a workspace when it's not
+```
+
+The `examples` gate therefore fails in every clean extraction while passing in
+the source tree and in a non-nested extraction. §11.1's "listed in `[workspace]
+exclude`" was necessary but not sufficient.
+
+**Correction.** Each example manifest carries an **empty `[workspace]` table**,
+making it its own workspace root. Cargo's upward search stops there, independent
+of where the tree sits. The root `exclude` is retained. This is also stronger
+isolation than exclusion alone: no enclosing workspace can absorb the example.
+`release-gate`'s clean-extraction suite is the acceptance evidence; §16 item 1
+now requires it.
+
 ## 1. Summary
 
 Three obligations stated in normative documents were never satisfied, and
@@ -247,8 +270,10 @@ The `0.20.2` artifact is never modified retroactively.
 
 RFC 023 is complete only when:
 
-1. both examples exist, build under their declared feature sets, and are
-   excluded from the workspace with their own lockfiles;
+1. both examples exist, build under their declared feature sets, are excluded
+   from the workspace, carry an empty `[workspace]` table (§0.2), have their own
+   lockfiles, and pass the `examples` gate inside `release-gate`'s clean
+   extraction;
 2. the gate asserts each example's dependency graph is free of forbidden
    crates, and fails closed when an example is missing;
 3. `TERMS_OF_USE.md` exists and states no limitation not already recorded
