@@ -92,14 +92,13 @@ position on what a bounded check can and cannot establish.
 
 ### 0.3 Lifecycle note
 
-This is the second in-place amendment of an Accepted RFC, under a condition
-slightly wider than the one RFC 024 §0.4 recorded: that exception covered a
-correction narrowly patching already-committed partial work, whereas RFC 022 has
-no implementation at all. Amending an accepted-but-entirely-unimplemented RFC is
-the least disruptive possible moment — nothing outside its own file depends on
-the frozen text — but the condition is now demonstrably broader than one
-sentence in another RFC records. That strengthens the standing recommendation to
-codify the exception into RFC 000 or RFC 020 rather than accrete it case by case.
+This was the second in-place amendment of an Accepted RFC, and the case that
+showed the condition was broader than RFC 024 §0.4's single sentence recorded:
+that exception covered a correction narrowly patching already-committed partial
+work, whereas RFC 022 had no implementation at all. The governing conditions are
+now RFC 000's *Loeres in-place amendment of Accepted RFCs* section, codified by
+RFC 025, and every amendment below is read under it.
+
 ### 0.4 Amendment 2 — 2026-09-12: coverage symmetry (review 039 F3)
 
 Hash verification as frozen is row→file only: each registered hash must exist

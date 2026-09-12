@@ -101,6 +101,12 @@ record — unused code is deleted rather than suppressed, so nothing is carried
 under a lint allowance. `doc-currency` keeps one constant for the retired apex
 marker, as the guard that it never reappears.
 
+RFC 025 codifies in-place amendment of Accepted RFCs in RFC 000 and gives
+`check-rfcs` the enforcing assertion: an RFC in `accepted/` may be corrected in
+place through a numbered, dated `## 0.N Amendment` section under RFC 000's stated
+conditions, while no file under `rfcs/done/` may carry such a heading — a shipped
+RFC is superseded by a new one, never amended in place.
+
 RFC 022 adds `review-evidence`. Normative documents cite architecture reviews
 as evidence, not authority; the check resolves every `review NNN` /
 `reviews NNN/NNN` citation in a tracked Markdown document against

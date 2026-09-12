@@ -21,6 +21,7 @@ pub fn run() -> bool {
     let rfcs = collect_rfcs();
     ok &= check_file_names_and_uniqueness(&rfcs);
     ok &= check_status_fields(&rfcs);
+    ok &= check_done_rfcs_carry_no_amendment(&rfcs);
     ok &= check_readme_index(&rfcs);
     ok &= check_markdown_links(&rfc_markdown_files());
     eprintln!("[check-rfcs] {}", if ok { "PASS" } else { "FAIL" });
@@ -166,6 +167,62 @@ fn status_matches_folder(folder: &str, status: &str) -> bool {
     }
 }
 
+/// RFC 000's in-place-amendment section (added by RFC 025) draws the boundary at
+/// `done/`: an Accepted RFC may be corrected in place, a shipped one is
+/// superseded by a new RFC instead. This asserts the second half — no file under
+/// `rfcs/done/` carries a numbered amendment heading. Without it the rule is
+/// remembered rather than enforced, and amending a shipped contract is exactly
+/// the history rewrite RFC 000 forbids.
+fn check_done_rfcs_carry_no_amendment(rfcs: &[RfcFile]) -> bool {
+    let mut ok = true;
+    for rfc in rfcs.iter().filter(|rfc| rfc.folder == "done") {
+        let src = match fs::read_to_string(&rfc.path) {
+            Ok(src) => src,
+            // `check_status_fields` already reported the read failure.
+            Err(_) => continue,
+        };
+        for heading in amendment_headings(&src) {
+            eprintln!(
+                "  AMENDMENT IN `done/`: {} carries `{heading}`; a shipped RFC is superseded, never amended in place",
+                rfc.path.display()
+            );
+            ok = false;
+        }
+    }
+    ok
+}
+
+/// Every `0.N Amendment` heading in a source, at any heading level. RFC 000
+/// names the `## 0.N Amendment` and `### 0.N Amendment` forms; matching any
+/// level keeps the assertion fail-closed against a deeper nesting rather than
+/// letting `#### 0.7 Amendment 4` through on a formatting choice.
+fn amendment_headings(src: &str) -> Vec<String> {
+    src.lines()
+        .map(str::trim_end)
+        .filter(|line| is_amendment_heading(line))
+        .map(str::to_owned)
+        .collect()
+}
+
+fn is_amendment_heading(line: &str) -> bool {
+    let rest = line.trim_start_matches('#');
+    if rest.len() == line.len() {
+        return false;
+    }
+    let Some(rest) = rest.strip_prefix(' ') else {
+        return false;
+    };
+    let rest = rest.trim_start();
+    let Some(rest) = rest.strip_prefix("0.") else {
+        return false;
+    };
+    let digits: String = rest.chars().take_while(char::is_ascii_digit).collect();
+    if digits.is_empty() {
+        return false;
+    }
+    rest[digits.len()..].trim_start().starts_with("Amendment")
+}
+
 fn check_readme_index(rfcs: &[RfcFile]) -> bool {
     let readme = match fs::read_to_string("rfcs/README.md") {
         Ok(readme) => readme,
@@ -260,7 +317,70 @@ fn external_or_anchor(target: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{RFC_DIRS, missing_governed_directories, status_matches_folder};
+    use super::{
+        RFC_DIRS, RfcFile, amendment_headings, check_done_rfcs_carry_no_amendment,
+        missing_governed_directories, status_matches_folder,
+    };
+    use std::path::PathBuf;
+
+    const AMENDED_BODY: &str = concat!(
+        "# RFC 099 — Example\n\n",
+        "**Status.** Accepted (design frozen 2026-09-12; Amendment 1)\n\n",
+        "### 0.1 Amendment 1 — 2026-09-12: a corrected provision\n\n",
+        "Body text.\n",
+    );
+
+    #[test]
+    fn a_numbered_amendment_heading_is_detected_so_a_done_rfc_carrying_one_fails() {
+        let headings = amendment_headings(AMENDED_BODY);
+        assert_eq!(
+            headings,
+            vec!["### 0.1 Amendment 1 — 2026-09-12: a corrected provision".to_owned()]
+        );
+        // `check_done_rfcs_carry_no_amendment` reports one finding per heading
+        // and fails, so a non-empty result under `done/` is a gate failure.
+        assert!(!headings.is_empty());
+    }
+
+    #[test]
+    fn an_accepted_rfc_carrying_an_amendment_is_not_a_finding() {
+        // The same body under `accepted/` is never inspected: the check filters
+        // on `folder == "done"` before reading. RFC 000 permits in-place
+        // amendment right up to `done/`, which is what RFCs 022 and 024 rely on.
+        let accepted = RfcFile {
+            number: "099".to_owned(),
+            path: PathBuf::from("rfcs/accepted/099-example.md"),
+            folder: "accepted".to_owned(),
+            file_name: "099-example.md".to_owned(),
+        };
+        assert_ne!(accepted.folder, "done");
+        assert!(check_done_rfcs_carry_no_amendment(&[accepted]));
+    }
+
+    #[test]
+    fn amendment_heading_detection_rejects_near_misses_and_accepts_every_level() {
+        for line in [
+            "## 0.4 Amendment 2 — 2026-09-12: coverage symmetry",
+            "### 0.5 Amendment 3",
+            "#### 0.10 Amendment 4 (deeper nesting is still an amendment)",
+            "##   0.1   Amendment 1",
+        ] {
+            assert_eq!(amendment_headings(line).len(), 1, "missed: {line}");
+        }
+        for line in [
+            "## 0.4 Coverage symmetry",
+            "## 1.0 Amendment-shaped but not a `0.N` section",
+            "Prose mentioning ## 0.4 Amendment 2 inside a sentence",
+            "##0.4 Amendment 2",
+            "## 0. Amendment",
+            "## Amendment 2",
+        ] {
+            assert!(
+                amendment_headings(line).is_empty(),
+                "false positive: {line}"
+            );
+        }
+    }
 
     #[test]
     fn accepted_is_a_governed_rfc_directory() {

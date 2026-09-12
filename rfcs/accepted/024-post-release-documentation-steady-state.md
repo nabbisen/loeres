@@ -189,18 +189,10 @@ returning RFC 024 to `proposed/` while its rejected implementation sits committe
 would create an RFC 000 contradiction — implementation existing against a
 Proposed RFC, which that folder's rule forbids.
 
-But the re-review is right that the exception is written down nowhere, and that
-this RFC's own §12 rejects widening a frozen RFC for a neighbouring case. The
-distinguishing condition is recorded here so it is not reconstructed later from
-an untracked review: **an Accepted RFC that has not reached `done/` may be
-corrected in place through a numbered, dated `Amendment N` section, when the
-correction narrowly patches already-committed partial work, provided the Status
-line names the pending re-review and withholds implementation authorization for
-the amended provisions.** Nothing outside the RFC's own file depends on its text
-before `done/`, which is what separates this from amending a shipped contract.
-
-This is a one-off exercised under review, not a general licence. Codifying it
-into RFC 000 or RFC 020 is a tracked follow-up, not settled by this RFC.
+The re-review was also right that the exception was, at the time, written down
+nowhere. It now is: the governing conditions are RFC 000's *Loeres in-place
+amendment of Accepted RFCs* section, codified by RFC 025, and this amendment is
+read under it rather than under a condition this RFC states for itself.
 
 ### 0.5 Editing shipped RFC Status lines (review 038 F1)
 
