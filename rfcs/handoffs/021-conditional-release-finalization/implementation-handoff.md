@@ -7,8 +7,7 @@ below as executed.
 **Target.** Owner-selected corrective version `0.20.2`; local tag `0.20.1`
 remains immutable, unpublished, and unusable as an actual release.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021.
 
 ## 1. Summary
 

@@ -139,8 +139,8 @@ thresholds.
 
 RFC 019's package/readiness gate is distinct from the developer aggregate
 and follows RFC 021's conditional boundary. Repository release `0.20.2` is
-released and carries RFCs 001-021; this tree is `0.20.3` in development and
-is not itself a release.
+released and carries RFCs 001-021; this tree is `0.21.0`, the consolidation
+baseline, and is not itself a release until it is tagged and distributed.
 
 ## Residual risks and future work
 

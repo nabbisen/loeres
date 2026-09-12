@@ -1,6 +1,6 @@
 # Developer Handoff — RFC 025 in-place amendment of Accepted RFCs
 
-**Governing RFC.** `rfcs/accepted/025-in-place-amendment-of-accepted-rfcs.md`. **Assigned to.** Implementer tier. **Release.** `0.21.0`.
+**Governing RFC.** `rfcs/done/025-in-place-amendment-of-accepted-rfcs.md`. **Assigned to.** Implementer tier. **Release.** `0.21.0`.
 
 ## Change scope
 1. Add the §11 section verbatim to `rfcs/done/000-rfc-lifecycle-policy.md`, immediately after the existing "Loeres conditional release-finalization exception" section (the RFC 021 precedent). Editing RFC 000 in place for a narrow exception **is** that precedent; it is not an amendment of a shipped design decision.

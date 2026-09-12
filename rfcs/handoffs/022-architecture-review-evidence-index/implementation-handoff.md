@@ -1,6 +1,6 @@
 # Developer Handoff — RFC 022 architecture review evidence index
 
-**Governing RFC.** `rfcs/accepted/022-architecture-review-evidence-index.md`,
+**Governing RFC.** `rfcs/done/022-architecture-review-evidence-index.md`,
 including **Amendment 1 (§0)**. The amendment is normative; where §0 and the
 original body disagree, §0 wins.
 **Status.** Inherited from RFC 022 (Accepted). Architect review recorded;

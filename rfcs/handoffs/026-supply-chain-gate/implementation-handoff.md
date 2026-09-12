@@ -1,6 +1,6 @@
 # Developer Handoff — RFC 026 supply-chain gate
 
-**Governing RFC.** `rfcs/accepted/026-supply-chain-gate.md`. **Assigned to.** Implementer tier. **Release.** `0.21.0`. **Ordering.** Lands before RFC 027 implementation begins.
+**Governing RFC.** `rfcs/done/026-supply-chain-gate.md`. **Assigned to.** Implementer tier. **Release.** `0.21.0`. **Ordering.** Lands before RFC 027 implementation begins.
 
 ## Change scope
 1. **`deny.toml`** at repo root: `[advisories]` deny vulnerability + unmaintained + unsound, yanked warn→deny; `[licenses]` allow exactly `Apache-2.0`, `MIT`, `BSD-2-Clause`, `BSD-3-Clause`, `ISC`, `Unicode-3.0`, `Zlib` — anything else denied, no `unlicensed` allowed; `[bans]` `multiple-versions = "deny"` with an explicit `skip` list, each entry commented with the reason, `wildcards = "deny"`; `[sources]` crates.io only, `unknown-registry = "deny"`, `unknown-git = "deny"`.

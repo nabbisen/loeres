@@ -1,6 +1,6 @@
 # RFC 022 - Architecture Review Evidence Index
 
-**Status.** Accepted (design frozen 2026-07-31)
+**Status.** Implemented (v0.21.0). Amendments 1-3 were made while Accepted, under RFC 000's in-place-amendment rule; they are historical record, not post-release edits.
 **Design approval.** Author-performed adversarial review pass (see §17 on the
 role-separation compromise); project owner authorized the `accepted/` transition
 on 2026-07-31. **Amendment 1 (§0, 2026-09-09)** adds author-tier provenance and **Amendment 2 (§0.4, 2026-09-12)** adds corpus↔index coverage symmetry, and **Amendment 3 (§0.5, 2026-09-12)** enforces the cited column and row count to

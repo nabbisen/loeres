@@ -14,8 +14,9 @@ contributors edit those documents directly; readers can browse them here.
 > **Currency notice.** The apex trio carries RFC 024's ordinary post-release
 > block: this tree's identity and the release this documentation was last
 > reconciled against, never release status. Repository release `0.20.2`
-> shipped 2026-07-30 and carries RFCs 001-021; this tree is `0.20.3` in
-> development and is not itself a release. On conflict, stop affected
+> shipped 2026-07-30 and carries RFCs 001-021; this tree is `0.21.0`, the
+> consolidation baseline, and is not itself a release until it is tagged and
+> distributed. On conflict, stop affected
 > public-boundary work rather than silently choosing code or prose. See the
 > [Architecture Recovery Roadmap](recovery-roadmap.md).
 

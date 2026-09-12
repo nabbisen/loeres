@@ -5,14 +5,14 @@
 **Language:** English  
 **Target implementation language:** Rust 2024 Edition  
 **License policy:** Apache-2.0  
-**Status:** Accepted v1; current for repository release 0.20.3
+**Status:** Accepted v1; current for repository release 0.21.0
 **Supersedes:** `loeres-requirements-v0.1.md`  
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Release currency metadata.**
-> This tree: **0.20.3**.
+> This tree: **0.21.0**.
 > Last reconciled repository release: **0.20.2**.
-> Implemented scope: **RFCs 001-021**.
+> Implemented scope: **RFCs 001-026**.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,
@@ -26,7 +26,8 @@
 > gate now uses the ordinary steady-state form.
 
 Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
-tree is `0.20.3` in development and is not itself a release.
+tree is `0.21.0`, the consolidation baseline, and is not itself a release
+until it is tagged and distributed.
 
 ---
 

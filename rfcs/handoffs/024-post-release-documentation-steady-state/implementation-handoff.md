@@ -1,6 +1,6 @@
 # Developer Handoff — RFC 024 correction series
 
-**Governing RFC.** `rfcs/accepted/024-post-release-documentation-steady-state.md`,
+**Governing RFC.** `rfcs/done/024-post-release-documentation-steady-state.md`,
 including **Amendment 1 (§0)**. The amendment is normative; where §0 and the
 original body disagree, §0 wins.
 **Status.** Inherited from RFC 024 (Accepted). Owner approved implementation

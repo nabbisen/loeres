@@ -7,8 +7,7 @@ conditional-finalization protocol, described below as executed.
 historical, unpublished blocked-candidate evidence and is never moved or
 reused.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` is released and carries RFCs 001-021.
 
 ## 1. Summary
 

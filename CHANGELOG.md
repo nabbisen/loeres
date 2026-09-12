@@ -5,11 +5,25 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.20.3] — unreleased — post-recovery consolidation: RFCs 022-026
+## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** unreleased
 
-This tree corrects RFC 024's documentation-currency checker (blockers B1-B4
+Repository release `0.21.0` is the consolidation baseline: RFCs 022 through 026
+are implemented and move to `rfcs/done/` in this revision, carrying the
+architecture-review evidence index, the user-facing surface, post-release
+documentation steady state, the codified in-place-amendment rule, and the
+enforced supply-chain gate. `cargo xtask check` is sixteen gates. The public API,
+solver behavior, feature set, and dependency boundaries are unchanged from
+`0.20.2`: every unit in this release is verification, governance, or
+documentation.
+
+RFC 027 stays in `rfcs/accepted/` — design frozen, unimplemented — and is the
+first capability work after this baseline.
+
+### RFC 024 Amendment 1 — post-release documentation steady state
+
+This release corrects RFC 024's documentation-currency checker (blockers B1-B4
 and N1/N2 from review 036/re-review 037; see the RFC 024 developer handoff).
 `doc-currency` now recognizes one permanent post-release apex form instead of
 a one-release conditional mode: the apex block records this tree's identity
@@ -69,7 +83,18 @@ dependency boundary, solver behavior, or release workflow changed.
   `accepted/` may be corrected in place through a numbered, dated
   `0.N Amendment` section under stated conditions, while an RFC in `done/` is
   superseded by a new RFC rather than amended.
-- `check-rfcs` enforces the `done/` half fail-closed, at any heading level.
+- `check-rfcs` enforces the `done/` half fail-closed, at any heading level, as
+  **accountability rather than absence** (Amendment 1): a shipped RFC may carry
+  the amendment sections it acquired while Accepted — that record is history, and
+  deleting it at transition time would destroy what the rule exists to preserve —
+  but every `0.N Amendment` heading must be named by the file's Status line.
+  Appending an amendment to a shipped RFC and leaving the Status line untouched
+  fails.
+- The first version of that assertion required *absence*, and so barred every RFC
+  that had used the new rule from ever shipping. It passed review because nothing
+  exercised it: until this release no amended RFC had transitioned to `done/`. The
+  `0.21.0` finalization revision was the first attempt, and it failed closed —
+  which is the gate working, on its own governing RFC.
 - RFC 024 §0.4 and RFC 022 §0.3 now reference that section instead of each
   stating a condition of its own.
 
@@ -113,8 +138,8 @@ dependency boundary, solver behavior, or release workflow changed.
 **Release status:** released (tagged 2026-07-22, distributed 2026-07-30)
 
 Version 0.20.2 uses RFC 021's exact conditional-finalization state.
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` is released and carries RFCs 001-021. The
+development line that followed it is recorded above.
 
 ### Finalization state
 

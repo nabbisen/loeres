@@ -6,8 +6,7 @@
 executed.
 **Target.** Repository release `0.20.2` with RFC 019/RFC 021.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
-tree is `0.20.3` in development and is not itself a release.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021.
 
 ## 1. Summary
 

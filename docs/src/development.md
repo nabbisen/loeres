@@ -193,6 +193,20 @@ finalization revision, which is what gets tagged; it is never edited into an
 already-tagged commit. See RFC 024 for the apex-currency mechanics this
 convention keeps green.
 
+Every version bump takes **three** lockfile updates, not one:
+
+```sh
+cargo update --workspace --offline
+cargo update --offline --manifest-path examples/cluster-batch-solve/Cargo.toml
+cargo update --offline --manifest-path examples/device-box-pfo/Cargo.toml
+```
+
+The examples are excluded from the workspace (RFC 023 §11.1), so `--workspace`
+cannot reach them, and the `examples` gate builds them `--locked`. Forget the last
+two and that gate fails with `EXAMPLE BUILD` plus `EXAMPLE RESOLVE` findings — the
+failure is loud rather than silent, which is what `--locked` is for, but the cause
+is the bump, not the examples.
+
 ## Workflow
 
 Development is **design-first**: requirement / RFC → external design → internal

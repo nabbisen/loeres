@@ -1,6 +1,6 @@
 # Developer Handoff — RFC 023 user-facing surface and obligation closure
 
-**Governing RFC.** `rfcs/accepted/023-user-facing-surface-and-obligation-closure.md`.
+**Governing RFC.** `rfcs/done/023-user-facing-surface-and-obligation-closure.md`.
 **Status.** Inherited from RFC 023 (Accepted). Architect review recorded;
 owner approved implementation 2026-09-12.
 **Assigned to.** Implementer tier.

@@ -44,18 +44,18 @@ checksum = "252afb9ae5eaa683babdc6a068b3f5726eb19e05070c731f9b2a23a7c3e8ed34"
 
 [[package]]
 name = "loeres"
-version = "0.20.3"
+version = "0.21.0"
 
 [[package]]
 name = "loeres-backend-std"
-version = "0.20.3"
+version = "0.21.0"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-cluster"
-version = "0.20.3"
+version = "0.21.0"
 dependencies = [
  "loeres",
  "loeres-backend-std",

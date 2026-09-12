@@ -1,6 +1,6 @@
 # RFC 023 - User-Facing Surface and Documented-Obligation Closure
 
-**Status.** Accepted (design frozen 2026-07-31)
+**Status.** Implemented (v0.21.0). Amendments 1-2 were made while Accepted, under RFC 000's in-place-amendment rule; they are historical record, not post-release edits.
 **Design approval.** Amendment 1 (§0, 2026-09-12) by architect review 045.  Author-performed adversarial review pass (see RFC 022 §17
 on the role-separation compromise); project owner authorized the `accepted/`
 transition on 2026-07-31.

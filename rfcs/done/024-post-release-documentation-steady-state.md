@@ -1,6 +1,6 @@
 # RFC 024 - Post-Release Documentation Steady State
 
-**Status.** Accepted (design frozen 2026-07-31)
+**Status.** Implemented (v0.21.0). Amendments 1-2 were made while Accepted, under RFC 000's in-place-amendment rule; they are historical record, not post-release edits.
 **Design approval.** Architecture review is this project's architect function, not a separate tier: the operating instructions assign design authority *and* review to the same role, and require it to "act as an independent auditor" — independence is a behavior, not a second party. That review has been performed for Amendment 1 (four lenses, Go/No-Go on the record) and its residual conflict of interest — author and reviewer are the same role — is documented in RFC 022 §17 as a standing risk for the project owner to accept or mitigate, not a missing gate. Reviews 036 and 037 were produced by the implementer tier, which reports findings but holds no design-review authority (RFC 020 §11.1 likewise classifies archived review bundles as private input, not a normative source); their findings were verified and largely adopted on their merits, and one was reversed (§0.1). **Implementation of the amended provisions awaits project-owner approval only.**
 **Tracks.** Blocker discovered during RFC 022 implementation: the documentation
 currency checker cannot represent the state of the repository after a release.

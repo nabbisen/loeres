@@ -1,13 +1,13 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted v1; current for repository release 0.20.3
+Status: Accepted v1; current for repository release 0.21.0
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
 > **Release currency metadata.**
-> This tree: **0.20.3**.
+> This tree: **0.21.0**.
 > Last reconciled repository release: **0.20.2**.
-> Implemented scope: **RFCs 001-021**.
+> Implemented scope: **RFCs 001-026**.
 >
 > Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
 > dense/CSR storage, orchestration, one dynamic projected-first-order kernel,
@@ -18,7 +18,8 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > ordinary steady-state form.
 
 Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
-tree is `0.20.3` in development and is not itself a release.
+tree is `0.21.0`, the consolidation baseline, and is not itself a release
+until it is tagged and distributed.
 
 ---
 

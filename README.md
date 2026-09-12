@@ -6,7 +6,8 @@
 > that every workspace crate or its hosted documentation is published or
 > current, so external registry/documentation badges are intentionally
 > omitted. Repository release `0.20.2` is released and carries RFCs 001-021;
-> this tree is `0.20.3` in development and is not itself a release.
+> this tree is `0.21.0`, the consolidation baseline, and is not itself a release
+> until it is tagged and distributed.
 
 **One optimization contract, two worlds — high-throughput server solving and deterministic `no_std` edge solving, without letting either contaminate the other.**
 
