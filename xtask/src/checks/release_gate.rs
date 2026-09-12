@@ -104,7 +104,7 @@ fn run_candidate_suite(root: &Path, name: &str) -> bool {
             return false;
         }
     }
-    run_mdbook(root)
+    run_mdbook(root, name)
 }
 
 fn command_success(root: &Path, label: &str, program: &str, args: &[&str]) -> bool {
@@ -122,26 +122,50 @@ fn command_success(root: &Path, label: &str, program: &str, args: &[&str]) -> bo
     }
 }
 
-fn run_mdbook(root: &Path) -> bool {
-    let generated = root.join("docs/book");
-    if generated.exists() {
-        eprintln!(
-            "  [mdbook] refusing to remove pre-existing {}",
-            generated.display()
-        );
-        return false;
-    }
-    let passed = command_success(root, "mdbook", "mdbook", &["build", "docs"]);
-    if generated.exists() {
-        if let Err(error) = std::fs::remove_dir_all(&generated) {
+/// Build the book into a gate-owned scratch directory under `target/`.
+///
+/// The gate used to build to `book.toml`'s default `docs/book/` and then delete
+/// it, refusing to run at all if that directory already existed. But
+/// `mdbook build docs` is also the documented developer command, so an ordinary
+/// local build left output that blocked every later `release-gate` run, and the
+/// gate would not clear a directory it had not created. Building to
+/// `--dest-dir target/xtask-book/<suite>` removes the collision entirely: the
+/// gate never reads, writes, or deletes anything outside `target/`, which it
+/// already owns, and a developer's `docs/book/` is simply irrelevant to it
+/// (architect review 045 follow-up 3).
+///
+/// Still `mdbook build`, and still the whole book — only the output path moves,
+/// so RFC 019's documentation-build conformance is unchanged. The suite name
+/// keeps the source-tree and clean-extraction builds from sharing a directory,
+/// and the scratch directory is cleared first so each run proves the book builds
+/// from nothing rather than incrementally over a previous result.
+fn run_mdbook(root: &Path, suite: &str) -> bool {
+    let dest = mdbook_dest_dir(suite);
+    let absolute = root.join(&dest);
+    if absolute.exists() {
+        if let Err(error) = std::fs::remove_dir_all(&absolute) {
             eprintln!(
-                "  [mdbook] cannot remove generated {}: {error}",
-                generated.display()
+                "  [mdbook] cannot clear gate-owned {}: {error}",
+                absolute.display()
             );
             return false;
         }
     }
-    passed
+    command_success(
+        root,
+        "mdbook",
+        "mdbook",
+        &["build", "docs", "--dest-dir", &dest],
+    )
+}
+
+/// The gate-owned book output path for one suite, relative to the tree root.
+///
+/// Under `target/`, so it is ignored, disposable, and owned by tooling rather
+/// than by the developer. Never `docs/book/`: that path belongs to whoever ran
+/// `mdbook build docs` by hand.
+fn mdbook_dest_dir(suite: &str) -> String {
+    format!("target/xtask-book/{suite}")
 }
 
 fn run_developer_named(name: &str) -> bool {
@@ -561,10 +585,27 @@ impl GateKind {
 #[cfg(test)]
 mod tests {
     use super::{
-        ReleaseMode, classify_local_tag_status, parse_release_mode, parse_stable_version,
-        parse_tracked_manifest, validate_archive_path, validate_intended_binding,
-        validate_remote_push_urls, validate_remote_tag_listing,
+        ReleaseMode, classify_local_tag_status, mdbook_dest_dir, parse_release_mode,
+        parse_stable_version, parse_tracked_manifest, validate_archive_path,
+        validate_intended_binding, validate_remote_push_urls, validate_remote_tag_listing,
     };
+
+    #[test]
+    fn the_book_is_built_under_target_never_into_the_developer_path() {
+        // The collision architect review 045 follow-up 3 removes: a local
+        // `mdbook build docs` must not be able to block the gate.
+        for suite in ["source-tree", "clean-extraction"] {
+            let dest = mdbook_dest_dir(suite);
+            assert!(dest.starts_with("target/"), "{dest}");
+            assert!(!dest.contains("docs/book"), "{dest}");
+            assert!(dest.ends_with(suite), "{dest}");
+        }
+        // The two suites must not share one output directory.
+        assert_ne!(
+            mdbook_dest_dir("source-tree"),
+            mdbook_dest_dir("clean-extraction")
+        );
+    }
 
     #[test]
     fn canonical_tags_are_stable_unprefixed_semver() {

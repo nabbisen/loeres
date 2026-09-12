@@ -29,7 +29,19 @@ cargo check --workspace --all-features
 cargo test  --workspace
 cargo fmt --all            # run once after implementation, before checks
 cargo clippy --workspace --all-features -- -D warnings
+mdbook build docs --dest-dir target/xtask-book/local      # see below
 ```
+
+Build the book with an explicit `--dest-dir` under `target/`. `book.toml`'s
+default output is `docs/book/`, and while that path is ignored it is not
+gate-owned: `release-gate` will not delete a directory it did not create, so a
+plain `mdbook build docs` used to leave output that blocked every later candidate
+run. The gate now builds to its own scratch directory under `target/` and never
+touches `docs/book/`, so a stale one is harmless — but keeping your own output
+under `target/` too means one `cargo clean` disposes of everything.
+
+`--dest-dir` resolves against the **current directory**, not against the book
+directory, so run the command above from the repository root and pass no `../`.
 
 ## Verification gates (`xtask`)
 
@@ -70,9 +82,12 @@ that the peeled canonical unprefixed SemVer tag equals `HEAD`. Evidence and the
 archive remain in gate-owned ignored workspace state; temporary extraction
 state is removed only after an ownership check. A passing local dry run is not
 tagged-release evidence and neither mode publishes crates or creates a release.
-Pre-existing `docs/book/` output or tracked changes fail closed. The candidate
-gate expects the canonical Linux workflow tools `git`, GNU `tar`, and
-`sha256sum`; the release workflow supplies the reviewed execution environment.
+Tracked changes fail closed. Its `mdbook build` step writes to
+`target/xtask-book/<suite>` — cleared before each run, so the book is proven to
+build from nothing — and the gate neither reads nor deletes anything outside
+`target/`. The candidate gate expects the canonical Linux workflow tools `git`,
+GNU `tar`, and `sha256sum`; the release workflow supplies the reviewed execution
+environment.
 
 RFC 011 makes `target-profiles` manifest-driven through
 `xtask/target-profiles.toml`. Mandatory profiles fail the aggregate on missing

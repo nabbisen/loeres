@@ -220,15 +220,19 @@ is quarantined and is never moved, rewritten, or reused.
 
 ### Loeres in-place amendment of Accepted RFCs
 
-**In-place amendment of Accepted RFCs.** An RFC in `accepted/` may be corrected
-in place when all of the following hold: (1) it has not reached `done/`; (2) the
-correction is a numbered, dated `## 0.N Amendment` section that records the
-defect, the change, and the reason, with the original body updated in place
-rather than rewritten; (3) the Status line names the amendment and states
-whether implementation of the amended provisions is authorized; (4) the
-architect's review is recorded and, where the amendment touches a shipped
-constraint, monotonicity (roadmap §1.5) is argued explicitly. An RFC in `done/`
-is never amended in place — it is superseded by a new RFC.
+An RFC in `accepted/` may be corrected in place when all of the following are
+true:
+
+1. it has not reached `done/`;
+2. the correction is a numbered, dated `## 0.N Amendment` section that records
+   the defect, the change, and the reason, with the original body updated in
+   place rather than rewritten;
+3. the Status line names the amendment and states whether implementation of the
+   amended provisions is authorized; and
+4. the architect's review is recorded and, where the amendment touches a shipped
+   constraint, monotonicity (roadmap §1.5) is argued explicitly.
+
+An RFC in `done/` is never amended in place — it is superseded by a new RFC.
 
 Nothing outside an Accepted RFC's own file depends on its frozen text until
 `done/`; a shipped contract does. The boundary is therefore `done/`, not

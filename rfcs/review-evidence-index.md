@@ -142,24 +142,29 @@ separate, reviewed pass.
 
 ## Summary
 
-- Registered review documents: **58**
-- Distinct review references cited by tracked normative documents: **15**
-  (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`,
-  `038`, `039`, `043`, `044`). Several of the recent additions are
-  self-referential in the useful sense: RFC 022 Amendment 2 cites review 039 as
-  the finding behind the coverage-symmetry requirement, RFC 024 §0.5 cites
-  review 038 as the finding behind its Status-line rationale, RFC 027 cites
-  review 043 as its own design review, and RFC 026 §14a cites review 044 as the
-  finding behind its supersession note. This list is a hand-maintained echo of
-  what `cargo xtask review-evidence` reports, which remains authoritative; the
-  **Cited in release** ticks in the table, by contrast, are now themselves
-  enforced against the derived set (Amendment 3, §0.5).
-- Unresolved citations: **0**
-- Rows tiered `architect`: **8** (`038`–`045`; `038`–`042` on direct project-owner
-  statement 2026-09-12, `043` on the owner's explicit authorization of the
-  architect to perform that review, same date). Rows tiered `implementer`: **2** (`036`, `037` — direct project-owner
-  statement); all other rows are `unrecorded` because provenance was not
-  captured at request time and must not be reconstructed by inference.
-- No rows await owner confirmation. Tiers for `038`–`042` were set on the
-  project owner's direct statement (2026-09-12), not on the reviews'
-  self-description, consistent with the `036`/`037` precedent.
+Counts are not recorded here. `cargo xtask review-evidence` reports the
+registered row count, the distinct citations it resolved, the unresolved ones,
+and the near-miss count on every run, and its output is the authority. A
+hand-maintained echo of a derived number is debt: it drifts, and policing it
+would mean enforcing a restatement rather than the thing itself (Amendment 3
+follow-up, architect review 045). The **Cited in release** column is the
+exception, and only because it is now itself enforced against the derived set
+rather than remembered (§0.5).
+
+### Author-tier provenance
+
+Tiers were captured at request time or set by direct project-owner statement,
+never reconstructed from a filename, a title, or a review's own
+self-description.
+
+- `036` and `037` are `implementer`, on direct project-owner statement
+  (2026-09-12). They had been requested and cited as independent architecture
+  review; the correction is the incident that motivated this column.
+- `038`–`042` are `architect`, on direct project-owner statement (2026-09-12),
+  following the `036`/`037` precedent.
+- `043` onward are `architect`, on the owner's explicit authorization of the
+  architect to perform those reviews.
+- Every other row is `unrecorded`: provenance was not captured when the review
+  was requested, and `unrecorded` is the honest value rather than a guess.
+
+No row awaits owner confirmation.
