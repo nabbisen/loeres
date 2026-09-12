@@ -104,14 +104,19 @@ marker, as the guard that it never reappears.
 RFC 022 adds `review-evidence`. Normative documents cite architecture reviews
 as evidence, not authority; the check resolves every `review NNN` /
 `reviews NNN/NNN` citation in a tracked Markdown document against
-`rfcs/review-evidence-index.md`, and requires every index row to carry an
-author tier from a closed set (`owner`, `architect`, `implementer`,
-`external`, `unrecorded`). Both are enforced, fail-closed. Hash verification
-against the maintainer-held corpus (`.git-exclude/reviewed/`) runs when the
-corpus is present and reports `unavailable` — never a pass — when it is
-absent, such as in a clean extraction. A citation-shaped token that does not
-match the recognized grammar is reported as a near-miss finding rather than
-silently ignored, but does not by itself fail the gate.
+`rfcs/review-evidence-index.md`, requires every index row to carry an author
+tier from a closed set (`owner`, `architect`, `implementer`, `external`,
+`unrecorded`), and asserts the index's **Cited in release** ticks equal the
+cited set it derives, failing in either direction (Amendment 3, §0.5). All three
+depend only on tracked bytes and are enforced, fail-closed. Hash verification
+against the maintainer-held corpus (`.git-exclude/reviewed/`), coverage symmetry
+(Amendment 2, §0.4), and row count against corpus file count (Amendment 3) run
+when the corpus is present and report `unavailable` — never a pass — when it is
+absent, such as in a clean extraction. The count assertion catches the
+duplicated row that set-based hash verification and symmetry cannot see. A
+citation-shaped token that does not match the recognized grammar is reported as
+a near-miss finding rather than silently ignored, but does not by itself fail
+the gate.
 
 RFC 026 adds `supply-chain`, enforced in the aggregate and in `release-gate`'s
 source-tree and clean-extraction suites. It runs `cargo deny --all-features

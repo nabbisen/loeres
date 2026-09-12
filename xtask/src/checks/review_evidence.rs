@@ -29,6 +29,8 @@ use super::link_audit;
 
 const INDEX_PATH: &str = "rfcs/review-evidence-index.md";
 const CORPUS_DIR: &str = ".git-exclude/reviewed";
+/// The only accepted `Cited in release` cell value besides empty.
+const CITED_TICK: &str = "\u{2713}";
 const CLOSED_TIERS: &[&str] = &[
     "owner",
     "architect",
@@ -108,6 +110,12 @@ pub fn run() -> bool {
         eprintln!("  NEAR-MISS (reported, not blocking): {finding}");
     }
 
+    // Tracked bytes only, so this holds in a clean extraction (Amendment 3 §0.5).
+    for error in cited_column_disagreements(&rows, &distinct_cited) {
+        eprintln!("  CITED COLUMN: {error}");
+        ok = false;
+    }
+
     match corpus_files(Path::new(CORPUS_DIR)) {
         Some(corpus) => {
             let hashes: BTreeSet<String> = corpus.iter().map(|file| file.sha256.clone()).collect();
@@ -123,14 +131,20 @@ pub fn run() -> bool {
                 eprintln!("  COVERAGE: {error}");
                 ok = false;
             }
+            // Counts as well as sets, so a duplicated row cannot ride along on
+            // set equality (Amendment 3 §0.5).
+            if let Some(error) = row_count_mismatch(rows.len(), corpus.len()) {
+                eprintln!("  ROW COUNT: {error}");
+                ok = false;
+            }
             eprintln!(
-                "  hash verification and coverage symmetry: corpus present, {} file(s)",
+                "  hash verification, coverage symmetry, and row count: corpus present, {} file(s)",
                 corpus.len()
             );
         }
         None => {
             eprintln!(
-                "  hash verification and coverage symmetry: unavailable (corpus absent at {CORPUS_DIR}; this is not a pass)"
+                "  hash verification, coverage symmetry, and row count: unavailable (corpus absent at {CORPUS_DIR}; this is not a pass)"
             );
         }
     }
@@ -182,6 +196,9 @@ struct IndexRow {
     reference: Option<String>,
     sha256: String,
     tier: String,
+    /// Whether the row's `Cited in release` cell is ticked. Amendment 3 (§0.5)
+    /// makes this a checked claim rather than a hand-maintained note.
+    cited: bool,
 }
 
 /// Parse the index's single Markdown table. Pure function of the source text
@@ -222,6 +239,15 @@ fn parse_index_rows(source: &str) -> Result<Vec<IndexRow>, String> {
         };
         let sha256 = cells[3].trim_matches('`').to_owned();
         let tier = cells[4].trim_matches('`').to_owned();
+        let cited = match cells[5] {
+            "" => false,
+            CITED_TICK => true,
+            other => {
+                return Err(format!(
+                    "row's `Cited in release` cell is `{other}`; expected `{CITED_TICK}` or empty: `{line}`"
+                ));
+            }
+        };
         if sha256.is_empty() {
             return Err(format!("row has an empty SHA-256 field: `{line}`"));
         }
@@ -229,6 +255,7 @@ fn parse_index_rows(source: &str) -> Result<Vec<IndexRow>, String> {
             reference,
             sha256,
             tier,
+            cited,
         });
     }
     Ok(rows)
@@ -276,6 +303,58 @@ fn verify_hashes(rows: &[IndexRow], corpus_hashes: &BTreeSet<String>) -> Vec<Str
             )
         })
         .collect()
+}
+
+/// Disagreements between the `Cited in release` ticks and the cited set the
+/// checker derives, in both directions (Amendment 3, §0.5). Depends only on
+/// tracked bytes, so unlike hash verification it holds in a clean extraction and
+/// needs no availability branch.
+///
+/// The comparison is between *sets of reference strings*, which is what §0.5
+/// specifies. One consequence worth knowing: §11.7's two rows sharing `Ref 001`
+/// are indistinguishable here, so if `001` were ever cited, ticking either row
+/// would satisfy the assertion.
+fn cited_column_disagreements(rows: &[IndexRow], derived: &BTreeSet<String>) -> Vec<String> {
+    let mut errors = Vec::new();
+    let mut ticked = BTreeSet::new();
+    for row in rows.iter().filter(|row| row.cited) {
+        match row.reference.as_deref() {
+            Some(reference) => {
+                ticked.insert(reference.to_owned());
+            }
+            // A pre-numbering row has no reference a citation could name, so a
+            // tick on it can never be true.
+            None => errors.push(
+                "a row with no reference number is ticked as cited; nothing can cite it by number"
+                    .to_owned(),
+            ),
+        }
+    }
+    for reference in derived.difference(&ticked) {
+        errors.push(format!(
+            "review {reference} is cited by a tracked document but its row is not ticked"
+        ));
+    }
+    for reference in ticked.difference(derived) {
+        errors.push(format!(
+            "row `{reference}` is ticked as cited but no tracked document cites it"
+        ));
+    }
+    errors
+}
+
+/// Whether the registered row count matches the corpus file count, required
+/// when the corpus is present by Amendment 3 (§0.5). Set equality alone lets a
+/// duplicated *row* pass — a likelier slip while registering a review than two
+/// byte-identical documents. This compares counts, never `Ref` values: §11.7's
+/// shared `Ref 001` rows carry distinct hashes and stay legitimate.
+fn row_count_mismatch(rows: usize, corpus_files: usize) -> Option<String> {
+    (rows != corpus_files).then(|| {
+        format!(
+            "{rows} registered row(s) against {corpus_files} corpus file(s); \
+             equal sets with unequal counts means a duplicated row or a duplicated file"
+        )
+    })
 }
 
 /// Every corpus file that is present but whose content hash appears in no
@@ -447,9 +526,10 @@ fn clean_word(word: &str) -> &str {
 #[cfg(test)]
 mod tests {
     use super::{
-        CorpusFile, IndexRow, classify_token, corpus_files, find_citations_in_line,
-        parse_index_rows, summary_line, unregistered_corpus_files, unresolved_citations,
-        validate_tiers, verdict_line, verify_hashes,
+        CorpusFile, IndexRow, cited_column_disagreements, classify_token, corpus_files,
+        find_citations_in_line, parse_index_rows, row_count_mismatch, summary_line,
+        unregistered_corpus_files, unresolved_citations, validate_tiers, verdict_line,
+        verify_hashes,
     };
     use std::collections::BTreeSet;
     use std::fs;
@@ -469,13 +549,24 @@ mod tests {
     }
 
     #[test]
-    fn parses_reference_sha_and_tier_ignoring_date_subject_and_cited_columns() {
+    fn parses_reference_sha_tier_and_cited_tick_ignoring_date_and_subject() {
         let rows = parse_index_rows(&valid_index()).unwrap();
         assert_eq!(rows.len(), 3);
         assert_eq!(rows[0].reference.as_deref(), Some("021"));
         assert_eq!(rows[0].sha256, "aaaa");
         assert_eq!(rows[0].tier, "unrecorded");
+        assert!(rows[0].cited);
         assert_eq!(rows[2].reference, None);
+        assert!(!rows[2].cited);
+    }
+
+    #[test]
+    fn rejects_a_cited_cell_that_is_neither_a_tick_nor_empty() {
+        let source = valid_index().replace(
+            "| `021` | 2026-07-17 | joint closeout | `aaaa` | `unrecorded` | ✓ |",
+            "| `021` | 2026-07-17 | joint closeout | `aaaa` | `unrecorded` | yes |",
+        );
+        assert!(parse_index_rows(&source).is_err());
     }
 
     #[test]
@@ -494,16 +585,19 @@ mod tests {
                 reference: Some("021".to_owned()),
                 sha256: "aaaa".to_owned(),
                 tier: String::new(),
+                cited: false,
             },
             IndexRow {
                 reference: Some("022".to_owned()),
                 sha256: "bbbb".to_owned(),
                 tier: "reviewer".to_owned(),
+                cited: false,
             },
             IndexRow {
                 reference: Some("023".to_owned()),
                 sha256: "cccc".to_owned(),
                 tier: "unrecorded".to_owned(),
+                cited: false,
             },
         ];
         let errors = validate_tiers(&rows);
@@ -516,6 +610,7 @@ mod tests {
             reference: Some("021".to_owned()),
             sha256: "aaaa".to_owned(),
             tier: "unrecorded".to_owned(),
+            cited: false,
         }];
         let mut cited = BTreeSet::new();
         cited.insert(("021".to_owned(), "README.md".to_owned()));
@@ -660,11 +755,13 @@ mod tests {
                 reference: Some("021".to_owned()),
                 sha256: "matching".to_owned(),
                 tier: "unrecorded".to_owned(),
+                cited: false,
             },
             IndexRow {
                 reference: Some("022".to_owned()),
                 sha256: "stale".to_owned(),
                 tier: "unrecorded".to_owned(),
+                cited: false,
             },
         ];
         let mut present = BTreeSet::new();
@@ -732,6 +829,7 @@ mod tests {
             reference: Some("001".to_owned()),
             sha256: "aaaa".to_owned(),
             tier: "unrecorded".to_owned(),
+            cited: false,
         }];
         let errors = unregistered_corpus_files(&corpus, &rows);
         assert_eq!(errors.len(), 1);
@@ -748,6 +846,7 @@ mod tests {
             reference: Some("001".to_owned()),
             sha256: "aaaa".to_owned(),
             tier: "unrecorded".to_owned(),
+            cited: false,
         }];
         assert!(unregistered_corpus_files(&corpus, &rows).is_empty());
         let hashes: BTreeSet<String> = corpus.iter().map(|file| file.sha256.clone()).collect();
@@ -760,5 +859,101 @@ mod tests {
         assert_eq!(verdict_line(true, 2), "PASS (2 near-miss)");
         assert_eq!(verdict_line(false, 0), "FAIL");
         assert_eq!(verdict_line(false, 1), "FAIL (1 near-miss)");
+    }
+
+    fn row(reference: Option<&str>, sha256: &str, cited: bool) -> IndexRow {
+        IndexRow {
+            reference: reference.map(str::to_owned),
+            sha256: sha256.to_owned(),
+            tier: "unrecorded".to_owned(),
+            cited,
+        }
+    }
+
+    fn derived(references: &[&str]) -> BTreeSet<String> {
+        references.iter().map(|r| (*r).to_owned()).collect()
+    }
+
+    #[test]
+    fn a_cited_but_unticked_row_fails_the_cited_column() {
+        let rows = vec![
+            row(Some("021"), "aaaa", true),
+            row(Some("038"), "bbbb", false),
+        ];
+        let errors = cited_column_disagreements(&rows, &derived(&["021", "038"]));
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("038"), "{errors:?}");
+        assert!(errors[0].contains("not ticked"), "{errors:?}");
+    }
+
+    #[test]
+    fn a_ticked_but_uncited_row_fails_the_cited_column() {
+        let rows = vec![
+            row(Some("021"), "aaaa", true),
+            row(Some("038"), "bbbb", true),
+        ];
+        let errors = cited_column_disagreements(&rows, &derived(&["021"]));
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("038"), "{errors:?}");
+        assert!(
+            errors[0].contains("no tracked document cites it"),
+            "{errors:?}"
+        );
+    }
+
+    #[test]
+    fn a_ticked_row_with_no_reference_number_fails_the_cited_column() {
+        let rows = vec![row(None, "cccc", true)];
+        let errors = cited_column_disagreements(&rows, &BTreeSet::new());
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("no reference number"), "{errors:?}");
+    }
+
+    #[test]
+    fn a_cited_column_matching_the_derived_set_passes() {
+        let rows = vec![
+            row(Some("021"), "aaaa", true),
+            row(Some("038"), "bbbb", true),
+            row(None, "cccc", false),
+        ];
+        assert!(cited_column_disagreements(&rows, &derived(&["021", "038"])).is_empty());
+    }
+
+    #[test]
+    fn a_duplicated_row_fails_the_row_count_while_shared_refs_with_distinct_hashes_pass() {
+        // A copy-paste while registering a review: both hash verification and
+        // coverage symmetry reason over sets, so neither can see the duplicate.
+        let corpus = vec![
+            CorpusFile {
+                name: "001-first.md".to_owned(),
+                sha256: "aaaa".to_owned(),
+            },
+            CorpusFile {
+                name: "001-second.md".to_owned(),
+                sha256: "bbbb".to_owned(),
+            },
+        ];
+        let duplicated = vec![
+            row(Some("001"), "aaaa", false),
+            row(Some("001"), "aaaa", false),
+            row(Some("001"), "bbbb", false),
+        ];
+        let hashes: BTreeSet<String> = corpus.iter().map(|f| f.sha256.clone()).collect();
+        assert!(verify_hashes(&duplicated, &hashes).is_empty());
+        assert!(unregistered_corpus_files(&corpus, &duplicated).is_empty());
+        let mismatch = row_count_mismatch(duplicated.len(), corpus.len())
+            .expect("a duplicated row must fail the row count");
+        assert!(
+            mismatch.contains('3') && mismatch.contains('2'),
+            "{mismatch}"
+        );
+
+        // Section 11.7's two `Ref 001` rows carry distinct hashes: legitimate,
+        // and the count assertion is on hashes, never on `Ref` values.
+        let shared_ref = [
+            row(Some("001"), "aaaa", false),
+            row(Some("001"), "bbbb", false),
+        ];
+        assert!(row_count_mismatch(shared_ref.len(), corpus.len()).is_none());
     }
 }

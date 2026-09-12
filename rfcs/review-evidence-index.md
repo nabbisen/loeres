@@ -49,27 +49,30 @@ output only by direct project-owner statement, well after one of their
 recommendations had already been adopted and had to be reversed. New reviews
 must record their tier in the request document itself, at request time.
 
-**Verification.** `cargo xtask check` enforces two assertions from tracked
+**Verification.** `cargo xtask check` enforces three assertions from tracked
 bytes alone, fail-closed: every review reference appearing in a tracked
-normative document resolves to a row below, and every row carries a tier from
-the closed set.
+normative document resolves to a row below, every row carries a tier from the
+closed set, and the **Cited in release** column agrees exactly with the cited
+set the checker derives at run time — a row cited by a tracked document but
+left unticked fails, and so does a tick no tracked document justifies
+(Amendment 3, §0.5). A ticked row carrying `—` instead of a reference number
+fails too: there is nothing there for a citation to resolve to.
 
-Two further assertions need the maintainer-held corpus under
+Three further assertions need the maintainer-held corpus under
 `.git-exclude/reviewed/`, and are enforced when it is present: each row's
-SHA-256 is recomputed and a mismatch fails, and **coverage is symmetric** —
-every corpus file must be registered by some row, so forgetting to register a
-newly written review fails the gate rather than drifting silently (Amendment 2,
-§0.4). When the corpus is absent — as in a clean extraction — both are reported
+SHA-256 is recomputed and a mismatch fails, **coverage is symmetric** — every
+corpus file must be registered by some row, so forgetting to register a newly
+written review fails the gate rather than drifting silently (Amendment 2, §0.4)
+— and the row count equals the corpus file count. Hash verification and
+symmetry both reason over sets, so a row entered twice is invisible to each of
+them; the count assertion is what catches it (Amendment 3, §0.5). When the
+corpus is absent — as in a clean extraction — all three are reported
 **unavailable**, never as passed.
 
 A citation shaped like a review reference but not matching the recognized
 grammar is reported as a near-miss finding rather than silently ignored, so an
 unrecognized citation format cannot escape enforcement quietly. Near misses do
 not fail the gate; the count appears in the summary and verdict lines.
-
-Not enforced: the **Cited in release** column below is hand-maintained. The
-checker derives the true cited set at run time and reports its size, but does
-not compare that set against these ticks.
 
 **Disposition is deliberately absent from v1.** Recording an outcome per
 review requires reading each document; transcribing it from the prose that
@@ -121,8 +124,8 @@ separate, reviewed pass.
 | `040` | 2026-09-12 | rfc022 followups architect review | `d6c723ae87ec95913a7baead5c086432ea5c06005a6f23dbc981b5a9667c19d7` | `architect` |  |
 | `041` | 2026-09-12 | rfc022 amendment2 architect review | `c677e43f3d02be37abea06d01e418a626b22ca0a4bde87387aae256b84c4d0e1` | `architect` |  |
 | `042` | 2026-09-12 | rfc022 index currency architect review | `17086cc062c18d8c8540af115a6d6b5f22aeb442e6323790e983ff5425467c95` | `architect` |  |
-| `043` | 2026-09-12 | rfc027 design review | `046aa262f30bc7c8251df3b78bb86e8aeec5605c0aac92b6685cbce2a29a8a09` | `architect` |  |
-| `044` | 2026-09-12 | rfc026 and rfc024 am2 architect review | `0b49007e10966da1c1c70aafe97724078819680812832e897d2ef2709155f126` | `architect` |  |
+| `043` | 2026-09-12 | rfc027 design review | `046aa262f30bc7c8251df3b78bb86e8aeec5605c0aac92b6685cbce2a29a8a09` | `architect` | ✓ |
+| `044` | 2026-09-12 | rfc026 and rfc024 am2 architect review | `0b49007e10966da1c1c70aafe97724078819680812832e897d2ef2709155f126` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
@@ -139,14 +142,17 @@ separate, reviewed pass.
 ## Summary
 
 - Registered review documents: **57**
-- Distinct review references cited by tracked normative documents: **13**
+- Distinct review references cited by tracked normative documents: **15**
   (`021`, `022`, `024`, `025`, `027`, `030`, `031`, `032`, `033`, `036`, `037`,
-  `038`, `039`). The two most recent additions are both self-referential in the
-  useful sense: RFC 022 Amendment 2 cites review 039 as the finding behind the
-  coverage-symmetry requirement, and RFC 024 §0.5 cites review 038 as the
-  finding behind its Status-line rationale. The authoritative count is whatever
-  `cargo xtask review-evidence` reports; this line is a hand-maintained echo of
-  it.
+  `038`, `039`, `043`, `044`). Several of the recent additions are
+  self-referential in the useful sense: RFC 022 Amendment 2 cites review 039 as
+  the finding behind the coverage-symmetry requirement, RFC 024 §0.5 cites
+  review 038 as the finding behind its Status-line rationale, RFC 027 cites
+  review 043 as its own design review, and RFC 026 §14a cites review 044 as the
+  finding behind its supersession note. This list is a hand-maintained echo of
+  what `cargo xtask review-evidence` reports, which remains authoritative; the
+  **Cited in release** ticks in the table, by contrast, are now themselves
+  enforced against the derived set (Amendment 3, §0.5).
 - Unresolved citations: **0**
 - Rows tiered `architect`: **7** (`038`–`044`; `038`–`042` on direct project-owner
   statement 2026-09-12, `043` on the owner's explicit authorization of the
