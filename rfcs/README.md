@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [028](proposed/028-cross-environment-archive-identity.md) | Cross-Environment Archive Identity Anchor | Proposed | `0.21.0`'s CI and local archive digests differ while content is identical; only gzip output differs. Records the uncompressed tar SHA-256 as the cross-environment identity anchor and narrows the archive digest to build-byte integrity. Additive to RFC 019. `0.21.0`'s anchor is `0748304f…457b`. |
+None currently.
 
 ## Accepted RFCs
 
@@ -26,6 +26,7 @@ behavior is not yet claimed.
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
 | [027](accepted/027-qp-contract-and-constrained-kernel.md) | QP Contract and Linearly Constrained Projected Kernel | Accepted (design frozen 2026-09-12) | Activates `loeres::problem` with storage-agnostic QP traits (PF-002; PF-001 contract-only) and extends the PFO kernels with a bounded Hildreth/Dykstra polyhedral projection for `Ax ≤ b`; `m = 0` reproduces RFC 006/016 exactly. IPM excluded. Review 043 (R1 Dykstra box set, R2 terminal violation) applied. R4 first capability. |
+| [028](accepted/028-cross-environment-archive-identity.md) | Cross-Environment Archive Identity Anchor | Accepted (design frozen 2026-09-15) | `0.21.0`'s CI and local archive digests differ while content is identical; only gzip output differs. Records the uncompressed tar SHA-256 as the cross-environment identity anchor and narrows the archive digest to build-byte integrity. Additive to RFC 019. `0.21.0`'s anchor is `0748304f…457b`. |
 
 ## Done RFCs
 

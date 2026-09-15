@@ -1110,6 +1110,12 @@ sophisticated design."** The approved sequence:
 | C.2 Clean baseline | Cut **`0.21.0`**: first release with examples, engineering-use terms, evidence index, steady-state currency, supply-chain gate, and no dead code. Minor, because examples and terms are user-visible. | `0.21.0` |
 | C.3 First capability | RFC 027: `loeres::problem` QP contract (PF-002; PF-001 contract-only) and a bounded Hildreth/Dykstra polyhedral projection extending the PFO kernels to `Ax ≤ b` on device and cluster. Interior-point excluded. Independent numerical review precedes design freeze. | first minor after `0.21.0` |
 
+RFC 028 (accepted 2026-09-15) records the uncompressed tar SHA-256 as the
+cross-environment identity anchor of release evidence, after `0.21.0` showed CI
+and local archive digests differing over identical content. It lands before
+RFC 027's slice S2 and before the release that carries RFC 027, so that release
+can observe CI and local anchors equal.
+
 Assessment against the objective at approval time: clean, safe, secure, robust
 are achieved or one step away; **sophisticated is not** — one solver family is a
 well-governed skeleton. C.3 is the first step that changes that.

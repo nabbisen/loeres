@@ -1,6 +1,7 @@
 # RFC 028 - Cross-Environment Archive Identity Anchor
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-09-15)
+**Design approval.** Architect-authored from the `0.21.0` distribution closeout (architect review 050); project owner accepted it and authorized the `accepted/` transition on 2026-09-15.
 **Tracks.** Finding recorded at the `0.21.0` distribution closeout (architect review 050 §2).
 **Touches.** `xtask/src/checks/release_gate/package.rs` (evidence writer), `docs/src/verification.md`, `docs/src/development.md`.
 
@@ -46,8 +47,8 @@ what that digest does and does not identify.
 ## 2–10. Crates; API, dependency, `std`/`alloc`, determinism, scalability, error, feature, semver impact
 
 None. Host-only evidence change; no workspace dependency (hashing via the existing
-`sha256sum` convention, decompression via `gzip -dc` already present wherever
-`tar czf` is).
+`sha256sum` convention, decompression via `gzip -dc`, already required because the gate extracts with
+`tar --gzip`; the archive itself is built by `git archive --format=tar.gz`).
 
 ## 11. Design
 
