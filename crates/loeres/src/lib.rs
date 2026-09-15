@@ -12,8 +12,8 @@
 //! Milestone 1: the [`scalar`] capability tiers (RFC 001), the [`error`] and
 //! [`diagnostic`] topologies (RFC 003), the [`solver`] outcome/status taxonomy
 //! (RFC 014), and the [`access`] / [`dimension`] storage-agnostic contracts
-//! (RFC 002) are implemented; [`problem`] remains a documented placeholder
-//! pending its owning RFC.
+//! (RFC 002) are implemented. RFC 027 fills [`problem`] with the storage-agnostic
+//! quadratic-program contract.
 #![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 
@@ -34,6 +34,9 @@ pub use access::{
 pub use diagnostic::{DiagnosticCode, DiagnosticSnapshot};
 pub use dimension::{Dim2, DimensionKind};
 pub use error::{SolverError, error_code_to_str};
+pub use problem::{
+    BoxBounds, LinearInequalities, ProgramShape, QuadraticObjective, QuadraticProgram,
+};
 pub use scalar::{
     AdvancedNumericalScalar, BaseScalar, DivisibleScalar, FiniteScalar, MetricScalar, OrderedScalar,
 };

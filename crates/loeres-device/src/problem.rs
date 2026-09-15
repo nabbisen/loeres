@@ -66,3 +66,6 @@ pub trait ProjectedFirstOrderProblem<S, const N: usize> {
     /// [`DeviceSolveReport`]: crate::solve::DeviceSolveReport
     fn objective_at(&self, x: &FixedVector<S, N>) -> Result<S, SolverError>;
 }
+
+#[cfg(all(test, feature = "owned-arrays"))]
+mod tests;

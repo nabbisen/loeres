@@ -11,6 +11,23 @@ sign-off (see RFC 000 and the requirements specification).
 
 Development toward the next release; RFC 027 implementation follows.
 
+### RFC 027 S1 — quadratic-program contract in `loeres::problem`
+
+- `loeres::problem`, reserved since v0.6, now defines the storage-agnostic
+  quadratic-program contract: `QuadraticObjective` (`Q`, `c`), `BoxBounds`
+  (`lo`, `hi`), `LinearInequalities` (`A`, `b`), and `QuadraticProgram`,
+  implemented automatically for any type with all three. Everything is reached
+  through the RFC 002 access traits: no layout, no allocation, no `dyn`.
+- A provided first-order oracle `gradient_into` computes `∇f = Qx + c` in a
+  documented, fixed accumulation order, and `QuadraticProgram::shape` checks
+  structure only — numeric validation stays with the kernels under RFC 012.
+- A static (`FixedMatrix`/`FixedVector`) and a dynamic
+  (`DenseMatrix`/`DenseVector`) program satisfy the same traits in tests that do
+  not import each other's backend.
+- No kernel consumes the contract yet; RFC 027 S2 and S3 add the constrained
+  device and cluster kernels. `Q` symmetry and positive semidefiniteness remain a
+  caller precondition, and LP is expressible but not solved.
+
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** released (tagged 2026-09-12, distributed 2026-09-12)
