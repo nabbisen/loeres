@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [028](proposed/028-cross-environment-archive-identity.md) | Cross-Environment Archive Identity Anchor | Proposed | `0.21.0`'s CI and local archive digests differ while content is identical; only gzip output differs. Records the uncompressed tar SHA-256 as the cross-environment identity anchor and narrows the archive digest to build-byte integrity. Additive to RFC 019. `0.21.0`'s anchor is `0748304f…457b`. |
 
 ## Accepted RFCs
 
