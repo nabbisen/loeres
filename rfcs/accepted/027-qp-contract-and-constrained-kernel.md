@@ -1,7 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
 **Status.** Accepted (design frozen 2026-09-12)
-**Design approval.** Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
+**Design approval.** Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
@@ -24,6 +24,78 @@ constraints, solving through the cluster kernel, and printing the terminal
 constraint violation beside the status. The `examples` gate covers it. Named for
 what it demonstrates, per RFC 023 §11.3's rule against directory names that
 claim more than ships. Exit criterion 9 added.
+
+## 0.2 Amendment 2 — 2026-09-15 (architect review 052)
+
+Slice S1 landed the core contract. Reviewing it against this RFC surfaced one
+mathematical error in §11.2, one unresolved device decision, and two ambiguities
+that S2 and S4 would otherwise inherit. All four are the author's; S1 itself is
+correct. Corrected here before any kernel is built on them.
+
+### 0.2.1 The contract as landed (§11.1 reconciled)
+
+- The first-order oracle `∇f = Qx + c` is the **provided method
+  `QuadraticObjective::gradient_into`**. Core cannot implement the device or
+  cluster kernel traits — dependencies run the other way — so "`QuadraticProgram`
+  gains a blanket first-order oracle" means this provided method, which every
+  `QuadraticProgram` has. The adapter that lets a kernel consume a
+  `QuadraticProgram` belongs to S2/S3 and carries `step_scale`, which the
+  contract deliberately does not.
+- The oracle's accumulation order — `cᵢ`, then `Qᵢⱼ·xⱼ` for ascending `j` — is
+  normative. An override (e.g. sparse `Q`) must produce the same result.
+- `QuadraticProgram` is blanket-implemented; its provided `shape()` returning the
+  `#[non_exhaustive]` `ProgramShape` is part of the contract. It checks
+  **structure only** and reads no element.
+- §11.1's parenthetical "validated cheaply: square, finite" is superseded on
+  *finite*: a finiteness scan of `Q` is `O(n²)`, not structural, and §11.5 already
+  places finite scans of `Q, c, A, b, x₀` under RFC 012's `TrustedByCaller`
+  policy. Putting it in core would make it unskippable. *Square* stays in `shape()`.
+
+### 0.2.2 Representing `m = 0`
+
+A program with no inequality constraints supplies a **zero-row `MatrixAccess`**
+and a **zero-length `VectorAccess`**. The canonical representation is core's
+`MatrixView` / `VectorView` over empty slices, and core pins by test that those
+views accept zero extent. RFC 004's `R > 0` const invariant and RFC 007's refusal
+of an empty `DenseMatrix` are deliberate, shipped, and **unchanged**.
+
+### 0.2.3 Correction to §11.2 — the `m = 0` increment
+
+§11.2 said that with `m = 0` "the increment is identically zero". **That is
+false.** Dykstra over a single set from candidate `z` gives `x¹ = P(z)` and
+increment `p¹ = z − P(z)`, non-zero whenever clamping binds. What is invariant
+after one sweep is the *iterate*, not the increment. The bit-identity conclusion
+held only through a floating-point argument about `P(z) + (z − P(z))` — a
+numerical coincidence, not a guarantee.
+
+It becomes structural: **when `m = 0`, the kernel performs the single exact box
+projection and runs no Dykstra sweep.** Identity with RFC 006/016 then holds by
+construction.
+
+### 0.2.4 Device `M`
+
+`ConstrainedProjectedWorkspace<S, N, M>` requires **`M ≥ 1`**, enforced by the
+same const-assertion pattern RFC 004 uses for `FixedVector`. A device problem with
+no inequalities uses the **RFC 006 entrypoint**: on device the `m = 0` case *is*
+RFC 006, so there is one path and nothing to diverge. On cluster, where `m` is
+dynamic, the constrained kernel accepts `m = 0` at runtime and short-circuits per
+§0.2.3.
+
+### 0.2.5 Scope of bit-identity
+
+Bit-identity means **the same problem oracle, the same inputs, the same target**.
+The existing conformance fixtures compute the gradient as `q·(x − t)`; expressed as
+a `QuadraticProgram` the oracle computes `−q·t + q·x`, which differs in floating
+point. That comparison is tolerance-only. Identity assertions compare same-oracle
+runs.
+
+### 0.2.6 Terminology
+
+§13's "zero-row case asserting `InvalidInput`" means an **all-zero constraint row**
+`aᵢ = 0` (`‖aᵢ‖² = 0`), which is invalid. A **zero-row matrix** (`m = 0`) is
+valid.
+
+§11.2, §11.4, §13 and §16 item 3 are updated in place.
 
 ## 1. Summary
 
@@ -133,10 +205,10 @@ converge to *a* feasible point, not to the Euclidean projection, and the
 projected-gradient convergence argument needs the projection. Dykstra's scheme
 therefore runs over two sets — the polyhedron `{Ax ≤ b}` via Hildreth multipliers
 (`m` scalars) and the box via exact `clamp` with its own increment vector (`n`
-scalars). With `m = 0` there is one set, one exact projection, and the increment
-is identically zero, so the kernel performs precisely RFC 006/016's `clamp` —
-**RFC 006/016 behaviour is preserved bit-for-bit for `m = 0`**, and the
-conformance corpus asserts it. Treating the box as `2n` extra halfspaces was
+scalars). With `m = 0` the kernel performs the single exact box projection and runs no
+Dykstra sweep, so it computes precisely RFC 006/016's `clamp` —
+**RFC 006/016 behaviour is preserved bit-for-bit for `m = 0`, by construction**
+(Amendment 2, §0.2.3 corrects an earlier claim that the increment is zero). Treating the box as `2n` extra halfspaces was
 rejected: `x − (x − hi)` is not bit-identical to `hi` in floating point, which
 would break that guarantee.
 
@@ -164,7 +236,8 @@ shrink.
 
 ### 11.4 Workspace (device)
 
-`ConstrainedProjectedWorkspace<S, N, M>`: gradient scratch `N`, projection
+`ConstrainedProjectedWorkspace<S, N, M>` (`M ≥ 1`, const-asserted; a device problem with no
+inequalities uses the RFC 006 entrypoint — §0.2.4): gradient scratch `N`, projection
 scratch `N`, box Dykstra increment `N`, multipliers `M`, precomputed `‖aᵢ‖²` `M`
 — footprint `(3N + 2M)·size_of::<S>() + header`, reported via `WorkspaceFootprint`,
 `reset_for_entry` overwrite-on-use (RFC 005 always-reusable).
@@ -197,9 +270,11 @@ partially satisfied by the trait, fully by the follow-on).
 
 ## 13. Verification gates
 
-- Conformance: `m = 0` cases reproduce RFC 013 fixtures exactly; new dimension-2/3
+- Conformance: on cluster, `m = 0` through the constrained kernel is bit-identical to
+  RFC 016 for the same problem oracle (on device the `m = 0` case is RFC 006
+  itself; §0.2.4–§0.2.5); new dimension-2/3
   fixtures with 1–3 halfspaces against closed-form optima; an infeasible case
-  asserting `NotConverged`; a zero-row case asserting `InvalidInput`.
+  asserting `NotConverged`; an all-zero constraint row asserting `InvalidInput`.
 - Device: no `unwrap`/`expect`/indexing (panic-audit); footprint recorded;
   `thumbv7em-none-eabihf` build.
 - Property test (host): projection output satisfies all constraints within
@@ -224,7 +299,8 @@ RFC 026 landed; `0.21.0` cut. Nothing in RFCs 022–025 blocks design work.
 1. `loeres::problem` exports the four traits; PF-002 marked implemented, PF-001
    "contract only", PF-003 unchanged, in the requirements §5.1.3 disposition;
 2. device and cluster kernels solve the conformance fixtures within tolerance;
-3. `m = 0` reproduces RFC 006/016 results exactly;
+3. `m = 0` is bit-identical to RFC 016 on cluster for the same problem oracle, and
+   is the RFC 006 entrypoint on device (§0.2);
 4. all §11.5 validation rules tested, including trust-skip and never-skip;
 5. no new dependency, or RFC 026 gate green on the one that was justified;
 6. panic-audit, zero-bleed, no-std, MSRV, size-budget report green;
