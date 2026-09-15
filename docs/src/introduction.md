@@ -33,9 +33,7 @@ This book summarizes the architecture and threat model. The authoritative,
 detailed design lives in the specifications under `docs/specs/` and in the RFC
 set under `rfcs/`.
 
-Repository release `0.20.2` is released and carries RFCs 001-021; this tree
-is `0.21.0`, the consolidation baseline, and is not itself a release until it
-is tagged and distributed. Current solver
+Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Current solver
 breadth is one box/bound-constrained projected-first-order family on device
 and cluster. The gateway is mock-only, validation caching is process-local,
 and conformance is a bounded smoke corpus.

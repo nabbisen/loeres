@@ -25,8 +25,7 @@ this file is a short summary.
 > 2026-07-30 as repository release `0.20.2`: the canonical tag peeled to the
 > finalization revision, the release workflow reached a successful terminal
 > conclusion, and its required evidence upload succeeded. Repository release
-> `0.20.2` carries RFCs 001-021; this tree is `0.21.0`, the consolidation
-> baseline, and is not itself a release until it is tagged and distributed. RFC
+> `0.20.2` carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. RFC
 > 024 subsequently retired the one-release conditional apparatus from ordinary
 > post-release development.
 
@@ -54,7 +53,7 @@ sequencing: detailed roadmap §7.
 - **Cross-layer.** Verification governance, target profiles, validation-state
   policy, bounded conformance, and cache/trust fixtures (RFCs 010–013, 017).
 
-## Current status (0.21.0 consolidation baseline)
+## Current status
 
 RFCs 001-026 are implemented. The current numerical breadth is one
 box/bound-constrained projected-first-order family on device and cluster.
@@ -64,27 +63,26 @@ only, the gateway is mock-only, and validation caching is process-local.
 RFCs 019/020/021 shipped in repository release `0.20.2`, released 2026-07-30
 under RFC 021's conditional-finalization protocol; immutable local tag
 `0.20.1` and its accepted evidence remain historical blocked-candidate
-evidence only and are never reused. This `0.21.0` tree is the consolidation
-baseline and is not itself a release until it is tagged and distributed; it
-carries RFC 024's ordinary post-release apex form, which retires the
-one-release conditional apparatus and records this tree's identity and the
-release it was last reconciled against (`0.20.2`), not release status.
+evidence only and are never reused. Repository release `0.21.0` shipped
+2026-09-12 and carries RFCs 001-026. Currency lives in the apex trio's RFC 024
+block, which records the tree's identity and the release it was last reconciled
+against, never release status.
 
-The `0.21.0` consolidation is complete in this tree, and RFCs 022-026 are in
-`rfcs/done/`. RFC 026 added an enforced
+The `0.21.0` consolidation shipped: RFCs 022-026 are in `rfcs/done/`. RFC 026
+added an enforced
 supply-chain gate (advisories, licenses, bans, sources, plus a per-edge-crate
 zero-external-dependency assertion); RFC 024 Amendment 2 removed the retired
 RFC 021 conditional module rather than suppressing it; RFC 022 Amendment 3 made
 the evidence index's cited column and row count enforced assertions; RFC 025
 codified in-place amendment of Accepted RFCs into RFC 000 with a `check-rfcs`
-assertion that a shipped RFC carries no amendment. RFC 023 closed the three
+assertion that a shipped RFC's amendment headings are each named by its Status
+line. RFC 023 closed the three
 user-facing obligations that `0.20.2` shipped without: two workspace-excluded
 example crates with a `cargo xtask examples` gate asserting each one's resolved
 dependency graph, `TERMS_OF_USE.md` (resolving requirements OQ-012), and the
 user-facing book section that closes the persona gap. §5.9's example criterion is
-satisfied by the gate rather than waived. RFC 027 remains next: its design is
-frozen in `rfcs/accepted/`, and implementation begins after `0.21.0` is
-distributed.
+satisfied by the gate rather than waived. RFC 027 is next: its design is frozen
+in `rfcs/accepted/`, and its implementation follows `0.21.0`.
 
 The detailed entries below are chronological release history. Statements about
 what was “next,” absent, or green apply only to the named historical revision

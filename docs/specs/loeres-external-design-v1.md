@@ -6,8 +6,8 @@ Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
 > **Release currency metadata.**
-> This tree: **0.21.0**.
-> Last reconciled repository release: **0.20.2**.
+> This tree: **0.21.1**.
+> Last reconciled repository release: **0.21.0**.
 > Implemented scope: **RFCs 001-026**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
@@ -20,9 +20,7 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > conditional apparatus after `0.20.2` shipped; RFC 019 release packaging now
 > uses the ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021; this
-tree is `0.21.0`, the consolidation baseline, and is not itself a release
-until it is tagged and distributed.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026.
 
 ---
 

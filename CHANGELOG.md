@@ -5,9 +5,15 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.21.0] — 2026-09-12 — Consolidation baseline
+## [0.21.1] — unreleased — post-0.21.0 development
 
 **Release status:** unreleased
+
+Development toward the next release; RFC 027 implementation follows.
+
+## [0.21.0] — 2026-09-12 — Consolidation baseline
+
+**Release status:** released (tagged 2026-09-12, distributed 2026-09-12)
 
 Repository release `0.21.0` is the consolidation baseline: RFCs 022 through 026
 are implemented and move to `rfcs/done/` in this revision, carrying the

@@ -13,18 +13,18 @@ dependencies = [
 
 [[package]]
 name = "loeres"
-version = "0.21.0"
+version = "0.21.1"
 
 [[package]]
 name = "loeres-backend-static"
-version = "0.21.0"
+version = "0.21.1"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-device"
-version = "0.21.0"
+version = "0.21.1"
 dependencies = [
  "loeres",
  "loeres-backend-static",
