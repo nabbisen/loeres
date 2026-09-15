@@ -1,6 +1,6 @@
 # Loeres External Design Specification v1
 
-Status: Accepted v1; current for repository release 0.21.0
+Status: Accepted v1
 Layer: External Design  
 Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`, and v0.1 review notes  
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers

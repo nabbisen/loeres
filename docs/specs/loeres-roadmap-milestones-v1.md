@@ -1,6 +1,6 @@
 # Loeres Roadmap and Milestones Specification v1
 
-Status: Accepted v1; current for repository release 0.21.0
+Status: Accepted v1
 Scope: RFC roadmap, implementation sprint ordering, verification gates, and milestone exit criteria  
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
