@@ -25,8 +25,8 @@ Development toward the next release.
   `#[test]` function, an empty exemption reason, or an empty `detects`.
 - It checks that the discipline is present, not that it is sound: judging a
   reference's independence is left to architect review (RFC 030 §8).
-- The RFC 006 and RFC 016 rows are `Exempt` ("retrofit pending") until their
-  retrofits land in the same change.
+- The RFC 006 and RFC 016 rows started `Exempt` ("retrofit pending") and moved to
+  `Differential` in the same change as each retrofit (S2, S3 below).
 
 ### RFC 030 S2 — randomized differential test for the RFC 006 device kernel
 
@@ -37,6 +37,16 @@ Development toward the next release.
   `Exempt` to `Differential`. It detects a kernel that clamps every coordinate to
   coordinate 0's bounds, which every existing box test survives. No kernel behaviour,
   signature or dependency changed.
+
+### RFC 030 S3 — randomized differential test for the RFC 016 cluster kernel
+
+- `solve_projected_first_order_dyn` gains
+  `random_separable_quadratics_match_the_exact_box_minimiser`: 400 seeded random
+  separable quadratics over `DenseVector` at runtime dimensions 1 to 6, with
+  per-coordinate weights and non-uniform bounds, under `ValidateAllInputs`, compared
+  with `clamp(cᵢ, loᵢ, hiᵢ)`, asserting `Converged`, agreement within `1e-6` **and**
+  feasibility. Its registry row moves from `Exempt` to `Differential`, so the gate has no
+  remaining retrofit-pending row. No kernel behaviour, signature or dependency changed.
 
 ## [0.21.1] — 2026-09-24 — Constrained quadratic programming
 

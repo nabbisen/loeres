@@ -58,6 +58,81 @@ fn cfg(max_iterations: u32, tolerance: f64) -> ProjectedFirstOrderConfig<f64> {
     }
 }
 
+// RFC 030: a randomized differential test against an exact reference.
+//
+// The reference is the closed form of the box-constrained separable quadratic,
+// `xᵢ* = clamp(cᵢ, loᵢ, hiᵢ)` for any `wᵢ > 0`: no iteration in it, and
+// independent of the weights, so it is not a re-expression of the kernel. Every
+// fixture in this file uses a fixed dimension and mostly uniform bounds;
+// randomized per-coordinate bounds at runtime-varying sizes are what expose a
+// kernel that indexes them wrongly or mishandles a length.
+#[test]
+fn random_separable_quadratics_match_the_exact_box_minimiser() {
+    // Deterministic LCG; no dependency.
+    let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut next = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((state >> 11) as f64) / ((1u64 << 53) as f64)
+    };
+
+    const INSTANCES: usize = 400;
+    for instance in 0..INSTANCES {
+        // The dimension varies from 1 to 6: the kernel is not const-generic, so a
+        // runtime-length defect is exactly what this buys.
+        let n = 1 + (next() * 6.0) as usize;
+        let weights: Vec<f64> = (0..n).map(|_| 0.2 + next() * 3.0).collect();
+        let centers: Vec<f64> = (0..n).map(|_| next() * 8.0 - 4.0).collect();
+        let lo: Vec<f64> = (0..n).map(|_| next() * -4.0).collect();
+        let hi: Vec<f64> = lo.iter().map(|l| l + next() * 4.0).collect();
+        let start: Vec<f64> = (0..n).map(|_| next() * 6.0 - 3.0).collect();
+        // `alpha = 1 / max(w)` satisfies the convergence condition
+        // `0 < alpha < 2 / max(w)`.
+        let alpha = 1.0 / weights.iter().copied().fold(0.0_f64, f64::max);
+
+        let problem = Quadratic {
+            weights: weights.clone(),
+            centers: centers.clone(),
+            lo: dv(&lo),
+            hi: dv(&hi),
+            alpha,
+        };
+        let mut x = dv(&start);
+        let mut ws = ClusterProjectedFirstOrderWorkspace::new(n).unwrap();
+        let record = solve_projected_first_order_dyn(
+            &problem,
+            &mut x,
+            &mut ws,
+            &cfg(200_000, 1e-13),
+            &ctx(ClusterValidationPolicy::ValidateAllInputs),
+        )
+        .unwrap();
+        assert!(
+            record.report.status().is_converged(),
+            "instance {instance} (n = {n}): w {weights:?} c {centers:?} lo {lo:?} hi {hi:?}"
+        );
+
+        for i in 0..n {
+            let xi = x.get(i).unwrap();
+            let exact = centers[i].clamp(lo[i], hi[i]);
+            let error = (xi - exact).abs();
+            assert!(
+                error <= 1e-6,
+                "instance {instance} (n = {n}) coordinate {i}: kernel {xi}, exact {exact} \
+                 (w {weights:?} c {centers:?} lo {lo:?} hi {hi:?})"
+            );
+            // Feasibility, not only proximity.
+            assert!(
+                lo[i] <= xi && xi <= hi[i],
+                "instance {instance} (n = {n}) coordinate {i}: {xi} outside [{}, {}]",
+                lo[i],
+                hi[i]
+            );
+        }
+    }
+}
+
 #[test]
 fn converges_to_unconstrained_optimum() {
     let p = Quadratic {
