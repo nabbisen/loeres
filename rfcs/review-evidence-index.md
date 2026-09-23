@@ -134,6 +134,8 @@ separate, reviewed pass.
 | `050` | 2026-09-12 | 0.21.0 distribution closeout | `8aa5918b602e88d8bcfcb43c133d45623865396f9f1c1bd7ead178ef8733b475` | `architect` | ✓ |
 | `051` | 2026-09-15 | 0.21.1 post-release commit architect review | `66b67c988318864b7309ef9cb7cf5efe3227fb1774eed1810be57ede747645c8` | `architect` |  |
 | `052` | 2026-09-15 | rfc027 s1 core qp contract architect review | `b8fcc44adf05c79b1d40425c1fd3654421825e6d2974e741639801cb850b1ed5` | `architect` | ✓ |
+| `053` | 2026-09-23 | rfc028 cross environment archive identity architect review | `f5c1587e216a63781f1503ed0adefe9ed58258c6acdecde7ad25f01d902749cd` | `architect` | ✓ |
+| `054` | 2026-09-23 | rfc027 s2 constrained device kernel architect review | `0d254cebd7ca285dafed3686c1651db44a7f2fa11cac635eecdaf8ffd8a278d2` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |

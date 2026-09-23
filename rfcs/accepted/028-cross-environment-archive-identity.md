@@ -2,6 +2,7 @@
 
 **Status.** Accepted (design frozen 2026-09-15)
 **Design approval.** Architect-authored from the `0.21.0` distribution closeout (architect review 050); project owner accepted it and authorized the `accepted/` transition on 2026-09-15.
+**Implementation review.** Architect review 053 (2026-09-23) accepted the implementation at `2cc410e`, having independently reproduced both recorded digests from the revision. Exit criterion 4 (CI and local uncompressed digests observed equal) remains claimable only at the next real release.
 **Tracks.** Finding recorded at the `0.21.0` distribution closeout (architect review 050 §2).
 **Touches.** `xtask/src/checks/release_gate/package.rs` (evidence writer), `docs/src/verification.md`, `docs/src/development.md`.
 

@@ -1,7 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
 **Status.** Accepted (design frozen 2026-09-12)
-**Design approval.** Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
+**Design approval.** Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
@@ -96,6 +96,61 @@ runs.
 valid.
 
 §11.2, §11.4, §13 and §16 item 3 are updated in place.
+
+## 0.3 Amendment 3 — 2026-09-23 (architect review 054)
+
+Slice S2's first submission implemented the projection as Dykstra over **two**
+sets — the polyhedron and the box — giving the polyhedron its own `n`-length
+increment vector while performing only a **single** cyclic Hildreth pass per
+sweep. That combination double-counts the polyhedral correction: the increment
+re-adds each sweep exactly what the pass removes, the iterate becomes stationary
+at an infeasible point, the multipliers grow without bound, and the inner
+stopping rule of §11.3 reports convergence there. Measured over 3000 random
+**feasible** polytopes it returned a wrong projection in 20.6% of them, with
+errors up to `4.67` and `SolveStatus::Converged`.
+
+The implementation was reading §11.2 as written. §11.4's buffer list is
+unambiguous — it names a *box* Dykstra increment and no polyhedral one — but
+§11.2's "runs over two sets" does not say in which formulation Hildreth is being
+invoked, and a single cyclic pass is not a projection onto a polyhedron. That
+ambiguity is the author's. This amendment removes it. §11.4 is **unchanged and
+vindicated**: the corrected formulation needs exactly the buffers it lists.
+
+**0.3.1 The formulation is Dykstra over `m + 1` sets, not two.** Each halfspace
+`{aᵢᵀx ≤ bᵢ}` is its own Dykstra set. Its increment is always parallel to `aᵢ`,
+so it is stored as the single scalar `λᵢ` — this is the classical equivalence,
+Hildreth's method *is* Dykstra applied to halfspaces. The box is the one
+remaining set and keeps its own `n`-length increment vector. **There is no
+polyhedron-level increment vector**, and adding one is an error, not an
+optimisation. One cyclic pass per sweep is correct in this formulation, and only
+in this formulation, because each halfspace projection *within* the pass is
+exact.
+
+**0.3.2 The multipliers persist for the whole projection call.** They are reset
+once per `Π_C` invocation, never per sweep: they are the per-set Dykstra
+increments of §0.3.1 and resetting them per sweep discards the state that makes
+the scheme Dykstra. They do not persist *between* outer iterations, each of
+which projects a fresh candidate.
+
+**0.3.3 §11.3's inner stopping rule is insufficient and is replaced.** A dual
+method may not be stopped on the primal iterate alone: `x` can be exactly
+stationary while `λ` is still moving. `Π_C` is converged only when all three
+hold in the same sweep — `maxⱼ|Δxⱼ| ≤ projection_tolerance`, **and**
+`maxᵢ|Δλᵢ| ≤ projection_tolerance` (already computed in the row loop; no
+storage), **and** the terminal violation `max(0, maxᵢ(aᵢᵀx − bᵢ)) ≤
+projection_tolerance`. With §0.3.1 and this rule, agreement with the exact
+projection was `1.6e-11` worst case over 6000 random feasible polytopes, with no
+spurious cap hits.
+
+**0.3.4 Infeasible polyhedra need no special handling, and must not get any.**
+Under §0.3.1 and §0.3.3 an infeasible polyhedron runs to `projection_max_sweeps`
+and reports its true violation with `projection_cap_hits > 0` — which is exactly
+what §11.3's "violation that does not shrink" already prescribes. Conformance
+fixtures must **not** be shaped to avoid exactly-cancelling geometries; that
+would encode the defect above as a requirement.
+
+**0.3.5 §11.2's `m = 0` bit-identity claim is unaffected.** It rests on the
+single exact box projection with no sweep (§0.2.3), which §0.3.1 does not touch.
 
 ## 1. Summary
 
@@ -203,9 +258,13 @@ constraint, cyclic sweeps, monotone convergence to the projection.
 review 043, R1). Cyclic projections that simply clamp between halfspace steps
 converge to *a* feasible point, not to the Euclidean projection, and the
 projected-gradient convergence argument needs the projection. Dykstra's scheme
-therefore runs over two sets — the polyhedron `{Ax ≤ b}` via Hildreth multipliers
-(`m` scalars) and the box via exact `clamp` with its own increment vector (`n`
-scalars). With `m = 0` the kernel performs the single exact box projection and runs no
+therefore runs over **`m + 1` sets**: each halfspace `{aᵢᵀx ≤ bᵢ}` is its own
+set whose increment, being parallel to `aᵢ`, is stored as the single scalar
+multiplier `λᵢ` (`m` scalars in total), and the box is the remaining set, via
+exact `clamp` with its own increment vector (`n` scalars). There is no
+polyhedron-level increment vector, and one cyclic pass per sweep is a
+projection only because each halfspace step within it is exact (Amendment 3,
+§0.3.1). With `m = 0` the kernel performs the single exact box projection and runs no
 Dykstra sweep, so it computes precisely RFC 006/016's `clamp` —
 **RFC 006/016 behaviour is preserved bit-for-bit for `m = 0`, by construction**
 (Amendment 2, §0.2.3 corrects an earlier claim that the increment is zero). Treating the box as `2n` extra halfspaces was
@@ -216,8 +275,9 @@ would break that guarantee.
 
 ```text
 outer:  x ← Π_C( x − α ∇f(x) )        bounded by max_iterations (existing)
-Π_C:    Hildreth sweeps, bounded by projection_max_sweeps,
-        stopping when max_i |Δx_i| ≤ projection_tolerance
+Π_C:    Hildreth sweeps, bounded by projection_max_sweeps, stopping when
+        max_j |Δx_j| ≤ projection_tolerance  AND  max_i |Δλ_i| ≤ projection_tolerance
+        AND  max(0, max_i(aᵢᵀx − bᵢ)) ≤ projection_tolerance      (Amendment 3, §0.3.3)
 ```
 
 Convergence of the outer loop is the existing step-norm criterion. Two caps,
