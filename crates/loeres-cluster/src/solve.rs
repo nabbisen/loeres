@@ -147,6 +147,11 @@ where
         .map_err(|_| ClusterError::Shutdown)?
 }
 
+mod constrained;
+pub use constrained::{
+    ClusterConstrainedJob, ClusterConstrainedWorkspace, ConstrainedProjectedConfig,
+    ConstrainedSolveRecord, solve_constrained_projected_first_order_dyn,
+};
 mod projected_first_order;
 pub use projected_first_order::{
     ClusterProjectedFirstOrderJob, ProjectedFirstOrderSolveOptions,

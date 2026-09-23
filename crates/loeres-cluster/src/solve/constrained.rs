@@ -1,0 +1,614 @@
+//! RFC 027 S3 — the box/linear-inequality constrained projected first-order
+//! cluster kernel and its thin `ClusterJob` adapter.
+//!
+//! The same algorithm as the device kernel (`loeres-device`'s
+//! `solve_constrained_projected_first_order`), over runtime-sized storage:
+//! bounded Dykstra over `m + 1` sets (RFC 027 Amendment 3, §0.3.1) — each
+//! halfspace `{aᵢᵀx ≤ bᵢ}` is its own set whose increment, always parallel to
+//! `aᵢ`, is the scalar multiplier `λᵢ`; the box is the one remaining set, exact
+//! `clamp` with its own `n`-length increment. There is no polyhedron-level
+//! increment vector. Multipliers persist for the whole projection call (§0.3.2),
+//! and the projection converges only when the iterate change, the multiplier
+//! change and the terminal constraint violation are all within
+//! `projection_tolerance` in the same sweep (§0.3.3).
+//!
+//! Consumes [`loeres::QuadraticProgram`] directly through the RFC 002 access
+//! traits, so `A` may be dense or CSR without this module knowing which; every
+//! access is the fallible `get`, no contiguous fast path is required or used.
+//! `step_scale` is its own parameter, since the contract carries none (§0.2.1).
+//!
+//! `m = 0` is accepted at runtime — a zero-row `MatrixAccess`, canonically
+//! core's `MatrixView` over an empty slice (§0.2.2) — and short-circuits to the
+//! single exact box projection with no Dykstra sweep, so it performs precisely
+//! the RFC 016 step (§0.2.3).
+//!
+//! Validation per RFC 012/016: structural checks always run; finite scans of
+//! `Q, c, A, b, lo, hi, x₀` are skippable under `TrustedByCaller(FINITE)`;
+//! in-loop finiteness is never skippable and maps to
+//! [`SolverError::NumericalDomain`].
+
+use loeres::validation::ValidationScope;
+use loeres::{
+    ContiguousVectorAccessMut, DivisibleScalar, FiniteScalar, MatrixAccess, MetricScalar,
+    QuadraticProgram, SolveReport, SolverError, VectorAccess, VectorAccessMut,
+};
+use loeres_backend_std::DenseVector;
+
+use crate::batch::{BatchItemOutcome, ClusterSolution};
+use crate::model::ProjectedFirstOrderFiniteEvidence;
+use crate::runtime::ClusterValidationPolicy;
+use crate::solve::{ClusterExecutionContext, ClusterJob};
+
+fn dim_u32(n: usize) -> Result<u32, SolverError> {
+    u32::try_from(n).map_err(|_| SolverError::InvalidDimension)
+}
+
+fn require_len(actual: usize, expected: usize) -> Result<(), SolverError> {
+    if actual == expected {
+        Ok(())
+    } else {
+        Err(SolverError::DimensionMismatch {
+            lhs: dim_u32(actual)?,
+            rhs: dim_u32(expected)?,
+        })
+    }
+}
+
+fn slot<S: Copy>(values: &[S], index: usize) -> Result<S, SolverError> {
+    values
+        .get(index)
+        .copied()
+        .ok_or(SolverError::InternalInvariantViolation)
+}
+
+fn set_slot<S>(values: &mut [S], index: usize, value: S) -> Result<(), SolverError> {
+    match values.get_mut(index) {
+        Some(target) => {
+            *target = value;
+            Ok(())
+        }
+        None => Err(SolverError::InternalInvariantViolation),
+    }
+}
+
+/// Numeric configuration for the constrained cluster kernel, orthogonal to the
+/// RFC 008 orchestration config. Mirrors [`crate::ProjectedFirstOrderConfig`]
+/// (both tolerances finite and `> 0`) and adds the inner projection bounds.
+#[derive(Clone, Copy, Debug)]
+pub struct ConstrainedProjectedConfig<S> {
+    /// Maximum outer gradient iterations (`> 0`).
+    pub max_iterations: u32,
+    /// Outer convergence tolerance on the max coordinate change of the whole
+    /// outer step (gradient move plus projection); finite, `> 0`.
+    pub tolerance: S,
+    /// Maximum Dykstra sweeps per outer-iteration projection (`> 0`).
+    ///
+    /// **The cap must suit `projection_tolerance`.** Dykstra converges linearly
+    /// at a rate set by the angles between constraint normals, so tight
+    /// tolerances need far more sweeps than loose ones (roughly 2700 at `1e-12`
+    /// on the review-054 polytope). There is no default; a cap that is too small
+    /// is not an error, it is reported as `projection_cap_hits > 0` and a
+    /// non-zero `max_constraint_violation`.
+    pub projection_max_sweeps: u32,
+    /// Inner convergence tolerance (finite, `> 0`): a projection is converged
+    /// only when, in one sweep, the iterate's change, the multipliers' change
+    /// and the terminal constraint violation are all within it (§0.3.3).
+    pub projection_tolerance: S,
+}
+
+impl<S: FiniteScalar + MetricScalar> ConstrainedProjectedConfig<S> {
+    /// Validate the numeric configuration.
+    ///
+    /// # Errors
+    /// [`SolverError::InvalidInput`] for a zero cap or a non-positive tolerance;
+    /// [`SolverError::NonFiniteInput`] for a non-finite tolerance.
+    pub fn validate(&self) -> Result<(), SolverError> {
+        if self.max_iterations == 0 || self.projection_max_sweeps == 0 {
+            return Err(SolverError::InvalidInput);
+        }
+        for tolerance in [self.tolerance, self.projection_tolerance] {
+            if !tolerance.is_finite() {
+                return Err(SolverError::NonFiniteInput);
+            }
+            if tolerance <= S::zero() {
+                return Err(SolverError::InvalidInput);
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Reusable scratch for the constrained cluster kernel, sized to `(n, m)` and
+/// allocated once at construction; the solve loop never allocates.
+///
+/// Five buffers, matching the device workspace's `3N + 2M` (RFC 027 §11.4):
+/// `gradient`, `outer_previous` and `box_increment` (each `n`), and
+/// `multipliers` and `row_norms_sq` (each `m`). `outer_previous` must survive
+/// unchanged across every sweep of a projection so the outer criterion can
+/// compare the final iterate against it (RFC 016's criterion, unchanged);
+/// `gradient`'s role ends once the candidate is formed, so the projection
+/// reuses it as the per-sweep "iterate before this sweep" snapshot. `m` may be
+/// zero, in which case the two `m`-length buffers are empty.
+#[derive(Clone, Debug)]
+pub struct ClusterConstrainedWorkspace<S> {
+    gradient: DenseVector<S>,
+    outer_previous: DenseVector<S>,
+    box_increment: DenseVector<S>,
+    multipliers: Vec<S>,
+    row_norms_sq: Vec<S>,
+}
+
+impl<S: FiniteScalar + MetricScalar> ClusterConstrainedWorkspace<S> {
+    /// Allocate scratch for `variables = n` and `constraints = m`.
+    ///
+    /// # Errors
+    /// [`SolverError::InvalidDimension`] when `variables == 0`. `constraints`
+    /// may be zero.
+    pub fn new(variables: usize, constraints: usize) -> Result<Self, SolverError> {
+        if variables == 0 {
+            return Err(SolverError::InvalidDimension);
+        }
+        let vector = || DenseVector::from_vec(vec![S::zero(); variables]);
+        Ok(Self {
+            gradient: vector()?,
+            outer_previous: vector()?,
+            box_increment: vector()?,
+            multipliers: vec![S::zero(); constraints],
+            row_norms_sq: vec![S::zero(); constraints],
+        })
+    }
+
+    /// The number of variables this workspace was sized for.
+    #[must_use]
+    pub fn variables(&self) -> usize {
+        self.gradient.len()
+    }
+
+    /// The number of constraints this workspace was sized for.
+    #[must_use]
+    pub fn constraints(&self) -> usize {
+        self.multipliers.len()
+    }
+
+    fn reset_for_entry(&mut self) {
+        for vector in [
+            &mut self.gradient,
+            &mut self.outer_previous,
+            &mut self.box_increment,
+        ] {
+            zero_dense(vector);
+        }
+        for value in self
+            .multipliers
+            .iter_mut()
+            .chain(self.row_norms_sq.iter_mut())
+        {
+            *value = S::zero();
+        }
+    }
+}
+
+fn zero_dense<S: FiniteScalar>(vector: &mut DenseVector<S>) {
+    // `DenseVector` is always contiguous, so this always runs.
+    if let Some(slice) = vector.as_contiguous_mut() {
+        for value in slice.iter_mut() {
+            *value = S::zero();
+        }
+    }
+}
+
+/// Typed solve outcome: the terminal report, honest validation evidence (as
+/// [`crate::ProjectedFirstOrderSolveRecord`]), and the two fields RFC 027
+/// §11.3 requires so the kernel never claims feasibility it did not verify.
+#[derive(Clone, Copy, Debug)]
+pub struct ConstrainedSolveRecord<S> {
+    /// Terminal report (RFC 014).
+    pub report: SolveReport,
+    /// Outer iterations whose Dykstra projection hit `projection_max_sweeps`
+    /// without converging.
+    pub projection_cap_hits: u32,
+    /// `max(0, maxᵢ(aᵢᵀx − bᵢ))` at the returned iterate (zero when `m = 0`;
+    /// box violation is zero by construction).
+    pub max_constraint_violation: S,
+    /// Structural/finite scopes verified directly.
+    pub checked_scope: ValidationScope,
+    /// How the finite invariant was discharged.
+    pub finite: ProjectedFirstOrderFiniteEvidence,
+}
+
+fn scan_vector<V>(vector: &V) -> Result<(), SolverError>
+where
+    V: VectorAccess,
+    V::Scalar: FiniteScalar,
+{
+    for index in 0..vector.len() {
+        if !vector.get(index)?.is_finite() {
+            return Err(SolverError::NonFiniteInput);
+        }
+    }
+    Ok(())
+}
+
+fn scan_matrix<M>(matrix: &M) -> Result<(), SolverError>
+where
+    M: MatrixAccess,
+    M::Scalar: FiniteScalar,
+{
+    let dims = matrix.dims();
+    for row in 0..dims.rows {
+        for col in 0..dims.cols {
+            if !matrix.get(row, col)?.is_finite() {
+                return Err(SolverError::NonFiniteInput);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn poll_cancelled(ctx: &ClusterExecutionContext, index: u32) -> bool {
+    let poll = ctx.poll_interval();
+    (poll == 0 || index % poll == 0) && ctx.is_cancelled()
+}
+
+/// `max(0, maxᵢ(aᵢᵀx − bᵢ))`.
+fn max_constraint_violation<P, S>(
+    problem: &P,
+    x: &DenseVector<S>,
+    m: usize,
+) -> Result<S, SolverError>
+where
+    P: QuadraticProgram<S>,
+    S: FiniteScalar + MetricScalar,
+{
+    let a = problem.constraint_matrix();
+    let b = problem.constraint_rhs();
+    let mut worst = S::zero();
+    for i in 0..m {
+        let mut dot = S::zero();
+        for j in 0..x.len() {
+            dot = dot.add(a.get(i, j)?.mul(x.get(j)?));
+        }
+        let violation = dot.sub(b.get(i)?);
+        if !violation.is_finite() {
+            return Err(SolverError::NumericalDomain);
+        }
+        worst = worst.max(violation);
+    }
+    Ok(worst.max(S::zero()))
+}
+
+/// Bounded Dykstra projection `x ← Π_C(x)` for `C = {lo ≤ x ≤ hi} ∩ {Ax ≤ b}`
+/// with `m ≥ 1` (RFC 027 §11.2, §11.3, Amendment 3). Resets the box increment
+/// and multipliers once per call. Returns whether the sweep cap bound without
+/// convergence. See the device kernel's `dykstra_project` for the derivation of
+/// each step; `workspace.gradient` is the per-sweep snapshot here as there.
+fn dykstra_project<P, S>(
+    problem: &P,
+    x: &mut DenseVector<S>,
+    workspace: &mut ClusterConstrainedWorkspace<S>,
+    config: &ConstrainedProjectedConfig<S>,
+    ctx: &ClusterExecutionContext,
+    m: usize,
+) -> Result<bool, SolverError>
+where
+    P: QuadraticProgram<S>,
+    S: FiniteScalar + MetricScalar + DivisibleScalar,
+{
+    let n = x.len();
+    zero_dense(&mut workspace.box_increment);
+    for value in workspace.multipliers.iter_mut() {
+        *value = S::zero();
+    }
+
+    let lo = problem.lower_bounds();
+    let hi = problem.upper_bounds();
+    let a = problem.constraint_matrix();
+    let b = problem.constraint_rhs();
+    let tolerance = config.projection_tolerance;
+
+    for sweep in 0..config.projection_max_sweeps {
+        if poll_cancelled(ctx, sweep) {
+            return Err(SolverError::Cancelled);
+        }
+        for j in 0..n {
+            workspace.gradient.set(j, x.get(j)?)?;
+        }
+
+        // One cyclic Hildreth pass over the halfspaces.
+        let mut lambda_change = S::zero();
+        for i in 0..m {
+            let mut dot = S::zero();
+            for j in 0..n {
+                dot = dot.add(a.get(i, j)?.mul(x.get(j)?));
+            }
+            let bi = b.get(i)?;
+            if !dot.is_finite() || !bi.is_finite() {
+                return Err(SolverError::NumericalDomain);
+            }
+            let residual = dot.sub(bi);
+            let step = residual.checked_div(slot(&workspace.row_norms_sq, i)?)?;
+            let old_lambda = slot(&workspace.multipliers, i)?;
+            let new_lambda = old_lambda.add(step).max(S::zero());
+            let diff = new_lambda.sub(old_lambda);
+            lambda_change = lambda_change.max(diff.abs());
+            for j in 0..n {
+                let adjusted = x.get(j)?.sub(diff.mul(a.get(i, j)?));
+                if !adjusted.is_finite() {
+                    return Err(SolverError::NumericalDomain);
+                }
+                x.set(j, adjusted)?;
+            }
+            set_slot(&mut workspace.multipliers, i, new_lambda)?;
+        }
+
+        // Box correction: target = x + box_increment(old), exact clamp.
+        let mut change = S::zero();
+        for j in 0..n {
+            let (loj, hij) = (lo.get(j)?, hi.get(j)?);
+            if !loj.is_finite() || !hij.is_finite() {
+                return Err(SolverError::NumericalDomain);
+            }
+            let target = x.get(j)?.add(workspace.box_increment.get(j)?);
+            let projected = target.clamp(loj, hij);
+            if !projected.is_finite() {
+                return Err(SolverError::NumericalDomain);
+            }
+            workspace.box_increment.set(j, target.sub(projected))?;
+            x.set(j, projected)?;
+            change = change.max(projected.sub(workspace.gradient.get(j)?).abs());
+        }
+
+        if change.lte_tolerance(tolerance)
+            && lambda_change.lte_tolerance(tolerance)
+            && max_constraint_violation(problem, x, m)?.lte_tolerance(tolerance)
+        {
+            return Ok(false);
+        }
+    }
+    Ok(true)
+}
+
+/// Solve a dynamic box/linear-inequality constrained projected first-order
+/// problem (RFC 027 §11.3).
+///
+/// `x` is the in/out iterate. Converged and not-converged both return `Ok`;
+/// fail-safe failures return `Err`; cancellation returns
+/// [`SolverError::Cancelled`]. An infeasible polyhedron is not special-cased: it
+/// runs each projection to `projection_max_sweeps` and reports its true
+/// violation with `projection_cap_hits > 0`.
+///
+/// # Errors
+/// Structural/validation failures per RFC 016 §3.7, plus
+/// [`SolverError::InvalidInput`] for an all-zero constraint row and
+/// [`SolverError::Overflow`] for a constraint row whose squared norm overflows;
+/// in-loop non-finite values map to [`SolverError::NumericalDomain`].
+pub fn solve_constrained_projected_first_order_dyn<P, S>(
+    problem: &P,
+    step_scale: S,
+    x: &mut DenseVector<S>,
+    workspace: &mut ClusterConstrainedWorkspace<S>,
+    config: &ConstrainedProjectedConfig<S>,
+    ctx: &ClusterExecutionContext,
+) -> Result<ConstrainedSolveRecord<S>, SolverError>
+where
+    P: QuadraticProgram<S>,
+    S: FiniteScalar + MetricScalar + DivisibleScalar,
+{
+    if ctx.is_cancelled() {
+        return Err(SolverError::Cancelled);
+    }
+    config.validate()?;
+    workspace.reset_for_entry();
+
+    // (a) Structural checks — always run, never skippable.
+    let shape = problem.shape()?;
+    let (n, m) = (shape.variables, shape.constraints);
+    require_len(x.len(), n)?;
+    require_len(workspace.variables(), n)?;
+    require_len(workspace.constraints(), m)?;
+    if !step_scale.is_finite() {
+        return Err(SolverError::NonFiniteInput);
+    }
+    if step_scale <= S::zero() {
+        return Err(SolverError::InvalidInput);
+    }
+
+    // (b) Finite scans — policy-governed.
+    let finite_evidence = match ctx.validation_policy() {
+        ClusterValidationPolicy::TrustedByCaller(t)
+            if t.scope.contains(ValidationScope::FINITE) =>
+        {
+            ProjectedFirstOrderFiniteEvidence::Trusted(t)
+        }
+        _ => ProjectedFirstOrderFiniteEvidence::Scanned,
+    };
+    let finite_trusted = matches!(
+        finite_evidence,
+        ProjectedFirstOrderFiniteEvidence::Trusted(_)
+    );
+    if !finite_trusted {
+        scan_vector(problem.linear_term())?;
+        scan_matrix(problem.hessian())?;
+        scan_vector(problem.lower_bounds())?;
+        scan_vector(problem.upper_bounds())?;
+        if m > 0 {
+            scan_matrix(problem.constraint_matrix())?;
+            scan_vector(problem.constraint_rhs())?;
+        }
+        scan_vector(x)?;
+    }
+
+    // Structural: only a *finite* lo > hi is InvalidInput; non-finite bounds
+    // under trust reach the hot-loop check (NumericalDomain).
+    {
+        let (lo, hi) = (problem.lower_bounds(), problem.upper_bounds());
+        for j in 0..n {
+            let (l, h) = (lo.get(j)?, hi.get(j)?);
+            if l.is_finite() && h.is_finite() && l > h {
+                return Err(SolverError::InvalidInput);
+            }
+        }
+    }
+
+    // Row norms: validated `> 0` and finite, overflow → Overflow; an all-zero
+    // row is InvalidInput (a zero-*row matrix*, m = 0, is valid and skips this).
+    {
+        let a = problem.constraint_matrix();
+        for i in 0..m {
+            let mut sum_sq = S::zero();
+            for j in 0..n {
+                let aij = a.get(i, j)?;
+                sum_sq = sum_sq.add(aij.mul(aij));
+            }
+            if sum_sq.is_nan() {
+                return Err(SolverError::NumericalDomain);
+            }
+            if sum_sq.is_infinite() {
+                return Err(SolverError::Overflow);
+            }
+            if sum_sq <= S::zero() {
+                return Err(SolverError::InvalidInput);
+            }
+            set_slot(&mut workspace.row_norms_sq, i, sum_sq)?;
+        }
+    }
+
+    let checked_scope = if finite_trusted {
+        ValidationScope::PROBLEM_CONFIG
+    } else {
+        ValidationScope::PROBLEM_CONFIG.union(ValidationScope::FINITE)
+    };
+
+    let mut projection_cap_hits: u32 = 0;
+    let mut executed: u32 = 0;
+    while executed < config.max_iterations {
+        if poll_cancelled(ctx, executed) {
+            return Err(SolverError::Cancelled);
+        }
+        for j in 0..n {
+            workspace.outer_previous.set(j, x.get(j)?)?;
+        }
+        problem.gradient_into(x, &mut workspace.gradient)?;
+
+        if m == 0 {
+            // §0.2.3: the single exact box projection, no sweep — the RFC 016
+            // step, operation for operation.
+            let (lo, hi) = (problem.lower_bounds(), problem.upper_bounds());
+            for j in 0..n {
+                let (gj, loj, hij) = (workspace.gradient.get(j)?, lo.get(j)?, hi.get(j)?);
+                if !gj.is_finite() || !loj.is_finite() || !hij.is_finite() {
+                    return Err(SolverError::NumericalDomain);
+                }
+                let projected = x.get(j)?.sub(step_scale.mul(gj)).clamp(loj, hij);
+                if !projected.is_finite() {
+                    return Err(SolverError::NumericalDomain);
+                }
+                x.set(j, projected)?;
+            }
+        } else {
+            for j in 0..n {
+                let gj = workspace.gradient.get(j)?;
+                let candidate = x.get(j)?.sub(step_scale.mul(gj));
+                if !gj.is_finite() || !candidate.is_finite() {
+                    return Err(SolverError::NumericalDomain);
+                }
+                x.set(j, candidate)?;
+            }
+            if dykstra_project(problem, x, workspace, config, ctx, m)? {
+                projection_cap_hits += 1;
+            }
+        }
+
+        executed += 1;
+        let mut change = S::zero();
+        for j in 0..n {
+            change = change.max(x.get(j)?.sub(workspace.outer_previous.get(j)?).abs());
+        }
+        if change.lte_tolerance(config.tolerance) {
+            return Ok(ConstrainedSolveRecord {
+                report: SolveReport::converged_early(executed),
+                projection_cap_hits,
+                max_constraint_violation: max_constraint_violation(problem, x, m)?,
+                checked_scope,
+                finite: finite_evidence,
+            });
+        }
+    }
+    Ok(ConstrainedSolveRecord {
+        report: SolveReport::not_converged_cap(config.max_iterations),
+        projection_cap_hits,
+        max_constraint_violation: max_constraint_violation(problem, x, m)?,
+        checked_scope,
+        finite: finite_evidence,
+    })
+}
+
+/// A `&self`-safe template adapter erasing a constrained solve into a
+/// [`ClusterJob`], as [`crate::ClusterProjectedFirstOrderJob`] does: it holds
+/// only immutable inputs, and each `run_boxed` allocates a local iterate clone
+/// and workspace once, before the loop.
+///
+/// The erased [`BatchItemOutcome`] carries only the core [`SolveReport`], so
+/// `projection_cap_hits` and `max_constraint_violation` are **not** visible
+/// through the batch seam; callers who need them use the typed entrypoint
+/// [`solve_constrained_projected_first_order_dyn`].
+pub struct ClusterConstrainedJob<P, S> {
+    problem: P,
+    step_scale: S,
+    initial: DenseVector<S>,
+    config: ConstrainedProjectedConfig<S>,
+}
+
+impl<P, S> ClusterConstrainedJob<P, S> {
+    /// Build a job from the problem, its step scale, a starting iterate, and the
+    /// numeric config.
+    pub fn new(
+        problem: P,
+        step_scale: S,
+        initial: DenseVector<S>,
+        config: ConstrainedProjectedConfig<S>,
+    ) -> Self {
+        Self {
+            problem,
+            step_scale,
+            initial,
+            config,
+        }
+    }
+}
+
+impl<P, S> ClusterJob<S> for ClusterConstrainedJob<P, S>
+where
+    P: QuadraticProgram<S> + Send + Sync + 'static,
+    S: FiniteScalar + MetricScalar + DivisibleScalar + Send + Sync + 'static,
+{
+    fn run_boxed(&self, ctx: &ClusterExecutionContext) -> BatchItemOutcome<S> {
+        let mut x = self.initial.clone();
+        let shape = match self.problem.shape() {
+            Ok(shape) => shape,
+            Err(error) => return BatchItemOutcome::Failed { error },
+        };
+        let mut workspace =
+            match ClusterConstrainedWorkspace::new(shape.variables, shape.constraints) {
+                Ok(w) => w,
+                Err(error) => return BatchItemOutcome::Failed { error },
+            };
+        match solve_constrained_projected_first_order_dyn(
+            &self.problem,
+            self.step_scale,
+            &mut x,
+            &mut workspace,
+            &self.config,
+            ctx,
+        ) {
+            Ok(record) => BatchItemOutcome::Solved {
+                solution: ClusterSolution::DenseVector(x),
+                report: record.report,
+            },
+            Err(error) => BatchItemOutcome::Failed { error },
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests;

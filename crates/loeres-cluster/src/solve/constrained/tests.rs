@@ -1,0 +1,904 @@
+//! Tests for the RFC 027 S3 constrained projected first-order cluster kernel.
+
+use super::*;
+use crate::model::{
+    ClusterProjectedFirstOrderProblem, ClusterProjectedFirstOrderWorkspace,
+    ProjectedFirstOrderConfig,
+};
+use crate::runtime::{ClusterCancellationToken, ClusterSolveConfig};
+use crate::solve::{solve_batch, solve_projected_first_order_dyn};
+use loeres::validation::{TrustToken, TrustedByCaller};
+use loeres::{
+    BoxBounds, LinearInequalities, MatrixView, QuadraticObjective, SolveStatus, VectorView,
+};
+use loeres::{Dim2, DimensionKind};
+use loeres_backend_std::DenseMatrix;
+
+fn dv(v: &[f64]) -> DenseVector<f64> {
+    DenseVector::from_vec(v.to_vec()).unwrap()
+}
+
+fn ctx(policy: ClusterValidationPolicy) -> ClusterExecutionContext {
+    ClusterExecutionContext::new(ClusterCancellationToken::new(), 0, policy)
+}
+
+fn scan() -> ClusterExecutionContext {
+    ctx(ClusterValidationPolicy::ValidateAllInputs)
+}
+
+fn cfg(projection_tolerance: f64, sweeps: u32) -> ConstrainedProjectedConfig<f64> {
+    ConstrainedProjectedConfig {
+        max_iterations: 5000,
+        tolerance: 1e-12,
+        projection_max_sweeps: sweeps,
+        projection_tolerance,
+    }
+}
+
+/// A dynamic quadratic program; `C`/`R` are the constraint matrix and
+/// right-hand-side storage, so one fixture serves dense `A`, CSR `A`, and the
+/// canonical `m = 0` empty views.
+struct Qp<C, R> {
+    q: DenseMatrix<f64>,
+    c: DenseVector<f64>,
+    lo: DenseVector<f64>,
+    hi: DenseVector<f64>,
+    a: C,
+    b: R,
+}
+
+impl<C, R> QuadraticObjective<f64> for Qp<C, R> {
+    type Hessian = DenseMatrix<f64>;
+    type Linear = DenseVector<f64>;
+    fn hessian(&self) -> &Self::Hessian {
+        &self.q
+    }
+    fn linear_term(&self) -> &Self::Linear {
+        &self.c
+    }
+}
+impl<C, R> BoxBounds<f64> for Qp<C, R> {
+    type Bound = DenseVector<f64>;
+    fn lower_bounds(&self) -> &Self::Bound {
+        &self.lo
+    }
+    fn upper_bounds(&self) -> &Self::Bound {
+        &self.hi
+    }
+}
+impl<C: MatrixAccess<Scalar = f64>, R: VectorAccess<Scalar = f64>> LinearInequalities<f64>
+    for Qp<C, R>
+{
+    type Constraints = C;
+    type Rhs = R;
+    fn constraint_matrix(&self) -> &C {
+        &self.a
+    }
+    fn constraint_rhs(&self) -> &R {
+        &self.b
+    }
+}
+
+fn identity(n: usize) -> DenseMatrix<f64> {
+    let mut data = vec![0.0; n * n];
+    for i in 0..n {
+        data[i * n + i] = 1.0;
+    }
+    DenseMatrix::from_row_major_vec(n, n, data).unwrap()
+}
+
+type Dense = Qp<DenseMatrix<f64>, DenseVector<f64>>;
+
+/// `min ½‖x − t‖²` over `[−10, 10]ⁿ` and `Ax ≤ b` (`A` row-major, `m × n`).
+fn projection(n: usize, a: &[f64], b: &[f64], t: &[f64]) -> Dense {
+    Qp {
+        q: identity(n),
+        c: dv(&t.iter().map(|v| -v).collect::<Vec<_>>()),
+        lo: dv(&vec![-10.0; n]),
+        hi: dv(&vec![10.0; n]),
+        a: DenseMatrix::from_row_major_vec(b.len(), n, a.to_vec()).unwrap(),
+        b: dv(b),
+    }
+}
+
+fn solve(
+    problem: &Dense,
+    step: f64,
+    x0: &[f64],
+    config: &ConstrainedProjectedConfig<f64>,
+) -> (DenseVector<f64>, ConstrainedSolveRecord<f64>) {
+    let shape = problem.shape().unwrap();
+    let mut x = dv(x0);
+    let mut ws = ClusterConstrainedWorkspace::new(shape.variables, shape.constraints).unwrap();
+    let record = solve_constrained_projected_first_order_dyn(
+        problem,
+        step,
+        &mut x,
+        &mut ws,
+        config,
+        &scan(),
+    )
+    .unwrap();
+    (x, record)
+}
+
+fn assert_feasible(record: &ConstrainedSolveRecord<f64>, tolerance: f64) {
+    assert!(
+        record.max_constraint_violation <= tolerance,
+        "returned point violates its own constraints by {}",
+        record.max_constraint_violation
+    );
+}
+
+fn coords(x: &DenseVector<f64>) -> Vec<f64> {
+    (0..x.len()).map(|i| x.get(i).unwrap()).collect()
+}
+
+// ---------------------------------------------------------------------------
+// m >= 1 correctness (the RFC 027 Amendment 3 shapes)
+// ---------------------------------------------------------------------------
+
+/// The review-054 regression case — exact `A`, `b`, `t`, expected value.
+#[test]
+fn review_054_regression_two_constraints_converge_to_the_exact_projection() {
+    let problem = projection(
+        2,
+        &[1.6, -1.3082, -0.0457, 0.9197],
+        &[1.6013, -0.3988],
+        &[5.3481, 4.7872],
+    );
+    let (x, record) = solve(&problem, 1.0, &[0.0, 0.0], &cfg(1e-14, 5000));
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_eq!(record.projection_cap_hits, 0);
+    assert_feasible(&record, 1e-14);
+    let x = coords(&x);
+    assert!(
+        (x[0] - 0.673643).abs() < 1e-6 && (x[1] + 0.400146).abs() < 1e-6,
+        "x = {x:?}"
+    );
+}
+
+/// Vertex with two active constraints: `min ½‖x−(3,1)‖²`, `x₀+x₁ ≤ 1.5`,
+/// `x₀−x₁ ≤ 0.5` → `(1, 0.5)`. KKT: `∇f = (−2,−0.5)`, `λ = (1.25, 0.75) ≥ 0`.
+#[test]
+fn a_vertex_with_two_active_constraints_is_found_exactly() {
+    let problem = projection(2, &[1.0, 1.0, 1.0, -1.0], &[1.5, 0.5], &[3.0, 1.0]);
+    let (x, record) = solve(&problem, 1.0, &[0.0, 0.0], &cfg(1e-13, 5000));
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_eq!(record.projection_cap_hits, 0);
+    assert_feasible(&record, 1e-13);
+    let x = coords(&x);
+    assert!(
+        (x[0] - 1.0).abs() < 1e-9 && (x[1] - 0.5).abs() < 1e-9,
+        "{x:?}"
+    );
+}
+
+/// A constraint active early and slack at the optimum: `min ½‖x‖²` from
+/// `(1,1)`, step `0.3`, `x₀+x₁ ≤ 0.2` (violated by the first candidate
+/// `(0.7,0.7)`, so active), `x₀−x₁ ≤ 5`; optimum the origin, where both are slack.
+#[test]
+fn a_constraint_active_early_and_inactive_at_the_optimum() {
+    let mut problem = projection(2, &[1.0, 1.0, 1.0, -1.0], &[0.2, 5.0], &[0.0, 0.0]);
+    problem.c = dv(&[0.0, 0.0]);
+    let (x, record) = solve(&problem, 0.3, &[1.0, 1.0], &cfg(1e-13, 5000));
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_feasible(&record, 1e-13);
+    let x = coords(&x);
+    assert!(x[0].abs() < 1e-9 && x[1].abs() < 1e-9, "{x:?}");
+}
+
+/// One binding halfspace (`M = 1`): projection of `(2,2)` onto `x₀+x₁ ≤ 1` is
+/// `(0.5, 0.5)` (KKT `λ = 1.5`).
+#[test]
+fn a_single_active_halfspace_matches_its_closed_form() {
+    let problem = projection(2, &[1.0, 1.0], &[1.0], &[2.0, 2.0]);
+    let (x, record) = solve(&problem, 0.4, &[0.0, 0.0], &cfg(1e-12, 5000));
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_feasible(&record, 1e-12);
+    let x = coords(&x);
+    assert!(
+        (x[0] - 0.5).abs() < 1e-6 && (x[1] - 0.5).abs() < 1e-6,
+        "{x:?}"
+    );
+}
+
+/// A matrix that is deliberately *not* contiguous and offers no fast path: it
+/// stores only its non-zero entries as `(row, col, value)` and answers `get`
+/// with an implicit zero, as a CSR matrix does. `loeres-backend-std`'s own
+/// `SparseMatrix` sits behind a `sparse` feature this crate does not enable, so
+/// this stands in for it; the kernel sees only `MatrixAccess`.
+struct Triplets {
+    rows: usize,
+    cols: usize,
+    entries: Vec<(usize, usize, f64)>,
+}
+
+impl MatrixAccess for Triplets {
+    type Scalar = f64;
+    fn dims(&self) -> Dim2 {
+        Dim2::new(self.rows, self.cols)
+    }
+    fn dimension_kind(&self) -> DimensionKind {
+        DimensionKind::Dynamic
+    }
+    fn get(&self, row: usize, col: usize) -> Result<f64, SolverError> {
+        if row >= self.rows || col >= self.cols {
+            return Err(SolverError::DimensionMismatch { lhs: 0, rhs: 0 });
+        }
+        Ok(self
+            .entries
+            .iter()
+            .find(|&&(r, c, _)| r == row && c == col)
+            .map_or(0.0, |&(_, _, v)| v))
+    }
+}
+
+/// The same regression polytope with `A` held sparsely and *no* contiguous
+/// fast path: the kernel reads it only through `MatrixAccess::get`.
+#[test]
+fn a_non_contiguous_constraint_matrix_gives_the_same_answer() {
+    let problem = Qp {
+        q: identity(2),
+        c: dv(&[-5.3481, -4.7872]),
+        lo: dv(&[-10.0, -10.0]),
+        hi: dv(&[10.0, 10.0]),
+        a: Triplets {
+            rows: 2,
+            cols: 2,
+            entries: vec![
+                (0, 0, 1.6),
+                (0, 1, -1.3082),
+                (1, 0, -0.0457),
+                (1, 1, 0.9197),
+            ],
+        },
+        b: dv(&[1.6013, -0.3988]),
+    };
+    let mut x = dv(&[0.0, 0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(2, 2).unwrap();
+    let record = solve_constrained_projected_first_order_dyn(
+        &problem,
+        1.0,
+        &mut x,
+        &mut ws,
+        &cfg(1e-14, 5000),
+        &scan(),
+    )
+    .unwrap();
+    assert_feasible(&record, 1e-14);
+    let x = coords(&x);
+    assert!(
+        (x[0] - 0.673643).abs() < 1e-6 && (x[1] + 0.400146).abs() < 1e-6,
+        "{x:?}"
+    );
+}
+
+/// An infeasible polyhedron (`x ≤ −1` and `x ≥ 1`) needs no special handling:
+/// it runs to the cap and reports its true violation (RFC 027 §0.3.4).
+#[test]
+fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
+    let problem = projection(1, &[1.0, -1.0], &[-1.0, -1.0], &[0.0]);
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(1, 2).unwrap();
+    let record = solve_constrained_projected_first_order_dyn(
+        &problem,
+        0.5,
+        &mut x,
+        &mut ws,
+        &cfg(1e-12, 200),
+        &scan(),
+    )
+    .unwrap();
+    assert!(record.projection_cap_hits > 0);
+    assert!(record.max_constraint_violation > 0.5);
+}
+
+// ---------------------------------------------------------------------------
+// Randomized differential tests against an exact active-set reference. A
+// per-sweep multiplier reset (violating §0.3.2) is caught by these and by none
+// of the deterministic cases above (review 055).
+// ---------------------------------------------------------------------------
+
+/// Exact Euclidean projection of `t` onto `{g·x ≤ h}` by active-set
+/// enumeration: for each subset `S` of the constraints (ascending size), solve
+/// the KKT system `x = t − Σ λᵢgᵢ`, `gᵢ·x = hᵢ` (a Gram system) and accept the
+/// first feasible point with non-negative multipliers.
+fn exact_projection(rows: &[(Vec<f64>, f64)], t: &[f64]) -> Vec<f64> {
+    let n = t.len();
+    let feasible = |x: &[f64]| rows.iter().all(|(g, h)| dot(g, x) <= h + 1e-9);
+    if feasible(t) {
+        return t.to_vec();
+    }
+    for size in 1..=n {
+        for subset in subsets(rows.len(), size) {
+            let gram: Vec<Vec<f64>> = subset
+                .iter()
+                .map(|&i| {
+                    subset
+                        .iter()
+                        .map(|&j| dot(&rows[i].0, &rows[j].0))
+                        .collect()
+                })
+                .collect();
+            let rhs: Vec<f64> = subset
+                .iter()
+                .map(|&i| dot(&rows[i].0, t) - rows[i].1)
+                .collect();
+            let Some(lambda) = solve_linear(gram, rhs) else {
+                continue;
+            };
+            if lambda.iter().any(|&l| l < -1e-12) {
+                continue;
+            }
+            let mut x = t.to_vec();
+            for (&i, &l) in subset.iter().zip(&lambda) {
+                for (xk, gk) in x.iter_mut().zip(&rows[i].0) {
+                    *xk -= l * gk;
+                }
+            }
+            if feasible(&x) {
+                return x;
+            }
+        }
+    }
+    panic!("a feasible instance always has an exact projection");
+}
+
+fn dot(a: &[f64], b: &[f64]) -> f64 {
+    a.iter().zip(b).map(|(x, y)| x * y).sum()
+}
+
+fn subsets(n: usize, size: usize) -> Vec<Vec<usize>> {
+    let mut out = Vec::new();
+    let mut current = Vec::new();
+    fn go(start: usize, n: usize, size: usize, cur: &mut Vec<usize>, out: &mut Vec<Vec<usize>>) {
+        if cur.len() == size {
+            out.push(cur.clone());
+            return;
+        }
+        for i in start..n {
+            cur.push(i);
+            go(i + 1, n, size, cur, out);
+            cur.pop();
+        }
+    }
+    go(0, n, size, &mut current, &mut out);
+    out
+}
+
+/// Gaussian elimination with partial pivoting; `None` if singular.
+fn solve_linear(mut a: Vec<Vec<f64>>, mut b: Vec<f64>) -> Option<Vec<f64>> {
+    let n = b.len();
+    for col in 0..n {
+        let pivot = (col..n).max_by(|&i, &j| a[i][col].abs().total_cmp(&a[j][col].abs()))?;
+        if a[pivot][col].abs() < 1e-12 {
+            return None;
+        }
+        a.swap(col, pivot);
+        b.swap(col, pivot);
+        for row in (col + 1)..n {
+            let f = a[row][col] / a[col][col];
+            let pivot_row = a[col].clone();
+            for (target, source) in a[row].iter_mut().zip(&pivot_row).skip(col) {
+                *target -= f * source;
+            }
+            let v = b[col];
+            b[row] -= f * v;
+        }
+    }
+    let mut x = vec![0.0; n];
+    for row in (0..n).rev() {
+        let s: f64 = ((row + 1)..n).map(|k| a[row][k] * x[k]).sum();
+        x[row] = (b[row] - s) / a[row][row];
+    }
+    Some(x)
+}
+
+fn differential(n: usize, m: usize, instances: usize, seed: u64) {
+    let mut state = seed;
+    let mut next = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((state >> 11) as f64) / ((1u64 << 53) as f64)
+    };
+    let mut checked = 0;
+    for _ in 0..instances {
+        let a: Vec<f64> = (0..m * n).map(|_| next() * 4.0 - 2.0).collect();
+        if (0..m).any(|i| dot(&a[i * n..(i + 1) * n], &a[i * n..(i + 1) * n]) < 0.09) {
+            continue;
+        }
+        let feas: Vec<f64> = (0..n).map(|_| next() * 4.0 - 2.0).collect();
+        let b: Vec<f64> = (0..m)
+            .map(|i| dot(&a[i * n..(i + 1) * n], &feas) + next() * 0.5)
+            .collect();
+        let t: Vec<f64> = (0..n).map(|_| next() * 12.0 - 6.0).collect();
+
+        let mut rows: Vec<(Vec<f64>, f64)> = (0..m)
+            .map(|i| (a[i * n..(i + 1) * n].to_vec(), b[i]))
+            .collect();
+        for k in 0..n {
+            let mut up = vec![0.0; n];
+            up[k] = 1.0;
+            let mut down = vec![0.0; n];
+            down[k] = -1.0;
+            rows.push((up, 10.0));
+            rows.push((down, 10.0));
+        }
+        let expected = exact_projection(&rows, &t);
+
+        let problem = projection(n, &a, &b, &t);
+        let (x, record) = solve(&problem, 1.0, &vec![0.0; n], &cfg(1e-13, 200_000));
+        let x = coords(&x);
+        assert_eq!(record.projection_cap_hits, 0, "a={a:?} b={b:?} t={t:?}");
+        assert_feasible(&record, 1e-12);
+        for (got, want) in x.iter().zip(&expected) {
+            assert!(
+                (got - want).abs() < 1e-6,
+                "a={a:?} b={b:?} t={t:?}: got {x:?}, expected {expected:?}"
+            );
+        }
+        checked += 1;
+    }
+    assert!(
+        checked > instances * 2 / 3,
+        "too few usable instances: {checked}"
+    );
+}
+
+#[test]
+fn random_feasible_polytopes_n2_m2_match_the_exact_projection() {
+    differential(2, 2, 300, 0x9E37_79B9_7F4A_7C15);
+}
+
+/// `M = 3` is a shape no `M ≤ 2` test exercises.
+#[test]
+fn random_feasible_polytopes_n3_m3_match_the_exact_projection() {
+    differential(3, 3, 120, 0xD1B5_4A32_D192_ED03);
+}
+
+// ---------------------------------------------------------------------------
+// m = 0
+// ---------------------------------------------------------------------------
+
+type Unconstrained = Qp<MatrixView<'static, f64>, VectorView<'static, f64>>;
+
+fn unconstrained(t: &[f64], lo: f64, hi: f64) -> Unconstrained {
+    let n = t.len();
+    const EMPTY: &[f64] = &[];
+    Qp {
+        q: identity(n),
+        c: dv(&t.iter().map(|v| -v).collect::<Vec<_>>()),
+        lo: dv(&vec![lo; n]),
+        hi: dv(&vec![hi; n]),
+        a: MatrixView::from_row_major(EMPTY, 0, n).unwrap(),
+        b: VectorView::from_slice(EMPTY),
+    }
+}
+
+/// The RFC 016 oracle `q·(x − t)` with `q = 1`.
+struct Rfc016 {
+    target: Vec<f64>,
+    lo: DenseVector<f64>,
+    hi: DenseVector<f64>,
+    alpha: f64,
+}
+
+impl ClusterProjectedFirstOrderProblem<f64> for Rfc016 {
+    fn dimension(&self) -> usize {
+        self.target.len()
+    }
+    fn bounds(&self) -> (&DenseVector<f64>, &DenseVector<f64>) {
+        (&self.lo, &self.hi)
+    }
+    fn gradient_at(
+        &self,
+        x: &DenseVector<f64>,
+        grad: &mut DenseVector<f64>,
+    ) -> Result<(), SolverError> {
+        for (i, t) in self.target.iter().enumerate() {
+            grad.set(i, x.get(i)? - t)?;
+        }
+        Ok(())
+    }
+    fn step_scale(&self) -> f64 {
+        self.alpha
+    }
+}
+
+struct Fixture {
+    target: Vec<f64>,
+    lo: f64,
+    hi: f64,
+    alpha: f64,
+    start: Vec<f64>,
+    max_iterations: u32,
+}
+
+fn fixture(
+    target: &[f64],
+    lo: f64,
+    hi: f64,
+    alpha: f64,
+    start: &[f64],
+    max_iterations: u32,
+) -> Fixture {
+    Fixture {
+        target: target.to_vec(),
+        lo,
+        hi,
+        alpha,
+        start: start.to_vec(),
+        max_iterations,
+    }
+}
+
+/// `m = 0` performs exactly the RFC 016 step: with `Q = I` the two oracles
+/// (`x − t` and `−t + x`) agree bit for bit, so the results are bit-identical
+/// — across several fixtures, not one (handoff §6).
+#[test]
+fn m_zero_is_bit_identical_to_rfc_016_across_fixtures() {
+    let fixtures = [
+        fixture(&[0.5, -0.5], -1.0, 1.0, 0.5, &[0.0, 0.0], 500),
+        fixture(&[5.0, -5.0], -1.0, 1.0, 0.5, &[0.0, 0.0], 500),
+        fixture(&[0.1, 0.2, 0.3], -1.0, 1.0, 0.3, &[0.9, -0.9, 0.0], 400),
+        fixture(&[3.0], -2.0, 2.0, 0.1, &[-2.0], 7), // stops at the iteration cap
+        fixture(&[0.7, 0.7], -1.0, 1.0, 0.99, &[1.0, -1.0], 500),
+    ];
+    for Fixture {
+        target,
+        lo,
+        hi,
+        alpha,
+        start,
+        max_iterations,
+    } in fixtures
+    {
+        let (target, start) = (target.as_slice(), start.as_slice());
+        let n = target.len();
+
+        let reference = Rfc016 {
+            target: target.to_vec(),
+            lo: dv(&vec![lo; n]),
+            hi: dv(&vec![hi; n]),
+            alpha,
+        };
+        let mut x_ref = dv(start);
+        let mut ws_ref = ClusterProjectedFirstOrderWorkspace::new(n).unwrap();
+        let record_ref = solve_projected_first_order_dyn(
+            &reference,
+            &mut x_ref,
+            &mut ws_ref,
+            &ProjectedFirstOrderConfig {
+                max_iterations,
+                tolerance: 1e-12,
+            },
+            &scan(),
+        )
+        .unwrap();
+
+        let problem = unconstrained(target, lo, hi);
+        let mut x = dv(start);
+        let mut ws = ClusterConstrainedWorkspace::new(n, 0).unwrap();
+        let record = solve_constrained_projected_first_order_dyn(
+            &problem,
+            alpha,
+            &mut x,
+            &mut ws,
+            &ConstrainedProjectedConfig {
+                max_iterations,
+                tolerance: 1e-12,
+                projection_max_sweeps: 1,
+                projection_tolerance: 1e-12,
+            },
+            &scan(),
+        )
+        .unwrap();
+
+        assert_eq!(record.report, record_ref.report, "target {target:?}");
+        assert_eq!(record.projection_cap_hits, 0);
+        assert_eq!(record.max_constraint_violation, 0.0);
+        for i in 0..n {
+            assert_eq!(
+                x.get(i).unwrap().to_bits(),
+                x_ref.get(i).unwrap().to_bits(),
+                "target {target:?}, coordinate {i}"
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Validation (RFC 012 / 016 discipline)
+// ---------------------------------------------------------------------------
+
+fn valid() -> Dense {
+    projection(2, &[1.0, 1.0], &[10.0], &[0.5, -0.5])
+}
+
+fn run(
+    problem: &Dense,
+    step: f64,
+    x0: &[f64],
+    policy: ClusterValidationPolicy,
+) -> Result<ConstrainedSolveRecord<f64>, SolverError> {
+    let shape = problem.shape()?;
+    let mut x = dv(x0);
+    let mut ws = ClusterConstrainedWorkspace::new(shape.variables, shape.constraints)?;
+    solve_constrained_projected_first_order_dyn(
+        problem,
+        step,
+        &mut x,
+        &mut ws,
+        &cfg(1e-12, 1000),
+        &ctx(policy),
+    )
+}
+
+#[test]
+fn an_all_zero_constraint_row_is_invalid_input() {
+    let problem = projection(2, &[0.0, 0.0], &[1.0], &[0.0, 0.0]);
+    assert_eq!(
+        run(
+            &problem,
+            0.5,
+            &[0.0, 0.0],
+            ClusterValidationPolicy::ValidateAllInputs
+        )
+        .unwrap_err(),
+        SolverError::InvalidInput
+    );
+}
+
+#[test]
+fn an_overflowing_row_norm_is_overflow() {
+    let problem = projection(2, &[1e200, 1e200], &[1.0], &[0.0, 0.0]);
+    assert_eq!(
+        run(
+            &problem,
+            0.5,
+            &[0.0, 0.0],
+            ClusterValidationPolicy::ValidateAllInputs
+        )
+        .unwrap_err(),
+        SolverError::Overflow
+    );
+}
+
+#[test]
+fn inverted_finite_bounds_are_invalid_input() {
+    let mut problem = valid();
+    problem.lo = dv(&[1.0, -1.0]);
+    problem.hi = dv(&[-1.0, 1.0]);
+    assert_eq!(
+        run(
+            &problem,
+            0.5,
+            &[0.0, 0.0],
+            ClusterValidationPolicy::ValidateAllInputs
+        )
+        .unwrap_err(),
+        SolverError::InvalidInput
+    );
+}
+
+#[test]
+fn step_scale_config_and_dimension_are_validated_structurally() {
+    let problem = valid();
+    let policy = ClusterValidationPolicy::ValidateAllInputs;
+    assert_eq!(
+        run(&problem, f64::NAN, &[0.0, 0.0], policy).unwrap_err(),
+        SolverError::NonFiniteInput
+    );
+    for alpha in [0.0, -1.0] {
+        assert_eq!(
+            run(&problem, alpha, &[0.0, 0.0], policy).unwrap_err(),
+            SolverError::InvalidInput
+        );
+    }
+    assert!(matches!(
+        run(&problem, 0.5, &[0.0, 0.0, 0.0], policy).unwrap_err(),
+        SolverError::DimensionMismatch { .. }
+    ));
+    let mut bad = cfg(1e-12, 100);
+    bad.projection_max_sweeps = 0;
+    assert_eq!(bad.validate(), Err(SolverError::InvalidInput));
+    bad = cfg(1e-12, 100);
+    bad.projection_tolerance = f64::INFINITY;
+    assert_eq!(bad.validate(), Err(SolverError::NonFiniteInput));
+    bad = cfg(1e-12, 100);
+    bad.tolerance = 0.0;
+    assert_eq!(bad.validate(), Err(SolverError::InvalidInput));
+    assert_eq!(
+        ClusterConstrainedWorkspace::<f64>::new(0, 1).unwrap_err(),
+        SolverError::InvalidDimension
+    );
+}
+
+#[test]
+fn a_workspace_of_the_wrong_size_is_a_dimension_mismatch() {
+    let problem = valid();
+    let mut x = dv(&[0.0, 0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(2, 2).unwrap();
+    let err = solve_constrained_projected_first_order_dyn(
+        &problem,
+        0.5,
+        &mut x,
+        &mut ws,
+        &cfg(1e-12, 100),
+        &scan(),
+    )
+    .unwrap_err();
+    assert!(matches!(err, SolverError::DimensionMismatch { .. }));
+}
+
+/// Finite scans cover `Q, c, A, b, lo, hi, x₀` and are skippable under trust.
+#[test]
+fn finite_scans_cover_every_input_and_are_skippable_under_trust() {
+    let scanning = ClusterValidationPolicy::ValidateAllInputs;
+    type Mutation = (&'static str, fn(&mut Dense));
+    let mutations: [Mutation; 5] = [
+        ("c", |p| p.c = dv(&[f64::NAN, 0.0])),
+        ("q", |p| {
+            p.q = DenseMatrix::from_row_major_vec(2, 2, vec![1.0, f64::NAN, 0.0, 1.0]).unwrap()
+        }),
+        ("hi", |p| p.hi = dv(&[f64::INFINITY, 1.0])),
+        ("a", |p| {
+            p.a = DenseMatrix::from_row_major_vec(1, 2, vec![1.0, f64::NAN]).unwrap()
+        }),
+        ("b", |p| p.b = dv(&[f64::NAN])),
+    ];
+    for (name, mutate) in mutations {
+        let mut problem = valid();
+        mutate(&mut problem);
+        let err = run(&problem, 0.5, &[0.0, 0.0], scanning).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                SolverError::NonFiniteInput | SolverError::NumericalDomain
+            ),
+            "{name}: {err:?}"
+        );
+    }
+    // x0 scan
+    assert_eq!(
+        run(&valid(), 0.5, &[f64::NAN, 0.0], scanning).unwrap_err(),
+        SolverError::NonFiniteInput
+    );
+
+    // Under trust the pre-loop scan is skipped and the record says so; a NaN
+    // in `c` then reaches the hot loop and is NumericalDomain, never `Solved`
+    // over NaN (never skippable).
+    let trust = TrustedByCaller::caller_assertion(ValidationScope::ALL, TrustToken::new(1), None);
+    let trusted = ClusterValidationPolicy::TrustedByCaller(trust);
+    let record = run(&valid(), 0.5, &[0.0, 0.0], trusted).unwrap();
+    assert!(matches!(
+        record.finite,
+        ProjectedFirstOrderFiniteEvidence::Trusted(_)
+    ));
+    assert_eq!(record.checked_scope, ValidationScope::PROBLEM_CONFIG);
+    let record = run(&valid(), 0.5, &[0.0, 0.0], scanning).unwrap();
+    assert!(matches!(
+        record.finite,
+        ProjectedFirstOrderFiniteEvidence::Scanned
+    ));
+    assert!(record.checked_scope.contains(ValidationScope::FINITE));
+
+    let mut poisoned = valid();
+    poisoned.c = dv(&[f64::NAN, 0.0]);
+    assert_eq!(
+        run(&poisoned, 0.5, &[0.0, 0.0], trusted).unwrap_err(),
+        SolverError::NumericalDomain
+    );
+}
+
+/// Structural checks are never skippable under trust: a zero row is rejected
+/// even when the caller has vouched for finiteness.
+#[test]
+fn structural_checks_run_under_trust() {
+    let trust = TrustedByCaller::caller_assertion(ValidationScope::ALL, TrustToken::new(2), None);
+    let problem = projection(2, &[0.0, 0.0], &[1.0], &[0.0, 0.0]);
+    assert_eq!(
+        run(
+            &problem,
+            0.5,
+            &[0.0, 0.0],
+            ClusterValidationPolicy::TrustedByCaller(trust)
+        )
+        .unwrap_err(),
+        SolverError::InvalidInput
+    );
+}
+
+#[test]
+fn cancellation_is_observed() {
+    let token = ClusterCancellationToken::new();
+    token.cancel();
+    let problem = valid();
+    let mut x = dv(&[0.0, 0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(2, 1).unwrap();
+    let err = solve_constrained_projected_first_order_dyn(
+        &problem,
+        0.5,
+        &mut x,
+        &mut ws,
+        &cfg(1e-12, 100),
+        &ClusterExecutionContext::new(token, 0, ClusterValidationPolicy::ValidateAllInputs),
+    )
+    .unwrap_err();
+    assert_eq!(err, SolverError::Cancelled);
+}
+
+#[test]
+fn a_workspace_is_reusable_across_solves() {
+    let problem = projection(
+        2,
+        &[1.6, -1.3082, -0.0457, 0.9197],
+        &[1.6013, -0.3988],
+        &[5.3481, 4.7872],
+    );
+    let mut ws = ClusterConstrainedWorkspace::new(2, 2).unwrap();
+    let mut results = Vec::new();
+    for _ in 0..2 {
+        let mut x = dv(&[0.0, 0.0]);
+        solve_constrained_projected_first_order_dyn(
+            &problem,
+            1.0,
+            &mut x,
+            &mut ws,
+            &cfg(1e-14, 5000),
+            &scan(),
+        )
+        .unwrap();
+        results.push(coords(&x));
+    }
+    assert_eq!(results[0], results[1]);
+}
+
+// ---------------------------------------------------------------------------
+// The ClusterJob seam
+// ---------------------------------------------------------------------------
+
+#[test]
+fn the_job_runs_through_solve_batch_beside_the_rfc_016_adapter() {
+    let problem = projection(
+        2,
+        &[1.6, -1.3082, -0.0457, 0.9197],
+        &[1.6013, -0.3988],
+        &[5.3481, 4.7872],
+    );
+    let job = ClusterConstrainedJob::new(problem, 1.0, dv(&[0.0, 0.0]), cfg(1e-14, 5000));
+    let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(job)];
+    let report = solve_batch(
+        jobs,
+        ClusterSolveConfig::default(),
+        ClusterCancellationToken::new(),
+    )
+    .unwrap();
+    assert_eq!(report.summary.solved_converged, 1);
+    match &report.outcomes[0] {
+        BatchItemOutcome::Solved {
+            solution: ClusterSolution::DenseVector(x),
+            ..
+        } => {
+            let x = coords(x);
+            assert!((x[0] - 0.673643).abs() < 1e-6 && (x[1] + 0.400146).abs() < 1e-6);
+        }
+        other => panic!("expected a solved outcome, got {other:?}"),
+    }
+}
+
+#[test]
+fn a_job_with_an_invalid_problem_fails_per_item() {
+    let bad = projection(2, &[0.0, 0.0], &[1.0], &[0.0, 0.0]);
+    let job = ClusterConstrainedJob::new(bad, 0.5, dv(&[0.0, 0.0]), cfg(1e-12, 100));
+    let jobs: Vec<Box<dyn ClusterJob<f64>>> = vec![Box::new(job)];
+    let report = solve_batch(
+        jobs,
+        ClusterSolveConfig::default(),
+        ClusterCancellationToken::new(),
+    )
+    .unwrap();
+    assert_eq!(report.summary.failed, 1);
+}

@@ -81,6 +81,31 @@ Development toward the next release; RFC 027 implementation follows.
   inactive, a feasibility assertion in every feasible-problem test, and a
   randomized differential test against an exact active-set reference.
 
+### RFC 027 S3 — constrained projected first-order cluster kernel
+
+- `loeres-cluster::solve_constrained_projected_first_order_dyn` is the device
+  kernel's algorithm over runtime-sized storage: bounded Dykstra over `m + 1`
+  sets, multipliers persisting for the whole projection call, no
+  polyhedron-level increment, and the three-part stopping rule (RFC 027
+  Amendment 3). It consumes `loeres::QuadraticProgram` through the RFC 002
+  access traits, so `A` may be dense or sparse; it reads `A` only through
+  `MatrixAccess::get` and needs no contiguous fast path.
+- `ClusterConstrainedWorkspace` (allocated once for `(n, m)`; `m` may be zero),
+  `ConstrainedProjectedConfig`, `ConstrainedSolveRecord`
+  (`projection_cap_hits`, `max_constraint_violation`, plus RFC 016's validation
+  evidence), and `ClusterConstrainedJob` for the `ClusterJob` seam beside RFC
+  016's adapter.
+- `m = 0` is accepted at runtime (a zero-row `MatrixAccess`, canonically core's
+  `MatrixView` over an empty slice) and short-circuits to the single exact box
+  projection with no sweep. It is bit-identical to RFC 016 on five fixtures when
+  the oracles coincide (`Q = I`).
+- Validation per RFC 012/016: structural checks always; finite scans of
+  `Q, c, A, b, lo, hi, x₀` skippable under `TrustedByCaller(FINITE)`; in-loop
+  non-finite values are `NumericalDomain` and never skippable.
+- Tests include the review-054 regression case, a vertex, an activity flip, and
+  randomized differential tests against an exact active-set reference at
+  `N = M = 2` and `N = M = 3`.
+
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** released (tagged 2026-09-12, distributed 2026-09-12)

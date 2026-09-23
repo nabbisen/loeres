@@ -56,9 +56,10 @@ pub use runtime::{
     ClusterValidationPolicy, DispatchPolicy, MissingCoverage,
 };
 pub use solve::{
-    ClusterExecutionContext, ClusterJob, ClusterProjectedFirstOrderJob,
-    ProjectedFirstOrderSolveOptions, solve_batch, solve_projected_first_order_dyn,
-    solve_projected_first_order_dyn_cached,
+    ClusterConstrainedJob, ClusterConstrainedWorkspace, ClusterExecutionContext, ClusterJob,
+    ClusterProjectedFirstOrderJob, ConstrainedProjectedConfig, ConstrainedSolveRecord,
+    ProjectedFirstOrderSolveOptions, solve_batch, solve_constrained_projected_first_order_dyn,
+    solve_projected_first_order_dyn, solve_projected_first_order_dyn_cached,
 };
 
 #[cfg(feature = "async-tokio")]
