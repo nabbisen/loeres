@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [030](proposed/030-differential-testing-for-numerical-kernels.md) | Randomized Differential Testing for Numerical Kernels | Proposed (2026-09-24) | Every numerical solve kernel must carry a randomized differential test against an independently constructed exact reference, enforced by a `differential` gate with RFC 022-style coverage symmetry. Motivated by `0.21.1`: RFC 027 S2 was wrong on 20.6% of random feasible polytopes while passing 18 unit tests, all 16 gates and the conformance corpus. The RFC 006 and RFC 016 box kernels have 23 and 30 tests respectively and none differential. |
 
 ## Accepted RFCs
 
