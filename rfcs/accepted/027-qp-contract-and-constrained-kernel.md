@@ -1,7 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
 **Status.** Accepted (design frozen 2026-09-12)
-**Design approval.** Amendment 5 (§0.5, 2026-09-24) by architect review 057. Amendment 4 (§0.4, 2026-09-23) by architect review 056. Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
+**Design approval.** Amendment 6 (§0.6, 2026-09-24) by architect review 062. Amendment 5 (§0.5, 2026-09-24) by architect review 057. Amendment 4 (§0.4, 2026-09-23) by architect review 056. Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
@@ -232,6 +232,35 @@ no longer needs widening.
 `NotConverged` with `NoProgress`. The schema escape hatch that allowed a
 fixture to assert nothing about status has no remaining user and is removed.
 
+## 0.6 Amendment 6 — 2026-09-24 (architect review 062, closeout)
+
+**Amendment 4's in-place body update was incomplete. Completing it.**
+
+RFC 025 §11 requires an amendment to carry "the original body updated in place
+rather than rewritten". Amendment 4 (§0.4) replaced raw-bit comparison with
+numeric equality plus a NaN check, and §0.4.3 extended that reading explicitly to
+§11.2 — but §13 and exit criterion 3 also said **"bit-identical"**, and neither
+was updated. Found at closeout, by the sweep that review 061 ran.
+
+Both already carried the *same-oracle* qualifier, so the defect review 060 fixed
+in the user guides was never present here. What was wrong is narrower and
+governance-shaped: on a literal reading, exit criterion 3 demanded raw bit
+equality — stricter than what §0.4.1 permits and stricter than what slice S4
+implemented — and it was about to be evaluated against that wording at this
+closeout and then frozen into `done/`.
+
+**0.6.1** §13's conformance bullet and exit criterion 3 now read "identical …
+under §0.4.1" rather than "bit-identical". No requirement is weakened: §0.4.1 is
+the rule every implementation has been held to since Amendment 4, and S4's
+`m0_identity` category implements exactly it.
+
+**0.6.2** No behaviour, contract, or gate changes. This amendment corrects this
+RFC's own text only.
+
+**0.6.3** Monotonicity (roadmap §1.5): nothing shipped relied on the old wording.
+RFC 027 has never been in `done/`, and the conformance runner has asserted
+§0.4.1's rule since S4 landed.
+
 ## 1. Summary
 
 Loeres has one solver family: box-constrained projected first-order. `loeres::problem`
@@ -410,8 +439,9 @@ partially satisfied by the trait, fully by the follow-on).
 
 ## 13. Verification gates
 
-- Conformance: on cluster, `m = 0` through the constrained kernel is bit-identical to
-  RFC 016 for the same problem oracle (on device the `m = 0` case is RFC 006
+- Conformance: on cluster, `m = 0` through the constrained kernel is identical to
+  RFC 016 **under §0.4.1** — numeric equality plus a NaN check, never raw
+  `to_bits()` — for the same problem oracle (on device the `m = 0` case is RFC 006
   itself; §0.2.4–§0.2.5); new dimension-2/3
   fixtures with 1–3 halfspaces against closed-form optima; an infeasible case
   asserting `NotConverged`; an all-zero constraint row asserting `InvalidInput`.
@@ -439,8 +469,9 @@ RFC 026 landed; `0.21.0` cut. Nothing in RFCs 022–025 blocks design work.
 1. `loeres::problem` exports the four traits; PF-002 marked implemented, PF-001
    "contract only", PF-003 unchanged, in the requirements §5.1.3 disposition;
 2. device and cluster kernels solve the conformance fixtures within tolerance;
-3. `m = 0` is bit-identical to RFC 016 on cluster for the same problem oracle, and
-   is the RFC 006 entrypoint on device (§0.2);
+3. `m = 0` is identical to RFC 016 on cluster **under §0.4.1** (numeric equality
+   plus a NaN check) for the same problem oracle, and is the RFC 006 entrypoint on
+   device (§0.2);
 4. all §11.5 validation rules tested, including trust-skip and never-skip;
 5. no new dependency, or RFC 026 gate green on the one that was justified;
 6. panic-audit, zero-bleed, no-std, MSRV, size-budget report green;
