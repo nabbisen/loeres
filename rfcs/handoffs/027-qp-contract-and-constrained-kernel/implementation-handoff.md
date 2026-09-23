@@ -178,7 +178,16 @@ MSRV 1.85, `cargo xtask check` (16 gates), `cargo xtask conformance` showing
 `24 total / 24 passed`, and the before/after status on the infeasible case.
 
 
-### 3.3 S5 documentation corrections D1-D3 (architect review 060) — before RFC 027 closeout
+### 3.3 S5 documentation corrections D1-D3 (architect review 060) — CLOSED by `37d08a6`, accepted in review 061
+
+*All three landed exactly as specified; the four protected sites are untouched;
+a wrap-tolerant sweep of the whole tree finds no remaining unqualified identity
+claim. **RFC 027's implementation is complete (S1-S5).** The roadmap line 1115
+question raised in that submission was answered: it labels Amendment 4's subject
+rather than asserting identity for a general `Q`, and stays as written. Closeout
+is architect-owned and carries item A1 from review 061 — §13 and exit criterion 3
+still say "bit-identical", which Amendment 4 §0.4.1 governs but §0.4.3 names only
+for §11.2. Retained below as the record of what was required.*
 
 All three are prose. No code change. Full analysis:
 `.git-exclude/reviewed/060-rfc027-s5-documentation-architect-review-2026-09-24.md`.
