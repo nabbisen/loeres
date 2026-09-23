@@ -7,7 +7,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > **Release currency metadata.**
 > This tree: **0.21.2**.
 > Last reconciled repository release: **0.21.1**.
-> Implemented scope: **RFCs 001-029**.
+> Implemented scope: **RFCs 001-030**.
 >
 > Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
 > dense/CSR storage, orchestration, one dynamic projected-first-order kernel,
@@ -17,7 +17,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > apparatus after `0.20.2` shipped; RFC 019 release packaging now uses the
 > ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. This tree is `0.21.2` and is not itself a release until it is tagged and distributed.
 
 ---
 

@@ -25,7 +25,7 @@ behavior is not yet claimed.
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [030](accepted/030-differential-testing-for-numerical-kernels.md) | Randomized Differential Testing for Numerical Kernels | Accepted (design frozen 2026-09-24) | Every numerical solve kernel must carry a randomized differential test against an independently constructed exact reference, enforced by a `differential` gate with RFC 022-style coverage symmetry. Motivated by `0.21.1`: RFC 027 S2 was wrong on 20.6% of random feasible polytopes while passing 18 unit tests, all 16 gates and the conformance corpus. The RFC 006 and RFC 016 box kernels have 23 and 30 tests respectively and none differential. |
+None currently.
 
 ## Done RFCs
 
@@ -61,6 +61,7 @@ behavior is not yet claimed.
 | [027](done/027-qp-contract-and-constrained-kernel.md) | QP Contract and Linearly Constrained Projected Kernel | Implemented (v0.21.1) | Activates `loeres::problem` with storage-agnostic QP traits (PF-002; PF-001 contract-only) and extends the PFO kernels with a bounded Hildreth/Dykstra polyhedral projection for `Ax ≤ b`; `m = 0` reproduces RFC 006/016 exactly. IPM excluded. Review 043 (R1 Dykstra box set, R2 terminal violation) applied. R4 first capability. |
 | [028](done/028-cross-environment-archive-identity.md) | Cross-Environment Archive Identity Anchor | Implemented (v0.21.1) | `0.21.0`'s CI and local archive digests differ while content is identical; only gzip output differs. Records the uncompressed tar SHA-256 as the cross-environment identity anchor and narrows the archive digest to build-byte integrity. Additive to RFC 019. `0.21.0`'s anchor is `0748304f…457b`. |
 | [029](done/029-terminal-convergence-not-sticky.md) | Terminal Convergence, Not Sticky Convergence | Implemented (v0.21.1) | Under `ConstantIteration` both device kernels decide `Converged` from a sticky flag set at an earlier iteration, so a divergent run returns `Converged` while still moving — reproduced at `x = 3606.4` from a `1e-13` start, violation `0`, so RFC 027 Amendment 5's feasibility gate correctly does not fire. Evaluates the criterion at the final iteration instead. Shared with RFC 006; cluster unaffected (no `ConstantIteration`). Sequenced before RFC 027 S5. |
+| [030](done/030-differential-testing-for-numerical-kernels.md) | Randomized Differential Testing for Numerical Kernels | Implemented (v0.21.2) | Every numerical solve kernel must carry a randomized differential test against an independently constructed exact reference, enforced by a `differential` gate with RFC 022-style coverage symmetry. Motivated by `0.21.1`: RFC 027 S2 was wrong on 20.6% of random feasible polytopes while passing 18 unit tests, all 16 gates and the conformance corpus. The RFC 006 and RFC 016 box kernels have 23 and 30 tests respectively and none differential. |
 
 ## Archived RFCs
 

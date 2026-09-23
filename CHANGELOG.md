@@ -5,11 +5,31 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.21.2] — unreleased — post-0.21.1 development
+## [0.21.2] — 2026-09-24 — Enforced differential testing
 
 **Release status:** unreleased
 
-Development toward the next release.
+Repository release `0.21.2` makes randomized differential testing of numerical
+kernels an enforced gate. RFC 030 is implemented and moves to `rfcs/done/` in
+this revision.
+
+`cargo xtask check` is seventeen gates: the new `differential` gate asserts that
+every numerical solve kernel carries a randomized differential test against an
+independently constructed exact reference, or an explicit reasoned exemption,
+and fails closed on a missing row, a row naming no entrypoint, a missing
+`#[test]`, or an empty reason. The two projected-first-order box kernels, which
+had 23 and 30 tests between them and none differential, are retrofitted.
+
+The motivation was measured rather than assumed: during `0.21.1` a constrained
+kernel returned a wrong projection on 20.6% of random feasible polytopes while
+reporting `Converged`, and passed every unit test, every gate and the conformance
+corpus, because its fixtures all used a single constraint. A fixture corpus tests
+answers; a randomized differential test tests the formulation.
+
+**No production code, public API, behaviour, feature or dependency changed.**
+Everything under `crates/` in this release is test code. A consumer upgrading
+from `0.21.1` observes nothing different; what changes is what the project can
+detect about itself.
 
 ### RFC 030 S1 — the `differential` gate
 
