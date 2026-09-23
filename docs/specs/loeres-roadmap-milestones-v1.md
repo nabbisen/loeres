@@ -7,7 +7,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > **Release currency metadata.**
 > This tree: **0.21.1**.
 > Last reconciled repository release: **0.21.0**.
-> Implemented scope: **RFCs 001-026**.
+> Implemented scope: **RFCs 001-029**.
 >
 > Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
 > dense/CSR storage, orchestration, one dynamic projected-first-order kernel,
@@ -17,7 +17,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > apparatus after `0.20.2` shipped; RFC 019 release packaging now uses the
 > ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. This tree is `0.21.1` and is not itself a release until it is tagged and distributed.
 
 ---
 
@@ -1076,7 +1076,7 @@ R2. No public capability expansion may enter implementation before R2 closes.
 | R1 — corrective baseline | R0.5 complete | Exact Rust 1.85 repair, release-gate skeleton, traceability matrix, atomic documentation reconciliation, semantic currency checks | Complete: integrated revision `525b5fd` and local evidence accepted by review 021; runtime APIs/solver semantics unchanged. |
 | R2 — release evidence closure | One integrated corrective revision | Full format/lint/test/MSRV/architecture/docs/package suite, clean extraction, tag-selector demonstration, retained evidence, owner Go/No-Go | Complete: `0.20.2` released 2026-07-30 under RFC 021's conditional-finalization protocol; canonical tag, successful workflow, and evidence upload observed. |
 | R3 — assurance expansion | R1 baseline settled; each candidate separately reviewed | Optional follow-on RFCs for enforced budgets/portability, supply chain/stress, wider numerical conformance, and maintainability | Bounded slice approved 2026-09-12: supply-chain gate (RFC 026) lands in `0.21.0`; remaining candidates stay unapproved. |
-| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Theme approved 2026-09-12: QP contract and linearly constrained projected kernel (RFC 027, proposed). Design freeze awaits independent numerical review; implementation follows `0.21.0`. |
+| R4 — next public capability | R2 closed | Separately approved solver/model/FFI/API RFC with compatibility, security, conformance, and release evidence | Theme approved 2026-09-12: QP contract and linearly constrained projected kernel (RFC 027, implemented in the `0.21.1` tree). Design freeze awaits independent numerical review; implementation follows `0.21.0`. |
 
 R1 exit requires audit blockers B1-B4 corrected, exact MSRV/stable/docs gates
 observed, current public names and RFC status consistent, no contradicted
@@ -1110,14 +1110,15 @@ sophisticated design."** The approved sequence:
 | C.2 Clean baseline | Cut **`0.21.0`**: first release with examples, engineering-use terms, evidence index, steady-state currency, supply-chain gate, and no dead code. Minor, because examples and terms are user-visible. | `0.21.0` |
 | C.3 First capability | RFC 027: `loeres::problem` QP contract (PF-002; PF-001 contract-only) and a bounded Hildreth/Dykstra polyhedral projection extending the PFO kernels to `Ax ≤ b` on device and cluster. Interior-point excluded. Independent numerical review precedes design freeze. | first minor after `0.21.0` |
 
-**C.3 status (unreleased `0.21.1` tree).** RFC 027 slices S1-S4 (contract, device
-kernel, cluster kernel, conformance) are implemented and accepted, with Amendments
-3-5 (Dykstra over `m + 1` sets, identity up to the sign of zero, `Converged` means
-feasible) and RFC 029 (terminal convergence); S5 (documentation) landed and was
-accepted in architect review 060. RFC 027's closeout (S6) remains, and the RFC
-stays in `accepted/` until it and the release that carries it.
+**C.3 status (this `0.21.1` tree).** RFC 027 is complete: slices S1-S5
+(contract, device kernel, cluster kernel, conformance, documentation) are
+implemented and accepted, with six amendments — notably Dykstra over `m + 1`
+sets, identity up to the sign of zero, and `Converged` means feasible — and its
+closeout is recorded in architect review 062. RFC 027, RFC 028 and RFC 029 are in
+`rfcs/done/`; the tree is not itself a release until it is tagged and
+distributed.
 
-RFC 028 (accepted 2026-09-15) records the uncompressed tar SHA-256 as the
+RFC 028 (implemented in the `0.21.1` tree) records the uncompressed tar SHA-256 as the
 cross-environment identity anchor of release evidence, after `0.21.0` showed CI
 and local archive digests differing over identical content. It lands before
 RFC 027's slice S2 and before the release that carries RFC 027, so that release

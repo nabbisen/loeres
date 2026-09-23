@@ -1,6 +1,6 @@
 # RFC 029 - Terminal Convergence, Not Sticky Convergence
 
-**Status.** Accepted (design frozen 2026-09-24)
+**Status.** Implemented (v0.21.1).
 **Design approval.** Project owner accepted it and authorized the `accepted/` transition on 2026-09-24. Architect-authored from RFC 027 S4 C1-C3 review (architect review 058 §5.3), on an observation the implementer raised rather than buried.
 **Tracks.** Correctness of reported status, the principle RFC 027 Amendment 5 (§0.5) established for feasibility, applied to stationarity.
 **Touches.** `crates/loeres-device/src/solve.rs` (RFC 006 kernel), `crates/loeres-device/src/solve/constrained.rs` (RFC 027 kernel). Cluster is unaffected: it has no `ConstantIteration` mode.

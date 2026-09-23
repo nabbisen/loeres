@@ -5,11 +5,35 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.21.1] — unreleased — post-0.21.0 development
+## [0.21.1] — 2026-09-24 — Constrained quadratic programming
 
 **Release status:** unreleased
 
-Development toward the next release; RFC 027 implementation follows.
+Repository release `0.21.1` is the first capability release after the `0.21.0`
+consolidation baseline. RFCs 027, 028 and 029 are implemented and move to
+`rfcs/done/` in this revision.
+
+`loeres::problem`, reserved since v0.6, now defines a storage-agnostic
+quadratic-program contract, and the device and cluster projected-first-order
+kernels solve `lo ≤ x ≤ hi, Ax ≤ b` by bounded Dykstra projection over `m + 1`
+sets — each halfspace its own set carrying a scalar Hildreth multiplier, the box
+its own set with an `n`-length increment. The conformance corpus grows from 12
+fixtures to 24, adding an `m0_identity` category that runs every existing solve
+fixture through the constrained cluster kernel with `m = 0`.
+
+Both convergence claims are now truthful about the returned iterate. `Converged`
+means feasible within `projection_tolerance` (RFC 027 Amendment 5), and under
+`ConstantIteration` the criterion is evaluated at the final iteration rather than
+latched from an earlier one (RFC 029). Release evidence additionally records the
+uncompressed tar SHA-256 as the cross-environment identity of the source artifact
+(RFC 028), because the compressed digest is not expected to reproduce across
+environments.
+
+What this release does **not** add: LP or SOCP solving, interior-point or ADMM
+methods, infeasibility *detection*, any convergence-rate guarantee, bitwise
+device/cluster parity, or a batch seam exposing the constrained record's two
+honest fields. The public API is additive; no existing signature changed and no
+dependency was added.
 
 ### RFC 028 — cross-environment archive identity anchor
 

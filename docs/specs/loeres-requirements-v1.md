@@ -12,7 +12,7 @@
 > **Release currency metadata.**
 > This tree: **0.21.1**.
 > Last reconciled repository release: **0.21.0**.
-> Implemented scope: **RFCs 001-026**.
+> Implemented scope: **RFCs 001-029**.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,
@@ -26,7 +26,7 @@
 > RFC 021 conditional apparatus after `0.20.2` shipped; the release package
 > gate now uses the ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. This tree is `0.21.1` and is not itself a release until it is tagged and distributed.
 
 ---
 
@@ -419,8 +419,8 @@ Important scope rule:
 - Solver crates decide which problem families they implement.
 - Device crates must not inherit server-only modeling breadth by default.
 
-**Current disposition (RFC 027, unreleased `0.21.1` tree; RFC 027 is accepted
-and not yet closed out).**
+**Current disposition (RFC 027, implemented in this `0.21.1` tree; the tree is
+not itself a release until it is tagged and distributed).**
 
 - **PF-002 (QP) — implemented.** `loeres::problem` defines the storage-agnostic
   quadratic-program contract `min ½xᵀQx + cᵀx` over `lo <= x <= hi` and `Ax <= b`
