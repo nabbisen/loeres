@@ -50,45 +50,36 @@ Development toward the next release; RFC 027 implementation follows.
 
 ### RFC 027 S2 — constrained projected first-order device kernel
 
-> **Not correct as landed; must not be released.** Architect review 054
-> (2026-09-23) rejected `e271241`: the projection maintained a polyhedron-level
-> Dykstra increment *and* a single Hildreth pass, double-counting the
-> correction, so the kernel returned `SolveStatus::Converged` with
-> `projection_cap_hits == 0` at points violating a linear constraint — on 20.6%
-> of random **feasible** multi-constraint polytopes. Corrections C1–C5 are
-> required before `0.21.1` may be cut; see RFC 027 Amendment 3 (§0.3) and
-> `rfcs/handoffs/027-qp-contract-and-constrained-kernel/implementation-handoff.md`
-> §3.1. The entries below describe the submitted slice and are amended when the
-> corrections land.
-
-
 - `loeres-device::solve::solve_constrained_projected_first_order` extends the
-  RFC 006 kernel to `lo ≤ x ≤ hi, Ax ≤ b` via a bounded Dykstra projection:
-  the polyhedron `{Ax ≤ b}` solved by Hildreth's dual coordinate method, the
-  box by exact `clamp` with its own Dykstra increment (never a bare clamp
-  inside the sweep — architect review 043 R1). Consumes
-  `loeres::QuadraticProgram` directly; `step_scale` is supplied as its own
-  parameter, since the contract carries none (RFC 027 §0.2.1).
-- `ConstrainedProjectedWorkspace<S, N, M>` (`M ≥ 1`, const-asserted — a device
-  problem with no inequalities uses the RFC 006 entrypoint, per Amendment 2)
-  and `ConstrainedSolveConfig` (adds `projection_max_sweeps` and
-  `projection_tolerance` alongside the existing outer cap and tolerance).
-  `ConstrainedSolveReport` adds `projection_cap_hits` and
-  `max_constraint_violation` so the kernel never claims exact feasibility it
-  did not verify.
-- Footprint was recorded as `(4N + 2M)·size_of::<S>() + header`, one
-  `N`-length buffer more than RFC 027 §11.4's stated `3N + 2M`, and flagged for
-  architect review. Review 054 found the extra buffer to be a symptom of the
-  defect above rather than a necessary deviation: removing the polyhedron-level
-  increment restores `3N + 2M` exactly, and §11.4 stands unamended. The outer
-  convergence criterion stays identical to RFC 006's, as the slice argued.
-- `m = 0` is not this kernel's concern: a boundary bug in an early sign
-  convention for Hildreth's dual update, and a second bug letting the
-  multipliers reset every sweep instead of persisting, were both found and
-  fixed by test before landing — the second one specifically because it let a
-  genuinely infeasible pair of constraints settle to a stable, wrongly
-  "converged" point. `max_constraint_violation`, not `SolveStatus` alone, is
-  documented as the reliable feasibility signal for exactly this reason.
+  RFC 006 kernel to `lo ≤ x ≤ hi, Ax ≤ b` via a bounded Dykstra projection over
+  `m + 1` sets (RFC 027 Amendment 3): each halfspace is its own set, its
+  increment stored as the scalar Hildreth multiplier `λᵢ`; the box is the one
+  remaining set, exact `clamp` with its own `n`-length increment (architect
+  review 043 R1). There is no polyhedron-level increment vector. Consumes
+  `loeres::QuadraticProgram` directly; `step_scale` is its own parameter,
+  since the contract carries none (RFC 027 §0.2.1).
+- The projection stops only when the iterate's change, the multipliers'
+  change, **and** the terminal constraint violation are all within
+  `projection_tolerance` in the same sweep — a dual method may not be stopped
+  on the primal iterate alone. Multipliers persist for the whole projection
+  call. An infeasible polyhedron needs no special handling: it runs to
+  `projection_max_sweeps` and reports `projection_cap_hits > 0` and its true
+  `max_constraint_violation`.
+- `ConstrainedProjectedWorkspace<S, N, M>` (`M ≥ 1`, const-asserted; a device
+  problem with no inequalities uses the RFC 006 entrypoint), footprint
+  `(3N + 2M)·size_of::<S>() + header` as RFC 027 §11.4 states.
+  `ConstrainedSolveConfig` adds `projection_max_sweeps` and
+  `projection_tolerance`; the cap must suit the tolerance (roughly 2700 sweeps
+  at `1e-12` on the review-054 polytope). `ConstrainedSolveReport` adds
+  `projection_cap_hits` and `max_constraint_violation`.
+- The first submission implemented Dykstra over two sets with a single Hildreth
+  pass per sweep, which double-counted the polyhedral correction and returned
+  a wrong projection on about 20% of random feasible polytopes while reporting
+  `Converged`. Every earlier functional test used a single constraint, where a
+  single pass is exact. Tests now include the review-054 regression case, a
+  two-active-constraint vertex, a constraint that flips from active to
+  inactive, a feasibility assertion in every feasible-problem test, and a
+  randomized differential test against an exact active-set reference.
 
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 

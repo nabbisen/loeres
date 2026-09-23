@@ -2,10 +2,13 @@
 //! (RFC 027 §11.3–§11.5).
 //!
 //! Extends the RFC 006 kernel to `lo ≤ x ≤ hi, Ax ≤ b` via a bounded Dykstra
-//! projection over two sets — the polyhedron `{Ax ≤ b}`, solved by Hildreth's
-//! dual method, and the box, solved by exact `clamp` with its own increment
-//! vector (RFC 027 §11.2; architect review 043 R1: the box is its own Dykstra
-//! set, never a bare clamp inside the sweep). `m = 0` is not a case this
+//! projection over `m + 1` sets (RFC 027 Amendment 3, §0.3.1): each halfspace
+//! `{aᵢᵀx ≤ bᵢ}` is its own Dykstra set, whose increment is always parallel to
+//! `aᵢ` and so is stored as the single scalar `λᵢ` (Hildreth's method *is*
+//! Dykstra applied to halfspaces); the box is the one remaining set, solved by
+//! exact `clamp` with its own `n`-length increment vector (RFC 027 §11.2;
+//! architect review 043 R1: never a bare clamp inside the sweep). There is no
+//! polyhedron-level increment vector. `m = 0` is not a case this
 //! kernel handles: a device problem with no inequalities uses the RFC 006
 //! entrypoint instead (RFC 027 §0.2.4), and `M ≥ 1` is const-asserted.
 //!
@@ -59,9 +62,19 @@ pub struct ConstrainedSolveConfig<S> {
     /// Execution timing policy for the outer loop.
     pub timing_mode: TimingMode,
     /// Maximum Dykstra sweeps per outer-iteration projection (must be `> 0`).
+    ///
+    /// **The cap must suit `projection_tolerance`.** Dykstra converges linearly
+    /// at a rate set by the angles between constraint normals, so tight
+    /// tolerances need far more sweeps than loose ones — on the review-054
+    /// regression polytope, roughly 2700 sweeps at `1e-12`. There is no
+    /// default: a cap that is too small for the tolerance is not an error, it
+    /// is reported as `projection_cap_hits > 0` and a non-zero
+    /// `max_constraint_violation` (RFC 027 §11.3, §11.6).
     pub projection_max_sweeps: u32,
-    /// Inner convergence tolerance: a sweep converges when its net effect on
-    /// every coordinate of the iterate is within this bound.
+    /// Inner convergence tolerance. A projection is converged only when, in
+    /// the same sweep, the iterate's change, the multipliers' change, **and**
+    /// the terminal constraint violation are all within this bound (RFC 027
+    /// §0.3.3) — a dual method may not be stopped on the primal iterate alone.
     pub projection_tolerance: S,
 }
 
@@ -179,21 +192,14 @@ impl<S: Copy> AsCoreReport for ConstrainedSolveReport<S> {
 /// inequalities is `ProjectedFirstOrderWorkspace` and the RFC 006 entrypoint,
 /// never an `M = 0` instantiation of this type.
 ///
-/// **Footprint is `(4N + 2M)·size_of::<S>() + header`, not the `3N + 2M` RFC
-/// 027 §11.4 states.** The fourth `N`-length buffer (`outer_previous`) holds
-/// the outer iterate as it stood before the current outer gradient step, kept
-/// fixed for the whole projection so the outer convergence check can compare
-/// the *final* projected iterate against it — RFC 006's existing outer
-/// criterion, which this kernel's outer loop is documented to keep
-/// unchanged. `gradient` cannot serve this role: it holds `∇f(x)` needed to
-/// form the candidate, and by the time the candidate is projected `x` has
-/// already been overwritten, so an undocumented reuse would have to happen
-/// *before* the gradient's own value is next needed — impossible, since both
-/// pieces of information (the gradient, and the pre-step iterate) are needed
-/// simultaneously to form the candidate. `gradient` *is* reused for a
-/// different purpose once that candidate is formed — see
-/// [`dykstra_project`] — which is the one place this workspace's fields carry
-/// two meanings across one solve, and is documented at that reuse.
+/// Footprint is `(3N + 2M)·size_of::<S>() + header` (RFC 027 §11.4): three
+/// `N`-length buffers — `outer_previous`, the box increment, and `gradient` —
+/// and two `M`-length ones. `outer_previous` must survive unchanged across
+/// every sweep of a projection so the outer criterion can compare the final
+/// projected iterate against it (RFC 006's criterion, kept unchanged), which
+/// rules out reusing it or the box increment as scratch; `gradient`'s role
+/// ends once the candidate is formed, so [`dykstra_project`] reuses it as the
+/// per-sweep "iterate before this sweep" snapshot.
 pub struct ConstrainedProjectedWorkspace<S, const N: usize, const M: usize> {
     /// `∇f(x)` scratch at the top of each outer iteration; reused as the
     /// per-Dykstra-sweep "iterate before this sweep" snapshot once its
@@ -205,11 +211,12 @@ pub struct ConstrainedProjectedWorkspace<S, const N: usize, const M: usize> {
     /// Dykstra increment for the box set, persisted across projection sweeps
     /// within one outer iteration and reset to zero at the start of each.
     box_increment: FixedVector<S, N>,
-    /// Dykstra increment for the polytope set, same lifecycle as
-    /// `box_increment`.
-    polytope_increment: FixedVector<S, N>,
-    /// Hildreth dual multipliers for the `m` halfspaces, reset to zero at the
-    /// start of each sweep's polytope correction.
+    /// Hildreth multipliers `λᵢ` — the per-halfspace Dykstra increments (each
+    /// increment is `λᵢ·aᵢ`, parallel to `aᵢ`, so a scalar suffices; RFC 027
+    /// §0.3.1). Reset to zero **once per projection call**, never per sweep:
+    /// resetting them per sweep discards the state that makes the scheme
+    /// Dykstra (§0.3.2). They do not persist between outer iterations, each of
+    /// which projects a fresh candidate.
     multipliers: FixedVector<S, M>,
     /// Precomputed, boundary-validated `‖aᵢ‖²`, computed once per solve.
     row_norms_sq: FixedVector<S, M>,
@@ -217,7 +224,7 @@ pub struct ConstrainedProjectedWorkspace<S, const N: usize, const M: usize> {
 }
 
 impl<S, const N: usize, const M: usize> ConstrainedProjectedWorkspace<S, N, M> {
-    /// Build a workspace from six caller-owned scratch buffers. Contents are
+    /// Build a workspace from five caller-owned scratch buffers. Contents are
     /// irrelevant: every buffer is overwritten before it is read
     /// (overwrite-on-use, RFC 005 §7).
     #[inline]
@@ -225,7 +232,6 @@ impl<S, const N: usize, const M: usize> ConstrainedProjectedWorkspace<S, N, M> {
         gradient: FixedVector<S, N>,
         outer_previous: FixedVector<S, N>,
         box_increment: FixedVector<S, N>,
-        polytope_increment: FixedVector<S, N>,
         multipliers: FixedVector<S, M>,
         row_norms_sq: FixedVector<S, M>,
     ) -> Self {
@@ -240,7 +246,6 @@ impl<S, const N: usize, const M: usize> ConstrainedProjectedWorkspace<S, N, M> {
             gradient,
             outer_previous,
             box_increment,
-            polytope_increment,
             multipliers,
             row_norms_sq,
             diagnostic: loeres::DiagnosticSnapshot::EMPTY,
@@ -253,8 +258,8 @@ impl<S, const N: usize, const M: usize> DeviceWorkspace for ConstrainedProjected
     fn reset_for_entry(&mut self) {
         // Overwrite-on-use: every N/M buffer is reset to zero (or otherwise
         // overwritten) at the point it is first used within a solve, not
-        // here — `dykstra_project` zeroes the Dykstra increments at the start
-        // of every call, and boundary validation overwrites `row_norms_sq`
+        // here — `dykstra_project` zeroes the box increment and multipliers at
+        // the start of every call, and boundary validation overwrites `row_norms_sq`
         // before the loop reads it.
         self.diagnostic = loeres::DiagnosticSnapshot::EMPTY;
     }
@@ -366,31 +371,31 @@ where
 }
 
 /// Run the bounded Dykstra projection `x ← Π_C(x)` where `C = {lo ≤ x ≤ hi}
-/// ∩ {Ax ≤ b}` (RFC 027 §11.2, §11.3), mutating `x` in place. Resets the
-/// Dykstra increments to zero at the start of every call — each call projects
-/// a fresh candidate, and Dykstra's increments are internal to that one
-/// projection, not carried between outer iterations.
+/// ∩ {Ax ≤ b}` (RFC 027 §11.2, §11.3, Amendment 3), mutating `x` in place.
+/// Resets the box increment and the multipliers to zero at the start of every
+/// call — each call projects a fresh candidate, and Dykstra's increments are
+/// internal to that one projection, not carried between outer iterations.
 ///
-/// Each sweep: (1) forms the polytope target `x + polytope_increment` and
-/// runs **one** cyclic pass of Hildreth's dual coordinate update over the `M`
-/// constraints, with the multipliers persisting across sweeps (reset once,
-/// at the start of the whole call). Each pass still maintains `x = target −
-/// Aᵀ·Δλ` as an exact invariant, where `Δλ` is *this sweep's* change in the
-/// multipliers — which is what lets the new polytope increment be read off
-/// as `target − x` afterward with no additional storage; (2) forms the box
-/// target `x +
-/// box_increment` and applies the exact `clamp`, recording the new box
-/// increment the same way (review 043 R1: never a bare clamp — the box's own
-/// increment is applied and updated every sweep, exactly like the
-/// polytope's).
+/// Dykstra over `m + 1` sets (§0.3.1): each sweep visits every halfspace once,
+/// then the box. For halfspace `i` with `λᵢ` its current increment coefficient
+/// (increment `λᵢ·aᵢ`), the Dykstra step is `y = x + λᵢaᵢ`, `x ← Pᵢ(y)`,
+/// `λᵢ ← max(0, (aᵢᵀy − bᵢ)/‖aᵢ‖²)`, which simplifies to `λᵢ' = max(0, λᵢ +
+/// (aᵢᵀx − bᵢ)/‖aᵢ‖²)` and `x ← x − (λᵢ' − λᵢ)aᵢ`. The box step is the same
+/// with its own vector increment. One cyclic pass per sweep is correct in this
+/// formulation because each halfspace projection within the pass is exact.
+///
+/// Converged only when, in the same sweep, `maxⱼ|Δxⱼ|`, `maxᵢ|Δλᵢ|` **and** the
+/// terminal constraint violation are all within `projection_tolerance`
+/// (§0.3.3); the violation pass is evaluated only in a sweep where the first
+/// two already hold. Returns whether the sweep cap bound (`true`) without that
+/// happening.
 ///
 /// `workspace.gradient` is reused here as the "iterate before this sweep"
 /// snapshot: its gradient role for this outer iteration is over by the time
 /// this function is called (the candidate has already been formed from it),
 /// and it is not read again until the next outer iteration's
-/// `gradient_into` overwrites it fresh. This is the one field with two
-/// meanings across a solve; `outer_previous` is not reused this way because
-/// it must survive unchanged across every sweep of this call.
+/// `gradient_into` overwrites it fresh. `outer_previous` is not reused this
+/// way because it must survive unchanged across every sweep of this call.
 fn dykstra_project<P, S, const N: usize, const M: usize>(
     problem: &P,
     x: &mut FixedVector<S, N>,
@@ -402,19 +407,6 @@ where
     S: FiniteScalar + MetricScalar + DivisibleScalar,
 {
     zero_in_place(&mut workspace.box_increment);
-    zero_in_place(&mut workspace.polytope_increment);
-    // Reset once per call, not once per sweep: the multipliers are Hildreth's
-    // *dual* state and must persist across sweeps to correctly detect an
-    // infeasible polyhedron. Resetting them every sweep lets the coupled
-    // target/x/increment system settle into a stable-but-infeasible fixed
-    // point (verified against a genuinely infeasible pair of opposing
-    // halfspaces, which converged falsely under a per-sweep reset) — with
-    // persistent multipliers, two directly conflicting constraints instead
-    // drive `λ` without bound and `x` never stabilizes, correctly surfacing
-    // as non-convergence (RFC 027 §11.6). The `target − x` reconstruction of
-    // the new polytope increment below only ever depends on *this sweep's*
-    // change in `λ` (`new_lambda − old_lambda` per constraint), so it needs
-    // no adjustment for `λ` persisting.
     zero_in_place(&mut workspace.multipliers);
 
     let lo = problem.lower_bounds();
@@ -428,11 +420,8 @@ where
         // `workspace.gradient` now holds x-before-this-sweep (see doc above).
         copy_in_place(&mut workspace.gradient, x);
 
-        // --- polytope correction: target = x + polytope_increment(old) ---
-        for j in 0..N {
-            let target_j = x.get(j)?.add(workspace.polytope_increment.get(j)?);
-            x.set(j, target_j)?;
-        }
+        // --- one cyclic Hildreth pass over the halfspaces ---
+        let mut lambda_change = S::zero();
         for i in 0..M {
             let mut dot = S::zero();
             for j in 0..N {
@@ -444,14 +433,14 @@ where
             }
             let residual = dot.sub(bi);
             let norm_sq = workspace.row_norms_sq.get(i)?;
-            // RFC 027 §11.2: `x − aᵢ·max(0,(aᵢᵀx − bᵢ)/‖aᵢ‖²)` — the coordinate
-            // shift is `+residual / norm_sq`, matching dual coordinate ascent
-            // (∂g/∂λᵢ = residual; the stationary shift solves
-            // `residual − Δλᵢ·‖aᵢ‖² = 0`). Not `−residual`.
+            // RFC 027 §11.2: `x − aᵢ·max(0,(aᵢᵀx − bᵢ)/‖aᵢ‖²)` — the shift is
+            // `+residual / norm_sq` (∂g/∂λᵢ = residual; the stationary shift
+            // solves `residual − Δλᵢ·‖aᵢ‖² = 0`), not `−residual`.
             let step = residual.checked_div(norm_sq)?;
             let old_lambda = workspace.multipliers.get(i)?;
             let new_lambda = old_lambda.add(step).max(S::zero());
             let diff = new_lambda.sub(old_lambda);
+            lambda_change = lambda_change.max(diff.abs());
             for j in 0..N {
                 let aij = a.get(i, j)?;
                 let xj = x.get(j)?;
@@ -462,15 +451,6 @@ where
                 x.set(j, adjusted)?;
             }
             workspace.multipliers.set(i, new_lambda)?;
-        }
-        // new_polytope_increment[j] = target_j - x_j(after Hildreth)
-        //                           = (previous_iterate_j + old_increment_j) - x_j
-        for j in 0..N {
-            let previous = workspace.gradient.get(j)?;
-            let old_increment = workspace.polytope_increment.get(j)?;
-            let target_j = previous.add(old_increment);
-            let new_increment = target_j.sub(x.get(j)?);
-            workspace.polytope_increment.set(j, new_increment)?;
         }
 
         // --- box correction: target = x + box_increment(old), exact clamp ---
@@ -490,7 +470,11 @@ where
             change = change.max(delta);
         }
 
-        if change.lte_tolerance(config.projection_tolerance) {
+        let tolerance = config.projection_tolerance;
+        if change.lte_tolerance(tolerance)
+            && lambda_change.lte_tolerance(tolerance)
+            && max_constraint_violation(problem, x)?.lte_tolerance(tolerance)
+        {
             cap_hit = false;
             break;
         }
