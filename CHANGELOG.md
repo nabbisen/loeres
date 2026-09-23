@@ -28,6 +28,16 @@ Development toward the next release.
 - The RFC 006 and RFC 016 rows are `Exempt` ("retrofit pending") until their
   retrofits land in the same change.
 
+### RFC 030 S2 — randomized differential test for the RFC 006 device kernel
+
+- `solve_projected_first_order` gains `random_separable_quadratics_match_the_exact_box_minimiser`:
+  400 seeded random separable quadratics (`N = 3`, per-coordinate curvature, per-coordinate
+  non-uniform bounds) compared with the closed form `clamp(tᵢ, loᵢ, hiᵢ)`, asserting
+  `Converged`, agreement within `1e-6` **and** feasibility. Its registry row moves from
+  `Exempt` to `Differential`. It detects a kernel that clamps every coordinate to
+  coordinate 0's bounds, which every existing box test survives. No kernel behaviour,
+  signature or dependency changed.
+
 ## [0.21.1] — 2026-09-24 — Constrained quadratic programming
 
 **Release status:** released (tagged 2026-09-24, distributed 2026-09-24)

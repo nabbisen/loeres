@@ -260,6 +260,77 @@ fn constant_iteration_still_reports_converged_for_a_genuinely_converged_run() {
     assert_eq!(report.core().termination(), TerminationReason::IterationCap);
 }
 
+// RFC 030: a randomized differential test against an exact reference.
+//
+// The reference is the closed form of the box-constrained separable quadratic,
+// `xᵢ* = clamp(tᵢ, loᵢ, hiᵢ)` for any `qᵢ > 0`: no iteration in it, and
+// independent of `q`, so it is not a re-expression of the kernel. Every fixture
+// above uses one uniform box; randomized per-coordinate, non-uniform bounds are
+// what expose a kernel that indexes them wrongly (for example clamping every
+// coordinate to coordinate 0's bounds, which all of those fixtures survive).
+#[test]
+fn random_separable_quadratics_match_the_exact_box_minimiser() {
+    // Deterministic LCG; no dependency.
+    let mut state: u64 = 0x9E37_79B9_7F4A_7C15;
+    let mut next = move || {
+        state = state
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((state >> 11) as f64) / ((1u64 << 53) as f64)
+    };
+
+    const INSTANCES: usize = 400;
+    for instance in 0..INSTANCES {
+        let q = [0.2 + next() * 3.0, 0.2 + next() * 3.0, 0.2 + next() * 3.0];
+        let target = [next() * 8.0 - 4.0, next() * 8.0 - 4.0, next() * 8.0 - 4.0];
+        let lo = [next() * -4.0, next() * -4.0, next() * -4.0];
+        let hi = [
+            lo[0] + next() * 4.0,
+            lo[1] + next() * 4.0,
+            lo[2] + next() * 4.0,
+        ];
+        let x0 = [next() * 6.0 - 3.0, next() * 6.0 - 3.0, next() * 6.0 - 3.0];
+        // `alpha = 1 / max(q)` satisfies the convergence condition
+        // `0 < alpha < 2 / max(q)`.
+        let alpha = 1.0 / q.iter().copied().fold(0.0_f64, f64::max);
+
+        let problem = ScaledQuadratic {
+            q: FixedVector::from_array(q),
+            target: FixedVector::from_array(target),
+            lo: FixedVector::from_array(lo),
+            hi: FixedVector::from_array(hi),
+            alpha,
+        };
+        let mut x = FixedVector::from_array(x0);
+        let mut ws = workspace::<3>();
+        let cfg = config(200_000, 1e-13, TimingMode::EarlyExitAllowed);
+
+        let report = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap();
+        assert_eq!(
+            report.status(),
+            SolveStatus::Converged,
+            "instance {instance}: q {q:?} t {target:?} lo {lo:?} hi {hi:?}"
+        );
+
+        for (i, &xi) in x.as_slice().iter().enumerate() {
+            let exact = target[i].clamp(lo[i], hi[i]);
+            let error = (xi - exact).abs();
+            assert!(
+                error <= 1e-6,
+                "instance {instance} coordinate {i}: kernel {xi}, exact {exact} \
+                 (q {q:?} t {target:?} lo {lo:?} hi {hi:?})"
+            );
+            // Feasibility, not only proximity.
+            assert!(
+                lo[i] <= xi && xi <= hi[i],
+                "instance {instance} coordinate {i}: {xi} outside [{}, {}]",
+                lo[i],
+                hi[i]
+            );
+        }
+    }
+}
+
 // --- v0.10.1 fail-safe validation (B2 / B3 / M4) ---
 
 #[test]

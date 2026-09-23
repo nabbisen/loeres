@@ -75,6 +75,79 @@ impl<const N: usize> WorkspaceFor<Quadratic<N>> for Quadratic<N> {
     }
 }
 
+/// `f(x) = ½ Σᵢ qᵢ (xᵢ − tᵢ)²` over a box, with a per-coordinate curvature.
+///
+/// [`Quadratic`] hardcodes `q = 1`, which makes every coordinate's gradient the
+/// same function of its own residual. Distinct `qᵢ` (and, in the tests that use
+/// this, distinct per-coordinate bounds) are what a randomized differential test
+/// needs. The constrained minimiser is `clamp(tᵢ, loᵢ, hiᵢ)` for any `qᵢ > 0`.
+pub(super) struct ScaledQuadratic<const N: usize> {
+    pub(super) q: FixedVector<f64, N>,
+    pub(super) target: FixedVector<f64, N>,
+    pub(super) lo: FixedVector<f64, N>,
+    pub(super) hi: FixedVector<f64, N>,
+    pub(super) alpha: f64,
+}
+
+impl<const N: usize> ProjectedFirstOrderProblem<f64, N> for ScaledQuadratic<N> {
+    type Bounds = FixedVector<f64, N>;
+
+    fn validate_boundary(&self) -> Result<(), SolverError> {
+        for (l, h) in self.lo.as_slice().iter().zip(self.hi.as_slice()) {
+            if !l.is_finite() || !h.is_finite() {
+                return Err(SolverError::NonFiniteInput);
+            }
+            if *l > *h {
+                return Err(SolverError::InvalidInput);
+            }
+        }
+        Ok(())
+    }
+
+    fn lower_bound(&self) -> &FixedVector<f64, N> {
+        &self.lo
+    }
+
+    fn upper_bound(&self) -> &FixedVector<f64, N> {
+        &self.hi
+    }
+
+    fn step_scale(&self) -> f64 {
+        self.alpha
+    }
+
+    fn gradient_at(
+        &self,
+        x: &FixedVector<f64, N>,
+        grad: &mut FixedVector<f64, N>,
+    ) -> Result<(), SolverError> {
+        for (((g, &xi), &ti), &qi) in grad
+            .as_mut_slice()
+            .iter_mut()
+            .zip(x.as_slice())
+            .zip(self.target.as_slice())
+            .zip(self.q.as_slice())
+        {
+            *g = qi * (xi - ti);
+        }
+        Ok(())
+    }
+
+    fn objective_at(&self, x: &FixedVector<f64, N>) -> Result<f64, SolverError> {
+        let mut acc = 0.0;
+        for ((&xi, &ti), &qi) in x
+            .as_slice()
+            .iter()
+            .zip(self.target.as_slice())
+            .zip(self.q.as_slice())
+        {
+            let d = xi - ti;
+            acc += 0.5 * qi * d * d;
+        }
+        Ok(acc)
+    }
+}
+
 pub(super) fn quad2() -> Quadratic<2> {
     Quadratic {
         target: FixedVector::from_array([0.5, -0.5]),

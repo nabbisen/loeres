@@ -53,8 +53,10 @@ const KERNELS: &[Kernel] = &[
     Kernel {
         source: "crates/loeres-device/src/solve.rs",
         entrypoint: "solve_projected_first_order",
-        coverage: Coverage::Exempt {
-            reason: "retrofit pending, RFC 030 S2/S3",
+        coverage: Coverage::Differential {
+            tests: "crates/loeres-device/src/solve/tests.rs",
+            test: "random_separable_quadratics_match_the_exact_box_minimiser",
+            detects: "per-coordinate bound indexing (clamp using coordinate 0's bounds)",
         },
     },
     Kernel {
