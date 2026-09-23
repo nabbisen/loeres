@@ -139,6 +139,7 @@ separate, reviewed pass.
 | `055` | 2026-09-23 | rfc027 s2 corrections architect review | `48198cb8c084ddd7a54d313802ca3d08ea853bbf57d29a7b95e576843d0e00fb` | `architect` | ✓ |
 | `056` | 2026-09-23 | rfc027 s3 constrained cluster kernel architect review | `cad8e84157a37f2488cc9c3f2bdc384fe4b5d8adb610193710acf65744ba18b6` | `architect` | ✓ |
 | `057` | 2026-09-24 | rfc027 s4 conformance architect review | `1793e8ce5d188acd88cbfe9d8ae79b367d6b35fb0bce896f1360271057d1c13f` | `architect` | ✓ |
+| `058` | 2026-09-24 | rfc027 s4 c1 c3 feasible status architect review | `643d61025eaa8d7c8b938516bd330a738c877c093fc45e45fec4950fc891c62d` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |

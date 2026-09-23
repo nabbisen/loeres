@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [029](proposed/029-terminal-convergence-not-sticky.md) | Terminal Convergence, Not Sticky Convergence | Proposed (2026-09-24) | Under `ConstantIteration` both device kernels report `Converged` from a sticky flag set at an earlier iteration, so a divergent run returns `Converged` while moving; reproduced at `x = 3606.4` from a `1e-13` start. Applies RFC 027 Amendment 5's principle to stationarity as it did to feasibility. Shared with RFC 006; cluster unaffected. |
 
 ## Accepted RFCs
 
