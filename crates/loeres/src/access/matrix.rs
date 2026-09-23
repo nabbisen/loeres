@@ -112,7 +112,7 @@ impl<'a, S: BaseScalar> MatrixView<'a, S> {
     /// Borrow `data` as a `rows`×`cols` row-major matrix view.
     ///
     /// The slice length must equal `rows * cols` exactly (overflow-checked);
-    /// see [`validate_row_major`]. To view a prefix of a larger buffer, pass
+    /// see ADR-020. To view a prefix of a larger buffer, pass
     /// `&data[..rows * cols]` explicitly.
     #[inline]
     pub fn from_row_major(data: &'a [S], rows: usize, cols: usize) -> Result<Self, SolverError> {
