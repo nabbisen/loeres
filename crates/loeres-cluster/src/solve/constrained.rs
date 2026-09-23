@@ -384,6 +384,21 @@ where
 /// [`SolverError::InvalidInput`] for an all-zero constraint row and
 /// [`SolverError::Overflow`] for a constraint row whose squared norm overflows;
 /// in-loop non-finite values map to [`SolverError::NumericalDomain`].
+///
+/// # What this does not claim (RFC 027 §11.6)
+///
+/// - LP is expressible (`Q = 0`) but not solved.
+/// - Infeasibility is not detected: it is reported as `NotConverged` with
+///   `NoProgress`, with `projection_cap_hits > 0` and a positive violation that
+///   does not shrink as `projection_max_sweeps` is raised. It is never an error.
+/// - The projection is inexact by design. Dykstra converges linearly at a rate
+///   set by the angles between constraint normals; nearly parallel constraints
+///   can make the inner cap bind routinely. `projection_max_sweeps` has no
+///   default and must suit `projection_tolerance`.
+/// - No convergence rate is claimed; `step_scale ∈ (0, 2/λ_max(Q))` is the
+///   caller's responsibility.
+/// - `Q` symmetric positive semidefinite is a caller precondition, not verified.
+/// - Device and cluster results agree within tolerance, not bitwise (RFC 013).
 pub fn solve_constrained_projected_first_order_dyn<P, S>(
     problem: &P,
     step_scale: S,

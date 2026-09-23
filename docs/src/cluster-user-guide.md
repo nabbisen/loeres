@@ -10,10 +10,10 @@ Everything below appears there in full.
 
 ## What ships
 
-The same solver family as the edge path — a box/bound-constrained **projected
-first-order** kernel — over dynamic, runtime-dimensioned storage, plus the batch
-orchestration around it. Generic LP, QP, and SOCP problem contracts are not
-implemented. See
+The same solver family as the edge path — a **projected first-order** kernel, over
+a box and over a box with linear inequalities — over dynamic, runtime-dimensioned
+storage, plus the batch orchestration around it. No LP, SOCP, or interior-point
+solver ships. See
 [Terms of Engineering Use](https://github.com/nabbisen/loeres/blob/main/TERMS_OF_USE.md)
 for the full scope statement.
 
@@ -92,6 +92,66 @@ inverted bounds:           failed: InvalidInput
 Four items: two that converge, one whose cap is deliberately too low, and one
 with `lower > upper`, which is rejected before the loop as a per-item `Failed`.
 The batch itself returns `Ok`.
+
+## Constrained quadratic programs
+
+The runnable companion for this section is
+[`examples/cluster-qp-constrained/`](https://github.com/nabbisen/loeres/tree/main/examples/cluster-qp-constrained).
+
+When the feasible set is a polyhedron, use the constrained kernel (RFC 027):
+`minimize ½xᵀQx + cᵀx` over `lo <= x <= hi` and `Ax <= b`. The problem is
+described by the `loeres` contract — implement `QuadraticObjective`, `BoxBounds`
+and `LinearInequalities`, which together give `QuadraticProgram` — over dynamic
+storage; `A` may be dense, CSR, or any `MatrixAccess`. Then call
+`solve_constrained_projected_first_order_dyn` with the problem, a step scale, an
+iterate, a `ClusterConstrainedWorkspace::new(n, m)` (allocated once, reusable), a
+`ConstrainedProjectedConfig`, and a `ClusterExecutionContext`.
+
+It returns a `ConstrainedSolveRecord`: the terminal report, `projection_cap_hits`,
+and `max_constraint_violation` — the terminal constraint violation
+`max(0, max_i(a_i . x - b_i))`. **Read the violation beside the status.** An inner
+projection cap hit is not an error, so the returned point may be only
+feasible-approximate.
+
+**`Converged` means feasible.** The final iterate is stationary **and** within
+`projection_tolerance` of every constraint. `NotConverged` with
+`TerminationReason::NoProgress` on a constrained solve indicates an infeasible or
+too-tightly-capped polyhedron. The example shows all three cases:
+
+```text
+slack halfspace:     converged in 56 iteration(s); x = [1.714286, 1.142857]; violation = 0.000e0; projection cap hits = 0
+active halfspace:    converged in 41 iteration(s); x = [1.500000, 0.500000]; violation = 0.000e0; projection cap hits = 0
+infeasible:          not converged (no progress: stationary but not feasible) in 46 iteration(s); x = [0.000000, 2.000000]; violation = 1.000e0; projection cap hits = 46
+```
+
+The first two agree with the closed forms, `Q⁻¹(4, 2) = (12/7, 8/7)` and the KKT
+point `(1.5, 0.5)`; the third violates `x0 <= -1` against `x0 >= 0` by exactly 1.
+
+**The batch seam carries the status only.** `ClusterConstrainedJob` erases the
+solve to a `BatchItemOutcome`, which holds the core report. A caller reading a
+`Solved` outcome sees `Converged` or `NotConverged` — truthful about feasibility —
+but not `projection_cap_hits` or `max_constraint_violation`. A caller who needs
+the magnitudes uses the typed entrypoint above. The `m = 0` case (no inequalities)
+is accepted and is the box-only step, identical to the box-only kernel up to the
+sign of zero.
+
+**Limits of this kernel** (RFC 027 §11.6):
+
+- LP is expressible (`Q = 0`) but not solved.
+- Infeasibility is not detected; it is reported as `NotConverged` / `NoProgress`
+  with a positive violation that does not shrink as `projection_max_sweeps` is
+  raised. It is never an error.
+- The projection is inexact by design. Its rate is set by the angles between
+  constraint normals, nearly parallel constraints can make the inner cap bind
+  routinely, and `projection_max_sweeps` has no default: it must suit
+  `projection_tolerance`.
+- No convergence rate is claimed; `step_scale` must lie in `(0, 2 / lambda_max(Q))`.
+- `Q` symmetric positive semidefinite is a caller precondition and is not
+  verified.
+- Device and cluster results agree within tolerance, not bitwise.
+
+The two caps multiply: worst-case work is `max_iterations x projection_max_sweeps`
+sweeps. A service that takes those values from a request should bound both.
 
 ## Server-side boundaries to know about
 

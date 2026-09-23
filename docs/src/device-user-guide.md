@@ -10,10 +10,12 @@ Everything below appears there in full.
 
 ## What ships
 
-One solver family: a box/bound-constrained **projected first-order** kernel over
-fixed-size static storage. `x <- clamp(x - alpha * grad f(x), lo, hi)`, stopping
-when the largest coordinate change falls within tolerance. Generic LP, QP, and
-SOCP problem contracts are not implemented. See
+One solver family: a **projected first-order** kernel over fixed-size static
+storage. `x <- clamp(x - alpha * grad f(x), lo, hi)`, stopping when the largest
+coordinate change falls within tolerance. It comes in two forms: over a box (the
+rest of this page), and over a box together with linear inequalities `Ax <= b`
+(a quadratic program; see [Adding linear inequalities](#adding-linear-inequalities)).
+No LP, SOCP, or interior-point solver ships. See
 [Terms of Engineering Use](https://github.com/nabbisen/loeres/blob/main/TERMS_OF_USE.md)
 for the full scope statement.
 
@@ -69,6 +71,63 @@ letting an error path make that decision for you.
 
 `SolveStatus` is `#[non_exhaustive]` downstream, so match it with a catch-all
 arm: a future status is something for your code to name, never a reason to panic.
+
+## Adding linear inequalities
+
+When the feasible set is a polyhedron rather than a box, use the constrained
+kernel (RFC 027) instead. The problem is `minimize ½xᵀQx + cᵀx` over
+`lo <= x <= hi` and `Ax <= b`, and it is described by the `loeres` contract, not
+by a `loeres-device` trait: implement `QuadraticObjective`, `BoxBounds` and
+`LinearInequalities` (which together give `QuadraticProgram`) over fixed-size
+storage, then call `solve_constrained_projected_first_order`.
+
+What differs from the box-only solve:
+
+- **The constraint count `M` is a const generic and must be at least 1.** The
+  workspace, `ConstrainedProjectedWorkspace<S, N, M>`, is caller-owned like the
+  box-only one and reusable across solves; its footprint is
+  `(3N + 2M) * size_of::<S>()` plus a 16-byte header, reported through
+  `WorkspaceFootprint`. A problem with no inequalities is not an `M = 0`
+  instantiation: it uses `solve_projected_first_order`.
+- **The step scale is an argument**, since the contract carries no execution
+  parameter. `Q` must be symmetric positive semidefinite and `step_scale` must lie
+  in `(0, 2 / lambda_max(Q))`; neither is verified.
+- **There are two caps and two tolerances.** `ConstrainedSolveConfig` adds
+  `projection_max_sweeps` and `projection_tolerance` to the outer
+  `max_iterations` and `tolerance`. The sweep cap has no default: Dykstra
+  converges linearly, so a tight `projection_tolerance` needs a far larger cap
+  than a loose one.
+- **The report has two extra fields.** `projection_cap_hits` counts outer
+  iterations whose projection hit its cap, and `max_constraint_violation` is
+  `max(0, max_i(a_i . x - b_i))` at the returned iterate. A cap hit is not an
+  error, and the returned point may then be only feasible-approximate: read both
+  fields before trusting the answer.
+
+**Read the status as a claim about feasibility.** `Converged` means the final
+iterate is stationary **and** satisfies every constraint within
+`projection_tolerance`. `NotConverged` with `TerminationReason::NoProgress` means
+the iterate stopped moving without being feasible, which on a constrained solve
+indicates an infeasible polyhedron or one whose projection cap is too tight.
+Under `ConstantIteration` the criterion is evaluated at the **final** iteration
+(RFC 029), so a run that dipped within tolerance and then diverged is
+`NotConverged`.
+
+**Limits of this kernel** (RFC 027 §11.6):
+
+- LP is expressible (`Q = 0`) but not solved; projected gradient on a linear
+  objective has no curvature to converge against.
+- Infeasibility is not detected. It is reported as `NotConverged` / `NoProgress`
+  with a positive violation that does not shrink as `projection_max_sweeps` is
+  raised. It is never an error.
+- The projection is inexact by design. Its rate is set by the angles between
+  constraint normals, and nearly parallel constraints can make the inner cap bind
+  routinely.
+- No convergence rate is claimed.
+- `Q` symmetric positive semidefinite is a caller precondition.
+- Device and cluster results agree within tolerance, not bitwise.
+
+The cluster counterpart, with a runnable example, is in the
+[Cluster User Guide](cluster-user-guide.md#constrained-quadratic-programs).
 
 ## What running the example shows
 

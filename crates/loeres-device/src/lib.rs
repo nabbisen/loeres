@@ -18,8 +18,11 @@
 //! the `DeviceSolveReport` outcome over the RFC 014 `SolveReport`, and the
 //! caller-owned `ProjectedFirstOrderWorkspace` scratch). The `problem`/`solve`
 //! kernel surface is gated behind `owned-arrays`, since the primal/gradient
-//! work vectors are RFC 004 `FixedVector<S, N>`. `diagnostic` is reserved for
-//! future richer diagnostics.
+//! work vectors are RFC 004 `FixedVector<S, N>`. RFC 027 adds
+//! [`solve::solve_constrained_projected_first_order`], the same kernel over a
+//! box with `M >= 1` linear inequalities `Ax <= b` for a
+//! [`loeres::QuadraticProgram`]. `diagnostic` is reserved for future richer
+//! diagnostics.
 #![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 

@@ -56,8 +56,10 @@ sequencing: detailed roadmap §7.
 ## Current status
 
 RFCs 001-026 are implemented. The current numerical breadth is one
-box/bound-constrained projected-first-order family on device and cluster.
-Conformance is a bounded smoke corpus; no broad LP/QP/SOCP, large-N,
+projected-first-order family on device and cluster, over a box and, in the
+unreleased `0.21.1` tree, over a box with linear inequalities (RFC 027, accepted
+and not yet closed out). Infeasibility is not detected and LP is not solved.
+Conformance is a bounded smoke corpus; no broad LP/SOCP, large-N,
 throughput, or adversarial parity claim is made. Observability is metadata-
 only, the gateway is mock-only, and validation caching is process-local.
 RFCs 019/020/021 shipped in repository release `0.20.2`, released 2026-07-30

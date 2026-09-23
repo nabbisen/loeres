@@ -57,7 +57,21 @@ use explicit trust/cache evidence, but current-iterate scans and hot-loop
 numerical-domain checks remain non-skippable. Non-convergence remains a solved
 status, not an error.
 
-These controls do not establish broad LP/QP/SOCP support, high-throughput or
+RFC 027 adds the constrained (quadratic-program) kernels on both paths. Their
+structural checks are mandatory: shapes, finite `lo <= hi`, every constraint
+row's squared norm finite and positive (an all-zero row is `InvalidInput`, an
+overflowing norm is `Overflow`), a finite positive step scale, and non-zero caps.
+Policy-governed finite scans of the model data may use explicit trust, but
+in-loop non-finite values map to `NumericalDomain` and are never skippable. Two
+nested loops are each bounded by a caller-supplied cap, so worst-case work grows
+as `max_iterations x projection_max_sweeps`: a service that accepts those caps
+from a request must bound both. Cluster solves poll cancellation between
+sweeps. `Q` symmetric positive semidefinite is an unverified caller precondition;
+a violation degrades convergence, it does not corrupt memory. An infeasible
+polyhedron is reported as `NotConverged` with `NoProgress`, not detected or
+rejected.
+
+These controls do not establish broad LP/SOCP support, high-throughput or
 large-N capacity, memory-pressure behavior, denial-of-service resistance, or
 multi-tenant isolation. Deployments must add service-level request, memory,
 concurrency, queue, identity, authorization, and tenant-isolation controls.

@@ -11,7 +11,8 @@ reserved for a future separately reviewed native/legacy adapter. **Server-only.*
   `runtime`, and `solve`; RFC 016 (v0.14.0) adds the first std-side numerical kernel in
   `model` and `solve`; RFC 009 (v0.15.0) adds metadata observability and the safe
   gateway boundary in `observe` and `gateway`; RFC 015 (v0.19.0) adds the
-  process-local validation evidence cache.
+  process-local validation evidence cache; RFC 027 (unreleased `0.21.1` tree)
+  adds the constrained quadratic-program kernel in `solve`.
 
 ## What's implemented
 
@@ -54,6 +55,37 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   box/bound-constrained projected first-order over `DenseVector`, step-norm convergence
   aligned with RFC 006; non-convergence at the cap is a *solved* `NotConverged`, never a
   failure; in-loop non-finite maps to `NumericalDomain` even under trust.
+
+### RFC 027 (unreleased `0.21.1`) — constrained projected first-order kernel
+
+- `solve` — `solve_constrained_projected_first_order_dyn` (the typed entrypoint) for
+  any `loeres::QuadraticProgram` over dynamic storage: `min ½xᵀQx + cᵀx` over a
+  box and linear inequalities `Ax <= b`, with `A` dense, CSR, or any
+  `MatrixAccess` (the kernel needs no contiguous fast path). Configuration is
+  `ConstrainedProjectedConfig`, scratch is `ClusterConstrainedWorkspace`
+  (allocated once, sized `(n, m)`), and the result is `ConstrainedSolveRecord`:
+  the terminal report, honest validation evidence, `projection_cap_hits`, and
+  `max_constraint_violation`. `ClusterConstrainedJob` plugs it into `ClusterJob`.
+  `m = 0` is accepted and is the RFC 016 step, identical up to the sign of zero.
+- `Converged` means **feasible within `projection_tolerance`** (Amendment 5).
+  `NotConverged` with `NoProgress` indicates an infeasible or too-tightly-capped
+  polyhedron.
+- **The batch seam carries status only.** `ClusterConstrainedJob` erases to
+  `BatchItemOutcome`, which holds the core `SolveReport`, so `projection_cap_hits`
+  and `max_constraint_violation` are not visible through `solve_batch`. Because the
+  status is truthful, that does not hide an infeasible answer as a converged one;
+  a caller who needs the magnitudes uses the typed entrypoint.
+- See `examples/cluster-qp-constrained/`.
+
+Limits (RFC 027 §11.6): LP is expressible (`Q = 0`) but not solved; infeasibility
+is not detected (reported as `NotConverged` / `NoProgress` with a positive
+violation that does not shrink as the sweep cap is raised); the projection is
+inexact by design, converging linearly at a rate set by constraint-normal
+angles, so nearly parallel constraints can make the inner cap bind routinely and
+`projection_max_sweeps` has no default; no convergence rate is claimed and
+`step_scale` must lie in `(0, 2 / λ_max(Q))`; `Q` symmetric positive semidefinite
+is a caller precondition and is not verified; and device and cluster agree within
+tolerance, not bitwise (RFC 013).
 
 Validation note: `ValidateAllInputs` scans eligible model-owned data.
 `RespectBackendValidationState` may consume provided/current RFC 015 evidence

@@ -145,6 +145,28 @@ Development toward the next release; RFC 027 implementation follows.
 - `qp-linear-2d-infeasible-001` asserts `not-converged` / `no-progress`, and the
   fixture schema's `not-asserted` status escape hatch is removed.
 
+### RFC 027 S5 — documentation, example, and follow-ups
+
+- New `examples/cluster-qp-constrained/` (workspace-excluded, own lockfile, on the
+  `examples` gate): a `QuadraticProgram` with box and linear-inequality
+  constraints solved through the cluster kernel, printing the terminal constraint
+  violation beside the status for a slack, an active, and an infeasible polyhedron,
+  and showing that the batch seam carries the status only.
+- RFC 027's disposition is recorded across the requirements (§5.1.3: PF-002
+  implemented, PF-001 contract-only and not solved, PF-003 unchanged), the external
+  design (§3.2: the trait satisfies the `DynamicQp` category, the builder is
+  deferred), the crate READMEs and rustdoc, both user guides, the architecture,
+  threat-model, verification and development chapters, `TERMS_OF_USE.md`, and the
+  roadmaps. §11.6's limitations appear in every user-facing surface, and
+  `Converged` is documented as meaning feasible within `projection_tolerance`.
+- The apex external design's stale "records convergence internally" sentence for
+  `ConstantIteration` now states the RFC 029 behaviour (review 059 F1).
+- A device test pins a run whose largest coordinate change dips within tolerance
+  mid-run and rises again, so a narrowing to "distrust only the first iteration"
+  cannot reintroduce the sticky-flag defect (review 059 F2).
+- The version-bump procedure now takes four lockfile updates (one per excluded
+  example plus the workspace).
+
 ### RFC 029 — terminal convergence, not sticky convergence
 
 - Under `TimingMode::ConstantIteration` both device kernels

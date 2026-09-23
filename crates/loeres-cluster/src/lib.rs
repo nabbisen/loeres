@@ -26,7 +26,10 @@
 //! and its [`ClusterProjectedFirstOrderJob`](solve::ClusterProjectedFirstOrderJob)
 //! adapter), plugged into the `ClusterJob` seam. RFC 009 adds cluster-only
 //! metadata observability and the safe gateway boundary. RFC 015 adds the
-//! cluster-only validation evidence cache for model-owned scans.
+//! cluster-only validation evidence cache for model-owned scans. RFC 027 adds
+//! [`solve_constrained_projected_first_order_dyn`], the same kernel over a box
+//! and linear inequalities `Ax <= b` for a [`loeres::QuadraticProgram`], with its
+//! [`ClusterConstrainedJob`] adapter; the batch seam carries the status only.
 
 pub mod batch;
 pub mod gateway;

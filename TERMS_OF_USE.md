@@ -53,10 +53,29 @@ constant-time execution and must not be relied on for side-channel resistance.
 
 ## Narrow numerical scope
 
-The implemented solver breadth is **one** box/bound-constrained
-projected-first-order family, on both the device and cluster paths. Generic
-LP, QP, and SOCP problem contracts are not implemented; `loeres::problem`
-is a reserved namespace.
+The implemented solver breadth is **one** projected-first-order family, on both
+the device and cluster paths, in two forms: over a box, and over a box together
+with linear inequalities `Ax <= b` (a quadratic program, RFC 027). `loeres::problem`
+defines a storage-agnostic quadratic-program contract. No SOCP contract exists,
+and no LP, SOCP, interior-point, or ADMM solver ships. The limits of the
+constrained (quadratic-program) kernels are:
+
+- **LP is expressible, not solved.** `Q = 0` is a legal input, but projected
+  gradient on a linear objective has no curvature to converge against.
+- **Infeasibility is not detected.** An infeasible polyhedron is reported as
+  `NotConverged` with `NoProgress` and a positive `max_constraint_violation`
+  that does not shrink as the projection cap is raised; it is never an error.
+  `Converged` means feasible within `projection_tolerance`.
+- **The projection is inexact by design.** It converges linearly at a rate set
+  by the angles between constraint normals, and nearly parallel constraints can
+  make the inner cap bind routinely. A cap hit is not an error: read
+  `projection_cap_hits` and `max_constraint_violation` on the typed entrypoint.
+- **No convergence rate is claimed.** `step_scale` must lie in
+  `(0, 2 / lambda_max(Q))`; that is the caller's responsibility, as in the
+  box-only kernels.
+- **`Q` must be symmetric positive semidefinite.** That is a documented caller
+  precondition; it is not verified, because verifying it needs a factorization.
+- **Device and cluster agree within tolerance, not bitwise** (RFC 013).
 
 Conformance evidence is a **bounded smoke corpus** — small, fixed dimension.
 It is not broad numerical parity, adversarial-input coverage, large-N

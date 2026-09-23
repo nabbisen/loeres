@@ -17,6 +17,7 @@ members = [
 # evidence, which is what `cargo xtask examples` asserts.
 exclude = [
     "examples/cluster-batch-solve",
+    "examples/cluster-qp-constrained",
     "examples/device-box-pfo",
 ]
 

@@ -156,6 +156,7 @@ loeres/
 │   └── loeres-device/
 ├── examples/
 │   ├── cluster-batch-solve/
+│   ├── cluster-qp-constrained/
 │   └── device-box-pfo/
 ├── xtask/
 │   └── src/
@@ -170,7 +171,7 @@ loeres/
     └── ISSUE_TEMPLATE/
 ```
 
-The `examples/` directory must be split by execution environment. A device example's resolved dependency graph must not reach `loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, or `tracing`; the `examples` gate asserts this on the resolved graph. An example is a host program and may use `std` in its own binary — that does not weaken the edge crates' `no_std`/no-`alloc` guarantee, which the `no-std` gate proves separately (RFC 023 §11.2, reconciling the earlier wording that forbade `std`/`alloc` to the example itself). The example set is two: `cluster-batch-solve/` and `device-box-pfo/` (requirements §4.1). A cluster QP example is an RFC 027 deliverable and is named there when the contract it demonstrates ships; a separate `device-static-workspace/` example was removed as redundant with `device-box-pfo/`, which already demonstrates caller-owned workspace reuse.
+The `examples/` directory must be split by execution environment. A device example's resolved dependency graph must not reach `loeres-cluster`, `loeres-backend-std`, `tokio`, `rayon`, or `tracing`; the `examples` gate asserts this on the resolved graph. An example is a host program and may use `std` in its own binary — that does not weaken the edge crates' `no_std`/no-`alloc` guarantee, which the `no-std` gate proves separately (RFC 023 §11.2, reconciling the earlier wording that forbade `std`/`alloc` to the example itself). The example set is three: `cluster-batch-solve/`, `cluster-qp-constrained/` (RFC 027) and `device-box-pfo/` (requirements §4.1); a separate `device-static-workspace/` example was removed as redundant with `device-box-pfo/`, which already demonstrates caller-owned workspace reuse.
 
 The `xtask/` crate may use `std` because it is a repository automation tool. It must never become a dependency of any library crate.
 
@@ -318,7 +319,10 @@ loeres_cluster::validation_cache  // model identity/epoch evidence cache; proces
 
 `loeres-cluster` is allowed to be ergonomic, dynamic, and integration-rich.
 The implemented `model` surface is limited to the projected-first-order family;
-the broader LP/QP/SOCP builders described in §3.2 remain design targets.
+the broader LP/QP/SOCP builders described in §3.2 remain design targets. The
+unreleased `0.21.1` tree (RFC 027) adds the constrained kernel over the
+`loeres::problem` quadratic-program contract; it is consumed through the typed
+entrypoint, not a builder.
 
 #### `loeres-device`
 
@@ -625,6 +629,12 @@ Initial public problem families:
 | SOCP | Second-order cone category | Server may support dynamic conic models | Device support limited and staged |
 | First-order structured problem | Objective/residual/gradient-like category | Useful for large approximate server solvers | Useful for capped deterministic kernels |
 
+> **Implemented (RFC 027, unreleased `0.21.1` tree).** The QP row is realized as a
+> contract in `loeres::problem` (`QuadraticObjective`, `BoxBounds`,
+> `LinearInequalities`, `QuadraticProgram`) with constrained kernels on device and
+> cluster. The LP row is contract-only: expressible as `Q = 0`, not solved. The
+> SOCP row is unchanged and unimplemented.
+
 Mixed-integer programming, nonlinear symbolic modeling, and expression parsing are outside the device baseline.
 
 ### 2.8 Error Topology
@@ -705,7 +715,8 @@ The exact form may be enum-based or struct-based by RFC. It must remain allocati
 ## 3. Cluster Developer Interface
 
 Through v0.20.0, the shipped cluster surface includes RFC 008 orchestration,
-RFC 016's dynamic box/bound-constrained projected-first-order model and kernel,
+RFC 016's dynamic box/bound-constrained projected-first-order model and kernel
+(extended to linear inequalities by RFC 027 in the unreleased `0.21.1` tree),
 RFC 009 metadata-only observation and safe mock gateway seam, and RFC 015's
 process-local validation evidence cache. The broader model and solver categories
 below remain design targets unless explicitly identified as implemented.
@@ -756,8 +767,19 @@ Exact names are RFC subjects. The categories are required.
 **Current limitation.** RFC 016 implements
 `ClusterProjectedFirstOrderProblem` and its associated configuration, workspace,
 finite evidence, and solve record. It does not implement generic `DynamicLp`,
-`DynamicQp`, `DynamicSocp`, or builder categories. Quadratic smoke fixtures do
-not establish a public generic QP model contract.
+`DynamicSocp`, or builder categories.
+
+**`DynamicQp` — the trait satisfies the category; the builder is deferred
+(RFC 027, unreleased `0.21.1` tree).** The `DynamicQp` category is satisfied by
+the `loeres::problem` contract: any type implementing `QuadraticObjective`,
+`BoxBounds` and `LinearInequalities` over dynamic storage — `DenseMatrix`,
+`DenseVector`, or a CSR `SparseMatrix` for `A` — is a `QuadraticProgram`, and
+`loeres-cluster` solves it with `solve_constrained_projected_first_order_dyn`
+(and the `ClusterConstrainedJob` batch adapter, which carries the status only).
+A `ModelBuilder`-style construction API for it is **deferred**; the shipped
+example, `examples/cluster-qp-constrained/`, implements the traits directly. LP
+is expressible (`Q = 0`) but not solved, infeasibility is not detected, and the
+projection is inexact by design (RFC 027 §11.6).
 
 ### 3.3 Cluster Storage Binding
 
@@ -1078,8 +1100,8 @@ Constant-iteration mode is useful for timing stabilization and side-channel redu
 
 > **Implemented (RFC 005, v0.9.0).** Realized as `TimingMode` (`#[non_exhaustive]`):
 > `EarlyExitAllowed` (early-exit bounded mode) is always available;
-> `ConstantIteration` (records convergence internally but runs the full configured
-> count) is gated behind the `constant-iteration` feature. The validation-only
+> `ConstantIteration` (runs the full configured count and evaluates the convergence
+> criterion at the final iteration - RFC 029) is gated behind the `constant-iteration` feature. The validation-only
 > rejection path is the pre-loop config / boundary / fail-safe validation in the
 > RFC 006 kernel, which returns a structured `SolverError`.
 

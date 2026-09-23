@@ -19,7 +19,8 @@
 > cluster orchestration, one dynamic projected-first-order kernel, metadata-only
 > observability, a safe mock gateway seam, process-local validation evidence
 > caching, target-profile evidence classes, and bounded conformance fixtures.
-> It does **not** include broad LP/QP/SOCP solver parity, a concrete native
+> It does **not** include broad LP/QP/SOCP solver parity (the unreleased `0.21.1`
+> tree adds only RFC 027's narrow constrained-QP kernels), a concrete native
 > adapter, a persistent/distributed cache, universal bitwise determinism, or
 > broad throughput/large-N/multi-tenant stress evidence. RFC 024 retired the
 > RFC 021 conditional apparatus after `0.20.2` shipped; the release package
@@ -234,6 +235,7 @@ loeres/
 │   └── loeres-device/
 ├── examples/
 │   ├── cluster-batch-solve/
+│   ├── cluster-qp-constrained/
 │   └── device-box-pfo/
 ├── xtask/
 └── .github/
@@ -417,11 +419,25 @@ Important scope rule:
 - Solver crates decide which problem families they implement.
 - Device crates must not inherit server-only modeling breadth by default.
 
-**Current disposition.** PF-001 through PF-003 remain unimplemented; no public
-generic LP/QP/SOCP core contract ships. PF-004 is only partially realized by
-the solver-specific RFC 006/RFC 016 projected-first-order oracle traits;
-`loeres::problem` remains reserved. Smoke fixtures with quadratic objectives do
-not create a generic QP public model.
+**Current disposition (RFC 027, unreleased `0.21.1` tree; RFC 027 is accepted
+and not yet closed out).**
+
+- **PF-002 (QP) — implemented.** `loeres::problem` defines the storage-agnostic
+  quadratic-program contract `min ½xᵀQx + cᵀx` over `lo <= x <= hi` and `Ax <= b`
+  (`QuadraticObjective`, `BoxBounds`, `LinearInequalities`, `QuadraticProgram`,
+  `ProgramShape`) over the RFC 002 access traits, and both execution crates ship a
+  constrained projected-first-order kernel consuming it. `Q` symmetric positive
+  semidefinite is a caller precondition and is not verified.
+- **PF-001 (LP) — contract-only, not solved.** An LP is expressible as `Q = 0`;
+  no kernel solves it, because projected gradient on a linear objective has no
+  curvature to converge against.
+- **PF-003 (SOCP) — unchanged:** unimplemented; no contract ships.
+- **PF-004** is realized by the solver-specific RFC 006/RFC 016 oracle traits and,
+  for the constrained case, by the `loeres::problem` contract; there is no
+  separate generic iterative-problem contract.
+- Infeasibility is not detected (it is reported as non-convergence), and the
+  projection is inexact by design; see RFC 027 §11.6, which is stated in every
+  user-facing surface.
 
 ## 5.2 `loeres-backend-std`
 
@@ -534,7 +550,10 @@ Server solver breadth must not imply device solver obligations.
 per-item outcomes, cooperative cancellation and deadline budgets, sequential,
 parallel, and async execution, and the `ClusterJob` seam. RFC 016 adds one
 dynamic box/bound-constrained projected-first-order numerical kernel; it does
-not satisfy the broader solver-family list above. RFC 009 adds metadata-only
+not satisfy the broader solver-family list above. In the unreleased `0.21.1`
+tree RFC 027 extends that kernel to linear inequalities `Ax <= b` (PF-002),
+reporting `Converged` only for a feasible iterate; it does not solve LP or detect
+infeasibility. RFC 009 adds metadata-only
 observability with bounded/redacted categories and a safe `MockGatewayJob`
 gateway seam. No concrete native adapter ships, and the default-off
 `ffi-gateway` feature does not imply one. RFC 012 defines validation-state
@@ -1198,7 +1217,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 
 | ID | Question |
 |---|---|
-| OQ-001 | **Resolved for the baseline (RFC 006).** The first device family is a bounded box projected-first-order method; broader QP/SOCP families remain future. |
+| OQ-001 | **Resolved for the baseline (RFC 006).** The first device family is a bounded box projected-first-order method; broader QP/SOCP families remain future. RFC 027 (unreleased `0.21.1` tree) extends it to linear inequalities by bounded Dykstra projection; interior-point, LP, and SOCP solving remain future. |
 | OQ-002 | **Resolved as a profile policy (RFC 011).** Evidence is classified as mandatory, advisory-installed, or documented-only. |
 | OQ-003 | **Resolved for mandatory evidence (RFC 011).** Hard-float `thumbv7em` is mandatory; soft-float remains advisory-installed, not universally required or supported. |
 | OQ-004 | **Deferred/open.** RFC 001 reserves fixed-point hooks but no fixed-point baseline ships. |
@@ -1209,7 +1228,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 | OQ-009 | **Partially resolved/deferred (RFC 009).** A safe mock gateway and default-off seam ship; a concrete native adapter does not. |
 | OQ-010 | **Partially resolved/open at formal-proof level (RFC 010/011).** Audits and target gates provide panic-averse evidence, not formal panic freedom. |
 | OQ-011 | **Resolved as scoped policy (RFC 011).** Claims are target-profile-scoped; broad cross-target bit identity remains unsupported. |
-| OQ-012 | **Resolved (RFC 023).** `TERMS_OF_USE.md` states the engineering limitations — no safety certification, panic-averse rather than panic-free, target-scoped determinism, one solver family, bounded smoke conformance, server-side boundaries, pre-1.0 instability, integrator responsibility — complementing the Apache-2.0 warranty disclaimer rather than restating it. Every limitation it records is stated elsewhere in the project; it consolidates for integrators and introduces nothing. |
+| OQ-012 | **Resolved (RFC 023).** `TERMS_OF_USE.md` states the engineering limitations — no safety certification, panic-averse rather than panic-free, target-scoped determinism, one narrow solver family, bounded smoke conformance, server-side boundaries, pre-1.0 instability, integrator responsibility — complementing the Apache-2.0 warranty disclaimer rather than restating it. Every limitation it records is stated elsewhere in the project; it consolidates for integrators and introduces nothing. |
 
 ---
 

@@ -68,9 +68,10 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 - **Caller-owned typed workspaces** on device — no hidden allocation; memory footprint is reviewable before execution.
 - **Target-scoped determinism.** Floating-point reproducibility claims are tied to documented target profiles, not asserted globally.
 - **Narrow current solver scope.** Device and cluster paths share one
-  box/bound-constrained projected-first-order family. The conformance suite is a
-  bounded smoke corpus; broad LP/QP/SOCP, large-N, and throughput parity are not
-  claimed.
+  projected-first-order family, over a box and over a box with linear
+  inequalities `Ax <= b` (a quadratic program, RFC 027). LP is expressible but not solved; infeasibility is not detected (it is reported as `NotConverged` with `NoProgress` and a positive constraint violation); the projection is inexact by design and its rate depends on constraint geometry; no convergence rate is claimed; `Q` must be symmetric positive semidefinite, a caller precondition that is not verified; and device and cluster agree within tolerance, not bitwise. The full statement is in [Terms of Engineering Use](TERMS_OF_USE.md). The
+  conformance suite is a bounded smoke corpus; broad LP/SOCP, large-N, and
+  throughput parity are not claimed.
 - **Bounded server integrations.** Observability is metadata-only, the gateway
   is mock-only, and validation caching is process-local. No concrete native
   adapter, persistent/distributed cache, or broad multi-tenant isolation

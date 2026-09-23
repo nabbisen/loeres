@@ -12,16 +12,29 @@ Loeres is a Cargo workspace of five public crates.
 | `loeres-cluster` | `std` | Server-side solving: dynamic models, batch execution, cancellation, parallelism, observability, safe gateway categories and a mock gateway; `ffi-gateway` is reserved for a future separately reviewed native adapter. |
 | `loeres-device` | `#![no_std]`, no `alloc` | Deterministic edge solve entrypoints, bounded execution configuration, caller-owned typed workspace lifecycle. |
 
-Through v0.20.0, `loeres-device` and `loeres-cluster` implement one shared
+Through v0.21.0, `loeres-device` and `loeres-cluster` implement one shared
 box/bound-constrained projected-first-order family. `loeres-cluster` also
 provides per-item orchestration/cancellation, metadata-only observation, a safe
 mock gateway seam, and a process-local validation evidence cache. It does not
-ship broad LP/QP/SOCP modeling, a concrete native adapter, a distributed cache,
+ship broad LP/SOCP modeling, a concrete native adapter, a distributed cache,
 or broad throughput/multi-tenant stress evidence.
 
+The unreleased `0.21.1` tree (RFC 027) extends that family on both crates to a
+box **and** linear inequalities `Ax <= b`. `loeres::problem` defines the
+storage-agnostic quadratic-program contract — `QuadraticObjective`, `BoxBounds`,
+`LinearInequalities`, and `QuadraticProgram` over the RFC 002 access traits — and
+the device and cluster kernels consume it, projecting with bounded Dykstra
+sweeps (each halfspace its own set with a scalar multiplier, the box its own
+set). The status is truthful about feasibility: `Converged` means feasible within
+`projection_tolerance`, and an infeasible polyhedron is `NotConverged` with
+`NoProgress`, never an error. The kernel's limits (RFC 027 §11.6) are in the
+[device](device-user-guide.md) and [cluster](cluster-user-guide.md) user guides.
+
 The PFO problem traits are execution-crate contracts, not implementations of a
-generic `loeres::problem` family. PF-001 through PF-003 remain unimplemented,
-and PF-004 is represented only by solver-specific oracle traits.
+generic `loeres::problem` family. PF-002 (QP) is implemented as a contract plus
+a solving kernel; PF-001 (LP) is contract-only — expressible with `Q = 0`, not
+solved; PF-003 (SOCP) is unchanged and unimplemented. PF-004 is represented only
+by solver-specific oracle traits.
 
 ## Dependency direction
 

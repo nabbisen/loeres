@@ -44,6 +44,11 @@ const EXAMPLES: &[Example] = &[
         forbidden: &[],
     },
     Example {
+        name: "cluster-qp-constrained",
+        dir: "examples/cluster-qp-constrained",
+        forbidden: &[],
+    },
+    Example {
         name: "device-box-pfo",
         dir: "examples/device-box-pfo",
         forbidden: &[

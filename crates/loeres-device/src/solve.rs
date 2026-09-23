@@ -6,6 +6,11 @@
 //! RFC 014 core [`SolveReport`](loeres::SolveReport) wrapped in
 //! [`DeviceSolveReport`]. Available under the `owned-arrays` feature, since the
 //! primal/gradient work vectors are fixed-size owned static arrays.
+//!
+//! The same loop over a box **and** linear inequalities `Ax <= b` is
+//! [`solve_constrained_projected_first_order`] (RFC 027), which projects with
+//! bounded Dykstra sweeps and reports `projection_cap_hits` and the terminal
+//! `max_constraint_violation` beside the status.
 
 #[cfg(feature = "owned-arrays")]
 pub use owned::{DeviceSolveReport, ProjectedFirstOrderWorkspace, solve_projected_first_order};

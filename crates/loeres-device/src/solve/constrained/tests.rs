@@ -657,9 +657,9 @@ fn constant_iteration_runs_the_full_cap_when_the_feature_is_enabled() {
 // earlier sticky flag, set the first time an outer step fell within tolerance
 // and never cleared, reported `Converged` for a run that diverged afterwards.
 #[cfg(feature = "constant-iteration")]
-fn constant_iteration_qp(c: [f64; 2]) -> Qp2x1 {
+fn constant_iteration_qp(q_diag: [f64; 2], c: [f64; 2]) -> Qp2x1 {
     Qp2x1 {
-        q: identity_2x2(),
+        q: FixedMatrix::from_row_major_array([q_diag[0], 0.0, 0.0, q_diag[1]]),
         c: FixedVector::from_array(c),
         lo: FixedVector::from_array([-1e6, -1e6]),
         hi: FixedVector::from_array([1e6, 1e6]),
@@ -696,8 +696,11 @@ fn solve_constant_iteration(
 #[test]
 #[cfg(feature = "constant-iteration")]
 fn constant_iteration_does_not_report_converged_for_a_run_that_diverges_after_a_small_first_step() {
-    let (report, x) =
-        solve_constant_iteration(&constant_iteration_qp([0.0, 0.0]), 2.1, [1e-13, 0.0]);
+    let (report, x) = solve_constant_iteration(
+        &constant_iteration_qp([1.0, 1.0], [0.0, 0.0]),
+        2.1,
+        [1e-13, 0.0],
+    );
 
     assert_eq!(report.iterations_executed(), 400);
     // The iterate really moved: it is nowhere near the start.
@@ -712,12 +715,40 @@ fn constant_iteration_does_not_report_converged_for_a_run_that_diverges_after_a_
 #[test]
 #[cfg(feature = "constant-iteration")]
 fn constant_iteration_still_reports_converged_for_a_genuinely_converged_run() {
-    let (report, x) =
-        solve_constant_iteration(&constant_iteration_qp([-1.0, -1.0]), 0.5, [0.0, 0.0]);
+    let (report, x) = solve_constant_iteration(
+        &constant_iteration_qp([1.0, 1.0], [-1.0, -1.0]),
+        0.5,
+        [0.0, 0.0],
+    );
 
     assert_eq!(report.iterations_executed(), 400);
     assert!((x[0] - 1.0).abs() < 1e-9, "final x0 = {}", x[0]);
     assert_eq!(report.status(), SolveStatus::Converged);
+    assert_eq!(report.core().termination(), TerminationReason::IterationCap);
+}
+
+/// Review 059 F2: the two tests above diverge after a small *first* step, so a
+/// narrowing to "distrust only the first iteration" would satisfy them. Here
+/// `x <- diag(0.5, -1.1)·x`: coordinate 0 halves toward zero while coordinate 1
+/// grows from `1e-15`. The largest coordinate change dips below `tolerance`
+/// near iteration 40 and rises again near iteration 73, so the criterion holds
+/// mid-run and fails at the end. Violation `0` shows the Amendment 5 gate is not
+/// what decides the outcome.
+#[test]
+#[cfg(feature = "constant-iteration")]
+fn constant_iteration_does_not_report_converged_for_a_run_that_dips_within_tolerance_mid_run() {
+    let (report, x) = solve_constant_iteration(
+        &constant_iteration_qp([0.5, 2.1], [0.0, 0.0]),
+        1.0,
+        [1.0, 1e-15],
+    );
+
+    assert_eq!(report.iterations_executed(), 400);
+    // Coordinate 1 really grew (1e-15 · 1.1^400 ≈ 36.06); coordinate 0 collapsed.
+    assert!((x[1] - 36.064014).abs() < 1e-5, "final x1 = {}", x[1]);
+    assert!(x[0].abs() < 1e-9, "final x0 = {}", x[0]);
+    assert_eq!(report.max_constraint_violation(), 0.0);
+    assert_eq!(report.status(), SolveStatus::NotConverged);
     assert_eq!(report.core().termination(), TerminationReason::IterationCap);
 }
 
