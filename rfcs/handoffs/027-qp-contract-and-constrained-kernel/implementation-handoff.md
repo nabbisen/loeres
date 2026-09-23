@@ -18,7 +18,7 @@ RFC 027 §11 in full, especially §11.2 (**the box is its own Dykstra set with a
 
 **S4 — conformance.** *Landed and accepted at `f47d232`, architect review 057; corrective items C1-C3 in §3.2 come next.* **Assert bit-identity as numeric equality plus a NaN check, never raw `to_bits()`** (RFC 027 Amendment 4, §0.4.1): identity holds *up to the sign of zero*, and a fixture with a zero coordinate otherwise fails for a reason that is not a defect. Architect review 056 reproduced this — `target [0.0, 3.0]`, `start [-0.0, 0.5]` gives `-0.0` against RFC 016's `+0.0`, equal in value, different in bits. Do **not** respond to such a failure by loosening the assertion. **Also exercise a real `loeres-backend-std::SparseMatrix` `A`** here, which review 056 deferred from S3: it needs `loeres-backend-std/sparse` enabled in `crates/loeres-cluster/Cargo.toml` `[dev-dependencies]`, so run `cargo xtask check` with attention to `feature-matrix` and `zero-bleed` and **report the feature-graph effect**; S3's in-test `Triplets` type already proved the kernel needs no contiguous fast path, so this is integration evidence, not a correctness question. Fixtures: on cluster, every existing fixture run through the constrained kernel with `m = 0` and the **same problem oracle** is identical to RFC 016 under §0.4.1 — do **not** re-express fixtures as a `QuadraticProgram` for this assertion: their `q·(x − t)` oracle and `Qx + c` differ in floating point, so that comparison is tolerance-only (RFC 027 §0.2.5); dimension-2/3 with 1–3 halfspaces against closed-form optima; an infeasible polyhedron asserting `NotConverged` with non-shrinking violation; an **all-zero constraint row** `aᵢ = 0` asserting `InvalidInput` (a zero-row matrix, `m = 0`, is valid — RFC 027 §0.2.6); a trust-skip case and a hot-loop NaN case. Host property test: projection output satisfies all constraints within `projection_tolerance` on random feasible polyhedra.
 
-**S5 — documentation.** §3.2's C1-C3 are landed and accepted, and **RFC 029 landed and was accepted in architect review 059** (`454f28c`), so the `Converged` semantics S5 documents are now final. S5 additionally carries two review-059 follow-ups:
+**S5 — documentation.** *Landed at `3685ec4`; **accepted with three required documentation corrections D1-D3**, architect review 060 — see §3.3. No code defect; the example and its optima verify.* §3.2's C1-C3 are landed and accepted, and **RFC 029 landed and was accepted in architect review 059** (`454f28c`), so the `Converged` semantics S5 documents are now final. S5 additionally carries two review-059 follow-ups:
 
 - **F1 — one stale normative sentence in the apex trio.** `docs/specs/loeres-external-design-v1.md:1081` reads ``> `ConstantIteration` (records convergence internally but runs the full configured`` / ``> count) is gated behind the `constant-iteration` feature.`` - "records convergence internally" *is* the sticky flag RFC 029 removed. Replace those two lines with ``> `ConstantIteration` (runs the full configured count and evaluates the convergence`` / ``> criterion at the final iteration - RFC 029) is gated behind the `constant-iteration` feature.`` Change nothing else in that block. This is RFC 005/006 territory rather than RFC 027's and would otherwise fall between slices. `external-design:372` and `docs/src/device-user-guide.md:53` are **correct as they stand** - they say the loop runs the full cap, which is still true - so leave them.
 - **F2 — pin the mid-run divergence scenario.** The RFC 029 tests are scoped to a run that diverges after a small *first* step; a future narrowing to "distrust only the first iteration" would satisfy them while reintroducing the defect. Add to `crates/loeres-device/src/solve/constrained/tests.rs`, behind `constant-iteration`: `Q = diag(0.5, 2.1)`, `c = 0`, `step_scale 1.0`, `x0 = (1.0, 1e-15)`, `tolerance 1e-12`, box `±1e6`, one slack row (`x0 <= 1e9`), `max_iterations 400`. The max coordinate change dips below tolerance near iteration 40 and rises again near iteration 73. Assert `NotConverged`, `iterations_executed == 400`, and `max_constraint_violation == 0` so the Amendment 5 gate cannot be what satisfies it. Verified by the architect: it reports `NotConverged` under RFC 029 and `Converged` under a set-once revert, with final `x = (0, 36.064014)` either way.
@@ -176,6 +176,68 @@ can reach for instead of diagnosing a failure. **Do not** add
 **Evidence:** fmt, clippy `-D warnings`, `cargo test --workspace --all-features`,
 MSRV 1.85, `cargo xtask check` (16 gates), `cargo xtask conformance` showing
 `24 total / 24 passed`, and the before/after status on the infeasible case.
+
+
+### 3.3 S5 documentation corrections D1-D3 (architect review 060) — before RFC 027 closeout
+
+All three are prose. No code change. Full analysis:
+`.git-exclude/reviewed/060-rfc027-s5-documentation-architect-review-2026-09-24.md`.
+
+**D1 (blocking) — a second stale sentence in the same normative table.**
+`docs/specs/loeres-external-design-v1.md:1096` still reads:
+
+```text
+| Constant-iteration mode | Solver records convergence internally but continues to execute the configured iteration count | Must not claim cryptographic constant-time |
+```
+
+"Records convergence internally" is the sticky flag RFC 029 removed. Replace the
+middle cell with:
+
+```text
+Solver runs the configured iteration count and evaluates the convergence criterion at the final iteration
+```
+
+**This was missed by review 059's F1, not by the implementer** - that sweep was
+truncated and named only one site. `external-design:376`,
+`docs/specs/loeres-requirements-v1.md:697` (STEP-005) and
+`rfcs/done/006-deterministic-solver-kernel.md:106` are **correct as they stand**
+and must not be touched: the first two say a fixed count may run past a converged
+step, which is still true, and the third is a `done/` RFC recording what shipped
+at its time.
+
+**D2 (blocking) - the `m = 0` identity claim is false for a non-identity `Q`.**
+Identity requires the *same oracle* (RFC 027 §0.2.5, Amendment 4 §0.4.1). RFC
+016's is `q·(x − t)`; a `QuadraticProgram`'s is `c + Σⱼ Qᵢⱼxⱼ`. They are the same
+IEEE operations only when `Q = I` and `c = −t`. Reproduced by the architect with
+`q = (3.0, 0.7)`, `t = (0.7, 3.3)`, `alpha 0.25`, the same problem expressed both
+ways: coordinate 0 gives `0.69999999999999984` against RFC 016's
+`0.69999999999999996` - a delta of `1.11e-16`, not a sign-of-zero difference.
+
+Two surfaces claim it unqualified. Replace the sentence at
+`crates/loeres-cluster/README.md:69` and at `docs/src/cluster-user-guide.md:135`
+with, adapted to each surface's wording:
+
+> `m = 0` is accepted and performs the single exact box projection with no
+> Dykstra sweep - the RFC 016 step, operation for operation. Results match
+> RFC 016 up to the sign of zero **when the two oracles coincide** (`Q = I`,
+> `c = −t`); for a general `Q` the oracles differ in floating point and the
+> agreement is within tolerance, not exact (RFC 027 §0.2.5).
+
+`conformance/README.md:38` is **correct as it stands** - it describes the
+conformance runner, which installs the fixtures' own oracle. Do not change it.
+
+**D3 (minor) - stale status line.**
+`docs/specs/loeres-roadmap-milestones-v1.md:1116` says S5 "is under review".
+Record S5 as landed and accepted in architect review 060, with RFC 027's
+closeout (S6) as what remains.
+
+**Evidence:** `cargo xtask check` (16 gates), `cargo xtask conformance` (24/24),
+`mdbook build docs --dest-dir target/xtask-book/local`, and a `git grep` for
+`records convergence` and for `sign of zero` showing every remaining hit is one
+of the four sites named above as correct.
+
+**Then RFC 027 closeout (S6):** exit criteria review, `release-gate`, and the
+`done/` move - architect-sequenced, not part of D1-D3.
 
 ## 4. Non-change scope
 No IPM, no ADMM, no LP solve, no `DynamicQp` builder, no new dependency (if one seems needed, stop — RFC 026 gate runs regardless), no `sqrt`, no change to existing kernel signatures, no `#[allow(dead_code)]`.
