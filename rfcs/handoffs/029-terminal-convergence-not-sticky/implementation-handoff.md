@@ -155,7 +155,7 @@ that status was false.
 ## 8. Required evidence
 
 fmt, clippy `-D warnings`, `cargo test --workspace --all-features`, MSRV 1.85,
-`cargo xtask check` (16 gates), `cargo xtask conformance` (24/24 unchanged),
+`cargo xtask check` (17 gates), `cargo xtask conformance` (24/24 unchanged),
 `mdbook build docs --dest-dir target/xtask-book/local`, and the
 `thumbv7em-none-eabihf` build with `owned-arrays`. Show the before/after status
 for §3's divergent configuration on **both** kernels.

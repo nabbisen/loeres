@@ -29,6 +29,7 @@ const IMPLEMENTED: &[&str] = &[
     "examples",
     "review-evidence",
     "link-audit",
+    "differential",
 ];
 
 fn main() -> ExitCode {
@@ -52,6 +53,7 @@ fn main() -> ExitCode {
         Some("examples") => checks::examples::run(),
         Some("review-evidence") => checks::review_evidence::run(),
         Some("link-audit") => checks::link_audit::run(),
+        Some("differential") => checks::differential::run(),
         Some(other) => {
             eprintln!("xtask: unknown command `{other}`");
             usage();

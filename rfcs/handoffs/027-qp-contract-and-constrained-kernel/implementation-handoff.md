@@ -174,7 +174,7 @@ can reach for instead of diagnosing a failure. **Do not** add
 `#[allow(dead_code)]` anywhere in its place.
 
 **Evidence:** fmt, clippy `-D warnings`, `cargo test --workspace --all-features`,
-MSRV 1.85, `cargo xtask check` (16 gates), `cargo xtask conformance` showing
+MSRV 1.85, `cargo xtask check` (17 gates), `cargo xtask conformance` showing
 `24 total / 24 passed`, and the before/after status on the infeasible case.
 
 
@@ -240,7 +240,7 @@ conformance runner, which installs the fixtures' own oracle. Do not change it.
 Record S5 as landed and accepted in architect review 060, with RFC 027's
 closeout (S6) as what remains.
 
-**Evidence:** `cargo xtask check` (16 gates), `cargo xtask conformance` (24/24),
+**Evidence:** `cargo xtask check` (17 gates), `cargo xtask conformance` (24/24),
 `mdbook build docs --dest-dir target/xtask-book/local`, and a `git grep` for
 `records convergence` and for `sign of zero` showing every remaining hit is one
 of the four sites named above as correct.

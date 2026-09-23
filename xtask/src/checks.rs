@@ -3,6 +3,7 @@
 pub mod basic;
 pub mod check_rfcs;
 pub mod conformance;
+pub mod differential;
 pub mod doc_currency;
 pub mod examples;
 pub mod feature_matrix;

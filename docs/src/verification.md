@@ -51,6 +51,7 @@ it actually asserts.
 | `supply-chain` | Enforced (fails when unavailable) | RustSec advisories, an exhaustive license allow-list, duplicate/wildcard bans, crates.io-only sources, and zero external dependencies per edge crate |
 | `examples` | Enforced | each example builds under its declared feature set and its **resolved** graph carries no forbidden crate |
 | `conformance` | Enforced | the smoke corpus, comparing the real device and cluster solvers; for the constrained (QP) kernels, closed-form optima with 1-3 halfspaces, an infeasible polyhedron asserting `NotConverged`/`NoProgress`, `m = 0` identity with RFC 016 on every solve fixture, and feasibility of every returned point |
+| `differential` | Enforced | every numerical solve kernel has a registered randomized differential test (or a reasoned exemption), the named test exists, and the registry and the code agree in both directions; it checks the discipline is present, not that a reference is sound |
 | `link-audit` | Enforced | every relative Markdown link resolves |
 
 `target-profiles` is manifest-driven and its profiles carry their own classes:

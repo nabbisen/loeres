@@ -5,6 +5,29 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.21.2] — unreleased — post-0.21.1 development
+
+**Release status:** unreleased
+
+Development toward the next release.
+
+### RFC 030 S1 — the `differential` gate
+
+- `cargo xtask check` gains a seventeenth gate, `differential` (also runnable as
+  `cargo xtask differential`, and part of the `release-gate` developer suite). It
+  asserts that every numerical solve kernel carries a randomized differential test
+  against an independently constructed exact reference, or an explicit reasoned
+  exemption. A const-table registry in `xtask/src/checks/differential.rs` names each
+  entrypoint, its test file and test, and the mutation the test detects. The gate
+  discovers `pub fn solve_*` entrypoints in `loeres-device` and `loeres-cluster`
+  (including inside `mod owned`) and fails closed on: an entrypoint with no row, a row
+  naming no entrypoint (reported separately), a duplicate row, a missing test file or
+  `#[test]` function, an empty exemption reason, or an empty `detects`.
+- It checks that the discipline is present, not that it is sound: judging a
+  reference's independence is left to architect review (RFC 030 §8).
+- The RFC 006 and RFC 016 rows are `Exempt` ("retrofit pending") until their
+  retrofits land in the same change.
+
 ## [0.21.1] — 2026-09-24 — Constrained quadratic programming
 
 **Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
