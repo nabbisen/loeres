@@ -15,16 +15,13 @@ variant = "infeasible"
 # must not shrink when the cap is raised tenfold. Do not reshape this polyhedron
 # to avoid exactly-cancelling geometry.
 #
-# `status` is deliberately "not-asserted". Measured, not assumed: the *outer*
-# loop settles on a fixed point of the capped projection map and reports
-# Converged, after 42 outer iterations *every one of which* hit its projection
-# cap, with a violation of exactly 2, identically on the device and cluster
-# kernels — for a natural configuration (step 0.5, 5000 iterations), not only a
-# degenerate one. `projection_cap_hits` and
-# `max_constraint_violation` are the honest infeasibility signals (RFC 027
-# section 11.3); whether the outer status should also reflect an unconverged
-# projection is an open design question raised in the S4 review request, not
-# something this fixture may encode either way.
+# Amendment 5 (RFC 027 section 0.5): `Converged` means feasible. The outer loop
+# settles on a fixed point of the capped projection map after 42 outer iterations,
+# every one of which hit its projection cap, with a violation of exactly 2,
+# identically on the device and cluster kernels. That stationary-but-infeasible
+# iterate is reported as NotConverged / NoProgress, never Converged.
+# `projection_cap_hits` and `max_constraint_violation` remain the way to learn how
+# infeasible the answer is (RFC 027 section 11.3).
 
 [config]
 max_iterations = 5000
@@ -43,8 +40,8 @@ constraint_matrix = [1.0, 0.0, -1.0, 0.0, 0.0, 1.0]
 constraint_rhs = [-1.0, -1.0, 5.0]
 
 [expected]
-status = "not-asserted"
-termination = "not-asserted"
+status = "not-converged"
+termination = "no-progress"
 solution = []
 error = "none"
 violation_min = 0.5

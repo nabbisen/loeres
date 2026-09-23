@@ -1384,17 +1384,6 @@ mod tests {
         assert!(!run_constrained(&fixture).unwrap().fixture_passed());
     }
 
-    #[test]
-    fn not_asserted_status_is_only_legal_for_an_infeasible_fixture() {
-        let mut fixture = load_constrained_fixtures("smoke")
-            .unwrap()
-            .into_iter()
-            .find(|f| f.fixture_id == "qp-linear-2d-vertex-001")
-            .unwrap();
-        fixture.expected_status_for_test("not-asserted");
-        assert!(!run_constrained(&fixture).unwrap().fixture_passed());
-    }
-
     /// The zero-coordinate fixture is where raw `to_bits()` would report a
     /// difference the RFC 027 §0.4.1 rule deliberately ignores.
     #[test]

@@ -1,16 +1,16 @@
 //! Tests for the RFC 027 constrained projected first-order device kernel.
 
 use super::{
-    ConstrainedProjectedWorkspace, ConstrainedSolveConfig, solve_constrained_projected_first_order,
+    ConstrainedProjectedWorkspace, ConstrainedSolveConfig, ConstrainedSolveReport,
+    solve_constrained_projected_first_order,
 };
 use crate::config::{DeviceSolveConfig, TimingMode};
 use crate::problem::ProjectedFirstOrderProblem;
 use crate::solve::{ProjectedFirstOrderWorkspace, solve_projected_first_order};
 use crate::workspace::{DeviceWorkspace, DeviceWorkspaceDiagnostic};
-use loeres::{BoxBounds, LinearInequalities, QuadraticObjective, SolveStatus, SolverError};
-
-#[cfg(feature = "constant-iteration")]
-use loeres::TerminationReason;
+use loeres::{
+    BoxBounds, LinearInequalities, QuadraticObjective, SolveStatus, SolverError, TerminationReason,
+};
 use loeres_backend_static::array::{FixedMatrix, FixedVector};
 use loeres_backend_static::workspace::WorkspaceFootprint;
 
@@ -462,55 +462,61 @@ fn non_finite_initial_iterate_is_non_finite_input() {
 // constraints.
 // ---------------------------------------------------------------------------
 
-#[test]
-fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
-    // x0 <= -1 and x0 >= 1 (via -x0 <= -1) cannot both hold: infeasible.
-    struct Infeasible {
-        q: FixedMatrix<f64, 1, 1, 1>,
-        c: FixedVector<f64, 1>,
-        lo: FixedVector<f64, 1>,
-        hi: FixedVector<f64, 1>,
-        a: FixedMatrix<f64, 2, 1, 2>,
-        b: FixedVector<f64, 2>,
-    }
-    impl QuadraticObjective<f64> for Infeasible {
-        type Hessian = FixedMatrix<f64, 1, 1, 1>;
-        type Linear = FixedVector<f64, 1>;
-        fn hessian(&self) -> &Self::Hessian {
-            &self.q
-        }
-        fn linear_term(&self) -> &Self::Linear {
-            &self.c
-        }
-    }
-    impl BoxBounds<f64> for Infeasible {
-        type Bound = FixedVector<f64, 1>;
-        fn lower_bounds(&self) -> &Self::Bound {
-            &self.lo
-        }
-        fn upper_bounds(&self) -> &Self::Bound {
-            &self.hi
-        }
-    }
-    impl LinearInequalities<f64> for Infeasible {
-        type Constraints = FixedMatrix<f64, 2, 1, 2>;
-        type Rhs = FixedVector<f64, 2>;
-        fn constraint_matrix(&self) -> &Self::Constraints {
-            &self.a
-        }
-        fn constraint_rhs(&self) -> &Self::Rhs {
-            &self.b
-        }
-    }
+struct Qp1x2 {
+    q: FixedMatrix<f64, 1, 1, 1>,
+    c: FixedVector<f64, 1>,
+    lo: FixedVector<f64, 1>,
+    hi: FixedVector<f64, 1>,
+    a: FixedMatrix<f64, 2, 1, 2>,
+    b: FixedVector<f64, 2>,
+}
 
-    let problem = Infeasible {
+impl QuadraticObjective<f64> for Qp1x2 {
+    type Hessian = FixedMatrix<f64, 1, 1, 1>;
+    type Linear = FixedVector<f64, 1>;
+    fn hessian(&self) -> &Self::Hessian {
+        &self.q
+    }
+    fn linear_term(&self) -> &Self::Linear {
+        &self.c
+    }
+}
+impl BoxBounds<f64> for Qp1x2 {
+    type Bound = FixedVector<f64, 1>;
+    fn lower_bounds(&self) -> &Self::Bound {
+        &self.lo
+    }
+    fn upper_bounds(&self) -> &Self::Bound {
+        &self.hi
+    }
+}
+impl LinearInequalities<f64> for Qp1x2 {
+    type Constraints = FixedMatrix<f64, 2, 1, 2>;
+    type Rhs = FixedVector<f64, 2>;
+    fn constraint_matrix(&self) -> &Self::Constraints {
+        &self.a
+    }
+    fn constraint_rhs(&self) -> &Self::Rhs {
+        &self.b
+    }
+}
+
+/// `min ½x² s.t. x ≤ b₀ and −x ≤ b₁`, box `[−100, 100]`.
+fn qp_1x2(b: [f64; 2]) -> Qp1x2 {
+    Qp1x2 {
         q: FixedMatrix::from_row_major_array([1.0]),
         c: FixedVector::from_array([0.0_f64]),
         lo: FixedVector::from_array([-100.0_f64]),
         hi: FixedVector::from_array([100.0_f64]),
         a: FixedMatrix::from_row_major_array([1.0_f64, -1.0]),
-        b: FixedVector::from_array([-1.0_f64, -1.0]),
-    };
+        b: FixedVector::from_array(b),
+    }
+}
+
+fn solve_1x2(
+    problem: &Qp1x2,
+    config: &ConstrainedSolveConfig<f64>,
+) -> Result<ConstrainedSolveReport<f64>, SolverError> {
     let mut x = FixedVector::from_array([0.0_f64]);
     let mut ws = ConstrainedProjectedWorkspace::new(
         FixedVector::from_array([0.0]),
@@ -519,18 +525,69 @@ fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
         FixedVector::from_array([0.0, 0.0]),
         FixedVector::from_array([0.0, 0.0]),
     );
-    let report = solve_constrained_projected_first_order(
-        &problem,
-        0.5,
-        &mut x,
-        &mut ws,
-        &box_only_config(200, 1e-12),
-    )
-    .expect("infeasibility is a status, not an error");
+    solve_constrained_projected_first_order(problem, 0.5, &mut x, &mut ws, config)
+}
+
+#[test]
+fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
+    // x <= -1 and x >= 1 (via -x <= -1) cannot both hold: infeasible.
+    let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &box_only_config(200, 1e-12))
+        .expect("infeasibility is a status, not an error");
 
     assert!(report.projection_cap_hits() > 0);
     assert!(report.max_constraint_violation() > 0.0);
     assert!((report.max_constraint_violation() - 2.0).abs() < 1e-9);
+}
+
+// RFC 027 Amendment 5 (§0.5.1): `Converged` means feasible. The capped
+// projection map has a fixed point even when the polyhedron is empty, so the
+// outer step stops moving; that is `NotConverged`/`NoProgress`, never
+// `Converged`, and the violation and cap hits stay reported unchanged.
+#[test]
+fn an_infeasible_polyhedron_is_not_converged_with_no_progress() {
+    let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &box_only_config(200, 1e-12)).unwrap();
+
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.core().termination(), TerminationReason::NoProgress);
+    assert!(report.projection_cap_hits() > 0);
+    assert!((report.max_constraint_violation() - 2.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_feasible_control_still_reports_converged() {
+    // x <= 1 and -x <= 1: the same shape, feasible, optimum x = 0.
+    let report = solve_1x2(&qp_1x2([1.0, 1.0]), &box_only_config(200, 1e-12)).unwrap();
+
+    assert_eq!(report.status(), SolveStatus::Converged);
+    assert_eq!(
+        report.core().termination(),
+        TerminationReason::ConvergenceCriterion
+    );
+    assert_eq!(report.projection_cap_hits(), 0);
+    assert_eq!(report.max_constraint_violation(), 0.0);
+}
+
+/// The `ConstantIteration` return is a separate path from the early exit
+/// (§0.5.1 governs both): it must not report `converged_at_cap` for an
+/// infeasible polyhedron either.
+#[test]
+#[cfg(feature = "constant-iteration")]
+fn constant_iteration_does_not_report_converged_on_an_infeasible_polyhedron() {
+    let cfg = ConstrainedSolveConfig {
+        timing_mode: TimingMode::ConstantIteration,
+        ..box_only_config(50, 1e-12)
+    };
+    let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &cfg).unwrap();
+    assert_eq!(report.iterations_executed(), 50);
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.core().termination(), TerminationReason::NoProgress);
+
+    let control = solve_1x2(&qp_1x2([1.0, 1.0]), &cfg).unwrap();
+    assert_eq!(control.status(), SolveStatus::Converged);
+    assert_eq!(
+        control.core().termination(),
+        TerminationReason::IterationCap
+    );
 }
 
 // ---------------------------------------------------------------------------

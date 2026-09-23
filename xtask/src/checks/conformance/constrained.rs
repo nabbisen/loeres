@@ -324,11 +324,6 @@ impl ConstrainedFixture {
         self.expected.solution = solution;
     }
 
-    #[cfg(test)]
-    pub(super) fn expected_status_for_test(&mut self, status: &str) {
-        self.expected.status = status.to_owned();
-    }
-
     pub(super) fn validate(&self, suite: &str) -> Result<(), String> {
         let id = &self.fixture_id;
         let expect = |ok: bool, what: &str| {
@@ -712,17 +707,6 @@ fn solved<'a>(name: &str, run: &'a PathRun) -> Result<&'a PathSolved, String> {
 }
 
 fn compare_status(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> CategoryResult {
-    // Only an infeasible fixture may leave the status unasserted, and it is
-    // held to the feasibility category instead (cap hit, violation, no shrink).
-    if f.expected.status == "not-asserted" {
-        return if f.variant == "infeasible" {
-            CategoryResult::NotApplicable
-        } else {
-            CategoryResult::Fail(
-                "status may only be not-asserted for an infeasible fixture".to_owned(),
-            )
-        };
-    }
     let status = match f.expected.status.as_str() {
         "converged" => SolveStatus::Converged,
         "not-converged" => SolveStatus::NotConverged,
@@ -731,6 +715,7 @@ fn compare_status(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> 
     let termination = match f.expected.termination.as_str() {
         "convergence-criterion" => TerminationReason::ConvergenceCriterion,
         "iteration-cap" => TerminationReason::IterationCap,
+        "no-progress" => TerminationReason::NoProgress,
         other => return CategoryResult::Fail(format!("unknown expected termination `{other}`")),
     };
     for (name, run) in paths {

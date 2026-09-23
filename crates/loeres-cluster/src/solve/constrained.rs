@@ -375,7 +375,9 @@ where
 /// fail-safe failures return `Err`; cancellation returns
 /// [`SolverError::Cancelled`]. An infeasible polyhedron is not special-cased: it
 /// runs each projection to `projection_max_sweeps` and reports its true
-/// violation with `projection_cap_hits > 0`.
+/// violation with `projection_cap_hits > 0`. `Converged` means feasible (RFC 027
+/// §0.5.1): a stationary outer step at an iterate whose violation exceeds
+/// `projection_tolerance` reports `NotConverged` with `NoProgress`.
 ///
 /// # Errors
 /// Structural/validation failures per RFC 016 §3.7, plus
@@ -525,10 +527,19 @@ where
             change = change.max(x.get(j)?.sub(workspace.outer_previous.get(j)?).abs());
         }
         if change.lte_tolerance(config.tolerance) {
+            // RFC 027 §0.5.1: a stationary outer step is `Converged` only at a
+            // feasible iterate; a capped projection has a fixed point even when
+            // the polyhedron is empty.
+            let violation = max_constraint_violation(problem, x, m)?;
+            let report = if violation.lte_tolerance(config.projection_tolerance) {
+                SolveReport::converged_early(executed)
+            } else {
+                SolveReport::not_converged_stalled(executed)
+            };
             return Ok(ConstrainedSolveRecord {
-                report: SolveReport::converged_early(executed),
+                report,
                 projection_cap_hits,
-                max_constraint_violation: max_constraint_violation(problem, x, m)?,
+                max_constraint_violation: violation,
                 checked_scope,
                 finite: finite_evidence,
             });

@@ -9,7 +9,8 @@ use crate::runtime::{ClusterCancellationToken, ClusterSolveConfig};
 use crate::solve::{solve_batch, solve_projected_first_order_dyn};
 use loeres::validation::{TrustToken, TrustedByCaller};
 use loeres::{
-    BoxBounds, LinearInequalities, MatrixView, QuadraticObjective, SolveStatus, VectorView,
+    BoxBounds, LinearInequalities, MatrixView, QuadraticObjective, SolveStatus, TerminationReason,
+    VectorView,
 };
 use loeres::{Dim2, DimensionKind};
 use loeres_backend_std::{DenseMatrix, SparseIngestOptions, SparseMatrix};
@@ -338,6 +339,54 @@ fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
     .unwrap();
     assert!(record.projection_cap_hits > 0);
     assert!(record.max_constraint_violation > 0.5);
+}
+
+/// RFC 027 Amendment 5 (§0.5.1): `Converged` means feasible. The capped
+/// projection map has a fixed point even when the polyhedron is empty, so the
+/// outer step stops moving; that is `NotConverged`/`NoProgress`, and the
+/// violation and cap hits stay reported unchanged.
+#[test]
+fn an_infeasible_polyhedron_is_not_converged_with_no_progress() {
+    let problem = projection(1, &[1.0, -1.0], &[-1.0, -1.0], &[0.0]);
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(1, 2).unwrap();
+    let record = solve_constrained_projected_first_order_dyn(
+        &problem,
+        0.5,
+        &mut x,
+        &mut ws,
+        &cfg(1e-12, 200),
+        &scan(),
+    )
+    .unwrap();
+    assert_eq!(record.report.status(), SolveStatus::NotConverged);
+    assert_eq!(record.report.termination(), TerminationReason::NoProgress);
+    assert!(record.projection_cap_hits > 0);
+    assert!((record.max_constraint_violation - 2.0).abs() < 1e-9);
+}
+
+#[test]
+fn a_feasible_control_still_reports_converged() {
+    // x <= 1 and -x <= 1: the same shape, feasible, optimum x = 0.
+    let problem = projection(1, &[1.0, -1.0], &[1.0, 1.0], &[0.0]);
+    let mut x = dv(&[0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(1, 2).unwrap();
+    let record = solve_constrained_projected_first_order_dyn(
+        &problem,
+        0.5,
+        &mut x,
+        &mut ws,
+        &cfg(1e-12, 200),
+        &scan(),
+    )
+    .unwrap();
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_eq!(
+        record.report.termination(),
+        TerminationReason::ConvergenceCriterion
+    );
+    assert_eq!(record.projection_cap_hits, 0);
+    assert_eq!(record.max_constraint_violation, 0.0);
 }
 
 // ---------------------------------------------------------------------------

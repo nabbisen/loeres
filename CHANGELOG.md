@@ -132,6 +132,19 @@ Development toward the next release; RFC 027 implementation follows.
 - The S3 bit-identity test now uses the same numeric-equality rule and adds
   review 056's zero-coordinate reproducer.
 
+### RFC 027 S4 corrections — `Converged` means feasible (Amendment 5)
+
+- Both constrained kernels now report `Converged` only when the outer step is
+  stationary **and** the terminal constraint violation is within
+  `projection_tolerance`; otherwise they report `NotConverged` with
+  `TerminationReason::NoProgress`. Before, an infeasible polyhedron settled on a
+  fixed point of the capped projection map and was reported `Converged`. This
+  applies to the early exit on both kernels and to the device's
+  `ConstantIteration` return. Feasible results, `projection_cap_hits` and
+  `max_constraint_violation` are unchanged.
+- `qp-linear-2d-infeasible-001` asserts `not-converged` / `no-progress`, and the
+  fixture schema's `not-asserted` status escape hatch is removed.
+
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** released (tagged 2026-09-12, distributed 2026-09-12)
