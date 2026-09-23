@@ -1,7 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
 **Status.** Accepted (design frozen 2026-09-12)
-**Design approval.** Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
+**Design approval.** Amendment 4 (§0.4, 2026-09-23) by architect review 056. Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
@@ -151,6 +151,39 @@ would encode the defect above as a requirement.
 
 **0.3.5 §11.2's `m = 0` bit-identity claim is unaffected.** It rests on the
 single exact box projection with no sweep (§0.2.3), which §0.3.1 does not touch.
+
+## 0.4 Amendment 4 — 2026-09-23 (architect review 056)
+
+**Bit-identity holds up to the sign of zero, and must be asserted that way.**
+
+§0.2.5 defines bit-identity as same oracle, same inputs, same target. Reviewing
+S3 showed that even within that scope — `Q = I`, `c = −t`, where the
+`QuadraticProgram` oracle and RFC 006/016's `q·(x − t)` coincide — the two can
+still differ in the *sign of a zero*. With `tᵢ = 0.0` the oracle begins at
+`cᵢ = −0.0`, and an off-diagonal `0·xⱼ` term adds `+0.0`, turning `−0.0 + 0.0`
+into `+0.0` where RFC 016 computes `1.0·(−0.0 − 0.0) = −0.0`. The subsequent
+`x − α·g` then differs in the sign of zero. Reproduced:
+
+```text
+target [0.0, 3.0], start [-0.0, 0.5], alpha 0.5, box [-1, 1]
+coordinate 0: constrained -0.0 (0x8000000000000000) vs RFC 016 +0.0 (0x0)
+```
+
+The values are equal — `−0.0 == +0.0` — and no numerical property is violated.
+Only a raw bit comparison sees it.
+
+**0.4.1** Every bit-identity assertion in this RFC's scope compares **numeric
+equality plus a NaN check**, never raw `to_bits()`. `+0.0` and `−0.0` satisfy
+it; `NaN` never does.
+
+**0.4.2** This applies in particular to S4's fixture-level identity comparison
+across the existing fixture set, where a fixture with a zero coordinate would
+otherwise fail for a reason that is not a defect — and where the tempting
+remedy is to loosen the assertion and lose the guarantee everywhere.
+
+**0.4.3** §11.2's `m = 0` bit-identity guarantee is read under §0.4.1. The
+structural argument (a single exact box projection, no sweep — §0.2.3) is
+unchanged; only the form of the assertion is fixed.
 
 ## 1. Summary
 
