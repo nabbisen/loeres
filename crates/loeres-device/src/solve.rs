@@ -10,6 +10,14 @@
 #[cfg(feature = "owned-arrays")]
 pub use owned::{DeviceSolveReport, ProjectedFirstOrderWorkspace, solve_projected_first_order};
 
+#[cfg(feature = "owned-arrays")]
+mod constrained;
+#[cfg(feature = "owned-arrays")]
+pub use constrained::{
+    ConstrainedProjectedWorkspace, ConstrainedSolveConfig, ConstrainedSolveReport,
+    solve_constrained_projected_first_order,
+};
+
 #[cfg(all(test, feature = "owned-arrays"))]
 mod tests;
 

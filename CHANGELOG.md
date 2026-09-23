@@ -48,6 +48,37 @@ Development toward the next release; RFC 027 implementation follows.
   device and cluster kernels. `Q` symmetry and positive semidefiniteness remain a
   caller precondition, and LP is expressible but not solved.
 
+### RFC 027 S2 — constrained projected first-order device kernel
+
+- `loeres-device::solve::solve_constrained_projected_first_order` extends the
+  RFC 006 kernel to `lo ≤ x ≤ hi, Ax ≤ b` via a bounded Dykstra projection:
+  the polyhedron `{Ax ≤ b}` solved by Hildreth's dual coordinate method, the
+  box by exact `clamp` with its own Dykstra increment (never a bare clamp
+  inside the sweep — architect review 043 R1). Consumes
+  `loeres::QuadraticProgram` directly; `step_scale` is supplied as its own
+  parameter, since the contract carries none (RFC 027 §0.2.1).
+- `ConstrainedProjectedWorkspace<S, N, M>` (`M ≥ 1`, const-asserted — a device
+  problem with no inequalities uses the RFC 006 entrypoint, per Amendment 2)
+  and `ConstrainedSolveConfig` (adds `projection_max_sweeps` and
+  `projection_tolerance` alongside the existing outer cap and tolerance).
+  `ConstrainedSolveReport` adds `projection_cap_hits` and
+  `max_constraint_violation` so the kernel never claims exact feasibility it
+  did not verify.
+- Footprint is `(4N + 2M)·size_of::<S>() + header`, one `N`-length buffer more
+  than RFC 027 §11.4's stated `3N + 2M` — needed to compare the outer
+  iterate's net change against its value before the gradient step, which the
+  outer convergence criterion (kept identical to RFC 006's) requires and no
+  in-place reuse of the other buffers can provide without corrupting their own
+  persistent state. Documented at the workspace type and flagged for
+  architect review.
+- `m = 0` is not this kernel's concern: a boundary bug in an early sign
+  convention for Hildreth's dual update, and a second bug letting the
+  multipliers reset every sweep instead of persisting, were both found and
+  fixed by test before landing — the second one specifically because it let a
+  genuinely infeasible pair of constraints settle to a stable, wrongly
+  "converged" point. `max_constraint_violation`, not `SolveStatus` alone, is
+  documented as the reliable feasibility signal for exactly this reason.
+
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** released (tagged 2026-09-12, distributed 2026-09-12)
