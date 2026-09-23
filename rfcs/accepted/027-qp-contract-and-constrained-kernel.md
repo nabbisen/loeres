@@ -1,7 +1,7 @@
 # RFC 027 - QP Contract and Linearly Constrained Projected Kernel
 
 **Status.** Accepted (design frozen 2026-09-12)
-**Design approval.** Amendment 4 (§0.4, 2026-09-23) by architect review 056. Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
+**Design approval.** Amendment 5 (§0.5, 2026-09-24) by architect review 057. Amendment 4 (§0.4, 2026-09-23) by architect review 056. Amendment 3 (§0.3, 2026-09-23) by architect review 054. Amendment 2 (§0.2, 2026-09-15) by architect review 052. Amendment 1 (§0, 2026-09-12) by architect review 045.  Architect review 043 (owner-authorized numerical review; R1/R2 applied); project owner confirmed scope (IPM excluded, LP contract-only) and authorized the `accepted/` transition on 2026-09-12.
 **Tracks.** R4 first capability, approved by the project owner 2026-09-12 ("QP contract + constrained kernel"); requirements PF-001/PF-002; external design §2.7, §3.2; roadmap §3.5's deferred general linear-inequality projection.
 **Touches.** `loeres::problem` (activates the reserved namespace), `loeres-device::{problem,solve}`, `loeres-cluster::{model,solve}`, `conformance/`, apex trio §PF rows.
 
@@ -184,6 +184,53 @@ remedy is to loosen the assertion and lose the guarantee everywhere.
 **0.4.3** §11.2's `m = 0` bit-identity guarantee is read under §0.4.1. The
 structural argument (a single exact box projection, no sweep — §0.2.3) is
 unchanged; only the form of the assertion is fixed.
+
+## 0.5 Amendment 5 — 2026-09-24 (architect review 057)
+
+**`Converged` must mean feasible. The outer status now depends on the terminal
+constraint violation.**
+
+S4's conformance work found that an infeasible polyhedron is reported as
+`SolveStatus::Converged`. Measured identically on both kernels for a natural
+configuration (`x₀ ≤ −1`, `x₀ ≥ 1`, one loose row; `step_scale 0.5`):
+`Converged` / `ConvergenceCriterion`, 42 outer iterations, **every one of which
+hit its projection cap**, terminal violation exactly `2`.
+
+§11.3's outer criterion measures only whether the outer step stopped moving, and
+a *capped* projection is a deterministic map that has a fixed point even when
+the polyhedron it approximates is empty. §0.3.4 is fully satisfied — the cap
+hits are counted, the violation is reported and does not shrink when the cap is
+raised — and the reported status is still a false statement. The defect is in
+this RFC's semantics, not in either kernel's arithmetic.
+
+**0.5.1** The outer loop reports `Converged` only when the outer step is
+stationary **and** `max(0, maxᵢ(aᵢᵀx − bᵢ)) ≤ projection_tolerance` at the
+returned iterate. Otherwise it reports `SolveReport::not_converged_stalled` —
+`NotConverged` with `TerminationReason::NoProgress`, which is what a stationary
+iterate that is not a solution is.
+
+**0.5.2** This can only fire when a projection was capped *and* the result is
+genuinely infeasible. A projection that converged already guarantees violation
+within `projection_tolerance` by the third clause of §0.3.3, so §0.5.1 never
+downgrades a good answer. Verified: unchanged on every feasible fixture and on
+the full workspace suite; the infeasible case becomes `NotConverged`/
+`NoProgress` with its violation and cap hits unchanged.
+
+**0.5.3** §11.3's "an inner cap hit is **not** an error: the iterate is
+feasible-approximate and the outer loop continues" stands — a cap hit remains a
+non-error and does not stop the outer loop. §0.5.1 governs only the *status
+reported at the end*, and only when the final iterate is actually infeasible.
+
+**0.5.4** The two honest fields of §11.3 are unchanged and remain the way to
+learn *how* infeasible an answer is. §0.5.1 makes the status a trustworthy
+summary of *whether* it is, which matters most where the fields are not
+reachable — notably the cluster batch seam, whose `BatchItemOutcome` carries
+only the core `SolveReport` (architect review 056, L1). With §0.5.1 that seam
+no longer needs widening.
+
+**0.5.5** A conformance fixture for an infeasible polyhedron asserts
+`NotConverged` with `NoProgress`. The schema escape hatch that allowed a
+fixture to assert nothing about status has no remaining user and is removed.
 
 ## 1. Summary
 
