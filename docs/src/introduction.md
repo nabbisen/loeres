@@ -21,8 +21,9 @@ The core design principle is:
 `loeres` defines the shared vocabulary — scalar capabilities, vector and
 matrix access contracts, solver outcome/status and validation categories,
 dimensions, and allocation-free error/diagnostic topology. Its `problem`
-namespace is reserved: no generic public LP/QP/SOCP/problem-family contract
-ships. Implemented PFO problem contracts belong to the device and cluster
+namespace defines a storage-agnostic quadratic-program contract; LP is
+expressible as `Q = 0` but not solved, and no SOCP contract exists.
+Implemented PFO problem contracts belong to the device and cluster
 execution crates. `loeres` is `#![no_std]` and does not depend on `alloc`.
 Backends provide storage; execution crates provide solve paths. A cloud service
 may use heap allocation, threads, and tracing without contaminating an embedded

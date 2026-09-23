@@ -57,8 +57,9 @@ To navigate this release: the workspace lives under `crates/` (five crates) and 
 
 - **Five crates, one contract.** `loeres` (`no_std`, no-`alloc`) defines scalar,
   vector/matrix access, solver-outcome, validation, error, diagnostic, and
-  dimension contracts. Its `problem` namespace is reserved; no generic public
-  LP/QP/SOCP/problem-family contract ships. Implemented PFO problem contracts
+  dimension contracts. Its `problem` namespace defines a storage-agnostic
+  quadratic-program contract (RFC 027); LP is expressible as `Q = 0` but not
+  solved, and no SOCP contract exists. Implemented PFO problem contracts
   belong to `loeres-device` and `loeres-cluster`. Backends (`-backend-std`,
   `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own
   solve paths. The dependency graph is acyclic and environment-separated.
