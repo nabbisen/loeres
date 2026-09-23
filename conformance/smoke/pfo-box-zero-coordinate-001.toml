@@ -1,0 +1,43 @@
+schema_version = 1
+fixture_id = "pfo-box-zero-coordinate-001"
+suite = "smoke"
+problem_class = "box_quadratic_diagonal"
+solver_family = "projected_first_order"
+dimension = 2
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["device-reference-smoke", "cluster-reference-smoke"]
+
+# A zero target coordinate with a negative-zero iterate (architect review 056
+# F1). `m0_identity` compares the constrained m = 0 kernel with RFC 016 by numeric
+# equality plus a NaN check, never raw bits (RFC 027 Amendment 4, section 0.4.1).
+# Here both sides use the fixtures' own oracle q*(x - c), so they are in fact
+# bit-equal, signs of zero included; the sign-of-zero divergence review 056
+# reproduced arises only with the default `Qx + c` oracle, and is exercised live
+# by `m_zero_is_identical_to_rfc_016_across_fixtures_up_to_the_sign_of_zero` in
+# loeres-cluster. This fixture keeps the case in the corpus so that any future
+# change to the runner's oracle meets it.
+
+[config]
+max_iterations = 100
+tolerance = 0.000001
+step_scale = 0.5
+
+[problem]
+lower = [-1.0, -1.0]
+upper = [1.0, 1.0]
+initial = [-0.0, 0.5]
+quadratic_diag = [1.0, 1.0]
+center = [0.0, 3.0]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [0.0, 1.0]
+error = "none"
+
+[tolerance]
+solution_abs = 0.00001
+solution_rel = 0.00001
+objective_abs = "not-applicable"
+residual_abs = "not-applicable"

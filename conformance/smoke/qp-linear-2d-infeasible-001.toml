@@ -1,0 +1,54 @@
+schema_version = 3
+fixture_id = "qp-linear-2d-infeasible-001"
+suite = "smoke"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 2
+constraints = 3
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["device-reference-smoke", "cluster-reference-smoke"]
+variant = "infeasible"
+
+# x0 <= -1 and x0 >= 1 cannot both hold. RFC 027 section 0.3.4: no special
+# handling; each projection runs to its cap and reports the true violation, which
+# must not shrink when the cap is raised tenfold. Do not reshape this polyhedron
+# to avoid exactly-cancelling geometry.
+#
+# `status` is deliberately "not-asserted". Measured, not assumed: the *outer*
+# loop settles on a fixed point of the capped projection map and reports
+# Converged, after 42 outer iterations *every one of which* hit its projection
+# cap, with a violation of exactly 2, identically on the device and cluster
+# kernels — for a natural configuration (step 0.5, 5000 iterations), not only a
+# degenerate one. `projection_cap_hits` and
+# `max_constraint_violation` are the honest infeasibility signals (RFC 027
+# section 11.3); whether the outer status should also reflect an unconverged
+# projection is an open design question raised in the S4 review request, not
+# something this fixture may encode either way.
+
+[config]
+max_iterations = 5000
+tolerance = 1e-12
+step_scale = 0.5
+projection_max_sweeps = 300
+projection_tolerance = 1e-13
+
+[problem]
+lower = [-10.0, -10.0]
+upper = [10.0, 10.0]
+initial = [0.0, 0.0]
+quadratic_diag = [1.0, 1.0]
+center = [3.0, 3.0]
+constraint_matrix = [1.0, 0.0, -1.0, 0.0, 0.0, 1.0]
+constraint_rhs = [-1.0, -1.0, 5.0]
+
+[expected]
+status = "not-asserted"
+termination = "not-asserted"
+solution = []
+error = "none"
+violation_min = 0.5
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001

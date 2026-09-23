@@ -25,3 +25,9 @@ loeres = { workspace = true }
 loeres-backend-std = { workspace = true }
 rayon = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
+
+[dev-dependencies]
+# RFC 027 S4: exercises the constrained kernel against a real CSR `A`. The
+# feature is enabled for this crate's tests only; a normal build of
+# `loeres-cluster` still resolves `loeres-backend-std` with `dense` alone.
+loeres-backend-std = { workspace = true, features = ["sparse"] }

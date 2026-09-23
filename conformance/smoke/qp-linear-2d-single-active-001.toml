@@ -1,0 +1,41 @@
+schema_version = 3
+fixture_id = "qp-linear-2d-single-active-001"
+suite = "smoke"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 2
+constraints = 1
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["device-reference-smoke", "cluster-reference-smoke"]
+variant = "solve"
+
+# min 1/2|x-(2,2)|^2 s.t. x0+x1 <= 1: the Euclidean projection, (0.5, 0.5).
+# KKT: grad f = (-1.5,-1.5), lambda = 1.5 >= 0, constraint active.
+
+[config]
+max_iterations = 5000
+tolerance = 1e-12
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-13
+
+[problem]
+lower = [-10.0, -10.0]
+upper = [10.0, 10.0]
+initial = [0.0, 0.0]
+quadratic_diag = [1.0, 1.0]
+center = [2.0, 2.0]
+constraint_matrix = [1.0, 1.0]
+constraint_rhs = [1.0]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [0.5, 0.5]
+error = "none"
+violation_max = 1e-10
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001

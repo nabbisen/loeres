@@ -106,6 +106,32 @@ Development toward the next release; RFC 027 implementation follows.
   randomized differential tests against an exact active-set reference at
   `N = M = 2` and `N = M = 3`.
 
+### RFC 027 S4 — constrained-kernel conformance
+
+- `cargo xtask conformance` (smoke) grows a `m0_identity` category: every
+  existing schema-1/2 solve fixture is also run through the constrained *cluster*
+  kernel with `m = 0` and the fixtures' own oracle, and must be identical to
+  RFC 016 up to the sign of zero — numeric equality plus a NaN check, never raw
+  `to_bits()` (RFC 027 Amendment 4). A new `pfo-box-zero-coordinate-001` fixture
+  keeps the zero-coordinate case in the corpus.
+- New schema-3 fixtures run `m ≥ 1` polyhedra at dimension 2 and 3 with 1–3
+  halfspaces through the constrained device **and** cluster kernels against
+  closed-form optima (each derived and KKT-checked in its own comment), plus an
+  infeasible polyhedron asserting `projection_cap_hits > 0` and a violation that
+  does not shrink at ten times the sweep cap, an all-zero constraint row
+  (`InvalidInput`), a trust-skip case, and a hot-loop NaN under trust
+  (`NumericalDomain`). A `feasibility_within_tolerance` category asserts that a
+  feasible fixture's returned point satisfies its own constraints.
+- A host property test runs random feasible polyhedra at every instantiated
+  shape and asserts the constraints hold within `projection_tolerance` and the box
+  exactly, on both kernels.
+- `loeres-cluster` gains a `[dev-dependencies]` entry enabling
+  `loeres-backend-std/sparse` for its tests only, and a test that solves over a
+  real CSR `A`, bit-identical to the same `A` stored densely. The normal and
+  build feature graphs of `loeres-cluster` are unchanged.
+- The S3 bit-identity test now uses the same numeric-equality rule and adds
+  review 056's zero-coordinate reproducer.
+
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** released (tagged 2026-09-12, distributed 2026-09-12)

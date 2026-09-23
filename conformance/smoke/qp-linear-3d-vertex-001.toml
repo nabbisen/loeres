@@ -1,0 +1,41 @@
+schema_version = 3
+fixture_id = "qp-linear-3d-vertex-001"
+suite = "smoke"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 3
+constraints = 2
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["device-reference-smoke", "cluster-reference-smoke"]
+variant = "solve"
+
+# x = t - l1*(1,1,1) - l2*(1,-1,0) with x0+x1+x2 = 1 and x0-x1 = 0 gives
+# l2 = 1, l1 = 1/3 (both >= 0), so x = (2/3, 2/3, -1/3).
+
+[config]
+max_iterations = 5000
+tolerance = 1e-12
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-13
+
+[problem]
+lower = [-10.0, -10.0, -10.0]
+upper = [10.0, 10.0, 10.0]
+initial = [0.0, 0.0, 0.0]
+quadratic_diag = [1.0, 1.0, 1.0]
+center = [2.0, 0.0, 0.0]
+constraint_matrix = [1.0, 1.0, 1.0, 1.0, -1.0, 0.0]
+constraint_rhs = [1.0, 0.0]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [0.6666666666666666, 0.6666666666666666, -0.3333333333333333]
+error = "none"
+violation_max = 1e-10
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001

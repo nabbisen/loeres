@@ -21,6 +21,8 @@ use loeres_device::problem::ProjectedFirstOrderProblem;
 use loeres_device::solve::{ProjectedFirstOrderWorkspace, solve_projected_first_order};
 use serde::Deserialize;
 
+mod constrained;
+
 const CORPUS: &str = "conformance";
 
 pub fn run(args: &[String]) -> bool {
@@ -99,6 +101,29 @@ fn run_smoke() -> bool {
             }
         }
     }
+    let constrained = match load_constrained_fixtures("smoke") {
+        Ok(fixtures) => fixtures,
+        Err(e) => {
+            eprintln!("  ! {e}");
+            eprintln!("[conformance] FAIL");
+            return false;
+        }
+    };
+    for fixture in &constrained {
+        eprintln!("  fixture: {}", fixture.fixture_id);
+        match run_constrained(fixture) {
+            Ok(result) => {
+                ok &= result.fixture_passed();
+                summary.record(&result);
+            }
+            Err(e) => {
+                eprintln!("    FAIL: {e}");
+                ok = false;
+                summary.fixtures_total += 1;
+                summary.fixtures_failed += 1;
+            }
+        }
+    }
     summary.print();
     eprintln!("[conformance] {}", if ok { "PASS" } else { "FAIL" });
     ok
@@ -138,6 +163,10 @@ fn load_fixtures(suite: &str) -> Result<Vec<Fixture>, String> {
     for path in paths {
         let src = fs::read_to_string(&path)
             .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+        // Schema 3 (RFC 027 S4) has its own struct and runner.
+        if schema_version_of(&src) == Some(3) {
+            continue;
+        }
         let fixture: Fixture =
             toml::from_str(&src).map_err(|e| format!("cannot parse {}: {e}", path.display()))?;
         fixture.validate(suite)?;
@@ -153,6 +182,50 @@ fn load_fixtures(suite: &str) -> Result<Vec<Fixture>, String> {
         }
     }
     Ok(fixtures)
+}
+
+fn schema_version_of(src: &str) -> Option<i64> {
+    toml::from_str::<toml::Value>(src)
+        .ok()?
+        .get("schema_version")?
+        .as_integer()
+}
+
+fn load_constrained_fixtures(suite: &str) -> Result<Vec<constrained::ConstrainedFixture>, String> {
+    let root = corpus_root().join(suite);
+    let mut fixtures = Vec::new();
+    for path in fixture_paths(&root) {
+        let src = fs::read_to_string(&path)
+            .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+        if schema_version_of(&src) != Some(3) {
+            continue;
+        }
+        let fixture: constrained::ConstrainedFixture =
+            toml::from_str(&src).map_err(|e| format!("cannot parse {}: {e}", path.display()))?;
+        fixture.validate(suite)?;
+        fixtures.push(fixture);
+    }
+    let found = fixtures
+        .iter()
+        .map(|f| f.fixture_id.as_str())
+        .collect::<Vec<_>>();
+    for required in REQUIRED_CONSTRAINED {
+        if !found.contains(required) {
+            return Err(format!("missing required constrained fixture `{required}`"));
+        }
+    }
+    Ok(fixtures)
+}
+
+fn run_constrained(fixture: &constrained::ConstrainedFixture) -> Result<FixtureResult, String> {
+    let outcome = constrained::run_constrained_fixture(fixture)?;
+    let mut result = FixtureResult::new(fixture.fixture_id.clone());
+    result.status_match = outcome.status_match;
+    result.solution_within_tolerance = outcome.solution_within_tolerance;
+    result.expected_failure_match = outcome.expected_failure_match;
+    result.feasibility_within_tolerance = outcome.feasibility_within_tolerance;
+    result.print();
+    Ok(result)
 }
 
 fn corpus_root() -> PathBuf {
@@ -182,7 +255,23 @@ fn fixture_paths(root: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// RFC 027 S4 schema-3 fixtures.
+const REQUIRED_CONSTRAINED: &[&str] = &[
+    "qp-linear-2d-single-active-001",
+    "qp-linear-2d-vertex-001",
+    "qp-linear-2d-three-halfspaces-001",
+    "qp-linear-2d-review-054-001",
+    "qp-linear-3d-single-001",
+    "qp-linear-3d-vertex-001",
+    "qp-linear-3d-symmetric-001",
+    "qp-linear-2d-infeasible-001",
+    "qp-linear-2d-zero-row-001",
+    "qp-linear-2d-trust-skip-001",
+    "qp-linear-2d-hot-loop-nan-001",
+];
+
 const REQUIRED_SMOKE: &[&str] = &[
+    "pfo-box-zero-coordinate-001",
     "pfo-box-converged-001",
     "pfo-box-not-converged-001",
     "pfo-box-invalid-bound-001",
@@ -613,6 +702,7 @@ fn run_fixture(fixture: &Fixture) -> Result<FixtureResult, String> {
     }
     result.objective_within_tolerance = CategoryResult::NotApplicable;
     result.residual_within_tolerance = CategoryResult::NotApplicable;
+    result.m0_identity = constrained::m0_identity(fixture)?;
     result.print();
     Ok(result)
 }
@@ -1115,6 +1205,13 @@ struct FixtureResult {
     expected_failure_match: CategoryResult,
     objective_within_tolerance: CategoryResult,
     residual_within_tolerance: CategoryResult,
+    /// RFC 027 S4: constrained `m = 0` is identical to RFC 016 up to the sign
+    /// of zero (Amendment 4, §0.4.1).
+    m0_identity: CategoryResult,
+    /// RFC 027 S4: the constrained kernels' returned point satisfies its own
+    /// constraints (feasible fixtures), or reports a non-shrinking violation
+    /// with the projection cap hit (infeasible fixtures).
+    feasibility_within_tolerance: CategoryResult,
 }
 
 impl FixtureResult {
@@ -1126,6 +1223,8 @@ impl FixtureResult {
             expected_failure_match: CategoryResult::NotApplicable,
             objective_within_tolerance: CategoryResult::NotApplicable,
             residual_within_tolerance: CategoryResult::NotApplicable,
+            m0_identity: CategoryResult::NotApplicable,
+            feasibility_within_tolerance: CategoryResult::NotApplicable,
         }
     }
 
@@ -1135,6 +1234,8 @@ impl FixtureResult {
             && self.expected_failure_match.passed()
             && self.objective_within_tolerance.passed()
             && self.residual_within_tolerance.passed()
+            && self.m0_identity.passed()
+            && self.feasibility_within_tolerance.passed()
     }
 
     fn print(&self) {
@@ -1156,6 +1257,11 @@ impl FixtureResult {
                 &self.objective_within_tolerance,
             ),
             ("residual_within_tolerance", &self.residual_within_tolerance),
+            ("m0_identity", &self.m0_identity),
+            (
+                "feasibility_within_tolerance",
+                &self.feasibility_within_tolerance,
+            ),
         ] {
             eprintln!("    {name}: {}", result.label());
             if let Some(detail) = result.detail() {
@@ -1175,6 +1281,8 @@ struct Summary {
     expected_failure_match: CategorySummary,
     objective_within_tolerance: CategorySummary,
     residual_within_tolerance: CategorySummary,
+    m0_identity: CategorySummary,
+    feasibility_within_tolerance: CategorySummary,
 }
 
 impl Summary {
@@ -1194,6 +1302,9 @@ impl Summary {
             .record(&result.objective_within_tolerance);
         self.residual_within_tolerance
             .record(&result.residual_within_tolerance);
+        self.m0_identity.record(&result.m0_identity);
+        self.feasibility_within_tolerance
+            .record(&result.feasibility_within_tolerance);
     }
 
     fn print(&self) {
@@ -1209,6 +1320,9 @@ impl Summary {
             .print("objective_within_tolerance");
         self.residual_within_tolerance
             .print("residual_within_tolerance");
+        self.m0_identity.print("m0_identity");
+        self.feasibility_within_tolerance
+            .print("feasibility_within_tolerance");
     }
 }
 
@@ -1243,7 +1357,73 @@ mod tests {
     #[test]
     fn smoke_fixtures_parse_and_validate() {
         let fixtures = load_fixtures("smoke").unwrap();
-        assert_eq!(fixtures.len(), 12);
+        assert_eq!(fixtures.len(), 13);
+    }
+
+    #[test]
+    fn constrained_fixtures_parse_validate_and_all_pass() {
+        let fixtures = load_constrained_fixtures("smoke").unwrap();
+        assert_eq!(fixtures.len(), REQUIRED_CONSTRAINED.len());
+        for fixture in &fixtures {
+            assert!(
+                run_constrained(fixture).unwrap().fixture_passed(),
+                "{} failed",
+                fixture.fixture_id
+            );
+        }
+    }
+
+    #[test]
+    fn a_wrong_expected_solution_fails_a_constrained_fixture() {
+        let mut fixture = load_constrained_fixtures("smoke")
+            .unwrap()
+            .into_iter()
+            .find(|f| f.fixture_id == "qp-linear-2d-vertex-001")
+            .unwrap();
+        fixture.expected_solution_for_test(vec![1.0, 0.75]);
+        assert!(!run_constrained(&fixture).unwrap().fixture_passed());
+    }
+
+    #[test]
+    fn not_asserted_status_is_only_legal_for_an_infeasible_fixture() {
+        let mut fixture = load_constrained_fixtures("smoke")
+            .unwrap()
+            .into_iter()
+            .find(|f| f.fixture_id == "qp-linear-2d-vertex-001")
+            .unwrap();
+        fixture.expected_status_for_test("not-asserted");
+        assert!(!run_constrained(&fixture).unwrap().fixture_passed());
+    }
+
+    /// The zero-coordinate fixture is where raw `to_bits()` would report a
+    /// difference the RFC 027 §0.4.1 rule deliberately ignores.
+    #[test]
+    fn the_zero_coordinate_fixture_passes_m0_identity() {
+        let fixtures = load_fixtures("smoke").unwrap();
+        let fixture = fixtures
+            .iter()
+            .find(|f| f.fixture_id == "pfo-box-zero-coordinate-001")
+            .unwrap();
+        let result = run_fixture(fixture).unwrap();
+        assert!(matches!(result.m0_identity, CategoryResult::Pass));
+        assert!(result.fixture_passed());
+    }
+
+    #[test]
+    fn every_solve_fixture_is_checked_for_m0_identity() {
+        let fixtures = load_fixtures("smoke").unwrap();
+        let mut checked = 0;
+        for fixture in &fixtures {
+            let result = run_fixture(fixture).unwrap();
+            match result.m0_identity {
+                CategoryResult::Pass => checked += 1,
+                CategoryResult::NotApplicable => {
+                    assert_eq!(fixture.execution_mode.as_deref(), Some("cache-insert"));
+                }
+                CategoryResult::Fail(ref detail) => panic!("{}: {detail}", fixture.fixture_id),
+            }
+        }
+        assert_eq!(checked, 11);
     }
 
     #[test]

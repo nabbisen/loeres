@@ -12,7 +12,7 @@ use loeres::{
     BoxBounds, LinearInequalities, MatrixView, QuadraticObjective, SolveStatus, VectorView,
 };
 use loeres::{Dim2, DimensionKind};
-use loeres_backend_std::DenseMatrix;
+use loeres_backend_std::{DenseMatrix, SparseIngestOptions, SparseMatrix};
 
 fn dv(v: &[f64]) -> DenseVector<f64> {
     DenseVector::from_vec(v.to_vec()).unwrap()
@@ -204,10 +204,10 @@ fn a_single_active_halfspace_matches_its_closed_form() {
 }
 
 /// A matrix that is deliberately *not* contiguous and offers no fast path: it
-/// stores only its non-zero entries as `(row, col, value)` and answers `get`
-/// with an implicit zero, as a CSR matrix does. `loeres-backend-std`'s own
-/// `SparseMatrix` sits behind a `sparse` feature this crate does not enable, so
-/// this stands in for it; the kernel sees only `MatrixAccess`.
+/// stores only its non-zeros as `(row, col, value)` and answers `get` with an
+/// implicit zero, as a CSR matrix does. It predates the real `SparseMatrix`
+/// test below and is kept because it isolates the property that matters — the
+/// kernel sees only `MatrixAccess` — from `SparseMatrix`'s own behaviour.
 struct Triplets {
     rows: usize,
     cols: usize,
@@ -232,6 +232,52 @@ impl MatrixAccess for Triplets {
             .find(|&&(r, c, _)| r == row && c == col)
             .map_or(0.0, |&(_, _, v)| v))
     }
+}
+
+/// The same regression polytope with `A` held as a real
+/// `loeres-backend-std::SparseMatrix` (CSR), the integration evidence review 056
+/// deferred from S3. `SparseMatrix::get` is an implicit-zero lookup, so this also
+/// exercises a stored zero entry being absent from `A`.
+#[test]
+fn a_real_csr_sparse_matrix_gives_the_same_answer() {
+    // A[1][0] is genuinely zero here, so it is not stored at all.
+    let triplets = [(0, 0, 1.6), (0, 1, -1.3082), (1, 1, 0.9197)];
+    let a = SparseMatrix::from_triplets(2, 2, &triplets, SparseIngestOptions::default()).unwrap();
+    assert_eq!(a.nnz(), 3);
+    let problem = Qp {
+        q: identity(2),
+        c: dv(&[-5.3481, -4.7872]),
+        lo: dv(&[-10.0, -10.0]),
+        hi: dv(&[10.0, 10.0]),
+        a,
+        b: dv(&[1.6013, -0.3988]),
+    };
+    let dense = projection(
+        2,
+        &[1.6, -1.3082, 0.0, 0.9197],
+        &[1.6013, -0.3988],
+        &[5.3481, 4.7872],
+    );
+
+    let mut x = dv(&[0.0, 0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(2, 2).unwrap();
+    let record = solve_constrained_projected_first_order_dyn(
+        &problem,
+        1.0,
+        &mut x,
+        &mut ws,
+        &cfg(1e-14, 5000),
+        &scan(),
+    )
+    .unwrap();
+    let (x_dense, record_dense) = solve(&dense, 1.0, &[0.0, 0.0], &cfg(1e-14, 5000));
+
+    assert_feasible(&record, 1e-14);
+    assert_eq!(record.projection_cap_hits, 0);
+    // CSR and dense storage of the same `A` must not change a single bit: the
+    // kernel performs the same operations in the same order over either.
+    assert_eq!(coords(&x), coords(&x_dense));
+    assert_eq!(record.report, record_dense.report);
 }
 
 /// The same regression polytope with `A` held sparsely and *no* contiguous
@@ -507,6 +553,17 @@ impl ClusterProjectedFirstOrderProblem<f64> for Rfc016 {
     }
 }
 
+/// RFC 027 Amendment 4, §0.4.1: identity is numeric equality plus a NaN check,
+/// never raw `to_bits()`. `+0.0` and `−0.0` satisfy it (they differ only in the
+/// sign of a zero, which no numerical property sees); `NaN` never does.
+fn assert_identical(actual: f64, expected: f64, context: impl Fn() -> String) {
+    assert!(
+        !actual.is_nan() && !expected.is_nan() && actual == expected,
+        "{}: {actual:?} is not identical to {expected:?}",
+        context()
+    );
+}
+
 struct Fixture {
     target: Vec<f64>,
     lo: f64,
@@ -538,13 +595,17 @@ fn fixture(
 /// (`x − t` and `−t + x`) agree bit for bit, so the results are bit-identical
 /// — across several fixtures, not one (handoff §6).
 #[test]
-fn m_zero_is_bit_identical_to_rfc_016_across_fixtures() {
+fn m_zero_is_identical_to_rfc_016_across_fixtures_up_to_the_sign_of_zero() {
     let fixtures = [
         fixture(&[0.5, -0.5], -1.0, 1.0, 0.5, &[0.0, 0.0], 500),
         fixture(&[5.0, -5.0], -1.0, 1.0, 0.5, &[0.0, 0.0], 500),
         fixture(&[0.1, 0.2, 0.3], -1.0, 1.0, 0.3, &[0.9, -0.9, 0.0], 400),
         fixture(&[3.0], -2.0, 2.0, 0.1, &[-2.0], 7), // stops at the iteration cap
         fixture(&[0.7, 0.7], -1.0, 1.0, 0.99, &[1.0, -1.0], 500),
+        // Review 056 F1's reproducer: a zero target coordinate with a −0.0
+        // iterate. The two solvers agree in value but can differ in the sign of
+        // a zero, which raw `to_bits()` would report as a difference.
+        fixture(&[0.0, 3.0], -1.0, 1.0, 0.5, &[-0.0, 0.5], 500),
     ];
     for Fixture {
         target,
@@ -600,11 +661,9 @@ fn m_zero_is_bit_identical_to_rfc_016_across_fixtures() {
         assert_eq!(record.projection_cap_hits, 0);
         assert_eq!(record.max_constraint_violation, 0.0);
         for i in 0..n {
-            assert_eq!(
-                x.get(i).unwrap().to_bits(),
-                x_ref.get(i).unwrap().to_bits(),
-                "target {target:?}, coordinate {i}"
-            );
+            assert_identical(x.get(i).unwrap(), x_ref.get(i).unwrap(), || {
+                format!("target {target:?}, coordinate {i}")
+            });
         }
     }
 }
