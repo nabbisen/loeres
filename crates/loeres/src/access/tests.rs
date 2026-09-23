@@ -314,3 +314,28 @@ fn contiguous_fast_path_and_fallback_agree() {
     assert_eq!(sum(&fast), Ok(10.0));
     assert_eq!(sum(&slow), Ok(10.0));
 }
+
+// ---------------------------------------------------------------------------
+// Zero-extent views: the canonical m = 0 representation for RFC 027's
+// LinearInequalities (RFC 027 §0.2.2). A problem with no inequality
+// constraints supplies a MatrixView / VectorView over an empty slice; this
+// pins that both construct and report zero extent rather than erroring or
+// panicking.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn a_zero_row_matrix_view_over_an_empty_slice_constructs_and_reports_zero_extent() {
+    let empty: [f64; 0] = [];
+    let v = MatrixView::from_row_major(&empty, 0, 2).expect("0x2 is a valid empty shape");
+    assert_eq!(v.dims(), Dim2::new(0, 2));
+
+    let v = MatrixView::from_row_major(&empty, 0, 0).expect("0x0 is a valid empty shape");
+    assert_eq!(v.dims(), Dim2::new(0, 0));
+}
+
+#[test]
+fn a_zero_length_vector_view_over_an_empty_slice_constructs_and_reports_zero_extent() {
+    let empty: [f64; 0] = [];
+    let v = VectorView::from_slice(&empty);
+    assert_eq!(v.len(), 0);
+}

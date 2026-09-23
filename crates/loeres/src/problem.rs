@@ -18,7 +18,11 @@
 //! Three component traits carry the three parts of the program, and
 //! [`QuadraticProgram`] is implemented automatically for any type that
 //! implements all three. A problem with no inequality constraints supplies a
-//! constraint matrix with zero rows.
+//! zero-row constraint matrix and an empty right-hand side; the canonical form
+//! is [`MatrixView`](crate::access::MatrixView) and
+//! [`VectorView`](crate::access::VectorView) over empty slices. A device
+//! problem with no inequalities uses the RFC 006 entrypoint instead
+//! (RFC 027 §0.2).
 //!
 //! What the contract does **not** carry:
 //!
@@ -76,6 +80,10 @@ pub trait QuadraticObjective<S: BaseScalar> {
     /// [`SolverError::DimensionMismatch`] when `Q` is not `n × n`, or when `x` or
     /// `grad` does not have length `n`, with `n` taken from `c`. Element-access
     /// errors from the backends propagate unchanged.
+    ///
+    /// A shape error is detected before anything is written. An element-access
+    /// error can occur after some coordinates are written; `grad` is then
+    /// unspecified and must not be used.
     fn gradient_into<X, G>(&self, x: &X, grad: &mut G) -> Result<(), SolverError>
     where
         X: VectorAccess<Scalar = S>,
