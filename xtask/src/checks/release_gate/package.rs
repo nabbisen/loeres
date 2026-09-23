@@ -3,7 +3,7 @@
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use super::{Candidate, TrackedEntry, run_candidate_suite};
 
@@ -109,12 +109,21 @@ pub(super) fn certify(candidate: &Candidate) -> Result<PathBuf, String> {
 
     validate_archive(&source, &archive, &candidate.entries)?;
     let digest = sha256(&source, &archive)?;
+    // RFC 028: computed from the archive the gate itself just produced, before
+    // clean extraction, so the anchor is bound to the exact bytes that ship —
+    // never from a second `git archive` run, which would identify a tree
+    // rather than the shipped file.
+    let uncompressed_digest = uncompressed_tar_sha256(&source, &archive)?;
+    let digests = ArchiveDigests {
+        archive: &digest,
+        uncompressed: &uncompressed_digest,
+    };
     write_content_manifest(candidate, &evidence)?;
     write_evidence(
         candidate,
         &evidence,
         &archive_name,
-        Some(&digest),
+        Some(&digests),
         EvidenceStage::ArchiveValidated,
     )?;
 
@@ -133,7 +142,7 @@ pub(super) fn certify(candidate: &Candidate) -> Result<PathBuf, String> {
         candidate,
         &evidence,
         &archive_name,
-        Some(&digest),
+        Some(&digests),
         EvidenceStage::ExtractedContentVerified,
     )?;
     if !run_candidate_suite(&extraction, "clean-extraction") {
@@ -147,7 +156,7 @@ pub(super) fn certify(candidate: &Candidate) -> Result<PathBuf, String> {
         candidate,
         &evidence,
         &archive_name,
-        Some(&digest),
+        Some(&digests),
         EvidenceStage::Complete,
     )?;
     Ok(evidence)
@@ -308,6 +317,73 @@ fn sha256(root: &Path, archive: &Path) -> Result<String, String> {
     Ok(digest.to_ascii_lowercase())
 }
 
+/// The archive SHA-256 (this build's bytes) and the uncompressed tar SHA-256
+/// (the cross-environment identity of the source artifact's content and
+/// layout — RFC 028) for one produced archive.
+struct ArchiveDigests<'a> {
+    archive: &'a str,
+    uncompressed: &'a str,
+}
+
+/// Cross-environment identity of the archive's content and layout (RFC 028).
+///
+/// `0.21.0`'s archive SHA-256 differed between CI and a local run of the same
+/// revision, while the tracked content manifest and the uncompressed tar
+/// stream were byte-identical: only gzip output differed by implementation or
+/// level. This is the digest that actually reproduces.
+///
+/// Spawns `gzip -dc <archive>` with its stdout piped directly into a
+/// `sha256sum` child's stdin — two processes, no shell string, no path ever
+/// interpolated into a command line a shell would parse. Both children must
+/// exit successfully: a `gzip` failure (not gzip data, missing tool) is an
+/// `Err`, never an empty or partial digest, even though `sha256sum` would
+/// otherwise happily hash whatever partial bytes it received before `gzip`
+/// gave up.
+fn uncompressed_tar_sha256(root: &Path, archive: &Path) -> Result<String, String> {
+    let mut gzip = Command::new("gzip")
+        .arg("-dc")
+        .arg(archive)
+        .current_dir(root)
+        .stdout(Stdio::piped())
+        .spawn()
+        .map_err(|error| format!("cannot run gzip: {error}"))?;
+    let gzip_stdout = gzip
+        .stdout
+        .take()
+        .ok_or_else(|| "gzip produced no stdout pipe".to_owned())?;
+
+    let sha256sum = Command::new("sha256sum")
+        .current_dir(root)
+        .stdin(Stdio::from(gzip_stdout))
+        .output()
+        .map_err(|error| format!("cannot run sha256sum: {error}"))?;
+    let gzip_status = gzip
+        .wait()
+        .map_err(|error| format!("cannot wait for gzip: {error}"))?;
+
+    // `gzip`'s status is checked before trusting anything `sha256sum` produced:
+    // a `gzip` failure partway through still leaves `sha256sum` a valid digest
+    // of whatever partial (or empty) stream it saw, and that must not be
+    // returned as the uncompressed identity.
+    if !gzip_status.success() {
+        return Err(format!("gzip exited with {gzip_status}"));
+    }
+    if !sha256sum.status.success() {
+        return Err(format!("sha256sum exited with {}", sha256sum.status));
+    }
+
+    let stdout = String::from_utf8(sha256sum.stdout)
+        .map_err(|_| "sha256sum output is not UTF-8".to_owned())?;
+    let digest = stdout
+        .split_whitespace()
+        .next()
+        .ok_or_else(|| "sha256sum returned no digest".to_owned())?;
+    if digest.len() != 64 || !digest.bytes().all(|byte| byte.is_ascii_hexdigit()) {
+        return Err(format!("sha256sum returned invalid digest `{digest}`"));
+    }
+    Ok(digest.to_ascii_lowercase())
+}
+
 fn write_content_manifest(candidate: &Candidate, evidence: &Path) -> Result<(), String> {
     let mut output = String::from("type\tmode\tgit_object\tpath\n");
     for entry in &candidate.entries {
@@ -371,6 +447,7 @@ struct ToolVersions {
     mdbook: String,
     git: String,
     tar: String,
+    gzip: String,
     sha256sum: String,
     cargo_deny: String,
 }
@@ -384,6 +461,10 @@ impl ToolVersions {
             mdbook: command_output(root, "mdbook", &["--version"])?,
             git: command_output(root, "git", &["--version"])?,
             tar: first_line(&command_output(root, "tar", &["--version"])?).to_owned(),
+            // RFC 028: `gzip` already runs on every clean extraction (`tar
+            // --gzip`) and now also produces the uncompressed-tar identity
+            // anchor, so it belongs in the evidence bundle beside `tar`.
+            gzip: first_line(&command_output(root, "gzip", &["--version"])?).to_owned(),
             sha256sum: first_line(&command_output(root, "sha256sum", &["--version"])?).to_owned(),
             // RFC 026: the supply-chain gate is enforced, so the tool that
             // runs it belongs in the evidence bundle beside the compiler.
@@ -400,11 +481,11 @@ fn write_evidence(
     candidate: &Candidate,
     evidence: &Path,
     archive_name: &str,
-    digest: Option<&str>,
+    digests: Option<&ArchiveDigests<'_>>,
     stage: EvidenceStage,
 ) -> Result<(), String> {
     let tools = ToolVersions::observe(evidence)?;
-    let text = render_evidence(candidate, archive_name, digest, stage, &tools);
+    let text = render_evidence(candidate, archive_name, digests, stage, &tools);
     fs::write(evidence.join("EVIDENCE.md"), text)
         .map_err(|error| format!("cannot write evidence record: {error}"))
 }
@@ -412,11 +493,14 @@ fn write_evidence(
 fn render_evidence(
     candidate: &Candidate,
     archive_name: &str,
-    digest: Option<&str>,
+    digests: Option<&ArchiveDigests<'_>>,
     stage: EvidenceStage,
     tools: &ToolVersions,
 ) -> String {
-    let digest = digest.unwrap_or("pending");
+    let (digest, uncompressed_digest) = match digests {
+        Some(digests) => (digests.archive, digests.uncompressed),
+        None => ("pending", "pending"),
+    };
     format!(
         "# RFC 019 Release-Gate Evidence\n\n\
          **Status:** {status}  \n\
@@ -425,17 +509,21 @@ fn render_evidence(
          **Candidate identity:** {identity}  \n\
          **Archive:** `{archive_name}`  \n\
          **Archive SHA-256:** `{digest}`  \n\
+         **Uncompressed tar SHA-256:** `{uncompressed_digest}`  \n\
          **Tracked regular files:** {tracked_files}  \n\
          **Archive layout/type/file-set/digest validation:** {archive_result}  \n\
          **Extracted Git-object content and executable-mode identity:** {extracted_result}  \n\
          **Publication:** not performed or authorized\n\n\
+         The uncompressed tar SHA-256 is the cross-environment identity of this source\n\
+         artifact's content and layout. The archive SHA-256 identifies this build's bytes\n\
+         and is not expected to reproduce in another environment (RFC 028).\n\n\
          ## Gate results\n\n\
          - Source-tree format, Clippy, tests/doc-tests, Rust 1.85 check, architecture aggregate, and mdBook: pass.\n\
          - Package construction plus path/type/file-set/digest validation: {archive_result}.\n\
          - Extracted Git-object content and executable-mode identity: {extracted_result}.\n\
          - Clean-extraction complete applicable suite: {clean_suite_result}.\n\n\
          ## Tool versions\n\n\
-         ```text\n{stable_rustc}\n{msrv_rustc}\n{cargo}\n{mdbook}\n{git}\n{tar}\n{sha256sum}\n{cargo_deny}\n```\n\n\
+         ```text\n{stable_rustc}\n{msrv_rustc}\n{cargo}\n{mdbook}\n{git}\n{tar}\n{gzip}\n{sha256sum}\n{cargo_deny}\n```\n\n\
          ## Evidence classes\n\n\
          Source-tree and clean-extraction results are separate phases of the same command.\n\
          Target-profile advisory-unavailable/documented-only and size-budget advisory\n\
@@ -456,6 +544,7 @@ fn render_evidence(
         mdbook = tools.mdbook,
         git = tools.git,
         tar = tools.tar,
+        gzip = tools.gzip,
         sha256sum = tools.sha256sum,
         cargo_deny = tools.cargo_deny,
     )
@@ -550,10 +639,15 @@ impl Drop for TempGuard {
 #[cfg(test)]
 mod tests {
     use super::{
-        EvidenceStage, ToolVersions, render_evidence, require_release_inputs,
-        validate_archive_listing, validate_archive_types,
+        ArchiveDigests, EvidenceStage, ToolVersions, render_evidence, require_release_inputs,
+        sha256, uncompressed_tar_sha256, validate_archive_listing, validate_archive_types,
     };
     use crate::checks::release_gate::{Candidate, CandidateRef, TrackedEntry};
+    use std::fs;
+    use std::io::Write;
+    use std::path::{Path, PathBuf};
+    use std::process::{Command, Stdio};
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     fn entry(path: &str) -> TrackedEntry {
         TrackedEntry {
@@ -580,6 +674,7 @@ mod tests {
             mdbook: "mdbook 0.5.4".to_owned(),
             git: "git version test".to_owned(),
             tar: "tar test".to_owned(),
+            gzip: "gzip test".to_owned(),
             sha256sum: "sha256sum test".to_owned(),
             cargo_deny: "cargo-deny test".to_owned(),
         }
@@ -636,12 +731,19 @@ mod tests {
         assert!(require_release_inputs(&entries).is_err());
     }
 
+    fn digests<'a>(archive: &'a str, uncompressed: &'a str) -> ArchiveDigests<'a> {
+        ArchiveDigests {
+            archive,
+            uncompressed,
+        }
+    }
+
     #[test]
     fn pre_extraction_evidence_keeps_content_and_mode_pending() {
         let text = render_evidence(
             &candidate(CandidateRef::LocalDryRun),
             "loeres-v0.20.1.tar.gz",
-            Some(&"c".repeat(64)),
+            Some(&digests(&"c".repeat(64), &"d".repeat(64))),
             EvidenceStage::ArchiveValidated,
             &tools(),
         );
@@ -658,7 +760,7 @@ mod tests {
         let text = render_evidence(
             &candidate(CandidateRef::LocalDryRun),
             "loeres-v0.20.1.tar.gz",
-            Some(&"c".repeat(64)),
+            Some(&digests(&"c".repeat(64), &"d".repeat(64))),
             EvidenceStage::ExtractedContentVerified,
             &tools(),
         );
@@ -679,7 +781,7 @@ mod tests {
         let tagged = render_evidence(
             &candidate(CandidateRef::Tag("0.20.1".to_owned())),
             "loeres-v0.20.1.tar.gz",
-            Some(&"c".repeat(64)),
+            Some(&digests(&"c".repeat(64), &"d".repeat(64))),
             EvidenceStage::Complete,
             &tools(),
         );
@@ -689,5 +791,160 @@ mod tests {
         assert!(tagged.contains("validated tag `0.20.1`"));
         assert!(tagged.contains("**Status:** PASS"));
         assert!(tagged.contains("Clean-extraction complete applicable suite: pass"));
+    }
+
+    /// RFC 028 §13: the archive SHA-256 identifies this build's bytes; the
+    /// uncompressed tar SHA-256 is the cross-environment identity. Both must
+    /// appear, in that order, with the paragraph naming what each means.
+    #[test]
+    fn rendered_evidence_orders_archive_digest_before_uncompressed_digest() {
+        let text = render_evidence(
+            &candidate(CandidateRef::LocalDryRun),
+            "loeres-v0.20.1.tar.gz",
+            Some(&digests(&"c".repeat(64), &"d".repeat(64))),
+            EvidenceStage::Complete,
+            &tools(),
+        );
+        let archive_at = text
+            .find("**Archive SHA-256:**")
+            .expect("archive digest label present");
+        let uncompressed_at = text
+            .find("**Uncompressed tar SHA-256:**")
+            .expect("uncompressed digest label present");
+        assert!(
+            archive_at < uncompressed_at,
+            "Archive SHA-256 must precede Uncompressed tar SHA-256"
+        );
+        assert!(text.contains(&format!("`{}`", "c".repeat(64))));
+        assert!(text.contains(&format!("`{}`", "d".repeat(64))));
+        assert!(text.contains(
+            "The uncompressed tar SHA-256 is the cross-environment identity of this source\n\
+             artifact's content and layout. The archive SHA-256 identifies this build's bytes\n\
+             and is not expected to reproduce in another environment (RFC 028)."
+        ));
+    }
+
+    #[test]
+    fn pending_evidence_marks_both_digests_pending() {
+        let text = render_evidence(
+            &candidate(CandidateRef::LocalDryRun),
+            "loeres-v0.20.1.tar.gz",
+            None,
+            EvidenceStage::SourceSuitePassed,
+            &tools(),
+        );
+        assert!(text.contains("**Archive SHA-256:** `pending`"));
+        assert!(text.contains("**Uncompressed tar SHA-256:** `pending`"));
+    }
+
+    // -------------------------------------------------------------------
+    // RFC 028: uncompressed_tar_sha256
+    // -------------------------------------------------------------------
+
+    struct GzipFixture {
+        root: PathBuf,
+    }
+
+    impl GzipFixture {
+        /// Compress `data` at gzip `level` (e.g. `"-1"`, `"-9"`) with `-n` (no
+        /// name/mtime, for a deterministic header) and write the result to a
+        /// fresh scratch file. Returns the fixture (whose `Drop` cleans up)
+        /// and the archive's path.
+        fn compress(data: &[u8], level: &str) -> (Self, PathBuf) {
+            static NEXT: AtomicUsize = AtomicUsize::new(0);
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+                "../target/xtask-tests/release-gate-gzip-{}-{}",
+                std::process::id(),
+                NEXT.fetch_add(1, Ordering::Relaxed)
+            ));
+            fs::create_dir_all(&root).expect("scratch directory");
+
+            let mut gzip = Command::new("gzip")
+                .arg(level)
+                .arg("-n")
+                .arg("-c")
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn()
+                .expect("gzip available in test environment");
+            gzip.stdin
+                .take()
+                .expect("gzip stdin pipe")
+                .write_all(data)
+                .expect("write to gzip stdin");
+            let output = gzip.wait_with_output().expect("gzip terminates");
+            assert!(output.status.success(), "gzip {level} failed");
+
+            let archive = root.join("archive.gz");
+            fs::write(&archive, &output.stdout).expect("write compressed archive");
+            (Self { root }, archive)
+        }
+    }
+
+    impl Drop for GzipFixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
+    /// Deterministic, non-trivially-compressible bytes, large enough that
+    /// `gzip -1` and `gzip -9` produce different compressed output — the
+    /// stated precondition this test asserts rather than assumes.
+    fn incompressible_bytes(len: usize) -> Vec<u8> {
+        let mut data = Vec::with_capacity(len);
+        let mut state = 0x2545_F491_4F6C_DD1Du64;
+        while data.len() < len {
+            state = state.wrapping_mul(6364136223846793005).wrapping_add(1);
+            data.extend_from_slice(&state.to_le_bytes());
+        }
+        data.truncate(len);
+        data
+    }
+
+    #[test]
+    fn uncompressed_digest_matches_across_gzip_levels_while_archive_digests_differ() {
+        let data = incompressible_bytes(64 * 1024);
+        let (_low_fixture, archive_low) = GzipFixture::compress(&data, "-1");
+        let (_high_fixture, archive_high) = GzipFixture::compress(&data, "-9");
+
+        let root = Path::new(".");
+        let archive_digest_low = sha256(root, &archive_low).expect("sha256 of gzip -1 output");
+        let archive_digest_high = sha256(root, &archive_high).expect("sha256 of gzip -9 output");
+        assert_ne!(
+            archive_digest_low, archive_digest_high,
+            "gzip -1 and gzip -9 must compress this input to different bytes, \
+             or this test proves nothing"
+        );
+
+        let uncompressed_low =
+            uncompressed_tar_sha256(root, &archive_low).expect("uncompressed digest of gzip -1");
+        let uncompressed_high =
+            uncompressed_tar_sha256(root, &archive_high).expect("uncompressed digest of gzip -9");
+        assert_eq!(
+            uncompressed_low, uncompressed_high,
+            "the same content compressed at two levels must yield the same \
+             uncompressed-tar identity"
+        );
+    }
+
+    #[test]
+    fn uncompressed_digest_fails_closed_on_non_gzip_input() {
+        static NEXT: AtomicUsize = AtomicUsize::new(0);
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+            "../target/xtask-tests/release-gate-not-gzip-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir_all(&root).expect("scratch directory");
+        let plain = root.join("plain.txt");
+        fs::write(&plain, b"not a gzip stream at all").expect("write plain file");
+
+        let result = uncompressed_tar_sha256(Path::new("."), &plain);
+        assert!(
+            result.is_err(),
+            "a non-gzip file must fail closed, never return a digest"
+        );
+
+        let _ = fs::remove_dir_all(&root);
     }
 }

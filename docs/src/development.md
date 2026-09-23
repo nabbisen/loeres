@@ -77,6 +77,10 @@ runs the ordered RFC 019 §11.3 source suite, creates a tracked-input root-layou
 set, and SHA-256 before extraction. It then verifies the extracted Git-object
 content and executable modes before repeating the applicable suite in the
 gate-owned clean extraction.
+Evidence records two digests for that archive: the archive SHA-256 identifies
+this build's compressed bytes, and the uncompressed tar SHA-256 is the
+cross-environment identity of its content and layout, reproducible across a
+different gzip implementation or level (RFC 028).
 Local runs record that no tag assertion occurred; tagged CI additionally proves
 that the peeled canonical unprefixed SemVer tag equals `HEAD`. Evidence and the
 archive remain in gate-owned ignored workspace state; temporary extraction

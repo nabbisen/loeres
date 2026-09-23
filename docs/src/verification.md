@@ -102,6 +102,17 @@ A passing local dry run is not tagged-release evidence, and neither mode
 publishes crates or creates a release. Tagged CI additionally proves that the
 peeled canonical tag equals `HEAD`.
 
+The evidence records two digests for the same archive, and they answer
+different questions (RFC 028). To verify a download or a rebuild, run
+`gzip -dc loeres-vX.Y.Z.tar.gz | sha256sum` and compare the result against
+**Uncompressed tar SHA-256** — the cross-environment identity of the source
+artifact's content and layout, the same value in CI and in any correct local
+rebuild. **Archive SHA-256** only confirms that a downloaded file is the exact
+file CI produced; a different gzip implementation or level can compress
+identical content to different compressed bytes, so that digest is not
+expected to reproduce in another environment and a mismatch there alone is not
+evidence of tampering.
+
 ## What none of this establishes
 
 Read [Terms of Engineering Use](https://github.com/nabbisen/loeres/blob/main/TERMS_OF_USE.md)

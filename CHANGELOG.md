@@ -11,6 +11,26 @@ sign-off (see RFC 000 and the requirements specification).
 
 Development toward the next release; RFC 027 implementation follows.
 
+### RFC 028 — cross-environment archive identity anchor
+
+- `0.21.0`'s release gate produced different archive SHA-256 digests in CI and
+  in a local run of the same revision, even though the tracked content
+  manifest and the uncompressed tar stream were byte-identical; only gzip
+  output differed by implementation and level. `EVIDENCE.md` now also records
+  **Uncompressed tar SHA-256**, computed from the archive the gate itself
+  produced — `gzip -dc` piped straight into `sha256sum`, no shell string, no
+  second `git archive` run — and states which digest answers which question:
+  the uncompressed digest is the cross-environment identity of the source
+  artifact's content and layout, and the archive digest identifies this
+  build's bytes and is not expected to reproduce elsewhere.
+- A unit test compresses the same ≥ 64 KiB input at gzip levels `-1` and `-9`,
+  asserts the archive digests differ as a stated precondition, and asserts the
+  uncompressed digests are equal. A second test asserts a non-gzip input fails
+  closed rather than yielding a partial digest.
+- No workspace dependency added; hashing stays on the existing `sha256sum`
+  convention and decompression on `gzip`, already required because extraction
+  uses `tar --gzip`. `ToolVersions` gains `gzip --version`.
+
 ### RFC 027 S1 — quadratic-program contract in `loeres::problem`
 
 - `loeres::problem`, reserved since v0.6, now defines the storage-agnostic
