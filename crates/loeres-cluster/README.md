@@ -11,7 +11,7 @@ reserved for a future separately reviewed native/legacy adapter. **Server-only.*
   `runtime`, and `solve`; RFC 016 (v0.14.0) adds the first std-side numerical kernel in
   `model` and `solve`; RFC 009 (v0.15.0) adds metadata observability and the safe
   gateway boundary in `observe` and `gateway`; RFC 015 (v0.19.0) adds the
-  process-local validation evidence cache; RFC 027 (unreleased `0.21.1` tree)
+  process-local validation evidence cache; RFC 027 (`0.21.1` release)
   adds the constrained quadratic-program kernel in `solve`.
 
 ## What's implemented
@@ -56,7 +56,7 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   aligned with RFC 006; non-convergence at the cap is a *solved* `NotConverged`, never a
   failure; in-loop non-finite maps to `NumericalDomain` even under trust.
 
-### RFC 027 (unreleased `0.21.1`) — constrained projected first-order kernel
+### RFC 027 (`0.21.1`) — constrained projected first-order kernel
 
 - `solve` — `solve_constrained_projected_first_order_dyn` (the typed entrypoint) for
   any `loeres::QuadraticProgram` over dynamic storage: `min ½xᵀQx + cᵀx` over a

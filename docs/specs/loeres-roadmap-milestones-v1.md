@@ -5,8 +5,8 @@ Scope: RFC roadmap, implementation sprint ordering, verification gates, and mile
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
 > **Release currency metadata.**
-> This tree: **0.21.1**.
-> Last reconciled repository release: **0.21.0**.
+> This tree: **0.21.2**.
+> Last reconciled repository release: **0.21.1**.
 > Implemented scope: **RFCs 001-029**.
 >
 > Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
@@ -17,7 +17,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > apparatus after `0.20.2` shipped; RFC 019 release packaging now uses the
 > ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. This tree is `0.21.1` and is not itself a release until it is tagged and distributed.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029.
 
 ---
 
@@ -40,7 +40,7 @@ Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Reposit
 | RFC 010/011 — verification and target profiles | Implemented through v0.17.0 | Developer aggregate plus mandatory/advisory-installed/documented-only target evidence. RFC 019 supersedes old release-gate alias semantics. |
 | RFC 013/017 — conformance | Implemented through v0.20.0 | Enforced dimension-2 smoke and cache/trust fixtures; no broad/adversarial/large-N parity claim. |
 | RFC 015 — validation evidence cache | Implemented since v0.19.0 | Model identity/mutation epoch cache; process-local only; per-call and hot-loop checks remain. |
-| RFC 016 — dynamic PFO kernel | Implemented since v0.14.0 | One box/bound-constrained projected-first-order cluster kernel; no generic LP/QP/SOCP surface (RFC 027 adds the constrained-QP form in the unreleased `0.21.1` tree). |
+| RFC 016 — dynamic PFO kernel | Implemented since v0.14.0 | One box/bound-constrained projected-first-order cluster kernel; no generic LP/QP/SOCP surface (RFC 027 adds the constrained-QP form in the `0.21.1` release). |
 | RFC 018 — cluster solve test split | Implemented in v0.20.0 | Maintainability-only; no public behavior change. |
 | RFC 019/020/021 — recovery and release finalization | Implemented; shipped in 0.20.2 (released 2026-07-30) | Release-integrity/MSRV recovery, normative documentation currency, and the RFC 021 conditional-finalization protocol that shipped this release. RFC 024 retires that protocol's apparatus from ordinary post-release development. |
 
@@ -1110,13 +1110,12 @@ sophisticated design."** The approved sequence:
 | C.2 Clean baseline | Cut **`0.21.0`**: first release with examples, engineering-use terms, evidence index, steady-state currency, supply-chain gate, and no dead code. Minor, because examples and terms are user-visible. | `0.21.0` |
 | C.3 First capability | RFC 027: `loeres::problem` QP contract (PF-002; PF-001 contract-only) and a bounded Hildreth/Dykstra polyhedral projection extending the PFO kernels to `Ax ≤ b` on device and cluster. Interior-point excluded. Independent numerical review precedes design freeze. | first minor after `0.21.0` |
 
-**C.3 status (this `0.21.1` tree).** RFC 027 is complete: slices S1-S5
+**C.3 status (shipped in `0.21.1`).** RFC 027 is complete: slices S1-S5
 (contract, device kernel, cluster kernel, conformance, documentation) are
 implemented and accepted, with six amendments — notably Dykstra over `m + 1`
 sets, identity up to the sign of zero, and `Converged` means feasible — and its
 closeout is recorded in architect review 062. RFC 027, RFC 028 and RFC 029 are in
-`rfcs/done/`; the tree is not itself a release until it is tagged and
-distributed.
+`rfcs/done/` and shipped in `0.21.1`.
 
 RFC 028 (implemented in the `0.21.1` tree) records the uncompressed tar SHA-256 as the
 cross-environment identity anchor of release evidence, after `0.21.0` showed CI

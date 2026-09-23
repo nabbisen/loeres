@@ -6,8 +6,8 @@ Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
 > **Release currency metadata.**
-> This tree: **0.21.1**.
-> Last reconciled repository release: **0.21.0**.
+> This tree: **0.21.2**.
+> Last reconciled repository release: **0.21.1**.
 > Implemented scope: **RFCs 001-029**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
@@ -20,7 +20,7 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > conditional apparatus after `0.20.2` shipped; RFC 019 release packaging now
 > uses the ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. This tree is `0.21.1` and is not itself a release until it is tagged and distributed.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029.
 
 ---
 
@@ -320,7 +320,7 @@ loeres_cluster::validation_cache  // model identity/epoch evidence cache; proces
 `loeres-cluster` is allowed to be ergonomic, dynamic, and integration-rich.
 The implemented `model` surface is limited to the projected-first-order family;
 the broader LP/QP/SOCP builders described in §3.2 remain design targets. The
-unreleased `0.21.1` tree (RFC 027) adds the constrained kernel over the
+`0.21.1` release (RFC 027) adds the constrained kernel over the
 `loeres::problem` quadratic-program contract; it is consumed through the typed
 entrypoint, not a builder.
 
@@ -629,7 +629,7 @@ Initial public problem families:
 | SOCP | Second-order cone category | Server may support dynamic conic models | Device support limited and staged |
 | First-order structured problem | Objective/residual/gradient-like category | Useful for large approximate server solvers | Useful for capped deterministic kernels |
 
-> **Implemented (RFC 027, unreleased `0.21.1` tree).** The QP row is realized as a
+> **Implemented (RFC 027, `0.21.1` release).** The QP row is realized as a
 > contract in `loeres::problem` (`QuadraticObjective`, `BoxBounds`,
 > `LinearInequalities`, `QuadraticProgram`) with constrained kernels on device and
 > cluster. The LP row is contract-only: expressible as `Q = 0`, not solved. The
@@ -716,7 +716,7 @@ The exact form may be enum-based or struct-based by RFC. It must remain allocati
 
 Through v0.20.0, the shipped cluster surface includes RFC 008 orchestration,
 RFC 016's dynamic box/bound-constrained projected-first-order model and kernel
-(extended to linear inequalities by RFC 027 in the unreleased `0.21.1` tree),
+(extended to linear inequalities by RFC 027 in the `0.21.1` release),
 RFC 009 metadata-only observation and safe mock gateway seam, and RFC 015's
 process-local validation evidence cache. The broader model and solver categories
 below remain design targets unless explicitly identified as implemented.
@@ -770,7 +770,7 @@ finite evidence, and solve record. It does not implement generic `DynamicLp`,
 `DynamicSocp`, or builder categories.
 
 **`DynamicQp` — the trait satisfies the category; the builder is deferred
-(RFC 027, unreleased `0.21.1` tree).** The `DynamicQp` category is satisfied by
+(RFC 027, `0.21.1` release).** The `DynamicQp` category is satisfied by
 the `loeres::problem` contract: any type implementing `QuadraticObjective`,
 `BoxBounds` and `LinearInequalities` over dynamic storage — `DenseMatrix`,
 `DenseVector`, or a CSR `SparseMatrix` for `A` — is a `QuadraticProgram`, and

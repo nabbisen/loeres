@@ -153,7 +153,7 @@ thresholds.
 
 RFC 019's package/readiness gate is distinct from the developer aggregate
 and follows RFC 021's conditional boundary. Repository release `0.20.2` is
-released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. This tree is `0.21.1` and is not itself a release until it is tagged and distributed.
+released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029.
 
 ## Residual risks and future work
 

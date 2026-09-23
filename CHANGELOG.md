@@ -7,7 +7,7 @@ sign-off (see RFC 000 and the requirements specification).
 
 ## [0.21.1] — 2026-09-24 — Constrained quadratic programming
 
-**Release status:** unreleased
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
 
 Repository release `0.21.1` is the first capability release after the `0.21.0`
 consolidation baseline. RFCs 027, 028 and 029 are implemented and move to
@@ -28,6 +28,13 @@ latched from an earlier one (RFC 029). Release evidence additionally records the
 uncompressed tar SHA-256 as the cross-environment identity of the source artifact
 (RFC 028), because the compressed digest is not expected to reproduce across
 environments.
+
+RFC 028's fourth exit criterion is satisfied by this release, and confirms the
+finding that motivated it. For revision `8cd6da9`, tagged CI and a local run
+produced **different** archive digests — `d0f5af99…3a62` in CI against
+`b33100d9…d561` locally — while the uncompressed tar SHA-256 was **identical**:
+`10facd1444a155588363cd980ced4ed00c39ea816bfca8f9d727f045a7fb84b1`. A consumer
+verifying a rebuild compares that value, not the compressed digest.
 
 What this release does **not** add: LP or SOCP solving, interior-point or ADMM
 methods, infeasibility *detection*, any convergence-rate guarantee, bitwise

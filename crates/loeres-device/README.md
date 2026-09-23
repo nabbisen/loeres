@@ -6,7 +6,7 @@ Deterministic, bounded-iteration, panic-averse edge solver entrypoints with call
 - **Depends on:** `loeres`, `loeres-backend-static`
 - **Status:** Active. RFC 005 supplies configuration/workspace lifecycle
   contracts; RFC 006 implements the bounded device PFO kernel; RFC 027 (in the
-  unreleased `0.21.1` tree) adds a constrained quadratic-program kernel.
+  `0.21.1` release) adds a constrained quadratic-program kernel.
 
 ## Public surface
 

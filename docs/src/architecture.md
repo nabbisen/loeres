@@ -19,7 +19,7 @@ mock gateway seam, and a process-local validation evidence cache. It does not
 ship broad LP/SOCP modeling, a concrete native adapter, a distributed cache,
 or broad throughput/multi-tenant stress evidence.
 
-The unreleased `0.21.1` tree (RFC 027) extends that family on both crates to a
+The `0.21.1` release (RFC 027) extends that family on both crates to a
 box **and** linear inequalities `Ax <= b`. `loeres::problem` defines the
 storage-agnostic quadratic-program contract — `QuadraticObjective`, `BoxBounds`,
 `LinearInequalities`, and `QuadraticProgram` over the RFC 002 access traits — and

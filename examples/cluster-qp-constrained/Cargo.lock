@@ -13,18 +13,18 @@ dependencies = [
 
 [[package]]
 name = "loeres"
-version = "0.21.1"
+version = "0.21.2"
 
 [[package]]
 name = "loeres-backend-std"
-version = "0.21.1"
+version = "0.21.2"
 dependencies = [
  "loeres",
 ]
 
 [[package]]
 name = "loeres-cluster"
-version = "0.21.1"
+version = "0.21.2"
 dependencies = [
  "loeres",
  "loeres-backend-std",

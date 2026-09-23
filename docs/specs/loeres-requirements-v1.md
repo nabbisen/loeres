@@ -10,8 +10,8 @@
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Release currency metadata.**
-> This tree: **0.21.1**.
-> Last reconciled repository release: **0.21.0**.
+> This tree: **0.21.2**.
+> Last reconciled repository release: **0.21.1**.
 > Implemented scope: **RFCs 001-029**.
 >
 > The implemented baseline includes the core contracts, static storage and the
@@ -19,14 +19,14 @@
 > cluster orchestration, one dynamic projected-first-order kernel, metadata-only
 > observability, a safe mock gateway seam, process-local validation evidence
 > caching, target-profile evidence classes, and bounded conformance fixtures.
-> It does **not** include broad LP/QP/SOCP solver parity (the unreleased `0.21.1`
+> It does **not** include broad LP/QP/SOCP solver parity (the `0.21.1`
 > tree adds only RFC 027's narrow constrained-QP kernels), a concrete native
 > adapter, a persistent/distributed cache, universal bitwise determinism, or
 > broad throughput/large-N/multi-tenant stress evidence. RFC 024 retired the
 > RFC 021 conditional apparatus after `0.20.2` shipped; the release package
 > gate now uses the ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. This tree is `0.21.1` and is not itself a release until it is tagged and distributed.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029.
 
 ---
 
@@ -419,8 +419,7 @@ Important scope rule:
 - Solver crates decide which problem families they implement.
 - Device crates must not inherit server-only modeling breadth by default.
 
-**Current disposition (RFC 027, implemented in this `0.21.1` tree; the tree is
-not itself a release until it is tagged and distributed).**
+**Current disposition (RFC 027, shipped in repository release `0.21.1`).**
 
 - **PF-002 (QP) — implemented.** `loeres::problem` defines the storage-agnostic
   quadratic-program contract `min ½xᵀQx + cᵀx` over `lo <= x <= hi` and `Ax <= b`
@@ -550,8 +549,7 @@ Server solver breadth must not imply device solver obligations.
 per-item outcomes, cooperative cancellation and deadline budgets, sequential,
 parallel, and async execution, and the `ClusterJob` seam. RFC 016 adds one
 dynamic box/bound-constrained projected-first-order numerical kernel; it does
-not satisfy the broader solver-family list above. In the unreleased `0.21.1`
-tree RFC 027 extends that kernel to linear inequalities `Ax <= b` (PF-002),
+not satisfy the broader solver-family list above. In the `0.21.1` release RFC 027 extends that kernel to linear inequalities `Ax <= b` (PF-002),
 reporting `Converged` only for a feasible iterate; it does not solve LP or detect
 infeasibility. RFC 009 adds metadata-only
 observability with bounded/redacted categories and a safe `MockGatewayJob`
@@ -1217,7 +1215,7 @@ These questions must be resolved by RFC, not by ad-hoc implementation:
 
 | ID | Question |
 |---|---|
-| OQ-001 | **Resolved for the baseline (RFC 006).** The first device family is a bounded box projected-first-order method; broader QP/SOCP families remain future. RFC 027 (unreleased `0.21.1` tree) extends it to linear inequalities by bounded Dykstra projection; interior-point, LP, and SOCP solving remain future. |
+| OQ-001 | **Resolved for the baseline (RFC 006).** The first device family is a bounded box projected-first-order method; broader QP/SOCP families remain future. RFC 027 (`0.21.1` release) extends it to linear inequalities by bounded Dykstra projection; interior-point, LP, and SOCP solving remain future. |
 | OQ-002 | **Resolved as a profile policy (RFC 011).** Evidence is classified as mandatory, advisory-installed, or documented-only. |
 | OQ-003 | **Resolved for mandatory evidence (RFC 011).** Hard-float `thumbv7em` is mandatory; soft-float remains advisory-installed, not universally required or supported. |
 | OQ-004 | **Deferred/open.** RFC 001 reserves fixed-point hooks but no fixed-point baseline ships. |
