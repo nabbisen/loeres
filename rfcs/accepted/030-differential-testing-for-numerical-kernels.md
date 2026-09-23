@@ -1,7 +1,7 @@
 # RFC 030 - Randomized Differential Testing for Numerical Kernels
 
-**Status.** Proposed (2026-09-24)
-**Design approval.** Architect-authored from the `0.21.1` distribution closeout (architect review 063 §7), at the project owner's request.
+**Status.** Accepted (design frozen 2026-09-24)
+**Design approval.** Project owner accepted it and authorized the `accepted/` transition on 2026-09-24. Architect-authored from the `0.21.1` distribution closeout (architect review 063 §7), at the project owner's request.
 **Tracks.** Verification policy. Complements RFC 013 (conformance corpus and numerical parity) and RFC 010 (xtask verification governance); does not amend either.
 **Touches.** `xtask/src/checks/` (a new gate and its registry), `crates/loeres-device/src/solve/tests.rs`, `crates/loeres-cluster/src/solve/projected_first_order/tests.rs`.
 
