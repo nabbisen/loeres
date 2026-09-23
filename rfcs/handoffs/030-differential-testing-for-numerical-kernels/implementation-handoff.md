@@ -17,9 +17,18 @@ against an independently constructed exact reference, and a gate asserts it.
 Submit **one review request per slice**. S1 is the gate and registry; S2 and S3
 are the two retrofits; they may be done in any order after S1.
 
-**S1 — the `differential` gate and its registry.**
-**S2 — retrofit `loeres-device::solve::solve_projected_first_order` (RFC 006).**
-**S3 — retrofit `loeres-cluster::solve::projected_first_order::solve_projected_first_order_dyn` (RFC 016).**
+**S1 — the `differential` gate and its registry.** *Landed at `1e71ece`, accepted in architect review 064.*
+**S2 — retrofit `loeres-device::solve::solve_projected_first_order` (RFC 006).** *Landed at `71164d2`, accepted in architect review 064.*
+**S3 — retrofit `loeres-cluster::solve::projected_first_order::solve_projected_first_order_dyn` (RFC 016).** *Landed at `ba16c17`, accepted in architect review 064.*
+
+**All three slices are complete and RFC 030's six exit criteria are met.** Two
+corrections to this handoff came out of the work and are recorded rather than
+silently absorbed: §3.1's seed list of "all six entrypoints" **missed
+`solve_batch_async`**, which is `pub async fn` and which the specified
+`pub fn solve_` scan would not have matched — the implementer extended the scan
+and added the row; and §3.2.2's `fn <test>(` check was too weak, since a
+same-named helper satisfies it, so the gate additionally requires a `#[test]`
+attribute.
 
 ## 3. S1 — gate and registry
 
