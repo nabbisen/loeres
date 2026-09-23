@@ -144,6 +144,7 @@ separate, reviewed pass.
 | `060` | 2026-09-24 | rfc027 s5 documentation architect review | `203e9ecdf3938d31f929f66e11c6d3fc615bdeb5f0680aaafc12951fea374217` | `architect` | ✓ |
 | `061` | 2026-09-24 | rfc027 s5 d1 d3 architect review | `70dbde021ee4322100585f9eed055429f996ea280d4dbbf8cba0e9248fbcb448` | `architect` | ✓ |
 | `062` | 2026-09-24 | rfc027 closeout and exit criteria | `da54109b11c2c95ae7af5956c2f546978851e95baf50acbba26c98db51b44812` | `architect` | ✓ |
+| `063` | 2026-09-24 | 0.21.1 distribution closeout | `d586a570cc312fac113ed64c518408b3dd92f2217d0bf61eb276620be08ad813` | `architect` |  |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
