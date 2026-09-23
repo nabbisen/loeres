@@ -1093,7 +1093,7 @@ Device timing behavior must be explicit.
 | Mode | Meaning | Constraint |
 |---|---|---|
 | Early-exit bounded mode | Solver may stop when convergence is detected before max iterations | Still bounded by maximum iteration cap |
-| Constant-iteration mode | Solver records convergence internally but continues to execute the configured iteration count | Must not claim cryptographic constant-time |
+| Constant-iteration mode | Solver runs the configured iteration count and evaluates the convergence criterion at the final iteration | Must not claim cryptographic constant-time |
 | Validation-only rejection path | Invalid input exits before calculation loop | Must return structured rejection error |
 
 Constant-iteration mode is useful for timing stabilization and side-channel reduction, but it is not a proof of constant-time execution.

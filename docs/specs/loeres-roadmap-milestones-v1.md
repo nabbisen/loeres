@@ -1113,9 +1113,9 @@ sophisticated design."** The approved sequence:
 **C.3 status (unreleased `0.21.1` tree).** RFC 027 slices S1-S4 (contract, device
 kernel, cluster kernel, conformance) are implemented and accepted, with Amendments
 3-5 (Dykstra over `m + 1` sets, identity up to the sign of zero, `Converged` means
-feasible) and RFC 029 (terminal convergence); S5 (documentation) is under review.
-RFC 027 stays in `accepted/` until its closeout slice and the release that carries
-it.
+feasible) and RFC 029 (terminal convergence); S5 (documentation) landed and was
+accepted in architect review 060. RFC 027's closeout (S6) remains, and the RFC
+stays in `accepted/` until it and the release that carries it.
 
 RFC 028 (accepted 2026-09-15) records the uncompressed tar SHA-256 as the
 cross-environment identity anchor of release evidence, after `0.21.0` showed CI

@@ -66,7 +66,11 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   (allocated once, sized `(n, m)`), and the result is `ConstrainedSolveRecord`:
   the terminal report, honest validation evidence, `projection_cap_hits`, and
   `max_constraint_violation`. `ClusterConstrainedJob` plugs it into `ClusterJob`.
-  `m = 0` is accepted and is the RFC 016 step, identical up to the sign of zero.
+  `m = 0` is accepted and performs the single exact box projection with no
+  Dykstra sweep — the RFC 016 step, operation for operation. Results match
+  RFC 016 up to the sign of zero **when the two oracles coincide** (`Q = I`,
+  `c = −t`); for a general `Q` the oracles differ in floating point and the
+  agreement is within tolerance, not exact (RFC 027 §0.2.5).
 - `Converged` means **feasible within `projection_tolerance`** (Amendment 5).
   `NotConverged` with `NoProgress` indicates an infeasible or too-tightly-capped
   polyhedron.

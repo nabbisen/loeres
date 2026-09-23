@@ -132,8 +132,11 @@ solve to a `BatchItemOutcome`, which holds the core report. A caller reading a
 `Solved` outcome sees `Converged` or `NotConverged` — truthful about feasibility —
 but not `projection_cap_hits` or `max_constraint_violation`. A caller who needs
 the magnitudes uses the typed entrypoint above. The `m = 0` case (no inequalities)
-is accepted and is the box-only step, identical to the box-only kernel up to the
-sign of zero.
+is accepted and performs the single exact box projection with no Dykstra sweep —
+the RFC 016 step, operation for operation. Results match RFC 016 up to the sign of
+zero **when the two oracles coincide** (`Q = I`, `c = −t`); for a general `Q` the
+oracles differ in floating point and the agreement is within tolerance, not exact
+(RFC 027 §0.2.5).
 
 **Limits of this kernel** (RFC 027 §11.6):
 

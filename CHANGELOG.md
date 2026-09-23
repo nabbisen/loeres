@@ -166,6 +166,12 @@ Development toward the next release; RFC 027 implementation follows.
   cannot reintroduce the sticky-flag defect (review 059 F2).
 - The version-bump procedure now takes four lockfile updates (one per excluded
   example plus the workspace).
+- Review 060 corrections: the second stale "records convergence internally"
+  sentence in the external design's constant-iteration table now states the RFC 029
+  behaviour; the cluster README and user guide no longer claim `m = 0` is identical
+  to RFC 016 for every `Q` — it is the same step operation for operation, identical
+  up to the sign of zero only when the two oracles coincide (`Q = I`, `c = -t`), and
+  within tolerance otherwise (RFC 027 §0.2.5).
 
 ### RFC 029 — terminal convergence, not sticky convergence
 
