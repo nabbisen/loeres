@@ -237,7 +237,9 @@ mod owned {
     /// the criterion is met (`converged_early`) or at the cap
     /// (`not_converged_cap`). Under `ConstantIteration` it always runs the full
     /// `max_iterations` and reports `converged_at_cap` / `not_converged_cap`, so
-    /// `iterations_executed == max_iterations`.
+    /// `iterations_executed == max_iterations`. The criterion is evaluated at the
+    /// **final** iteration, so `converged_at_cap` is a claim about the returned
+    /// iterate, not about an earlier step (RFC 029 §5.4).
     ///
     /// Non-convergence is an `Ok` outcome, never a [`SolverError`]; errors are
     /// reserved for invalid configuration, invalid bounds, dimension mismatch,
@@ -297,13 +299,13 @@ mod owned {
                 alpha,
             )?;
             executed += 1;
-            if change.lte_tolerance(tolerance) {
-                converged = true;
-                if !constant_iteration {
-                    return Ok(DeviceSolveReport::from_core(SolveReport::converged_early(
-                        executed,
-                    )));
-                }
+            // An assignment, not a set-once flag: when the loop ends `converged`
+            // is the *last* iteration's result (RFC 029 §5.1).
+            converged = change.lte_tolerance(tolerance);
+            if converged && !constant_iteration {
+                return Ok(DeviceSolveReport::from_core(SolveReport::converged_early(
+                    executed,
+                )));
             }
         }
 

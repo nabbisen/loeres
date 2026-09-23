@@ -652,6 +652,75 @@ fn constant_iteration_runs_the_full_cap_when_the_feature_is_enabled() {
     }
 }
 
+// RFC 029: under `ConstantIteration` the criterion is evaluated at the *final*
+// iteration, so `converged_at_cap` is a claim about the returned iterate. An
+// earlier sticky flag, set the first time an outer step fell within tolerance
+// and never cleared, reported `Converged` for a run that diverged afterwards.
+#[cfg(feature = "constant-iteration")]
+fn constant_iteration_qp(c: [f64; 2]) -> Qp2x1 {
+    Qp2x1 {
+        q: identity_2x2(),
+        c: FixedVector::from_array(c),
+        lo: FixedVector::from_array([-1e6, -1e6]),
+        hi: FixedVector::from_array([1e6, 1e6]),
+        // x0 <= 1e9: slack throughout, so only stationarity is in question.
+        a: FixedMatrix::from_row_major_array([1.0, 0.0]),
+        b: FixedVector::from_array([1e9]),
+    }
+}
+
+#[cfg(feature = "constant-iteration")]
+fn solve_constant_iteration(
+    problem: &Qp2x1,
+    step_scale: f64,
+    start: [f64; 2],
+) -> (ConstrainedSolveReport<f64>, [f64; 2]) {
+    let mut x = FixedVector::from_array(start);
+    let mut ws = workspace_2x1();
+    let cfg = ConstrainedSolveConfig {
+        max_iterations: 400,
+        tolerance: 1e-12,
+        timing_mode: TimingMode::ConstantIteration,
+        projection_max_sweeps: 5000,
+        projection_tolerance: 1e-12,
+    };
+    let report =
+        solve_constrained_projected_first_order(problem, step_scale, &mut x, &mut ws, &cfg)
+            .expect("solve succeeds");
+    (report, [x.as_slice()[0], x.as_slice()[1]])
+}
+
+/// `x <- -1.1·x` diverges. Iteration 1's change is `2.1e-13`, within
+/// `tolerance = 1e-12`, but the run keeps going and the last step moves by
+/// roughly 340: the returned iterate is not stationary.
+#[test]
+#[cfg(feature = "constant-iteration")]
+fn constant_iteration_does_not_report_converged_for_a_run_that_diverges_after_a_small_first_step() {
+    let (report, x) =
+        solve_constant_iteration(&constant_iteration_qp([0.0, 0.0]), 2.1, [1e-13, 0.0]);
+
+    assert_eq!(report.iterations_executed(), 400);
+    // The iterate really moved: it is nowhere near the start.
+    assert!(x[0].abs() > 1e3, "final x0 = {}", x[0]);
+    assert_eq!(report.max_constraint_violation(), 0.0);
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.core().termination(), TerminationReason::IterationCap);
+}
+
+/// The regression guard for over-correcting: a run that really converges, and
+/// keeps iterating at the fixed point to the cap, is still `Converged`.
+#[test]
+#[cfg(feature = "constant-iteration")]
+fn constant_iteration_still_reports_converged_for_a_genuinely_converged_run() {
+    let (report, x) =
+        solve_constant_iteration(&constant_iteration_qp([-1.0, -1.0]), 0.5, [0.0, 0.0]);
+
+    assert_eq!(report.iterations_executed(), 400);
+    assert!((x[0] - 1.0).abs() < 1e-9, "final x0 = {}", x[0]);
+    assert_eq!(report.status(), SolveStatus::Converged);
+    assert_eq!(report.core().termination(), TerminationReason::IterationCap);
+}
+
 // ---------------------------------------------------------------------------
 // m >= 2 (RFC 027 Amendment 3, §0.3; review 054). With M = 1 a single Hildreth
 // pass is exact and the two-set/one-pass defect cannot appear, which is why

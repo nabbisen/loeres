@@ -530,6 +530,11 @@ where
 /// within `config.projection_tolerance` (RFC 027 §0.5.1): a stationary but
 /// infeasible iterate is `NotConverged` with `NoProgress`.
 ///
+/// Under `ConstantIteration` the criterion is evaluated at the **final**
+/// iteration, so `converged_at_cap` is a claim about the returned iterate, not
+/// about an earlier step (RFC 029 §5.4); together with §0.5.1 it requires that
+/// iterate to be both stationary and feasible.
+///
 /// Timing modes mirror RFC 006 exactly: under `EarlyExitAllowed` the kernel
 /// returns as soon as the outer criterion is met; under `ConstantIteration`
 /// it always runs the full `max_iterations`.
@@ -594,24 +599,24 @@ where
             let delta = x.get(j)?.sub(workspace.outer_previous.get(j)?).abs();
             change = change.max(delta);
         }
-        if change.lte_tolerance(tolerance) {
-            converged = true;
-            if !constant_iteration {
-                // RFC 027 §0.5.1: a stationary outer step is `Converged` only
-                // at a feasible iterate; a capped projection has a fixed point
-                // even when the polyhedron is empty.
-                let violation = max_constraint_violation(problem, x)?;
-                let core = if violation.lte_tolerance(config.projection_tolerance) {
-                    SolveReport::converged_early(executed)
-                } else {
-                    SolveReport::not_converged_stalled(executed)
-                };
-                return Ok(ConstrainedSolveReport::from_core(
-                    core,
-                    projection_cap_hits,
-                    violation,
-                ));
-            }
+        // An assignment, not a set-once flag: when the loop ends `converged`
+        // is the *last* iteration's result (RFC 029 §5.1).
+        converged = change.lte_tolerance(tolerance);
+        if converged && !constant_iteration {
+            // RFC 027 §0.5.1: a stationary outer step is `Converged` only
+            // at a feasible iterate; a capped projection has a fixed point
+            // even when the polyhedron is empty.
+            let violation = max_constraint_violation(problem, x)?;
+            let core = if violation.lte_tolerance(config.projection_tolerance) {
+                SolveReport::converged_early(executed)
+            } else {
+                SolveReport::not_converged_stalled(executed)
+            };
+            return Ok(ConstrainedSolveReport::from_core(
+                core,
+                projection_cap_hits,
+                violation,
+            ));
         }
     }
 

@@ -207,6 +207,59 @@ fn constant_iteration_reports_non_convergence_at_cap() {
     assert_eq!(report.iterations_executed(), 2);
 }
 
+// RFC 029: under `ConstantIteration` the criterion is evaluated at the *final*
+// iteration, so `converged_at_cap` is a claim about the returned iterate. An
+// earlier sticky flag reported `Converged` for a run that diverged after a first
+// step that happened to be within tolerance.
+#[cfg(feature = "constant-iteration")]
+#[test]
+fn constant_iteration_does_not_report_converged_for_a_run_that_diverges_after_a_small_first_step() {
+    // x <- -1.1·x diverges; iteration 1's change is 2.1e-13, within 1e-12. The
+    // bounds are wide enough that clamping never makes the iterate stationary.
+    let problem = Quadratic {
+        target: FixedVector::from_array([0.0, 0.0]),
+        lo: FixedVector::from_array([-1e6, -1e6]),
+        hi: FixedVector::from_array([1e6, 1e6]),
+        alpha: 2.1,
+    };
+    let mut x = FixedVector::from_array([1e-13, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(400, 1e-12, TimingMode::ConstantIteration);
+
+    let report = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap();
+
+    assert_eq!(report.iterations_executed(), 400);
+    // The iterate really moved: it is nowhere near the start.
+    assert!(
+        x.as_slice()[0].abs() > 1e3,
+        "final x0 = {}",
+        x.as_slice()[0]
+    );
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.core().termination(), TerminationReason::IterationCap);
+}
+
+#[cfg(feature = "constant-iteration")]
+#[test]
+fn constant_iteration_still_reports_converged_for_a_genuinely_converged_run() {
+    let problem = Quadratic {
+        target: FixedVector::from_array([1.0, 1.0]),
+        lo: FixedVector::from_array([-1e6, -1e6]),
+        hi: FixedVector::from_array([1e6, 1e6]),
+        alpha: 0.5,
+    };
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace::<2>();
+    let cfg = config(400, 1e-12, TimingMode::ConstantIteration);
+
+    let report = solve_projected_first_order(&problem, &mut x, &mut ws, &cfg).unwrap();
+
+    assert_eq!(report.iterations_executed(), 400);
+    assert!((x.as_slice()[0] - 1.0).abs() < 1e-9);
+    assert_eq!(report.status(), SolveStatus::Converged);
+    assert_eq!(report.core().termination(), TerminationReason::IterationCap);
+}
+
 // --- v0.10.1 fail-safe validation (B2 / B3 / M4) ---
 
 #[test]

@@ -145,6 +145,20 @@ Development toward the next release; RFC 027 implementation follows.
 - `qp-linear-2d-infeasible-001` asserts `not-converged` / `no-progress`, and the
   fixture schema's `not-asserted` status escape hatch is removed.
 
+### RFC 029 — terminal convergence, not sticky convergence
+
+- Under `TimingMode::ConstantIteration` both device kernels
+  (`solve_projected_first_order` and `solve_constrained_projected_first_order`)
+  now evaluate the convergence criterion at the **final** iteration. Before, the
+  status came from a flag set the first time an outer step fell within tolerance
+  and never cleared, so a run that stepped within tolerance once and then
+  diverged was reported `Converged`; `converged_at_cap` is now a claim about the
+  returned iterate. This changes a reported status only where that status was
+  false: for a divergent run (`x ← −1.1·x` from `1e-13`, 400 iterations) both
+  kernels move from `Converged` to `NotConverged`, and a genuinely converged run
+  still reports `Converged` with `IterationCap`. `EarlyExitAllowed`, the cluster
+  kernels, and every signature, workspace and config are unchanged.
+
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
 **Release status:** released (tagged 2026-09-12, distributed 2026-09-12)
