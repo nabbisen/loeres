@@ -1,11 +1,28 @@
 # RFC 032 - Step-Size Guidance and a Stated Convergence Rate
 
 **Status.** Accepted (design frozen 2026-09-24)
-**Design approval.** Architect-authored and scheduled in architect review 066 (Cycle 1); project owner authorized the cycle on 2026-09-24.
+**Design approval.** Amendment 1 (§0, 2026-09-24) by architect review 068. Architect-authored and scheduled in architect review 066 (Cycle 1); project owner authorized the cycle on 2026-09-24.
 **Tracks.** Closes RFC 027 §11.6's "no convergence rate is claimed; `step_scale` is the caller's responsibility". Paired with RFC 031 in the same release.
 **Touches.** `crates/loeres/src/problem.rs` (additive), `crates/loeres-device/src/solve/constrained.rs` and `crates/loeres-cluster/src/solve/constrained.rs` (validation only), user-facing docs.
 
 ---
+
+## 0. Amendment 1 — 2026-09-24 (architect review 068)
+
+**The slack figures in §3 were ensemble-specific and are not general.**
+
+§3 stated `U <= 1.50 x λ_max` and `λ_max <= 3.04 x L` from the architect's
+600-instance random PSD set, phrased as though they were properties of the
+bounds. The implementer's own 600-instance re-verification gave **1.62** and
+**4.21**: their generator draws `A` with as few as one row, so `Q` is often
+rank-deficient and the diagonal bound is looser.
+
+**Both bounds held everywhere in both sets.** What differs is the *slack*, which
+is a property of the ensemble sampled and not of the bounds. A slack figure is
+quotable only with the ensemble that produced it, and no general slack is claimed
+by this RFC or by any surface it governs.
+
+§3's sentence is corrected in place accordingly.
 
 ## 1. Summary
 
@@ -33,8 +50,11 @@ L = maxᵢ Qᵢᵢ           (diagonal)         L <= λ_max
 
 `U` holds because every eigenvalue lies in a Gershgorin disc and `Qᵢᵢ >= 0` for
 PSD `Q`. `L` holds because `Qᵢᵢ = eᵢᵀQeᵢ <= λ_max`. Both were checked over 600
-random PSD matrices with no violation; `U` exceeded `λ_max` by at most `1.50×`
-and `λ_max` exceeded `L` by at most `3.04×`.
+random PSD matrices by the architect and over a second, independently generated
+600 by the implementer, **with no violation in either set**. Observed slack
+differed between them — `1.50×`/`3.04×` against `1.62×`/`4.21×` — because slack
+is a property of the ensemble sampled, not of the bounds (Amendment 1). **No
+general slack figure is claimed.**
 
 **What each licenses, and nothing more:**
 

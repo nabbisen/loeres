@@ -90,6 +90,28 @@ licenses *and* that the middle band is accepted without a claim. Replace RFC 027
 its dependence on `λ_min`, which the library does not compute — do not state a
 numeric rate.
 
+## 5a. F1 — document the `m = 0` step-validation divergence (architect review 068)
+
+*S1 and S2 are accepted. This is the one follow-up, non-blocking, before the
+`0.21.3` cut.*
+
+The new `α >= 2/L` rejection applies to the cluster kernel's `m = 0` path, where
+RFC 027 Amendment 2 says the kernel is the RFC 016 step "operation for
+operation" and RFC 016 — having no `Q` — has no such rule. Review 068 ruled the
+rule stays **uniform**: the identity claim is about the computed result for
+accepted inputs and is untouched (`m0_identity` passes), while the accepted
+*domain* now differs, and on it the constrained kernel is strictly more
+informative.
+
+**State it** on the user-facing surfaces that already describe `m = 0` — both
+cluster surfaces and the kernel rustdoc — in one sentence: `m = 0` performs the
+RFC 016 step operation for operation, and additionally validates `step_scale`
+against `2/L`, so a provably divergent step is rejected where RFC 016 would run
+to its cap.
+
+**Do not edit `rfcs/done/027-*.md`** — it is in `done/` and RFC 025 §11 forbids
+amending it in place. The caveat lives in RFC 032 and the surfaces above.
+
 ## 6. Explicit non-change scope
 
 - No line search, no adaptive or per-iteration step; `step_scale` stays a
