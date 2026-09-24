@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [033](proposed/033-exact-projection-in-the-converged-claim.md) | An Exact Projection as Part of the `Converged` Claim | Proposed (2026-09-24) | RFC 031's adversarial suite found solves that are feasible, stationary and reported `Converged` while `1.3e-3` from the optimum, with only `projection_cap_hits` signalling it. Adds the third leg — the final projection must not have capped — after Amendment 5's feasibility and RFC 029's stationarity. Verified to downgrade nothing else in the corpus. Does **not** improve any answer. |
 
 ## Accepted RFCs
 

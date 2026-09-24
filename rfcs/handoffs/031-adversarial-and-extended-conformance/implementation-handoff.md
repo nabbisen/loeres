@@ -70,6 +70,36 @@ it stresses and the value that makes it adversarial:
 5. **Exactly-cancelling infeasible geometry** — RFC 027 §0.3.4 requires the
    corpus to keep this shape rather than avoid it.
 
+## 5a. F1 — a box-interacting adversarial family (architect review 067)
+
+*S1 and S2 are accepted. This is the one follow-up, and it closes a measured gap
+rather than a suspected one.*
+
+The architect injected the RFC 027 handoff's own prohibited shortcut — a plain
+`clamp` in place of the box Dykstra increment — into the cluster kernel and ran
+every subject in the tree:
+
+| Subject | Result |
+|---|---|
+| smoke | **24/24 pass — misses it** |
+| extended | **4 of 6 fail — catches it** |
+| adversarial | 5 failed, unchanged — **misses it** |
+| cluster unit tests, incl. RFC 030's randomized differential tests | **113/113 pass — misses it** |
+
+Every one of those subjects except `extended` uses a box wide enough never to
+interact with the constraint rows, so the box's Dykstra increment is never
+exercised. That is a blind spot shared by RFC 030's mandatory differential tests.
+
+**Add an adversarial family in which a box face and a constraint row are both
+active at the optimum**, so the two sets genuinely interact. At least one fixture
+where the unconstrained minimiser is cut off by a box face *and* a row, and at
+least one where the box face binds only after the row has moved the iterate.
+Expected values from the same independent reference, and record in each comment
+which face and which row are active.
+
+**Evidence:** the plain-`clamp` mutation applied to the cluster kernel, showing
+the new family fails where the current adversarial suite passes.
+
 ## 6. Explicit non-change scope
 
 - **Not one line under `crates/` outside tests.** No kernel change of any kind.
