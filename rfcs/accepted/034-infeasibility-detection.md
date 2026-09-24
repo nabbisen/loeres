@@ -1,6 +1,6 @@
 # RFC 034 - Conservative Infeasibility Detection
 
-**Status.** Proposed (2026-09-24)
+**Status.** Accepted (design frozen 2026-09-24)
 **Design approval.** Architect-authored and scheduled as Cycle 2 in architect review 066.
 **Tracks.** Closes RFC 027 §11.6's "infeasibility is not detected; reported as non-convergence". Depends on RFC 031's corpus and composes with RFC 027 Amendment 5, RFC 029 and RFC 033.
 **Touches.** `crates/loeres/src/solver.rs` (one enum variant), both constrained kernels, `conformance/adversarial/`, user-facing docs.
@@ -64,8 +64,8 @@ Report `SolveStatus::Infeasible` only when **all** hold:
 
 1. the **final** projection hit `projection_max_sweeps` (already computed for
    RFC 033);
-2. `max|λ|` at the final sweep is at least **twice** its value at the midpoint
-   sweep — linear divergence, not slow convergence;
+2. `max|λ|` at the final sweep is at least **1.5 times** its value at the
+   midpoint sweep — linear divergence, not slow convergence;
 3. `max_constraint_violation > projection_tolerance` at the returned iterate.
 
 Condition 3 alone excludes every `λ ≈ 0` instance, which is what made the naive
@@ -77,6 +77,13 @@ projection is merely capped: those have bounded `λ` (§3).
 
 **Cost:** one scalar of extra state, `max|λ|` snapshotted at the midpoint sweep.
 No new allocation, no new scalar tier, no `sqrt`.
+
+**Why 1.5 and not 2.** Linear divergence from zero gives a ratio approaching
+exactly `2`, so a threshold *at* `2` is on the boundary and misses real cases.
+Measured: the 3-halfspace cycle reaches only `1.99889` at 200 sweeps, `1.999889`
+at 2000 and `1.999998` at 100000 — **below `2` at every realistic budget** —
+while feasible cases sit at `0.976` to `1.000`. `1.5` has roughly half an order
+of margin on both sides and is not fitted to either.
 
 ## 5. Public surface
 
@@ -106,7 +113,7 @@ existing iteration already produces.
 | Risk | Mitigation |
 |---|---|
 | **A false `Infeasible` on a slow-but-feasible problem** — the risk that governs the whole design | Three independent conditions; measured separation of ten orders; the adversarial suite's nearly-parallel family is exactly this shape and must keep reporting `NotConverged` |
-| Thresholds tuned to the corpus that measured them | The factor-of-two in condition 2 is a *property of linear divergence*, not a fitted constant. It must be justified against random instances the implementer generates, not only against the fixtures |
+| Thresholds tuned to the corpus that measured them | The factor in condition 2 derives from a *property of linear divergence* (ratio → 2), set at `1.5` for margin, not fitted. It must be justified against random instances the implementer generates, not only against the fixtures |
 | A caller treats `Infeasible` as an error | It is an `Ok` outcome like every other status (RFC 006 DEVICE-006). Documented |
 
 ## 8. Exit criteria
