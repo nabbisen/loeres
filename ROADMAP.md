@@ -25,7 +25,7 @@ this file is a short summary.
 > 2026-07-30 as repository release `0.20.2`: the canonical tag peeled to the
 > finalization revision, the release workflow reached a successful terminal
 > conclusion, and its required evidence upload succeeded. Repository release
-> `0.20.2` carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. This tree is `0.21.2` and is not itself a release until it is tagged and distributed. RFC
+> `0.20.2` carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. RFC
 > 024 subsequently retired the one-release conditional apparatus from ordinary
 > post-release development.
 
@@ -59,8 +59,8 @@ roadmap §7.
 ## Current status
 
 RFCs 001-030 are implemented: 001-026 shipped in `0.21.0`, 027-029 shipped in
-`0.21.1`, and RFC 030 (randomized differential testing for numerical kernels) is
-in this `0.21.2` tree, not yet released. The current numerical breadth is one
+`0.21.1`, and RFC 030 (randomized differential testing for numerical kernels)
+shipped in `0.21.2`. The current numerical breadth is one
 projected-first-order family on device and cluster, over a box and, since
 `0.21.1`, over a box with linear inequalities (RFC 027). Infeasibility is not detected and LP is not solved.
 Conformance is a bounded smoke corpus; no broad LP/SOCP, large-N,
@@ -70,7 +70,7 @@ RFCs 019/020/021 shipped in repository release `0.20.2`, released 2026-07-30
 under RFC 021's conditional-finalization protocol; immutable local tag
 `0.20.1` and its accepted evidence remain historical blocked-candidate
 evidence only and are never reused. Repository release `0.21.0` shipped
-2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. This tree is `0.21.2` and is not itself a release until it is tagged and distributed. Currency lives in the apex trio's RFC 024
+2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Currency lives in the apex trio's RFC 024
 block, which records the tree's identity and the release it was last reconciled
 against, never release status.
 

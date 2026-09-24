@@ -7,7 +7,7 @@ sign-off (see RFC 000 and the requirements specification).
 
 ## [0.21.2] — 2026-09-24 — Enforced differential testing
 
-**Release status:** unreleased
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
 
 Repository release `0.21.2` makes randomized differential testing of numerical
 kernels an enforced gate. RFC 030 is implemented and moves to `rfcs/done/` in
