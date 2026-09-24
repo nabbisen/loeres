@@ -71,14 +71,19 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   RFC 016 up to the sign of zero **when the two oracles coincide** (`Q = I`,
   `c = −t`); for a general `Q` the oracles differ in floating point and the
   agreement is within tolerance, not exact (RFC 027 §0.2.5).
-- `Converged` means **feasible within `projection_tolerance`** (Amendment 5).
-  `NotConverged` with `NoProgress` indicates an infeasible or too-tightly-capped
-  polyhedron.
+- `Converged` requires three things together: the iterate is **feasible within
+  `projection_tolerance`** (Amendment 5), **stationary** at the final iteration
+  (RFC 029), and produced by an **exact projection** — the final outer iteration's
+  projection returned without hitting `projection_max_sweeps` (RFC 033).
+  `NotConverged` with `NoProgress` indicates an infeasible polyhedron or a
+  projection that hit its cap.
 - **The batch seam carries status only.** `ClusterConstrainedJob` erases to
   `BatchItemOutcome`, which holds the core `SolveReport`, so `projection_cap_hits`
-  and `max_constraint_violation` are not visible through `solve_batch`. Because the
-  status is truthful, that does not hide an infeasible answer as a converged one;
-  a caller who needs the magnitudes uses the typed entrypoint.
+  and `max_constraint_violation` are not visible through `solve_batch`. That is
+  acceptable because the status now carries the case that matters: a solve whose
+  projection hit its cap, feasible or not, reads `NotConverged` (RFC 033 §6;
+  before RFC 033 such a solve could read `Converged` with a wrong answer). A
+  caller who needs the magnitudes uses the typed entrypoint.
 - See `examples/cluster-qp-constrained/`.
 
 Limits (RFC 027 §11.6): LP is expressible (`Q = 0`) but not solved; infeasibility

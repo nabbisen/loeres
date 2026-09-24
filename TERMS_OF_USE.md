@@ -65,7 +65,15 @@ constrained (quadratic-program) kernels are:
 - **Infeasibility is not detected.** An infeasible polyhedron is reported as
   `NotConverged` with `NoProgress` and a positive `max_constraint_violation`
   that does not shrink as the projection cap is raised; it is never an error.
-  `Converged` means feasible within `projection_tolerance`.
+  `Converged` on a constrained solve requires **three things together**: the
+  returned iterate is **feasible** within `projection_tolerance` (RFC 027
+  Amendment 5); it is **stationary**, the outer step being within `tolerance`, at
+  the *final* iteration (RFC 029); and the projection that produced it was
+  **exact**, that is the final outer iteration's projection returned without
+  hitting `projection_max_sweeps` (RFC 033). A solve missing any of them reports
+  `NotConverged` and still returns its last iterate. On hard geometry (nearly
+  parallel constraint normals) a solve that used to report `Converged` with a
+  feasible but inexact point now reports `NotConverged`; no answer changed.
 - **The projection is inexact by design.** It converges linearly at a rate set
   by the angles between constraint normals, and nearly parallel constraints can
   make the inner cap bind routinely. A cap hit is not an error: read

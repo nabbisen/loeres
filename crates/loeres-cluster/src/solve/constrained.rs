@@ -375,9 +375,13 @@ where
 /// fail-safe failures return `Err`; cancellation returns
 /// [`SolverError::Cancelled`]. An infeasible polyhedron is not special-cased: it
 /// runs each projection to `projection_max_sweeps` and reports its true
-/// violation with `projection_cap_hits > 0`. `Converged` means feasible (RFC 027
-/// §0.5.1): a stationary outer step at an iterate whose violation exceeds
-/// `projection_tolerance` reports `NotConverged` with `NoProgress`.
+/// violation with `projection_cap_hits > 0`. `Converged` requires three things
+/// together: the iterate is feasible (RFC 027 §0.5.1, violation within
+/// `projection_tolerance`), the outer step is stationary, and the final outer
+/// iteration's projection returned without hitting `projection_max_sweeps`
+/// (RFC 033). A stationary outer step that fails the first or the third reports
+/// `NotConverged` with `NoProgress`. `projection_cap_hits` still counts every
+/// capped projection; only the final one decides the status.
 ///
 /// # Errors
 /// Structural/validation failures per RFC 016 §3.7, plus
@@ -528,6 +532,10 @@ where
         }
         problem.gradient_into(x, &mut workspace.gradient)?;
 
+        // Whether *this* iteration's projection hit its sweep cap (RFC 033); read
+        // only at the early exit, where this is the final iteration. `m = 0` has
+        // no inner projection, so it never caps.
+        let mut last_capped = false;
         if m == 0 {
             // §0.2.3: the single exact box projection, no sweep — the RFC 016
             // step, operation for operation.
@@ -552,7 +560,8 @@ where
                 }
                 x.set(j, candidate)?;
             }
-            if dykstra_project(problem, x, workspace, config, ctx, m)? {
+            last_capped = dykstra_project(problem, x, workspace, config, ctx, m)?;
+            if last_capped {
                 projection_cap_hits += 1;
             }
         }
@@ -565,9 +574,11 @@ where
         if change.lte_tolerance(config.tolerance) {
             // RFC 027 §0.5.1: a stationary outer step is `Converged` only at a
             // feasible iterate; a capped projection has a fixed point even when
-            // the polyhedron is empty.
+            // the polyhedron is empty. RFC 033: and only when the projection that
+            // produced it was not capped, since a capped projection returns a
+            // feasible point that need not be *the* projection.
             let violation = max_constraint_violation(problem, x, m)?;
-            let report = if violation.lte_tolerance(config.projection_tolerance) {
+            let report = if violation.lte_tolerance(config.projection_tolerance) && !last_capped {
                 SolveReport::converged_early(executed)
             } else {
                 SolveReport::not_converged_stalled(executed)

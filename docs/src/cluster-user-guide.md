@@ -113,10 +113,16 @@ and `max_constraint_violation` — the terminal constraint violation
 projection cap hit is not an error, so the returned point may be only
 feasible-approximate.
 
-**`Converged` means feasible.** The final iterate is stationary **and** within
-`projection_tolerance` of every constraint. `NotConverged` with
-`TerminationReason::NoProgress` on a constrained solve indicates an infeasible or
-too-tightly-capped polyhedron. The example shows all three cases:
+**`Converged` is three claims.** The final iterate is within `projection_tolerance`
+of every constraint (feasible, RFC 027 Amendment 5), the outer step is within
+`tolerance` at the final iteration (stationary, RFC 029), **and** the projection
+that produced it was exact: the final outer iteration's projection returned without
+hitting `projection_max_sweeps` (RFC 033). `NotConverged` with
+`TerminationReason::NoProgress` on a constrained solve indicates an infeasible
+polyhedron or a projection that hit its cap. `projection_cap_hits` counts every
+capped projection, early ones included; only the final one decides the status. On
+hard geometry (nearly parallel constraint normals) a feasible point within
+tolerance can therefore read `NotConverged`. The example shows three cases:
 
 ```text
 slack halfspace:     converged in 56 iteration(s); x = [1.714286, 1.142857]; violation = 0.000e0; projection cap hits = 0

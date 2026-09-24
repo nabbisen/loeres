@@ -20,6 +20,13 @@ variant = "solve"
 #
 # Exact reference (fractions.Fraction, active-set enumeration over the rows AND the box
 # faces, in Q's metric; no kernel run). Active set at the optimum: row0 (multiplier 1), row1 (multiplier 1).
+#
+# RFC 033: the projection hits its sweep cap on every outer iteration here, so the
+# solve is reported NotConverged / NoProgress (a capped projection returns a feasible
+# point that need not be THE projection). The expected solution below is still the exact
+# optimum and is unchanged: the kernel returns the same inexact point as before, and this
+# fixture's solution and cap-hit assertions still fail. That failure is a finding, not
+# something the expected status was changed to hide.
 
 [config]
 max_iterations = 5000
@@ -38,8 +45,8 @@ constraint_matrix = [1.0, 0.0, 1.0, 0.002]
 constraint_rhs = [1.0, 1.002]
 
 [expected]
-status = "converged"
-termination = "convergence-criterion"
+status = "not-converged"
+termination = "no-progress"
 solution = [1.0, 1.0]
 error = "none"
 violation_max = 1e-8

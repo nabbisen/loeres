@@ -823,6 +823,113 @@ fn constant_iteration_does_not_report_converged_for_a_run_that_dips_within_toler
 }
 
 // ---------------------------------------------------------------------------
+// RFC 033: `Converged` requires the FINAL outer iteration's projection to have
+// returned without hitting `projection_max_sweeps`. Same problem as the cluster
+// tests: rows (1, 0) and (1, 0.2), b = (1, 1.2), target (3, 1.2), step 0.5,
+// started at (−60, 60); the exact optimum is the vertex (1, 1).
+// ---------------------------------------------------------------------------
+
+fn nearly_parallel_config(
+    sweeps: u32,
+    timing_mode: TimingMode,
+    iterations: u32,
+) -> ConstrainedSolveConfig<f64> {
+    ConstrainedSolveConfig {
+        max_iterations: iterations,
+        tolerance: 1e-12,
+        timing_mode,
+        projection_max_sweeps: sweeps,
+        projection_tolerance: 1e-10,
+    }
+}
+
+fn nearly_parallel(
+    config: &ConstrainedSolveConfig<f64>,
+) -> (ConstrainedSolveReport<f64>, [f64; 2]) {
+    let problem = projection_program([1.0, 0.0, 1.0, 0.2], [1.0, 1.2], [3.0, 1.2]);
+    let mut x = FixedVector::from_array([-60.0, 60.0]);
+    let mut ws = workspace_2x2();
+    let report = solve_constrained_projected_first_order(&problem, 0.5, &mut x, &mut ws, config)
+        .expect("solve succeeds");
+    (report, [x.as_slice()[0], x.as_slice()[1]])
+}
+
+#[test]
+fn a_capped_final_projection_is_not_converged() {
+    let (report, _) = nearly_parallel(&nearly_parallel_config(
+        400,
+        TimingMode::EarlyExitAllowed,
+        5000,
+    ));
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.core().termination(), TerminationReason::NoProgress);
+    assert!(report.projection_cap_hits() > 0);
+    assert!(report.max_constraint_violation() <= 1e-10);
+}
+
+/// An early iteration capped, the final one did not: still `Converged`. Gating on
+/// `projection_cap_hits > 0` would downgrade it.
+#[test]
+fn an_early_capped_projection_does_not_stop_a_clean_final_one_being_converged() {
+    let (report, x) = nearly_parallel(&nearly_parallel_config(
+        500,
+        TimingMode::EarlyExitAllowed,
+        5000,
+    ));
+    assert!(
+        report.projection_cap_hits() >= 1,
+        "no early iteration capped"
+    );
+    assert_eq!(report.status(), SolveStatus::Converged);
+    assert_eq!(
+        report.core().termination(),
+        TerminationReason::ConvergenceCriterion
+    );
+    assert!(
+        (x[0] - 1.0).abs() < 1e-6 && (x[1] - 1.0).abs() < 1e-6,
+        "{x:?}"
+    );
+}
+
+#[test]
+fn an_uncapped_solve_is_unchanged() {
+    let (report, _) = nearly_parallel(&nearly_parallel_config(
+        100_000,
+        TimingMode::EarlyExitAllowed,
+        5000,
+    ));
+    assert_eq!(report.projection_cap_hits(), 0);
+    assert_eq!(report.status(), SolveStatus::Converged);
+}
+
+/// The `ConstantIteration` return is a separate path from the early exit, and it
+/// is the *final* iteration's projection that counts there too.
+#[test]
+#[cfg(feature = "constant-iteration")]
+fn constant_iteration_applies_the_rule_to_the_final_projection() {
+    // Capped throughout: the final projection capped.
+    let (capped, _) = nearly_parallel(&nearly_parallel_config(
+        400,
+        TimingMode::ConstantIteration,
+        30,
+    ));
+    assert_eq!(capped.iterations_executed(), 30);
+    assert_eq!(capped.status(), SolveStatus::NotConverged);
+    assert_eq!(capped.core().termination(), TerminationReason::NoProgress);
+
+    // An early iteration capped, the final one did not: `Converged`, with
+    // `IterationCap` because the mode runs the full count.
+    let (early, _) = nearly_parallel(&nearly_parallel_config(
+        500,
+        TimingMode::ConstantIteration,
+        30,
+    ));
+    assert!(early.projection_cap_hits() >= 1);
+    assert_eq!(early.status(), SolveStatus::Converged);
+    assert_eq!(early.core().termination(), TerminationReason::IterationCap);
+}
+
+// ---------------------------------------------------------------------------
 // RFC 032: a step at or above 2/L is rejected; the band [2/U, 2/L) is not.
 //
 // Q = [[4, 1], [1, 3]]: L = 4 (largest diagonal), U = 5 (largest absolute row

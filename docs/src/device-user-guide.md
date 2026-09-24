@@ -104,14 +104,21 @@ What differs from the box-only solve:
   error, and the returned point may then be only feasible-approximate: read both
   fields before trusting the answer.
 
-**Read the status as a claim about feasibility.** `Converged` means the final
-iterate is stationary **and** satisfies every constraint within
-`projection_tolerance`. `NotConverged` with `TerminationReason::NoProgress` means
-the iterate stopped moving without being feasible, which on a constrained solve
-indicates an infeasible polyhedron or one whose projection cap is too tight.
-Under `ConstantIteration` the criterion is evaluated at the **final** iteration
-(RFC 029), so a run that dipped within tolerance and then diverged is
-`NotConverged`.
+**Read the status as three claims.** `Converged` requires all of: the final
+iterate satisfies every constraint within `projection_tolerance` (feasible, RFC 027
+Amendment 5); the outer step is within `tolerance` at the **final** iteration
+(stationary, RFC 029 — under `ConstantIteration` a run that dipped within tolerance
+and then diverged is `NotConverged`); and the projection that produced it was
+**exact** — the final outer iteration's projection returned without hitting
+`projection_max_sweeps` (RFC 033). `NotConverged` with
+`TerminationReason::NoProgress` means the iterate stopped moving but one of those
+failed: on a constrained solve, an infeasible polyhedron or a projection that hit
+its cap. The last iterate is still returned. `projection_cap_hits` counts every
+capped projection, early ones included; only the *final* one decides the status,
+because an early cap with a clean final projection leaves the answer exact. On
+hard geometry — nearly parallel constraint normals — a point that is feasible and
+within tolerance can therefore still read `NotConverged`: the kernel will not
+claim an exact projection it did not compute.
 
 **Limits of this kernel** (RFC 027 §11.6):
 

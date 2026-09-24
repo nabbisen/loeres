@@ -25,8 +25,10 @@ storage-agnostic quadratic-program contract — `QuadraticObjective`, `BoxBounds
 `LinearInequalities`, and `QuadraticProgram` over the RFC 002 access traits — and
 the device and cluster kernels consume it, projecting with bounded Dykstra
 sweeps (each halfspace its own set with a scalar multiplier, the box its own
-set). The status is truthful about feasibility: `Converged` means feasible within
-`projection_tolerance`, and an infeasible polyhedron is `NotConverged` with
+set). The status is truthful: `Converged` means feasible within
+`projection_tolerance`, stationary at the final iteration, and produced by a
+projection that did not hit its sweep cap (RFC 027 Amendment 5, RFC 029, RFC 033);
+an infeasible polyhedron, or a capped projection, is `NotConverged` with
 `NoProgress`, never an error. The kernel's limits (RFC 027 §11.6) are in the
 [device](device-user-guide.md) and [cluster](cluster-user-guide.md) user guides.
 

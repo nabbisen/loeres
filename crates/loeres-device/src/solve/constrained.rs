@@ -559,8 +559,12 @@ where
 /// sweeps, stopping when the outer step's net change is within
 /// `config.tolerance` (RFC 006's existing outer criterion, unchanged).
 /// `Converged` additionally requires the terminal constraint violation to be
-/// within `config.projection_tolerance` (RFC 027 §0.5.1): a stationary but
-/// infeasible iterate is `NotConverged` with `NoProgress`.
+/// within `config.projection_tolerance` (RFC 027 §0.5.1) **and** the final outer
+/// iteration's projection must have returned without hitting
+/// `projection_max_sweeps` (RFC 033): a stationary iterate that is infeasible, or
+/// that came from a capped projection, is `NotConverged` with `NoProgress`.
+/// `projection_cap_hits` still counts every capped projection; only the final one
+/// decides the status.
 ///
 /// Under `ConstantIteration` the criterion is evaluated at the **final**
 /// iteration, so `converged_at_cap` is a claim about the returned iterate, not
@@ -623,6 +627,10 @@ where
     };
 
     let mut converged = false;
+    // Whether the *final* outer iteration's projection hit its sweep cap
+    // (RFC 033). Assigned every iteration, like `converged`: it must describe the
+    // returned iterate, not an earlier one.
+    let mut last_capped = false;
     let mut projection_cap_hits: u32 = 0;
     let mut executed: u32 = 0;
     while executed < max_iterations {
@@ -640,8 +648,8 @@ where
             x.set(j, candidate_j)?;
         }
 
-        let cap_hit = dykstra_project(problem, x, workspace, config)?;
-        if cap_hit {
+        last_capped = dykstra_project(problem, x, workspace, config)?;
+        if last_capped {
             projection_cap_hits += 1;
         }
 
@@ -657,9 +665,12 @@ where
         if converged && !constant_iteration {
             // RFC 027 §0.5.1: a stationary outer step is `Converged` only
             // at a feasible iterate; a capped projection has a fixed point
-            // even when the polyhedron is empty.
+            // even when the polyhedron is empty. RFC 033: and only when the
+            // projection that produced it was not capped, since a capped
+            // projection returns a feasible point that need not be *the*
+            // projection.
             let violation = max_constraint_violation(problem, x)?;
-            let core = if violation.lte_tolerance(config.projection_tolerance) {
+            let core = if violation.lte_tolerance(config.projection_tolerance) && !last_capped {
                 SolveReport::converged_early(executed)
             } else {
                 SolveReport::not_converged_stalled(executed)
@@ -675,10 +686,10 @@ where
     let violation = max_constraint_violation(problem, x)?;
     let core = if !converged {
         SolveReport::not_converged_cap(max_iterations)
-    } else if violation.lte_tolerance(config.projection_tolerance) {
+    } else if violation.lte_tolerance(config.projection_tolerance) && !last_capped {
         SolveReport::converged_at_cap(max_iterations)
     } else {
-        // RFC 027 §0.5.1, as for the early exit above.
+        // RFC 027 §0.5.1 and RFC 033, as for the early exit above.
         SolveReport::not_converged_stalled(max_iterations)
     };
     Ok(ConstrainedSolveReport::from_core(

@@ -57,7 +57,7 @@ constrained cluster kernel, against closed-form optima (each derived and
 KKT-checked in the fixture's own comment). Every closed form is a Euclidean
 projection, so `quadratic_diag` must be all `1.0`. `variant = "infeasible"`
 fixtures assert `NotConverged` with `NoProgress` (`Converged` means feasible,
-RFC 027 Amendment 5), `projection_cap_hits > 0` and a violation that does **not
+RFC 027 Amendment 5, and needs an uncapped final projection, RFC 033), `projection_cap_hits > 0` and a violation that does **not
 shrink** when the sweep cap is raised tenfold; they must not be reshaped to avoid
 exactly-cancelling geometry (RFC 027 section 0.3.4). A `trusted-by-caller` fixture
 is cluster-only and also checks that the record says finiteness was trusted.

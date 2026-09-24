@@ -540,6 +540,77 @@ fn a_zero_q_is_never_rejected_by_the_step_rule() {
 }
 
 // ---------------------------------------------------------------------------
+// RFC 033: `Converged` requires the FINAL outer iteration's projection to have
+// returned without hitting `projection_max_sweeps`.
+//
+// Rows a1 = (1, 0), a2 = (1, 0.2), b = (1, 1.2), target (3, 1.2), step 0.5: the
+// exact optimum is the vertex (1, 1), both rows active. Started far away
+// (−60, 60) the first candidates are far from the polyhedron, so early
+// projections are the hard ones; the sweep cap decides which of them bind.
+// ---------------------------------------------------------------------------
+
+fn nearly_parallel(sweeps: u32) -> (DenseVector<f64>, ConstrainedSolveRecord<f64>) {
+    let problem = projection(2, &[1.0, 0.0, 1.0, 0.2], &[1.0, 1.2], &[3.0, 1.2]);
+    let mut x = dv(&[-60.0, 60.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(2, 2).unwrap();
+    let config = ConstrainedProjectedConfig {
+        max_iterations: 5000,
+        tolerance: 1e-12,
+        projection_max_sweeps: sweeps,
+        projection_tolerance: 1e-10,
+    };
+    let record = solve_constrained_projected_first_order_dyn(
+        &problem,
+        0.5,
+        &mut x,
+        &mut ws,
+        &config,
+        &scan(),
+    )
+    .unwrap();
+    (x, record)
+}
+
+/// The final projection capped: the point is feasible and the outer step is
+/// stationary, and it is still not claimed to be the projection.
+#[test]
+fn a_capped_final_projection_is_not_converged() {
+    let (_, record) = nearly_parallel(400);
+    assert_eq!(record.report.status(), SolveStatus::NotConverged);
+    assert_eq!(record.report.termination(), TerminationReason::NoProgress);
+    assert!(record.projection_cap_hits > 0);
+    // Amendment 5's gate does not fire: the point is feasible. This is the
+    // third leg of the claim, not the first.
+    assert!(record.max_constraint_violation <= 1e-10);
+}
+
+/// The regression guard against over-firing: an EARLY iteration capped, later
+/// ones converged cleanly, so the final projection was exact and the solve is
+/// still `Converged`. Gating on `projection_cap_hits > 0` would downgrade it.
+#[test]
+fn an_early_capped_projection_does_not_stop_a_clean_final_one_being_converged() {
+    let (x, record) = nearly_parallel(500);
+    assert!(record.projection_cap_hits >= 1, "no early iteration capped");
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_eq!(
+        record.report.termination(),
+        TerminationReason::ConvergenceCriterion
+    );
+    let x = coords(&x);
+    assert!(
+        (x[0] - 1.0).abs() < 1e-6 && (x[1] - 1.0).abs() < 1e-6,
+        "{x:?}"
+    );
+}
+
+#[test]
+fn an_uncapped_solve_is_unchanged() {
+    let (_, record) = nearly_parallel(100_000);
+    assert_eq!(record.projection_cap_hits, 0);
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+}
+
+// ---------------------------------------------------------------------------
 // Randomized differential tests against an exact active-set reference. A
 // per-sweep multiplier reset (violating §0.3.2) is caught by these and by none
 // of the deterministic cases above (review 055).

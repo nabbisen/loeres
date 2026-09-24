@@ -5,31 +5,36 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.21.2] — 2026-09-24 — Enforced differential testing
+## [0.21.3] — unreleased — post-0.21.2 development
 
-**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
+**Release status:** unreleased
 
-Repository release `0.21.2` makes randomized differential testing of numerical
-kernels an enforced gate. RFC 030 is implemented and moves to `rfcs/done/` in
-this revision.
+Development toward the next release.
 
-`cargo xtask check` is seventeen gates: the new `differential` gate asserts that
-every numerical solve kernel carries a randomized differential test against an
-independently constructed exact reference, or an explicit reasoned exemption,
-and fails closed on a missing row, a row naming no entrypoint, a missing
-`#[test]`, or an empty reason. The two projected-first-order box kernels, which
-had 23 and 30 tests between them and none differential, are retrofitted.
+### RFC 033 — an exact projection is part of the `Converged` claim
 
-The motivation was measured rather than assumed: during `0.21.1` a constrained
-kernel returned a wrong projection on 20.6% of random feasible polytopes while
-reporting `Converged`, and passed every unit test, every gate and the conformance
-corpus, because its fixtures all used a single constraint. A fixture corpus tests
-answers; a randomized differential test tests the formulation.
-
-**No production code, public API, behaviour, feature or dependency changed.**
-Everything under `crates/` in this release is test code. A consumer upgrading
-from `0.21.1` observes nothing different; what changes is what the project can
-detect about itself.
+- Both constrained kernels now report `Converged` only when the **final** outer
+  iteration's projection returned without hitting `projection_max_sweeps`; otherwise
+  `NotConverged` with `NoProgress`. This joins the two existing requirements — feasible
+  (RFC 027 Amendment 5) and stationary at the final iteration (RFC 029) — so `Converged`
+  is now three claims together. It applies to the early exit on both kernels and to the
+  device's `ConstantIteration` return. `projection_cap_hits` still counts every capped
+  projection, early ones included, and only the final one decides the status.
+- **A status some callers currently see as `Converged` becomes `NotConverged` on hard
+  geometry — nearly parallel constraint normals — and no answer changes.** The RFC 031
+  adversarial suite showed solves that were feasible, stationary, reported `Converged`,
+  and up to `1.3e-3` from the exact optimum. The kernels still return the same point; they
+  no longer claim it is the projection. Callers who treat `NotConverged` as failure will
+  see new failures on such geometry, and should read `projection_cap_hits` and
+  `max_constraint_violation` on the typed entrypoint. Smoke, extended and every feasible
+  fixture without a capped final projection are unchanged.
+- The five RFC 031 nearly-parallel fixtures that declared `converged` now declare
+  `not-converged` / `no-progress`, so `status_match` passes on all 31 adversarial fixtures;
+  their expected solutions, tolerances and caps are untouched and four still fail
+  `solution_within_tolerance`, which this change does not improve.
+- `TERMS_OF_USE.md`, both user guides, the crate READMEs and the kernels' rustdoc state the
+  three requirements together. RFC 027 §0.5.4's claim about the batch seam is superseded
+  by RFC 033 §6, not edited (RFC 027 is in `done/`).
 
 ### RFC 032 S2 — kernel validation, and the docs
 
@@ -116,6 +121,32 @@ detect about itself.
 - Outside smoke, a fixture's `quadratic_diag` may be any positive diagonal, and
   `[expected]` may carry an `infeasibility_certificate` (a Farkas certificate) that a test
   checks. No kernel, crate or dependency changed.
+
+## [0.21.2] — 2026-09-24 — Enforced differential testing
+
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
+
+Repository release `0.21.2` makes randomized differential testing of numerical
+kernels an enforced gate. RFC 030 is implemented and moves to `rfcs/done/` in
+this revision.
+
+`cargo xtask check` is seventeen gates: the new `differential` gate asserts that
+every numerical solve kernel carries a randomized differential test against an
+independently constructed exact reference, or an explicit reasoned exemption,
+and fails closed on a missing row, a row naming no entrypoint, a missing
+`#[test]`, or an empty reason. The two projected-first-order box kernels, which
+had 23 and 30 tests between them and none differential, are retrofitted.
+
+The motivation was measured rather than assumed: during `0.21.1` a constrained
+kernel returned a wrong projection on 20.6% of random feasible polytopes while
+reporting `Converged`, and passed every unit test, every gate and the conformance
+corpus, because its fixtures all used a single constraint. A fixture corpus tests
+answers; a randomized differential test tests the formulation.
+
+**No production code, public API, behaviour, feature or dependency changed.**
+Everything under `crates/` in this release is test code. A consumer upgrading
+from `0.21.1` observes nothing different; what changes is what the project can
+detect about itself.
 
 ### RFC 030 S1 — the `differential` gate
 

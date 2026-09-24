@@ -103,8 +103,9 @@ fn main() -> Result<(), ClusterError> {
     }
 
     // The batch seam erases a constrained solve to `BatchItemOutcome`, which
-    // carries the core report only. The status is truthful there (RFC 027
-    // Amendment 5: `Converged` means feasible), but the magnitudes are not.
+    // carries the core report only. The status is truthful there (`Converged`
+    // means feasible, stationary and exactly projected: RFC 027 Amendment 5,
+    // RFC 029, RFC 033), but the magnitudes are not.
     println!("\nbatch seam — status only:\n");
     let mut labels = Vec::new();
     let mut jobs: Vec<Box<dyn ClusterJob<f64>>> = Vec::new();
@@ -190,9 +191,10 @@ fn solve_typed(program: &Program) -> String {
     }
 }
 
-/// `Converged` means feasible within `projection_tolerance` (Amendment 5), so a
-/// non-converged constrained solve with `NoProgress` is an infeasible — or too
-/// tightly capped — polyhedron, not merely an unfinished one.
+/// `Converged` means feasible within `projection_tolerance` (Amendment 5),
+/// stationary, and produced by a projection that did not hit its cap (RFC 033), so
+/// a non-converged constrained solve with `NoProgress` is an infeasible
+/// polyhedron or a capped projection, not merely an unfinished one.
 fn verdict(status: SolveStatus, termination: TerminationReason) -> String {
     match (status, termination) {
         (SolveStatus::Converged, _) => "converged".to_owned(),

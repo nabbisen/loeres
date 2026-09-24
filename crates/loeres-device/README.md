@@ -35,13 +35,16 @@ panic-freedom proofs.
 
 ### Reading a constrained solve
 
-`Converged` means **feasible within `projection_tolerance`** (RFC 027 Amendment 5)
-as well as stationary, evaluated at the final iterate under `ConstantIteration`
-(RFC 029). `NotConverged` with `TerminationReason::NoProgress` on a constrained
-solve indicates an infeasible or too-tightly-capped polyhedron. The report also
-carries `projection_cap_hits` and `max_constraint_violation`: read them, because
-an inner cap hit is not an error and the returned point may be only
-feasible-approximate.
+`Converged` requires three things together: the iterate is **feasible within
+`projection_tolerance`** (RFC 027 Amendment 5), **stationary** at the *final*
+iteration (RFC 029, which matters under `ConstantIteration`), and produced by an
+**exact projection** — the final outer iteration's projection returned without
+hitting `projection_max_sweeps` (RFC 033). `NotConverged` with
+`TerminationReason::NoProgress` on a constrained solve indicates an infeasible
+polyhedron or a projection that hit its cap. The report also carries
+`projection_cap_hits` (every capped projection, early ones included) and
+`max_constraint_violation`: read them, because an inner cap hit is not an error
+and the returned point may be only feasible-approximate.
 
 ### Limits of the constrained kernel (RFC 027 §11.6)
 
