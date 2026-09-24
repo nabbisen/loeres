@@ -978,6 +978,165 @@ fn a_nearly_parallel_feasible_projection_that_caps_is_not_infeasible() {
     assert_eq!(report.status(), SolveStatus::NotConverged);
 }
 
+/// Amendment 1 condition 2: a cap below 64 sweeps never yields `Infeasible`, even on
+/// a system that is infeasible by a wide margin, while at 64 it is detected.
+#[test]
+fn a_cap_below_sixty_four_sweeps_never_yields_infeasible() {
+    let solve_at = |sweeps: u32| {
+        let cfg = ConstrainedSolveConfig {
+            projection_max_sweeps: sweeps,
+            ..box_only_config(200, 1e-12)
+        };
+        solve_1x2(&qp_1x2([-1.0, -1.0]), &cfg).unwrap().status()
+    };
+    assert_eq!(solve_at(63), SolveStatus::NotConverged);
+    assert_eq!(solve_at(64), SolveStatus::Infeasible);
+}
+
+/// A feasible wedge of half-angle `1e-3` (rows `(1,0)` and `(1,ε)`) whose projection
+/// is cut off at caps from 64 to 1000 with a positive violation: multipliers
+/// rising, violation not yet zero, and still `NotConverged`.
+#[test]
+fn a_feasible_wedge_cut_off_early_is_not_infeasible() {
+    let eps = 0.001;
+    for sweeps in [64, 100, 300, 1000] {
+        let problem = projection_program([1.0, 0.0, 1.0, eps], [1.0, 1.0 + eps], [3.0, 1.0 + eps]);
+        let mut x = FixedVector::from_array([0.0, 0.0]);
+        let mut ws = workspace_2x2();
+        let report = solve_constrained_projected_first_order(
+            &problem,
+            1.0,
+            &mut x,
+            &mut ws,
+            &config_2x2(1e-10, sweeps),
+        )
+        .unwrap();
+        assert!(report.projection_cap_hits() > 0, "cap {sweeps}");
+        assert_eq!(report.status(), SolveStatus::NotConverged, "cap {sweeps}");
+    }
+}
+
+// ---------------------------------------------------------------------------
+// RFC 034 Amendment 1: the decision logic in isolation, at each condition's
+// boundary. These are unit tests of the pure functions the kernels call, so a
+// mutation of any single condition is caught here whatever the geometry.
+// ---------------------------------------------------------------------------
+
+mod amendment_1 {
+    use super::super::{
+        Projection, Snapshots, SolveReport, has_infeasibility_evidence, stationary_report,
+    };
+
+    fn snap(
+        mid_multiplier: f64,
+        final_multiplier: f64,
+        mid_violation: f64,
+        final_violation: f64,
+    ) -> Snapshots<f64> {
+        Snapshots {
+            midpoint_multiplier: mid_multiplier,
+            midpoint_violation: mid_violation,
+            final_multiplier,
+            final_violation,
+        }
+    }
+
+    #[test]
+    fn the_cap_must_be_at_least_sixty_four_sweeps() {
+        let diverging = snap(10.0, 20.0, 1.0, 1.0);
+        assert!(!has_infeasibility_evidence(63, diverging));
+        assert!(has_infeasibility_evidence(64, diverging));
+    }
+
+    /// The factor is 1.9, not the superseded 1.5 and not 2: a final multiplier of
+    /// 1.89 times the midpoint is not divergence, 1.9 times is, and exactly 2 is.
+    #[test]
+    fn the_multiplier_factor_is_one_point_nine() {
+        assert!(!has_infeasibility_evidence(
+            100,
+            snap(100.0, 189.0, 1.0, 1.0)
+        ));
+        assert!(!has_infeasibility_evidence(
+            100,
+            snap(100.0, 150.0, 1.0, 1.0)
+        ));
+        assert!(has_infeasibility_evidence(
+            100,
+            snap(100.0, 190.0, 1.0, 1.0)
+        ));
+        assert!(has_infeasibility_evidence(
+            100,
+            snap(100.0, 200.0, 1.0, 1.0)
+        ));
+    }
+
+    /// The violation must not be shrinking: 0.99 times the midpoint violation or
+    /// more passes, 0.98 does not, and a growing violation passes.
+    #[test]
+    fn the_violation_must_not_be_shrinking() {
+        assert!(has_infeasibility_evidence(100, snap(10.0, 20.0, 1.0, 0.99)));
+        assert!(!has_infeasibility_evidence(
+            100,
+            snap(10.0, 20.0, 1.0, 0.98)
+        ));
+        assert!(has_infeasibility_evidence(100, snap(10.0, 20.0, 1.0, 1.5)));
+    }
+
+    /// Multipliers identically zero (no row ever active): `0 ≥ 1.9 × 0` holds, so
+    /// the evidence test alone would say "diverging". It is the fifth condition —
+    /// the violation exceeds the tolerance — that keeps such a problem from being
+    /// `Infeasible`.
+    #[test]
+    fn zero_multipliers_read_as_evidence_and_only_the_violation_condition_stops_them() {
+        assert!(has_infeasibility_evidence(100, snap(0.0, 0.0, 0.0, 0.0)));
+        let capped = Projection {
+            capped: true,
+            infeasibility_evidence: true,
+        };
+        let converged = SolveReport::converged_early(3);
+        // Feasible (violation within tolerance), capped, "evidence": stalled.
+        assert_eq!(
+            stationary_report(true, capped, 3, converged),
+            SolveReport::not_converged_stalled(3)
+        );
+        // Infeasible (violation over tolerance): the same evidence now counts.
+        assert_eq!(
+            stationary_report(false, capped, 3, converged),
+            SolveReport::infeasible(3)
+        );
+    }
+
+    #[test]
+    fn stationary_report_needs_every_condition_for_infeasible() {
+        let converged = SolveReport::converged_early(5);
+        let stalled = SolveReport::not_converged_stalled(5);
+        let p = |capped, infeasibility_evidence| Projection {
+            capped,
+            infeasibility_evidence,
+        };
+        // feasible and exact: converged
+        assert_eq!(
+            stationary_report(true, p(false, false), 5, converged),
+            converged
+        );
+        // infeasible but the projection did not cap: stalled, never Infeasible
+        assert_eq!(
+            stationary_report(false, p(false, true), 5, converged),
+            stalled
+        );
+        // infeasible, capped, no divergence evidence: stalled
+        assert_eq!(
+            stationary_report(false, p(true, false), 5, converged),
+            stalled
+        );
+        // infeasible, capped, evidence: Infeasible
+        assert_eq!(
+            stationary_report(false, p(true, true), 5, converged),
+            SolveReport::infeasible(5)
+        );
+    }
+}
+
 // ---------------------------------------------------------------------------
 // RFC 032: a step at or above 2/L is rejected; the band [2/U, 2/L) is not.
 //

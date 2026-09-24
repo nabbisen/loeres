@@ -514,19 +514,24 @@ fn a_slow_feasible_projection_whose_multipliers_have_plateaued_is_not_infeasible
 /// `(n, A row-major, b, target)`.
 type RandomInstance = (usize, Vec<f64>, Vec<f64>, Vec<f64>);
 
-/// A random feasible polytope and target: rows in `[-2, 2]`, about 40% of them
-/// nearly parallel (or, through the closing offset, nearly antiparallel) to the
-/// first, feasible by construction (`b = A·x_f + slack`).
-fn random_feasible(next: &mut impl FnMut() -> f64) -> Option<RandomInstance> {
+/// A random feasible polytope and target: rows in `[-2, 2]`, about 40% nearly
+/// parallel to the first and 10% nearly *anti*parallel to it (the thin slivers
+/// RFC 034 Amendment 1 is about), feasible by construction (`b = A·x_f + slack`),
+/// with a tiny slack on half of the sliver rows so the region really is thin.
+fn random_feasible(next: &mut impl FnMut() -> f64, thin: bool) -> Option<RandomInstance> {
     let n = 2 + (next() * 2.0) as usize;
     let m = 2 + (next() * 4.0) as usize;
     let mut a: Vec<f64> = (0..m * n).map(|_| next() * 4.0 - 2.0).collect();
+    let mut sliver = vec![false; m];
     for i in 1..m {
-        if next() < 0.4 {
+        let shape = next();
+        if shape < 0.5 {
             let eps = 10f64.powf(-1.0 - next() * 3.0);
+            let sign = if shape < 0.4 { 1.0 } else { -1.0 };
             for j in 0..n {
-                a[i * n + j] = a[j] + eps * (next() - 0.5);
+                a[i * n + j] = sign * a[j] + eps * (next() - 0.5);
             }
+            sliver[i] = true;
         }
     }
     if (0..m).any(|i| (0..n).map(|j| a[i * n + j].powi(2)).sum::<f64>() < 1e-3) {
@@ -535,75 +540,159 @@ fn random_feasible(next: &mut impl FnMut() -> f64) -> Option<RandomInstance> {
     let feasible_point: Vec<f64> = (0..n).map(|_| next() * 4.0 - 2.0).collect();
     let b: Vec<f64> = (0..m)
         .map(|i| {
+            let slack = if thin && sliver[i] && next() < 0.5 {
+                10f64.powf(-1.0 - next() * 3.0)
+            } else {
+                next() * 0.5
+            };
             (0..n)
                 .map(|j| a[i * n + j] * feasible_point[j])
                 .sum::<f64>()
-                + next() * 0.5
+                + slack
         })
         .collect();
     let t: Vec<f64> = (0..n).map(|_| next() * 12.0 - 6.0).collect();
     Some((n, a, b, t))
 }
 
-/// RFC 034 exit criterion 5, first half — **currently FAILS, and that is the
-/// finding** (see the review request): over random FEASIBLE polytopes at the
-/// sweep caps below, `Infeasible` is reported for some of them, because a
-/// feasible projection that is capped *before its multipliers plateau* still has
-/// them growing roughly linearly, and its unconverged iterate still has a positive
-/// violation, so all three conditions hold. `#[ignore]`d rather than weakened so
-/// the default run stays green and `cargo test -- --ignored` reproduces it.
-#[test]
-#[ignore = "RFC 034 FINDING: the three-condition rule reports Infeasible on some feasible polytopes; see the S1 review request"]
-fn random_feasible_polytopes_are_never_infeasible() {
-    let mut next = lcg(0x9E37_79B9_7F4A_7C15);
-    let mut false_positives = 0;
-    for _ in 0..1500 {
-        let Some((n, a, b, t)) = random_feasible(&mut next) else {
+/// The sweep caps the false-positive tests span: from 10 (below the 64-sweep
+/// precondition) through the boundary to 3000.
+const FEASIBLE_CAPS: [u32; 9] = [10, 30, 63, 64, 100, 300, 1000, 3000, 10_000];
+
+/// Random FEASIBLE polytopes at every cap in [`FEASIBLE_CAPS`]: `(trials,
+/// Infeasible reports)`, every instance at every cap.
+fn feasible_false_positives(seed: u64, instances: usize, thin: bool) -> (u32, u32) {
+    let mut next = lcg(seed);
+    let (mut runs, mut false_positives) = (0, 0);
+    for _ in 0..instances {
+        let Some((n, a, b, t)) = random_feasible(&mut next, thin) else {
             continue;
         };
-        let sweeps = [3u32, 10, 50, 300, 1000][(next() * 5.0) as usize];
-        let (status, _) = solve_status(&projection(n, &a, &b, &t), 1.0, sweeps, &vec![0.0; n]);
-        if status == SolveStatus::Infeasible {
-            false_positives += 1;
+        let problem = projection(n, &a, &b, &t);
+        for &cap in &FEASIBLE_CAPS {
+            let (status, _) = solve_status(&problem, 1.0, cap, &vec![0.0; n]);
+            runs += 1;
+            false_positives += u32::from(status == SolveStatus::Infeasible);
         }
     }
+    (runs, false_positives)
+}
+
+/// **RFC 034 C1 FINDING — the RFC's exit criterion 5 as written, over the
+/// distribution Amendment 1 §0.1.4 measured** (random feasible polytopes, 40%
+/// nearly parallel and 10% nearly antiparallel rows, caps 10 to 10000):
+/// `Infeasible` is **never** reported. It is *nearly* true and not quite: this
+/// seed reports 2 in 22,500 trials, and over six seeds 4 in 134,973 (about `3e-5`
+/// per trial, four distinct polytopes). `#[ignore]`d rather than weakened; the
+/// always-running guard below bounds the rate instead. See the review request.
+#[test]
+#[ignore = "RFC 034 C1 FINDING: five-condition rule reports Infeasible on about 3e-5 of feasible near-(anti)parallel trials (4 in 134,973 over six seeds)"]
+fn random_feasible_polytopes_are_never_infeasible() {
+    let (runs, false_positives) = feasible_false_positives(0x9E37_79B9_7F4A_7C15, 2500, false);
+    assert!(runs >= 20_000, "only {runs} trials were usable");
     assert_eq!(
         false_positives, 0,
         "a FEASIBLE polytope was reported Infeasible"
     );
 }
 
+/// **RFC 034 C1 FINDING — fails; `#[ignore]`d rather than weakened.** The same
+/// test over *thin slivers*: the same rows, but with a tiny slack on half
+/// of the near-(anti)parallel ones, so the feasible region is a wedge of angle
+/// about `1e-3`. Dykstra needs on the order of `10^6`–`10^7` sweeps to converge
+/// there, so at caps of 1000–10000 a feasible projection still looks like linear
+/// divergence with a violation that has barely started to shrink. Five of 22,500
+/// trials with this seed, and 30 of 134,964 over six seeds (25 distinct polytopes,
+/// caps 64 to 10000), are reported `Infeasible`; at a cap of `10^7` one of the
+/// three found first converges. See the review request.
+#[test]
+#[ignore = "RFC 034 C1 FINDING: five-condition rule reports Infeasible on about 2e-4 of feasible thin-sliver trials (30 in 134,964 over six seeds; 25 distinct polytopes)"]
+fn random_thin_sliver_feasible_polytopes_are_never_infeasible() {
+    let (runs, false_positives) = feasible_false_positives(0x1234_5678_9ABC_DEF1, 2500, true);
+    assert!(runs >= 20_000, "only {runs} trials were usable");
+    assert_eq!(
+        false_positives, 0,
+        "a FEASIBLE thin sliver was reported Infeasible"
+    );
+}
+
+/// The always-running guard while the finding above stands: the false-positive
+/// count stays under a tenth of a percent of trials, over both shapes. The
+/// original three-condition rule reported `Infeasible` on 1–4% of the capped
+/// feasible runs and would fail this by two orders of magnitude; the five-condition
+/// rule measures about `3e-5` (ordinary) and `2e-4` (thin slivers) per trial.
+#[test]
+fn feasible_false_positives_stay_under_a_tenth_of_a_percent() {
+    for (seed, thin) in [
+        (0x9E37_79B9_7F4A_7C15, false),
+        (0x1234_5678_9ABC_DEF1, true),
+    ] {
+        let (runs, false_positives) = feasible_false_positives(seed, 2500, thin);
+        assert!(runs >= 20_000, "only {runs} trials were usable");
+        assert!(
+            u64::from(false_positives) * 1000 < u64::from(runs),
+            "{false_positives} false positives in {runs} trials (thin: {thin})"
+        );
+    }
+}
+
+/// Amendment 1 condition 2: a cap below 64 sweeps never yields `Infeasible`, even
+/// on a system that is infeasible by a wide margin (two antipodal rows), while at
+/// 64 the same system is detected.
+#[test]
+fn a_cap_below_sixty_four_sweeps_never_yields_infeasible() {
+    let problem = projection(1, &[1.0, -1.0], &[-1.0, -1.0], &[0.0]);
+    let (below, _) = solve_status(&problem, 0.5, 63, &[0.0]);
+    let (at, _) = solve_status(&problem, 0.5, 64, &[0.0]);
+    assert_eq!(below, SolveStatus::NotConverged);
+    assert_eq!(at, SolveStatus::Infeasible);
+}
+
+/// The feasible thin sliver the original rule reported `Infeasible` at caps 100 to
+/// 1000 (ratio 1.55 to 1.70, violation shrinking): now `NotConverged`.
+#[test]
+fn the_sliver_the_original_rule_misreported_is_not_infeasible() {
+    for cap in [64, 100, 300, 1000] {
+        let (status, record) = solve_status(&thin_sliver(), 1.0, cap, &[0.0, 0.0]);
+        assert!(record.projection_cap_hits > 0);
+        assert_eq!(status, SolveStatus::NotConverged, "cap {cap}");
+    }
+}
+
 /// RFC 034 exit criterion 5, measurement: the false-positive count by sweep cap on
-/// feasible polytopes, and the detection rate on infeasible ones (built with a
-/// Farkas certificate), **printed, not asserted to be anything but sane** —
-/// detection is one-sided. Asserts only that an infeasible polytope is never
-/// `Converged` (Amendment 5) and that the rule fires at all.
+/// feasible polytopes (every instance at every cap), and the detection rate on
+/// infeasible ones (built with a Farkas certificate) by cap and by margin decade —
+/// **printed, not asserted to be anything but sane**, since detection is one-sided.
+/// Asserts the rate guard above's weaker cousin (no ordinary false positive on this
+/// seed), that an infeasible one is never
+/// `Converged` (Amendment 5), and that the rule fires at all.
 #[test]
 fn infeasibility_detection_is_measured_by_sweep_cap() {
     let mut next = lcg(0x1234_5678_9ABC_DEF1);
-    let caps = [3u32, 10, 50, 100, 300, 1000, 3000];
-    let mut feasible_runs = 0;
-    let mut capped = [0u32; 7];
-    let mut false_positives = [0u32; 7];
-    for _ in 0..1500 {
-        let Some((n, a, b, t)) = random_feasible(&mut next) else {
+    let mut thin_instances = 0;
+    let mut capped = [0u32; FEASIBLE_CAPS.len()];
+    let mut thin_false_positives = [0u32; FEASIBLE_CAPS.len()];
+    for _ in 0..2500 {
+        let Some((n, a, b, t)) = random_feasible(&mut next, true) else {
             continue;
         };
-        feasible_runs += 1;
+        thin_instances += 1;
         let problem = projection(n, &a, &b, &t);
-        for (k, &cap) in caps.iter().enumerate() {
+        for (k, &cap) in FEASIBLE_CAPS.iter().enumerate() {
             let (status, record) = solve_status(&problem, 1.0, cap, &vec![0.0; n]);
             capped[k] += u32::from(record.projection_cap_hits > 0);
-            false_positives[k] += u32::from(status == SolveStatus::Infeasible);
+            thin_false_positives[k] += u32::from(status == SolveStatus::Infeasible);
         }
     }
+    let (ordinary_trials, ordinary_false_positives) =
+        feasible_false_positives(0x1234_5678_9ABC_DEF1, 2500, false);
 
+    const DETECTION_CAPS: [u32; 4] = [100, 300, 1000, 3000];
     let mut infeasible_runs = 0;
-    let mut detected = [0u32; 2];
-    // (runs, detected at cap 3000) per decade of the infeasibility margin.
-    let mut by_margin = [(0u32, 0u32); 4];
+    let mut detected = [0u32; DETECTION_CAPS.len()];
+    // (runs, detected per cap) per decade of the infeasibility margin.
+    let mut by_margin = [(0u32, [0u32; DETECTION_CAPS.len()]); 4];
     let mut converged = 0;
-    let infeasible_caps = [300u32, 3000];
     for _ in 0..600 {
         let n = 2 + (next() * 2.0) as usize;
         let k = 2 + (next() * 2.0) as usize;
@@ -611,7 +700,7 @@ fn infeasibility_detection_is_measured_by_sweep_cap() {
         let mut rows: Vec<Vec<f64>> = (0..k)
             .map(|_| (0..n).map(|_| next() * 4.0 - 2.0).collect())
             .collect();
-        let mut rhs: Vec<f64> = (0..k).map(|_| next() * 2.0 - 1.0).collect();
+        let rhs: Vec<f64> = (0..k).map(|_| next() * 2.0 - 1.0).collect();
         let last = weights[0];
         // The last row closes the cycle: Σ wᵢaᵢ + w_last·a_last = 0 and the offsets
         // sum to a NEGATIVE margin, so λ = (w, w_last) is a Farkas certificate.
@@ -624,6 +713,7 @@ fn infeasibility_detection_is_measured_by_sweep_cap() {
         }
         let weighted: f64 = (0..k).map(|i| weights[i] * rhs[i]).sum();
         rows.push(closing);
+        let mut rhs = rhs;
         rhs.push((-weighted - margin) / last);
         let a: Vec<f64> = rows.iter().flatten().copied().collect();
         let t: Vec<f64> = (0..n).map(|_| next() * 4.0 - 2.0).collect();
@@ -631,23 +721,28 @@ fn infeasibility_detection_is_measured_by_sweep_cap() {
         infeasible_runs += 1;
         let decade = ((-margin.log10()) as usize).min(3);
         by_margin[decade].0 += 1;
-        for (slot, &cap) in infeasible_caps.iter().enumerate() {
+        for (slot, &cap) in DETECTION_CAPS.iter().enumerate() {
             let (status, _) = solve_status(&problem, 1.0, cap, &vec![0.0; n]);
-            detected[slot] += u32::from(status == SolveStatus::Infeasible);
+            let found = u32::from(status == SolveStatus::Infeasible);
+            detected[slot] += found;
+            by_margin[decade].1[slot] += found;
             converged += u32::from(status == SolveStatus::Converged);
-            if cap == 3000 && status == SolveStatus::Infeasible {
-                by_margin[decade].1 += 1;
-            }
         }
     }
-    println!("RFC034 MEASURED (cluster) feasible runs {feasible_runs}");
-    for (k, cap) in caps.iter().enumerate() {
+
+    println!(
+        "RFC034 MEASURED (cluster) feasible, ordinary near-(anti)parallel shapes: {ordinary_false_positives} reported Infeasible in {ordinary_trials} instance-cap trials (caps {FEASIBLE_CAPS:?})"
+    );
+    println!(
+        "RFC034 MEASURED (cluster) feasible thin slivers: {thin_instances} instances, each at every cap"
+    );
+    for (k, cap) in FEASIBLE_CAPS.iter().enumerate() {
         println!(
-            "RFC034 MEASURED (cluster) feasible, cap {cap}: capped {}, reported Infeasible {}",
-            capped[k], false_positives[k]
+            "RFC034 MEASURED (cluster) feasible thin slivers, cap {cap}: capped {}, reported Infeasible {}",
+            capped[k], thin_false_positives[k]
         );
     }
-    for (slot, cap) in infeasible_caps.iter().enumerate() {
+    for (slot, cap) in DETECTION_CAPS.iter().enumerate() {
         println!(
             "RFC034 MEASURED (cluster) infeasible, cap {cap}: {} of {infeasible_runs} detected ({:.1}%)",
             detected[slot],
@@ -656,15 +751,140 @@ fn infeasibility_detection_is_measured_by_sweep_cap() {
     }
     for (decade, (runs, found)) in by_margin.iter().enumerate() {
         println!(
-            "RFC034 MEASURED (cluster) infeasible, cap 3000, margin 1e-{decade}..1e-{}: {found} of {runs} detected",
+            "RFC034 MEASURED (cluster) infeasible, margin 1e-{decade}..1e-{}: {runs} runs, detected at caps {DETECTION_CAPS:?}: {found:?}",
             decade + 1
         );
     }
+    assert_eq!(
+        ordinary_false_positives, 0,
+        "a FEASIBLE polytope was reported Infeasible"
+    );
     assert_eq!(
         converged, 0,
         "an infeasible polytope was reported Converged"
     );
     assert!(detected.iter().any(|&d| d > 0), "the rule never fired");
+}
+
+// ---------------------------------------------------------------------------
+// RFC 034 Amendment 1: the decision logic in isolation, at each condition's
+// boundary. These are unit tests of the pure functions the kernels call, so a
+// mutation of any single condition is caught here whatever the geometry.
+// ---------------------------------------------------------------------------
+
+mod amendment_1 {
+    use super::super::{
+        Projection, Snapshots, SolveReport, has_infeasibility_evidence, stationary_report,
+    };
+
+    fn snap(
+        mid_multiplier: f64,
+        final_multiplier: f64,
+        mid_violation: f64,
+        final_violation: f64,
+    ) -> Snapshots<f64> {
+        Snapshots {
+            midpoint_multiplier: mid_multiplier,
+            midpoint_violation: mid_violation,
+            final_multiplier,
+            final_violation,
+        }
+    }
+
+    #[test]
+    fn the_cap_must_be_at_least_sixty_four_sweeps() {
+        let diverging = snap(10.0, 20.0, 1.0, 1.0);
+        assert!(!has_infeasibility_evidence(63, diverging));
+        assert!(has_infeasibility_evidence(64, diverging));
+    }
+
+    /// The factor is 1.9, not the superseded 1.5 and not 2: a final multiplier of
+    /// 1.89 times the midpoint is not divergence, 1.9 times is, and exactly 2 is.
+    #[test]
+    fn the_multiplier_factor_is_one_point_nine() {
+        assert!(!has_infeasibility_evidence(
+            100,
+            snap(100.0, 189.0, 1.0, 1.0)
+        ));
+        assert!(!has_infeasibility_evidence(
+            100,
+            snap(100.0, 150.0, 1.0, 1.0)
+        ));
+        assert!(has_infeasibility_evidence(
+            100,
+            snap(100.0, 190.0, 1.0, 1.0)
+        ));
+        assert!(has_infeasibility_evidence(
+            100,
+            snap(100.0, 200.0, 1.0, 1.0)
+        ));
+    }
+
+    /// The violation must not be shrinking: 0.99 times the midpoint violation or
+    /// more passes, 0.98 does not, and a growing violation passes.
+    #[test]
+    fn the_violation_must_not_be_shrinking() {
+        assert!(has_infeasibility_evidence(100, snap(10.0, 20.0, 1.0, 0.99)));
+        assert!(!has_infeasibility_evidence(
+            100,
+            snap(10.0, 20.0, 1.0, 0.98)
+        ));
+        assert!(has_infeasibility_evidence(100, snap(10.0, 20.0, 1.0, 1.5)));
+    }
+
+    /// Multipliers identically zero (no row ever active): `0 ≥ 1.9 × 0` holds, so
+    /// the evidence test alone would say "diverging". It is the fifth condition —
+    /// the violation exceeds the tolerance — that keeps such a problem from being
+    /// `Infeasible`.
+    #[test]
+    fn zero_multipliers_read_as_evidence_and_only_the_violation_condition_stops_them() {
+        assert!(has_infeasibility_evidence(100, snap(0.0, 0.0, 0.0, 0.0)));
+        let capped = Projection {
+            capped: true,
+            infeasibility_evidence: true,
+        };
+        let converged = SolveReport::converged_early(3);
+        // Feasible (violation within tolerance), capped, "evidence": stalled.
+        assert_eq!(
+            stationary_report(true, capped, 3, converged),
+            SolveReport::not_converged_stalled(3)
+        );
+        // Infeasible (violation over tolerance): the same evidence now counts.
+        assert_eq!(
+            stationary_report(false, capped, 3, converged),
+            SolveReport::infeasible(3)
+        );
+    }
+
+    #[test]
+    fn stationary_report_needs_every_condition_for_infeasible() {
+        let converged = SolveReport::converged_early(5);
+        let stalled = SolveReport::not_converged_stalled(5);
+        let p = |capped, infeasibility_evidence| Projection {
+            capped,
+            infeasibility_evidence,
+        };
+        // feasible and exact: converged
+        assert_eq!(
+            stationary_report(true, p(false, false), 5, converged),
+            converged
+        );
+        // infeasible but the projection did not cap: stalled, never Infeasible
+        assert_eq!(
+            stationary_report(false, p(false, true), 5, converged),
+            stalled
+        );
+        // infeasible, capped, no divergence evidence: stalled
+        assert_eq!(
+            stationary_report(false, p(true, false), 5, converged),
+            stalled
+        );
+        // infeasible, capped, evidence: Infeasible
+        assert_eq!(
+            stationary_report(false, p(true, true), 5, converged),
+            SolveReport::infeasible(5)
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------

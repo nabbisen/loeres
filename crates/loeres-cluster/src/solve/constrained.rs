@@ -311,8 +311,12 @@ where
     // RFC 034: two scalar snapshots of `max|λ|`, no copy of the multipliers.
     let midpoint_sweep = config.projection_max_sweeps / 2;
     let final_sweep = config.projection_max_sweeps - 1;
-    let mut midpoint_multiplier = S::zero();
-    let mut final_multiplier = S::zero();
+    let mut snap = Snapshots {
+        midpoint_multiplier: S::zero(),
+        midpoint_violation: S::zero(),
+        final_multiplier: S::zero(),
+        final_violation: S::zero(),
+    };
 
     for sweep in 0..config.projection_max_sweeps {
         if poll_cancelled(ctx, sweep) {
@@ -350,10 +354,10 @@ where
         }
 
         if sweep == midpoint_sweep {
-            midpoint_multiplier = largest_multiplier(&workspace.multipliers);
+            snap.midpoint_multiplier = largest_multiplier(&workspace.multipliers);
         }
         if sweep == final_sweep {
-            final_multiplier = largest_multiplier(&workspace.multipliers);
+            snap.final_multiplier = largest_multiplier(&workspace.multipliers);
         }
 
         // Box correction: target = x + box_increment(old), exact clamp.
@@ -373,19 +377,28 @@ where
             change = change.max(projected.sub(workspace.gradient.get(j)?).abs());
         }
 
+        // RFC 034: the terminal violation at the two snapshot sweeps, after the
+        // box step (so it is the violation of the iterate this sweep returns).
+        if sweep == midpoint_sweep {
+            snap.midpoint_violation = max_constraint_violation(problem, x, m)?;
+        }
+        if sweep == final_sweep {
+            snap.final_violation = max_constraint_violation(problem, x, m)?;
+        }
+
         if change.lte_tolerance(tolerance)
             && lambda_change.lte_tolerance(tolerance)
             && max_constraint_violation(problem, x, m)?.lte_tolerance(tolerance)
         {
             return Ok(Projection {
                 capped: false,
-                multipliers_diverging: false,
+                infeasibility_evidence: false,
             });
         }
     }
     Ok(Projection {
         capped: true,
-        multipliers_diverging: multipliers_are_diverging(midpoint_multiplier, final_multiplier),
+        infeasibility_evidence: has_infeasibility_evidence(config.projection_max_sweeps, snap),
     })
 }
 
@@ -394,12 +407,19 @@ where
 struct Projection {
     /// The sweep cap bound before the projection converged (RFC 033).
     capped: bool,
-    /// RFC 034 condition 2: `max|λ|` at the final sweep is at least 1.5 times its
-    /// value at the midpoint sweep — the multipliers grow linearly, which they do
-    /// on an infeasible system and do not on a feasible one, however slowly it
-    /// converges. Only meaningful when `capped`.
-    multipliers_diverging: bool,
+    /// RFC 034 Amendment 1 conditions 2–4, all measured over a *capped* projection:
+    /// the cap is at least [`MIN_SWEEPS_FOR_DIVERGENCE`]; `max|λ|` at the final
+    /// sweep is at least 1.9 times its value at the midpoint sweep; and the
+    /// terminal violation is not shrinking between those two sweeps. Together they
+    /// say the multipliers are growing without bound while the violation is
+    /// stuck — Farkas duality showing itself — rather than a feasible problem still
+    /// converging. Only meaningful when `capped`.
+    infeasibility_evidence: bool,
 }
+
+/// RFC 034 Amendment 1 condition 2: asymptotic divergence cannot be inferred from
+/// a handful of sweeps, so a cap below this never yields `Infeasible`.
+const MIN_SWEEPS_FOR_DIVERGENCE: u32 = 64;
 
 /// `max|λ|` over the multipliers.
 fn largest_multiplier<S: MetricScalar>(multipliers: &[S]) -> S {
@@ -408,18 +428,39 @@ fn largest_multiplier<S: MetricScalar>(multipliers: &[S]) -> S {
         .fold(S::zero(), |largest, &value| largest.max(value.abs()))
 }
 
-/// RFC 034 condition 2: `final ≥ 1.5 × midpoint`, written `2·final ≥ 3·midpoint`
-/// so it needs no division and no conversion from a float.
+/// The scalar `n`, by repeated addition (no float conversion, no division).
+fn scalar_from<S: MetricScalar>(n: u32) -> S {
+    (0..n).fold(S::zero(), |sum, _| sum.add(S::one()))
+}
+
+/// The snapshots one capped projection takes: `max|λ|` and the terminal violation
+/// at the midpoint sweep and at the final sweep.
+#[derive(Copy, Clone)]
+struct Snapshots<S> {
+    midpoint_multiplier: S,
+    midpoint_violation: S,
+    final_multiplier: S,
+    final_violation: S,
+}
+
+/// RFC 034 Amendment 1 conditions 2–4 for a capped projection of `sweeps` sweeps.
 ///
-/// **The factor is 1.5, not 2; do not "tidy" it.** Linear divergence from zero
-/// gives a ratio approaching exactly 2 from below (`1.99889` at 200 sweeps on the
-/// three-halfspace cycle), so a threshold *at* 2 misses real cases, while feasible
-/// cases sit at `0.976` to `1.000`. Raising it to 2 is a regression.
-fn multipliers_are_diverging<S: MetricScalar>(midpoint: S, last: S) -> bool {
-    let one = S::one();
-    let two = one.add(one);
-    let three = two.add(one);
-    two.mul(last) >= three.mul(midpoint)
+/// **Condition 3, the factor, is 1.9. It was 1.5 in the original RFC 034 and that
+/// was unsound; do not "tidy" it either way.** Linear divergence from zero gives a
+/// ratio approaching 2 from below (`1.96` to `1.999` at caps 100 to 3000), so 2
+/// misses real cases; but a *feasible* projection capped below its convergence time
+/// still has multipliers rising, with ratios measured up to `1.89`, so `1.5` fired
+/// on feasible problems. Written `10·final ≥ 19·midpoint` and, for condition 4,
+/// `100·final ≥ 99·midpoint`, so nothing needs a division or a float.
+fn has_infeasibility_evidence<S: MetricScalar>(sweeps: u32, snap: Snapshots<S>) -> bool {
+    if sweeps < MIN_SWEEPS_FOR_DIVERGENCE {
+        return false;
+    }
+    let multipliers_diverging = scalar_from::<S>(10).mul(snap.final_multiplier)
+        >= scalar_from::<S>(19).mul(snap.midpoint_multiplier);
+    let violation_not_shrinking = scalar_from::<S>(100).mul(snap.final_violation)
+        >= scalar_from::<S>(99).mul(snap.midpoint_violation);
+    multipliers_diverging && violation_not_shrinking
 }
 
 /// The report for a *stationary* outer step, which is where RFC 027 §0.5.1,
@@ -427,12 +468,14 @@ fn multipliers_are_diverging<S: MetricScalar>(midpoint: S, last: S) -> bool {
 ///
 /// - **`converged`** when the iterate is feasible and the final projection was
 ///   exact (not capped);
-/// - **`Infeasible`** (RFC 034) only when **all three** hold — the final
-///   projection capped, its multipliers were diverging (`max|λ|` at the final
-///   sweep ≥ 1.5 × at the midpoint), **and** the violation exceeds
-///   `projection_tolerance`. The third condition is what excludes every feasible
+/// - **`Infeasible`** (RFC 034 Amendment 1) only when **all five** hold — the
+///   final projection capped; the cap is at least 64 sweeps; `max|λ|` at the final
+///   sweep is ≥ 1.9 × at the midpoint; the terminal violation is not shrinking
+///   between those two sweeps (`≥ 0.99 ×`); **and** the violation exceeds
+///   `projection_tolerance`. The last condition is what excludes every feasible
 ///   problem whose multipliers are identically zero (a ratio alone reads `0/0`
-///   there); dropping it, or the other two, is wrong;
+///   there), and the fourth what excludes a slow feasible problem whose
+///   multipliers are still rising; dropping any of them is wrong;
 /// - otherwise `NotConverged` with `NoProgress`, unchanged.
 fn stationary_report(
     feasible: bool,
@@ -442,7 +485,7 @@ fn stationary_report(
 ) -> SolveReport {
     if feasible && !last.capped {
         converged
-    } else if !feasible && last.capped && last.multipliers_diverging {
+    } else if !feasible && last.capped && last.infeasibility_evidence {
         SolveReport::infeasible(executed)
     } else {
         SolveReport::not_converged_stalled(executed)
@@ -618,7 +661,7 @@ where
         // final iteration. `m = 0` has no inner projection, so it never caps.
         let mut last_projection = Projection {
             capped: false,
-            multipliers_diverging: false,
+            infeasibility_evidence: false,
         };
         if m == 0 {
             // §0.2.3: the single exact box projection, no sweep — the RFC 016

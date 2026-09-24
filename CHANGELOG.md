@@ -11,23 +11,28 @@ sign-off (see RFC 000 and the requirements specification).
 
 Development toward the next release.
 
-### RFC 034 S1 — `SolveStatus::Infeasible` and the detection rule (under review; **open finding**)
+### RFC 034 — `SolveStatus::Infeasible` and the detection rule (S1, C1; **one measured limitation**)
 
 - `SolveStatus` gains `Infeasible` (the enum is `#[non_exhaustive]`, so this is not a
-  breaking change) and `SolveReport::infeasible(n)` (`Infeasible` + `NoProgress`).
-  Both constrained kernels report it, at the same stationary-outer-step sites as
-  RFC 033's gate, only when **all three** hold: the final projection hit
-  `projection_max_sweeps`; `max|λ|` at the final sweep is at least 1.5 times its value at
-  the midpoint sweep; and the terminal violation exceeds `projection_tolerance`. State is two
-  scalar snapshots of `max|λ|`, no allocation. It is evidence, not a proof, and detection is
+  breaking change) and `SolveReport::infeasible(n)` (`Infeasible` + `NoProgress`). Both
+  constrained kernels report it, at the same stationary-outer-step sites as RFC 033's
+  gate, only when **all five** hold (RFC 034 Amendment 1, which replaced the original
+  three-condition rule after S1 found it reported `Infeasible` on 1–4% of capped feasible
+  runs): the final projection hit `projection_max_sweeps`; the cap is at least 64 sweeps;
+  `max|λ|` at the final sweep is at least **1.9** times its value at the midpoint sweep
+  (the original 1.5 is superseded); the terminal violation is not shrinking between the two
+  sweeps (`≥ 0.99 ×`); and the terminal violation exceeds `projection_tolerance`. State is
+  four scalar snapshots, no allocation. It is evidence, not a proof, and detection is
   one-sided. It does not count as `Converged`; a batch summary counts it with
   `solved_not_converged`.
 - The smoke infeasible fixture and the three exactly-cancelling adversarial fixtures now
   declare `infeasible`. The five nearly-parallel fixtures still report `NotConverged`.
-- **Open finding:** on random *feasible* polytopes the rule reports `Infeasible` at sweep
-  caps up to about 1000 (slow-but-feasible problems whose multipliers have not yet
-  plateaued), contrary to RFC 034's premise. The strict test is `#[ignore]`d and
-  reproduces it; see the S1 review request. Not for release until the architect rules.
+- **Measured limitation:** the rule is not free of false positives. Over 134,973 random
+  feasible near-(anti)parallel trials it reported `Infeasible` 4 times (about `3e-5`, four
+  polytopes), and on thin slivers 30 of 134,964 (25 polytopes): feasible wedges whose
+  convergence time exceeds the cap by orders of magnitude look, at that budget, like linear
+  divergence. Strongly infeasible systems are detected, weakly infeasible ones mostly are
+  not. The RFC's "never" tests are `#[ignore]`d with this stated; see the C1 review request.
 
 ## [0.21.3] — 2026-09-24 — Measured limits and a truthful `Converged`
 
