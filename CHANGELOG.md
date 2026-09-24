@@ -31,6 +31,18 @@ Everything under `crates/` in this release is test code. A consumer upgrading
 from `0.21.1` observes nothing different; what changes is what the project can
 detect about itself.
 
+### RFC 031 handoff 5a (F1) — a box-interacting adversarial family
+
+- Five new adversarial fixtures (`qp-adv-box-row-*`, 2 to 4 dimensions) each have a
+  constraint row **and** a box face active at the optimum, including two whose target
+  lies inside the box and only meets a face after the row projection has moved the
+  iterate. Every other adversarial geometry uses a box wide enough never to bind, which
+  hid a plain `clamp` in place of the box Dykstra increment from smoke, the adversarial
+  suite and the randomized cluster tests alike (architect review 067). With that defect
+  injected the five new fixtures all fail, and all pass on the unmodified kernels. Expected
+  values come from the same exact rational reference; the suite is still reported, not
+  enforced, and the five nearly-parallel failures are unchanged.
+
 ### RFC 031 S2 — the adversarial suite
 
 - `cargo xtask conformance --suite adversarial` runs 26 schema-3 fixtures, one family

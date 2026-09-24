@@ -284,6 +284,7 @@ fn the_adversarial_suite_has_one_family_per_property() {
         "qp-adv-ill-conditioned-",
         "qp-adv-barely-feasible-",
         "qp-adv-cancelling-",
+        "qp-adv-box-row-",
     ] {
         let family = adversarial
             .iter()
@@ -326,4 +327,33 @@ fn the_nearly_parallel_family_records_decreasing_angles_and_the_smallest() {
     assert!(angles.windows(2).all(|w| w[0] < w[1]), "{angles:?}");
     // The smallest angle is atan(0.001), as the fixtures' comments state.
     assert!((angles[0] - 0.001_f64.atan()).abs() < 1e-9, "{angles:?}");
+}
+
+/// RFC 031 handoff 5a (F1): in every box-interacting fixture a constraint row and
+/// a box face are both active at the optimum, so the box's Dykstra increment is
+/// exercised (a box wide enough never to bind hides that; review 067).
+#[test]
+fn every_box_row_fixture_has_a_row_and_a_box_face_active_at_the_optimum() {
+    let family: Vec<_> = suite("adversarial")
+        .into_iter()
+        .filter(|f| f.fixture_id.starts_with("qp-adv-box-row-"))
+        .collect();
+    assert!(family.len() >= 4, "{} fixtures", family.len());
+    assert!(family.iter().any(|f| f.fixture_id.contains("-cut-off-")));
+    assert!(family.iter().any(|f| f.fixture_id.contains("-after-row-")));
+    for f in &family {
+        let x = &f.expected.solution;
+        let rows = rows_of(f);
+        let active = |g: &[f64], h: f64| {
+            (g.iter().zip(x).map(|(a, b)| a * b).sum::<f64>() - h).abs() <= 1e-9
+        };
+        let rows_active = (0..rows.from_a)
+            .filter(|&i| active(&rows.g[i], rows.h[i]))
+            .count();
+        let faces_active = (rows.from_a..rows.g.len())
+            .filter(|&i| active(&rows.g[i], rows.h[i]))
+            .count();
+        assert!(rows_active >= 1, "{}: no active row", f.fixture_id);
+        assert!(faces_active >= 1, "{}: no active box face", f.fixture_id);
+    }
 }
