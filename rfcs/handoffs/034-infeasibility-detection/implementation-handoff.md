@@ -17,7 +17,42 @@ positive**, so read §5 before §3.
 **S1 — the status and the rule**, both kernels.
 **S2 — conformance fixtures and documentation.** One review request each.
 
-## 3. The rule
+## 2a. C1 — the corrective slice (architect review 070). Do this first.
+
+**S1 landed at `1d905cf` and is accepted as an implementation. The rule it
+implements is the architect's and is unsound**; RFC 034 **Amendment 1 (§0)**
+replaces it. §3 below is superseded by Amendment 1 and retained only as the
+record of what was originally specified.
+
+**What changed and why:** the RFC's feasible ratios of `0.976–1.000` were
+measured at 4000 sweeps, after the multipliers plateaued. A cap binds *below*
+the convergence time, where a feasible problem's multipliers are still rising —
+ratios up to `1.89`, which the factor of `1.5` cannot separate.
+
+**Implement Amendment 1 §0.1.2's five conditions**, in both kernels:
+
+- add the **midpoint violation** snapshot (one more scalar beside `max|λ|`);
+- raise the factor from `1.5` to **`1.9`** — and the "do not tidy" comment now
+  guards `1.9`, with `1.5` recorded as the superseded value;
+- add the precondition `projection_max_sweeps >= 64`;
+- add condition 4: the terminal violation is **not shrinking** between the two
+  snapshots (`viol_final >= 0.99 × viol_mid`);
+- keep the rule at the **stationary** returns only, as S1 already does — review
+  070 endorsed that reading (Amendment 1 §0.1.5).
+
+**Required evidence, and it is the point of the slice:**
+
+- the `#[ignore]`d strict test **un-ignored and passing**;
+- your own false-positive count over random feasible polytopes including
+  near-parallel *and* near-antiparallel rows (the sliver shapes), across caps
+  from 10 to at least 3000. The architect measured **0 in 20,132 trials**;
+- the detection rate **re-measured** by margin decade and **stated, not
+  asserted** — it will fall relative to S1's 48.3%/62.0%, and that is expected;
+- the adversarial suite's failure count unchanged at 5, smoke 24/24, extended 6/6.
+
+**S2 follows C1**, not before.
+
+## 3. The rule *(superseded by Amendment 1 §0.1.2 — retained as the original record)*
 
 Report `SolveStatus::Infeasible` only when **all three** hold:
 

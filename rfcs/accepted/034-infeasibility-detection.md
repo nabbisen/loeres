@@ -1,11 +1,72 @@
 # RFC 034 - Conservative Infeasibility Detection
 
 **Status.** Accepted (design frozen 2026-09-24)
-**Design approval.** Architect-authored and scheduled as Cycle 2 in architect review 066.
+**Design approval.** Amendment 1 (§0, 2026-09-24) by architect review 070. Architect-authored and scheduled as Cycle 2 in architect review 066.
 **Tracks.** Closes RFC 027 §11.6's "infeasibility is not detected; reported as non-convergence". Depends on RFC 031's corpus and composes with RFC 027 Amendment 5, RFC 029 and RFC 033.
 **Touches.** `crates/loeres/src/solver.rs` (one enum variant), both constrained kernels, `conformance/adversarial/`, user-facing docs.
 
 ---
+
+## 0. Amendment 1 — 2026-09-24 (architect review 070)
+
+**The §4 rule was unsound at realistic caps. It is replaced.**
+
+§3's feasible ratios of `0.976–1.000` were measured at **4000 sweeps, after the
+multipliers had plateaued**. A cap binds precisely *below* the convergence time,
+and in that regime a feasible problem's multipliers are still rising roughly
+linearly from zero toward their bounded limit. Measured on a thin feasible sliver
+(three near-parallel rows plus one near-antiparallel):
+
+```text
+cap   ratio   viol_mid   viol_fin   old 3-condition rule
+ 300  1.890   3.11e-02   2.80e-02   FIRES  -> false `Infeasible`
+1000  1.782   2.47e-02   1.77e-02   FIRES  -> false `Infeasible`
+```
+
+The original separation was measured in the one regime where the rule is never
+invoked. That is the governing risk of §7 realised, and the error is the
+architect's.
+
+**0.1.1 The discriminant that does hold.** On an infeasible system the terminal
+violation is **constant** between the two snapshots — it converges to the
+positive Farkas distance — while on a slow feasible one it **shrinks**. Every
+infeasible case measured holds `2.000 → 2.000`; every false positive shrinks.
+
+**0.1.2 The replacement rule.** Report `SolveStatus::Infeasible` only when **all
+five** hold:
+
+1. the **final** projection hit `projection_max_sweeps` (RFC 033's tracking);
+2. `projection_max_sweeps >= 64` — asymptotic divergence cannot be inferred from
+   a handful of sweeps;
+3. `max|λ|` at the final sweep `>= 1.9 ×` `max|λ|` at the midpoint sweep;
+4. the terminal violation at the final sweep is **not shrinking** relative to the
+   midpoint sweep (`viol_final >= 0.99 × viol_mid`);
+5. `max_constraint_violation > projection_tolerance`.
+
+**0.1.3 Why 1.9 rather than 1.5.** The measured feasible peak *in the regime that
+matters* is `1.89`. `1.5` has no margin there. `1.9` was chosen against that
+measurement, not fitted to the fixtures.
+
+**0.1.4 Measured.** Over random feasible polytopes with 40% near-parallel and 10%
+near-antiparallel rows, at caps `10 … 10000`: **0 false positives in 20,132
+trials**, against 22 for the original rule. Detection is preserved — the three
+strongly infeasible families fire at every cap `>= 100`, and a weakly infeasible
+system (margin `1e-2`) fires only at caps `>= 3000`, which is one-sidedness
+behaving as §6 describes.
+
+**0.1.5 Where the rule applies.** At the **stationary** returns only — the early
+exit and the device's `ConstantIteration` post-loop, where Amendment 5 and
+RFC 033 already decide a status. **Not** on the outer iteration-cap path: there
+the solve ran out of *outer* iterations and nothing about the projection's dual
+warrants an infeasibility claim.
+
+**0.1.6 Cost.** Two scalars of state per projection — `max|λ|` and the violation
+at the midpoint sweep. Still no allocation, no `M`-length copy, no new scalar
+tier, no `sqrt`.
+
+**0.1.7 Exit criterion 5 stands unchanged** and is now achievable: over random
+feasible polytopes `Infeasible` is never reported, and the detection rate on
+infeasible instances is measured and stated rather than asserted.
 
 ## 1. Summary
 

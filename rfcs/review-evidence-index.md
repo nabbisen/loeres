@@ -151,6 +151,7 @@ separate, reviewed pass.
 | `067` | 2026-09-24 | rfc031 s1 s2 conformance depth architect review | `31f2a1afc40beb90cf90753d17d003ee2e1a6c7b3f7ae603222f65f40f613da1` | `architect` | ✓ |
 | `068` | 2026-09-24 | rfc031 f1 rfc032 rfc033 architect review | `a408bbe3d49b095fb191c3abbdde823674eb7e2d961ab108cb72f2969da59ed6` | `architect` | ✓ |
 | `069` | 2026-09-24 | rfc032 f1 and cycle 1 completion | `1b1d012d5d5c58582fba01fd92bacdf054710b869910916dbbaa2de0e66897fe` | `architect` |  |
+| `070` | 2026-09-24 | rfc034 s1 architect review | `e9fd91b928232a76562121fce866b32f8d2fc2987b55febc4241cbd73b34f9dd` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
