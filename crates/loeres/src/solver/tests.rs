@@ -39,14 +39,12 @@ fn step_outcomes_are_distinct() {
 fn is_converged_reflects_status() {
     assert!(SolveStatus::Converged.is_converged());
     assert!(!SolveStatus::NotConverged.is_converged());
-    // RFC 034: evidence of an empty constraint set is not convergence.
-    assert!(!SolveStatus::Infeasible.is_converged());
 }
 
-/// Each constructor yields exactly one of the valid (status, termination) pairs
-/// from §3.3 (four, plus RFC 034's `Infeasible + NoProgress`), and the invalid
-/// pairs (`Converged + NoProgress`, `NotConverged + ConvergenceCriterion`,
-/// `Infeasible` with anything but `NoProgress`) have no constructor.
+/// Each constructor yields exactly one of the four valid (status, termination)
+/// pairs from §3.3; there are exactly four, and the two invalid pairs
+/// (`Converged + NoProgress`, `NotConverged + ConvergenceCriterion`) have no
+/// constructor.
 #[test]
 fn constructors_cover_the_four_valid_combinations() {
     let pairs = [
@@ -54,7 +52,6 @@ fn constructors_cover_the_four_valid_combinations() {
         SolveReport::converged_at_cap(100),
         SolveReport::not_converged_cap(100),
         SolveReport::not_converged_stalled(7),
-        SolveReport::infeasible(11),
     ]
     .map(|r| (r.status(), r.termination()));
 
@@ -64,8 +61,6 @@ fn constructors_cover_the_four_valid_combinations() {
     assert_eq!(pairs[1], (Converged, IterationCap));
     assert_eq!(pairs[2], (NotConverged, IterationCap));
     assert_eq!(pairs[3], (NotConverged, NoProgress));
-    assert_eq!(pairs[4], (Infeasible, NoProgress));
-    assert_eq!(SolveReport::infeasible(11).iterations_executed(), 11);
 
     // No constructor produces an invalid combination.
     for (status, termination) in pairs {
@@ -75,7 +70,6 @@ fn constructors_cover_the_four_valid_combinations() {
                 | (Converged, IterationCap)
                 | (NotConverged, IterationCap)
                 | (NotConverged, NoProgress)
-                | (Infeasible, NoProgress)
         );
         assert!(valid, "invalid pair produced: {status:?} + {termination:?}");
     }
@@ -116,7 +110,6 @@ fn as_core_report_is_lossless_for_every_valid_report() {
         SolveReport::converged_at_cap(64),
         SolveReport::not_converged_cap(64),
         SolveReport::not_converged_stalled(9),
-        SolveReport::infeasible(9),
     ];
     for core in reports {
         let wrapped = WrapReport { core };

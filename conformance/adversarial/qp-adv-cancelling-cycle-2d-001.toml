@@ -19,10 +19,11 @@ variant = "infeasible"
 # Every point violates some row by at least -sum(lambda b)/sum(lambda) = 1.0 (the
 # lambda-weighted mean of the row violations is that constant), which is the violation_min below.
 #
-# RFC 034: the final projection caps, its multipliers diverge linearly (they are unbounded on
-# an empty polyhedron, which is Farkas duality showing itself) and the violation stays above
-# projection_tolerance, so the kernels report Infeasible / NoProgress - evidence the
-# polyhedron is empty, not a proof. The Farkas certificate below is the independent proof.
+# RFC 034 Amendment 2: the final projection caps, its multipliers grow linearly (they are
+# unbounded on an empty polyhedron, which is Farkas duality showing itself) and the violation
+# stays above projection_tolerance, so the kernels set the heuristic field
+# `infeasibility_evidence`; the status stays NotConverged / NoProgress. The Farkas certificate
+# below is the independent proof of infeasibility.
 
 [config]
 max_iterations = 5000
@@ -41,8 +42,9 @@ constraint_matrix = [1.0, 0.0, -1.0, 1.0, 0.0, -1.0]
 constraint_rhs = [-1.0, -1.0, -1.0]
 
 [expected]
-status = "infeasible"
+status = "not-converged"
 termination = "no-progress"
+infeasibility_evidence = true
 solution = []
 error = "none"
 violation_min = 1.0

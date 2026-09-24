@@ -317,6 +317,13 @@ pub(super) struct ConstrainedExpected {
     /// by `-Σ λᵢ bᵢ / Σ λᵢ`. The runner ignores it; the reference test checks it.
     #[serde(default)]
     pub(super) infeasibility_certificate: Option<Vec<f64>>,
+    /// RFC 034 Amendment 2: what the kernels' `infeasibility_evidence` field must
+    /// read on every path. Absent means unasserted. It is a heuristic observation
+    /// (wrong in both directions), so a fixture states it only where the geometry
+    /// makes the answer unambiguous: exactly-cancelling infeasible systems (`true`)
+    /// and the nearly-parallel feasible family (`false`).
+    #[serde(default)]
+    pub(super) infeasibility_evidence: Option<bool>,
 }
 
 /// The largest dimension or constraint count outside the smoke suite.
@@ -485,6 +492,8 @@ struct PathSolved {
     max_constraint_violation: f64,
     /// Cluster only: whether the record says finiteness was trusted.
     finite_trusted: Option<bool>,
+    /// RFC 034 Amendment 2: the kernels' heuristic infeasibility observation.
+    infeasibility_evidence: bool,
 }
 
 // --- device -----------------------------------------------------------------
@@ -591,6 +600,7 @@ fn run_device_shape<const N: usize, const M: usize, const NN: usize, const MN: u
             projection_cap_hits: report.projection_cap_hits(),
             max_constraint_violation: report.max_constraint_violation(),
             finite_trusted: None,
+            infeasibility_evidence: report.infeasibility_evidence(),
         }),
     })
 }
@@ -708,6 +718,7 @@ fn run_cluster(f: &ConstrainedFixture, sweeps: u32) -> Result<PathRun, String> {
         }
         Ok(PathSolved {
             report: record.report,
+            infeasibility_evidence: record.infeasibility_evidence,
             x: coords,
             projection_cap_hits: record.projection_cap_hits,
             max_constraint_violation: record.max_constraint_violation,
@@ -795,7 +806,6 @@ fn compare_status(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> 
     let status = match f.expected.status.as_str() {
         "converged" => SolveStatus::Converged,
         "not-converged" => SolveStatus::NotConverged,
-        "infeasible" => SolveStatus::Infeasible,
         other => return CategoryResult::Fail(format!("unknown expected status `{other}`")),
     };
     let termination = match f.expected.termination.as_str() {
@@ -806,12 +816,19 @@ fn compare_status(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> 
     };
     for (name, run) in paths {
         match solved(name, run) {
-            Ok(s) if s.report.status() == status && s.report.termination() == termination => {}
+            Ok(s)
+                if s.report.status() == status
+                    && s.report.termination() == termination
+                    && f.expected
+                        .infeasibility_evidence
+                        .is_none_or(|expected| expected == s.infeasibility_evidence) => {}
             Ok(s) => {
                 return CategoryResult::Fail(format!(
-                    "{name} reported ({:?}, {:?}), expected ({status:?}, {termination:?})",
+                    "{name} reported ({:?}, {:?}, infeasibility_evidence {}), expected ({status:?}, {termination:?}, infeasibility_evidence {:?})",
                     s.report.status(),
-                    s.report.termination()
+                    s.report.termination(),
+                    s.infeasibility_evidence,
+                    f.expected.infeasibility_evidence
                 ));
             }
             Err(e) => return CategoryResult::Fail(e),
@@ -1004,6 +1021,7 @@ mod tests {
                 violation_max: None,
                 violation_min: None,
                 infeasibility_certificate: None,
+                infeasibility_evidence: None,
             },
             tolerance: ConstrainedTolerance {
                 solution_abs: 1e-6,

@@ -11,28 +11,32 @@ sign-off (see RFC 000 and the requirements specification).
 
 Development toward the next release.
 
-### RFC 034 — `SolveStatus::Infeasible` and the detection rule (S1, C1; **one measured limitation**)
+### RFC 034 — infeasibility evidence (S1, C1, C2; a heuristic field, not a status)
 
-- `SolveStatus` gains `Infeasible` (the enum is `#[non_exhaustive]`, so this is not a
-  breaking change) and `SolveReport::infeasible(n)` (`Infeasible` + `NoProgress`). Both
-  constrained kernels report it, at the same stationary-outer-step sites as RFC 033's
-  gate, only when **all five** hold (RFC 034 Amendment 1, which replaced the original
-  three-condition rule after S1 found it reported `Infeasible` on 1–4% of capped feasible
-  runs): the final projection hit `projection_max_sweeps`; the cap is at least 64 sweeps;
-  `max|λ|` at the final sweep is at least **1.9** times its value at the midpoint sweep
-  (the original 1.5 is superseded); the terminal violation is not shrinking between the two
-  sweeps (`≥ 0.99 ×`); and the terminal violation exceeds `projection_tolerance`. State is
-  four scalar snapshots, no allocation. It is evidence, not a proof, and detection is
-  one-sided. It does not count as `Converged`; a batch summary counts it with
-  `solved_not_converged`.
-- The smoke infeasible fixture and the three exactly-cancelling adversarial fixtures now
-  declare `infeasible`. The five nearly-parallel fixtures still report `NotConverged`.
-- **Measured limitation:** the rule is not free of false positives. Over 134,973 random
-  feasible near-(anti)parallel trials it reported `Infeasible` 4 times (about `3e-5`, four
-  polytopes), and on thin slivers 30 of 134,964 (25 polytopes): feasible wedges whose
-  convergence time exceeds the cap by orders of magnitude look, at that budget, like linear
-  divergence. Strongly infeasible systems are detected, weakly infeasible ones mostly are
-  not. The RFC's "never" tests are `#[ignore]`d with this stated; see the C1 review request.
+- Both solve records gain **`infeasibility_evidence: bool`** (`ConstrainedSolveReport::
+  infeasibility_evidence()` on the device, a public field on the cluster's
+  `ConstrainedSolveRecord`), beside `projection_cap_hits` and `max_constraint_violation`. It
+  is set at a stationary outer step only when **all five** hold (RFC 034 Amendment 1): the
+  final projection hit `projection_max_sweeps`; the cap is at least 64 sweeps; `max|λ|` at
+  the final sweep is at least 1.9 times its value at the midpoint sweep; the terminal
+  violation is not shrinking between the two (`≥ 0.99 ×`); and it exceeds
+  `projection_tolerance`. State is four scalar snapshots, no allocation. **The status is
+  unchanged**: there is no `SolveStatus::Infeasible` (it was added in S1 and withdrawn in C2
+  before any release, by Amendment 2), so an infeasible polyhedron is still `NotConverged` /
+  `NoProgress` as RFC 033 leaves it, and the batch seam, which carries the status only,
+  never carries the hint.
+- **A heuristic in both directions.** It misses most weakly infeasible systems (on random
+  Farkas-certificate polytopes it is set for about 15% to 45% depending on the cap, and for
+  about 86% of the strongly infeasible ones at a cap of 3000), and it is set on about `3e-5` of
+  random feasible near-(anti)parallel trials and `2e-4` of thin slivers: feasible wedges whose
+  convergence time exceeds the cap by orders of magnitude, which no signal computed inside the
+  cap distinguishes from an infeasible system.
+- The smoke infeasible fixture and the three exactly-cancelling adversarial fixtures declare
+  `not-converged` / `no-progress` and assert `infeasibility_evidence = true`; the five
+  nearly-parallel feasible fixtures assert `false`. The fixture schema gains the optional
+  `[expected] infeasibility_evidence`.
+- Rate tests bound the evidence's false-positive rate on ordinary and thin-sliver feasible
+  polytopes (below `3e-4` and `1e-3` of trials; measured `3e-5` and `2e-4`).
 
 ## [0.21.3] — 2026-09-24 — Measured limits and a truthful `Converged`
 

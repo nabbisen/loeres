@@ -212,6 +212,22 @@ pub struct ConstrainedSolveRecord<S> {
     /// `max(0, maxᵢ(aᵢᵀx − bᵢ))` at the returned iterate (zero when `m = 0`;
     /// box violation is zero by construction).
     pub max_constraint_violation: S,
+    /// A **heuristic observation** that the polyhedron may be empty (RFC 034
+    /// Amendment 2); not a status and not a proof. Set only at a stationary outer
+    /// step whose final projection hit `projection_max_sweeps`, when the cap was at
+    /// least 64 sweeps, `max|λ|` at the final sweep was at least 1.9 times its value
+    /// at the midpoint sweep, the terminal violation was not shrinking between the
+    /// two, and the violation exceeds `projection_tolerance`.
+    ///
+    /// It is wrong in **both** directions. It misses most weakly infeasible systems
+    /// (on random infeasible polytopes it is set for 15% to 45% of them, depending
+    /// on the cap, and for about 86% of the strongly infeasible ones at a cap of
+    /// 3000), and it can be set on a *feasible* problem whose projection would need
+    /// far more than the cap to converge (about `3e-5` of random feasible
+    /// near-(anti)parallel trials, `2e-4` of thin slivers). No signal computed inside
+    /// the cap separates a feasible wedge that needs `10^7` sweeps from an infeasible
+    /// system. The batch seam carries the status only and so never carries this.
+    pub infeasibility_evidence: bool,
     /// Structural/finite scopes verified directly.
     pub checked_scope: ValidationScope,
     /// How the finite invariant was discharged.
@@ -418,7 +434,7 @@ struct Projection {
 }
 
 /// RFC 034 Amendment 1 condition 2: asymptotic divergence cannot be inferred from
-/// a handful of sweeps, so a cap below this never yields `Infeasible`.
+/// a handful of sweeps, so a cap below this never sets `infeasibility_evidence`.
 const MIN_SWEEPS_FOR_DIVERGENCE: u32 = 64;
 
 /// `max|λ|` over the multipliers.
@@ -463,20 +479,11 @@ fn has_infeasibility_evidence<S: MetricScalar>(sweeps: u32, snap: Snapshots<S>) 
     multipliers_diverging && violation_not_shrinking
 }
 
-/// The report for a *stationary* outer step, which is where RFC 027 §0.5.1,
-/// RFC 033 and RFC 034 decide between the three outcomes:
-///
-/// - **`converged`** when the iterate is feasible and the final projection was
-///   exact (not capped);
-/// - **`Infeasible`** (RFC 034 Amendment 1) only when **all five** hold — the
-///   final projection capped; the cap is at least 64 sweeps; `max|λ|` at the final
-///   sweep is ≥ 1.9 × at the midpoint; the terminal violation is not shrinking
-///   between those two sweeps (`≥ 0.99 ×`); **and** the violation exceeds
-///   `projection_tolerance`. The last condition is what excludes every feasible
-///   problem whose multipliers are identically zero (a ratio alone reads `0/0`
-///   there), and the fourth what excludes a slow feasible problem whose
-///   multipliers are still rising; dropping any of them is wrong;
-/// - otherwise `NotConverged` with `NoProgress`, unchanged.
+/// The report for a *stationary* outer step, which is where RFC 027 §0.5.1 and
+/// RFC 033 decide the status: **`converged`** when the iterate is feasible and the
+/// final projection was exact (not capped), otherwise `NotConverged` with
+/// `NoProgress`. RFC 034 Amendment 2: the status is *never* `Infeasible` — there is
+/// no such status — and it does not depend on the evidence below.
 fn stationary_report(
     feasible: bool,
     last: Projection,
@@ -485,11 +492,27 @@ fn stationary_report(
 ) -> SolveReport {
     if feasible && !last.capped {
         converged
-    } else if !feasible && last.capped && last.infeasibility_evidence {
-        SolveReport::infeasible(executed)
     } else {
         SolveReport::not_converged_stalled(executed)
     }
+}
+
+/// `infeasibility_evidence` for a *stationary* outer step (RFC 034 Amendment 2;
+/// the five conditions are Amendment 1 §0.1.2, unchanged): the final projection
+/// capped; the cap is at least 64 sweeps; `max|λ|` at the final sweep is ≥ 1.9 ×
+/// at the midpoint; the terminal violation is not shrinking between those two
+/// sweeps (`≥ 0.99 ×`); **and** the violation exceeds `projection_tolerance`
+/// (`!feasible`). The last condition is what excludes every feasible problem whose
+/// multipliers are identically zero (a ratio alone reads `0/0` there), and the
+/// fourth what excludes a slow feasible problem whose multipliers are still
+/// rising; dropping any of them is wrong.
+///
+/// **A heuristic observation in both directions, not a claim** (hence a field, not
+/// a status): it misses most weakly infeasible systems, and it is set on about
+/// `3e-5` of random feasible near-(anti)parallel trials and `2e-4` of thin slivers,
+/// feasible wedges whose convergence time exceeds the cap.
+fn infeasibility_evidence_of(feasible: bool, last: Projection) -> bool {
+    !feasible && last.capped && last.infeasibility_evidence
 }
 
 /// Solve a dynamic box/linear-inequality constrained projected first-order
@@ -705,8 +728,9 @@ where
             // produced it was not capped, since a capped projection returns a
             // feasible point that need not be *the* projection.
             let violation = max_constraint_violation(problem, x, m)?;
+            let feasible = violation.lte_tolerance(config.projection_tolerance);
             let report = stationary_report(
-                violation.lte_tolerance(config.projection_tolerance),
+                feasible,
                 last_projection,
                 executed,
                 SolveReport::converged_early(executed),
@@ -715,6 +739,7 @@ where
                 report,
                 projection_cap_hits,
                 max_constraint_violation: violation,
+                infeasibility_evidence: infeasibility_evidence_of(feasible, last_projection),
                 checked_scope,
                 finite: finite_evidence,
             });
@@ -724,6 +749,9 @@ where
         report: SolveReport::not_converged_cap(config.max_iterations),
         projection_cap_hits,
         max_constraint_violation: max_constraint_violation(problem, x, m)?,
+        // Not stationary: nothing about the projection's dual is claimed
+        // (Amendment 1 §0.1.5).
+        infeasibility_evidence: false,
         checked_scope,
         finite: finite_evidence,
     })

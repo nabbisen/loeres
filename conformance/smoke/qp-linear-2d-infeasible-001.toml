@@ -20,10 +20,11 @@ variant = "infeasible"
 # every one of which hit its projection cap, with a violation of exactly 2,
 # identically on the device and cluster kernels. That stationary-but-infeasible
 # iterate is never Converged (RFC 027 Amendment 5 reported it NotConverged /
-# NoProgress). RFC 034: the final projection capped, its multipliers diverge linearly
-# (they grow without bound on an empty polyhedron and stay bounded on a feasible one),
-# and the violation exceeds projection_tolerance, so it is reported Infeasible / NoProgress
-# - evidence the polyhedron is empty, not a proof; detection is one-sided.
+# NoProgress); that is unchanged. RFC 034 Amendment 2: the kernels additionally set
+# the heuristic field `infeasibility_evidence` (the final projection capped, its
+# multipliers grew at least 1.9x between the midpoint and the final sweep, the violation
+# is not shrinking and exceeds projection_tolerance). It is an observation, not a
+# status: it can miss infeasible systems and can be set on slow feasible ones.
 # `projection_cap_hits` and `max_constraint_violation` remain the way to learn how
 # infeasible the answer is (RFC 027 section 11.3).
 
@@ -44,8 +45,9 @@ constraint_matrix = [1.0, 0.0, -1.0, 0.0, 0.0, 1.0]
 constraint_rhs = [-1.0, -1.0, 5.0]
 
 [expected]
-status = "infeasible"
+status = "not-converged"
 termination = "no-progress"
+infeasibility_evidence = true
 solution = []
 error = "none"
 violation_min = 0.5

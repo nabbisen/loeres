@@ -542,15 +542,16 @@ fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
 
 // RFC 027 Amendment 5 (§0.5.1): `Converged` means feasible. The capped
 // projection map has a fixed point even when the polyhedron is empty, so the
-// outer step stops moving; that is never `Converged` (Amendment 5 reported it as
-// `NotConverged`/`NoProgress`; RFC 034 now reports the evidence as `Infeasible`),
-// and the violation and cap hits stay reported unchanged.
+// outer step stops moving; that is `NotConverged`/`NoProgress`, never `Converged`,
+// and the violation and cap hits stay reported unchanged. RFC 034 Amendment 2 adds
+// the heuristic `infeasibility_evidence` field beside them; there is no
+// `Infeasible` status.
 #[test]
-fn an_infeasible_polyhedron_is_reported_infeasible_with_no_progress() {
+fn an_infeasible_polyhedron_is_not_converged_and_sets_the_evidence_field() {
     let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &box_only_config(200, 1e-12)).unwrap();
 
-    assert_eq!(report.status(), SolveStatus::Infeasible);
-    assert!(!report.status().is_converged());
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert!(report.infeasibility_evidence());
     assert_eq!(report.core().termination(), TerminationReason::NoProgress);
     assert!(report.projection_cap_hits() > 0);
     assert!((report.max_constraint_violation() - 2.0).abs() < 1e-9);
@@ -582,8 +583,9 @@ fn constant_iteration_does_not_report_converged_on_an_infeasible_polyhedron() {
     };
     let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &cfg).unwrap();
     assert_eq!(report.iterations_executed(), 50);
-    assert_eq!(report.status(), SolveStatus::Infeasible);
+    assert_eq!(report.status(), SolveStatus::NotConverged);
     assert_eq!(report.core().termination(), TerminationReason::NoProgress);
+    assert!(report.infeasibility_evidence());
 
     let control = solve_1x2(&qp_1x2([1.0, 1.0]), &cfg).unwrap();
     assert_eq!(control.status(), SolveStatus::Converged);
@@ -941,7 +943,7 @@ fn constant_iteration_applies_the_rule_to_the_final_projection() {
 /// target into the box, so the projection caps; only the positive-violation
 /// condition keeps it `NotConverged`.
 #[test]
-fn a_feasible_problem_whose_rows_are_never_active_is_never_infeasible() {
+fn a_feasible_problem_whose_rows_are_never_active_sets_no_evidence() {
     let problem = projection_program([1.0, 1.0, -1.0, 0.0], [1e9, 1e9], [50.0, 50.0]);
     let mut x = FixedVector::from_array([0.0, 0.0]);
     let mut ws = workspace_2x2();
@@ -956,12 +958,13 @@ fn a_feasible_problem_whose_rows_are_never_active_is_never_infeasible() {
     assert!(report.projection_cap_hits() > 0);
     assert_eq!(report.max_constraint_violation(), 0.0);
     assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert!(!report.infeasibility_evidence());
 }
 
 /// RFC 031's nearly-parallel FEASIBLE family (ε = 0.001): the projection caps and
 /// the kernel reports `NotConverged`, never `Infeasible`.
 #[test]
-fn a_nearly_parallel_feasible_projection_that_caps_is_not_infeasible() {
+fn a_nearly_parallel_feasible_projection_that_caps_sets_no_evidence() {
     let eps = 0.001;
     let problem = projection_program([1.0, 0.0, 1.0, eps], [1.0, 1.0 + eps], [3.0, 1.0 + eps]);
     let mut x = FixedVector::from_array([0.0, 0.0]);
@@ -976,28 +979,32 @@ fn a_nearly_parallel_feasible_projection_that_caps_is_not_infeasible() {
     .unwrap();
     assert!(report.projection_cap_hits() > 0);
     assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert!(!report.infeasibility_evidence());
 }
 
-/// Amendment 1 condition 2: a cap below 64 sweeps never yields `Infeasible`, even on
-/// a system that is infeasible by a wide margin, while at 64 it is detected.
+/// Amendment 1 condition 2: a cap below 64 sweeps never sets the evidence, even on
+/// a system that is infeasible by a wide margin, while at 64 it does. The status
+/// is `NotConverged` either way.
 #[test]
-fn a_cap_below_sixty_four_sweeps_never_yields_infeasible() {
+fn a_cap_below_sixty_four_sweeps_never_sets_the_evidence() {
     let solve_at = |sweeps: u32| {
         let cfg = ConstrainedSolveConfig {
             projection_max_sweeps: sweeps,
             ..box_only_config(200, 1e-12)
         };
-        solve_1x2(&qp_1x2([-1.0, -1.0]), &cfg).unwrap().status()
+        solve_1x2(&qp_1x2([-1.0, -1.0]), &cfg).unwrap()
     };
-    assert_eq!(solve_at(63), SolveStatus::NotConverged);
-    assert_eq!(solve_at(64), SolveStatus::Infeasible);
+    assert_eq!(solve_at(63).status(), SolveStatus::NotConverged);
+    assert_eq!(solve_at(64).status(), SolveStatus::NotConverged);
+    assert!(!solve_at(63).infeasibility_evidence());
+    assert!(solve_at(64).infeasibility_evidence());
 }
 
 /// A feasible wedge of half-angle `1e-3` (rows `(1,0)` and `(1,ε)`) whose projection
 /// is cut off at caps from 64 to 1000 with a positive violation: multipliers
 /// rising, violation not yet zero, and still `NotConverged`.
 #[test]
-fn a_feasible_wedge_cut_off_early_is_not_infeasible() {
+fn a_feasible_wedge_cut_off_early_sets_no_evidence() {
     let eps = 0.001;
     for sweeps in [64, 100, 300, 1000] {
         let problem = projection_program([1.0, 0.0, 1.0, eps], [1.0, 1.0 + eps], [3.0, 1.0 + eps]);
@@ -1013,6 +1020,7 @@ fn a_feasible_wedge_cut_off_early_is_not_infeasible() {
         .unwrap();
         assert!(report.projection_cap_hits() > 0, "cap {sweeps}");
         assert_eq!(report.status(), SolveStatus::NotConverged, "cap {sweeps}");
+        assert!(!report.infeasibility_evidence(), "cap {sweeps}");
     }
 }
 
@@ -1024,7 +1032,8 @@ fn a_feasible_wedge_cut_off_early_is_not_infeasible() {
 
 mod amendment_1 {
     use super::super::{
-        Projection, Snapshots, SolveReport, has_infeasibility_evidence, stationary_report,
+        Projection, Snapshots, SolveReport, has_infeasibility_evidence, infeasibility_evidence_of,
+        stationary_report,
     };
 
     fn snap(
@@ -1083,9 +1092,9 @@ mod amendment_1 {
     }
 
     /// Multipliers identically zero (no row ever active): `0 ≥ 1.9 × 0` holds, so
-    /// the evidence test alone would say "diverging". It is the fifth condition —
-    /// the violation exceeds the tolerance — that keeps such a problem from being
-    /// `Infeasible`.
+    /// the multiplier and shrink conditions alone would say "evidence". It is the
+    /// fifth condition — the violation exceeds the tolerance — that keeps such a
+    /// feasible problem from setting the field.
     #[test]
     fn zero_multipliers_read_as_evidence_and_only_the_violation_condition_stops_them() {
         assert!(has_infeasibility_evidence(100, snap(0.0, 0.0, 0.0, 0.0)));
@@ -1093,46 +1102,58 @@ mod amendment_1 {
             capped: true,
             infeasibility_evidence: true,
         };
-        let converged = SolveReport::converged_early(3);
-        // Feasible (violation within tolerance), capped, "evidence": stalled.
-        assert_eq!(
-            stationary_report(true, capped, 3, converged),
-            SolveReport::not_converged_stalled(3)
-        );
+        // Feasible (violation within tolerance), capped, "evidence": no field.
+        assert!(!infeasibility_evidence_of(true, capped));
         // Infeasible (violation over tolerance): the same evidence now counts.
-        assert_eq!(
-            stationary_report(false, capped, 3, converged),
-            SolveReport::infeasible(3)
-        );
+        assert!(infeasibility_evidence_of(false, capped));
     }
 
     #[test]
-    fn stationary_report_needs_every_condition_for_infeasible() {
+    fn the_field_needs_every_condition() {
+        let p = |capped, infeasibility_evidence| Projection {
+            capped,
+            infeasibility_evidence,
+        };
+        // the projection did not cap: no field, however the multipliers looked
+        assert!(!infeasibility_evidence_of(false, p(false, true)));
+        // capped, no divergence evidence: no field
+        assert!(!infeasibility_evidence_of(false, p(true, false)));
+        // feasible: no field
+        assert!(!infeasibility_evidence_of(true, p(true, true)));
+        // infeasible, capped, evidence: the field
+        assert!(infeasibility_evidence_of(false, p(true, true)));
+    }
+
+    /// The status never depends on the evidence and is never `Infeasible` (there is
+    /// no such status): feasible and exact converges, everything else at a stationary
+    /// step is `NotConverged` with `NoProgress`.
+    #[test]
+    fn the_status_at_a_stationary_step_does_not_depend_on_the_evidence() {
         let converged = SolveReport::converged_early(5);
         let stalled = SolveReport::not_converged_stalled(5);
         let p = |capped, infeasibility_evidence| Projection {
             capped,
             infeasibility_evidence,
         };
-        // feasible and exact: converged
         assert_eq!(
             stationary_report(true, p(false, false), 5, converged),
             converged
         );
-        // infeasible but the projection did not cap: stalled, never Infeasible
         assert_eq!(
-            stationary_report(false, p(false, true), 5, converged),
+            stationary_report(true, p(true, true), 5, converged),
             stalled
         );
-        // infeasible, capped, no divergence evidence: stalled
+        assert_eq!(
+            stationary_report(false, p(true, true), 5, converged),
+            stalled
+        );
         assert_eq!(
             stationary_report(false, p(true, false), 5, converged),
             stalled
         );
-        // infeasible, capped, evidence: Infeasible
         assert_eq!(
-            stationary_report(false, p(true, true), 5, converged),
-            SolveReport::infeasible(5)
+            stationary_report(false, p(false, false), 5, converged),
+            stalled
         );
     }
 }

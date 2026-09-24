@@ -47,6 +47,7 @@ constraint_rhs = [1.0, 1.01]
 [expected]
 status = "not-converged"
 termination = "no-progress"
+infeasibility_evidence = false
 solution = [1.0, 1.0]
 error = "none"
 violation_max = 1e-8
