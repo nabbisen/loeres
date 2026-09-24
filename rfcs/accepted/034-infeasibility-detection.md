@@ -82,7 +82,7 @@ convergence time is `10^6`–`10^7` sweeps; at a cap of `10^4` such a system is 
 limiting case of one that never converges, and no signal computed **inside** the
 cap distinguishes them.
 
-Review 070's "0 false positives in 20,132 trials" did **not** establish zero: at
+Review 070 reported no false positives in 20,132 trials; that did **not** establish zero, since at
 `p = 3e-5` that sample shows zero 55% of the time. A Farkas-certificate check was
 then tried — `bᵀy < 0` with `y = λ/max(λ)` separated hand-picked cases perfectly
 — and **removed none** of the false positives on the distribution that produces

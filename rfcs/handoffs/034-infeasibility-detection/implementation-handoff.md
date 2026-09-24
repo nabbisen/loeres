@@ -17,7 +17,10 @@ positive**, so read §5 before §3.
 **S1 — the status and the rule**, both kernels.
 **S2 — conformance fixtures and documentation.** One review request each.
 
-## 2c. C3 — `#[non_exhaustive]`, and the release is `0.22.0` (architect review 072)
+## 2c. C3 — `#[non_exhaustive]`, and the release is `0.22.0` (architect review 072) — CLOSED by `3664f7a`, accepted in review 073
+
+*RFC 034 is complete. Nothing is outstanding for the implementer tier; the
+version bump to `0.22.0` is the architect's, at finalization.*
 
 *C2 and S2 are accepted. RFC 034 is implemented. This is the last item.*
 
