@@ -202,7 +202,12 @@ fn zero_dense<S: FiniteScalar>(vector: &mut DenseVector<S>) {
 /// Typed solve outcome: the terminal report, honest validation evidence (as
 /// [`crate::ProjectedFirstOrderSolveRecord`]), and the two fields RFC 027
 /// §11.3 requires so the kernel never claims feasibility it did not verify.
+///
+/// `#[non_exhaustive]` (RFC 034 Amendment 3): outside this crate the record is
+/// read, never constructed by struct literal or destructured without `..`, so a
+/// future field is not a source break again. Every field is still public.
 #[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
 pub struct ConstrainedSolveRecord<S> {
     /// Terminal report (RFC 014).
     pub report: SolveReport,

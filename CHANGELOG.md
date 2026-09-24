@@ -25,6 +25,20 @@ Development toward the next release.
   before any release, by Amendment 2), so an infeasible polyhedron is still `NotConverged` /
   `NoProgress` as RFC 033 leaves it, and the batch seam, which carries the status only,
   never carries the hint.
+- **Source-breaking change (`loeres-cluster`):** `ConstrainedSolveRecord<S>`, which shipped in
+  `0.21.1` with public fields and no `#[non_exhaustive]`, gains the field above, so **building
+  one by struct literal no longer compiles** (`error[E0063]: missing field
+  infeasibility_evidence`). It is now `#[non_exhaustive]`, so outside the crate it also cannot
+  be built by struct literal at all (`error[E0639]`) and cannot be destructured without `..`
+  (`error[E0638]`). *Affected pattern:* `ConstrainedSolveRecord { report, projection_cap_hits,
+  max_constraint_violation, checked_scope, finite }` as an expression or a `let`/`match`
+  pattern. *Fix:* the record is an output of `solve_constrained_projected_first_order_dyn`; stop
+  constructing it (a test double should wrap the solve instead), and destructure with a trailing
+  `..` or read the public fields (`record.report`, `record.projection_cap_hits`, …). Reading
+  fields is unaffected. No other type changed shape: `ConstrainedSolveReport` (device) keeps its
+  `from_core` signature and gains `with_infeasibility_evidence`; `BatchSolveReport` and
+  `ProjectedFirstOrderSolveRecord` are untouched. Under Cargo's `0.x` rules this is a minor bump,
+  so the release carrying it is `0.22.0` (RFC 034 Amendment 3).
 - **A heuristic in both directions.** It misses most weakly infeasible systems (on random
   Farkas-certificate polytopes it is set for about 15% to 45% depending on the cap, and for
   about 86% of the strongly infeasible ones at a cap of 3000), and it is set on about `3e-5` of
