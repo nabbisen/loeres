@@ -17,7 +17,37 @@ positive**, so read §5 before §3.
 **S1 — the status and the rule**, both kernels.
 **S2 — conformance fixtures and documentation.** One review request each.
 
-## 2b. C2 — field, not status (architect review 071). Do this first.
+## 2c. C3 — `#[non_exhaustive]`, and the release is `0.22.0` (architect review 072)
+
+*C2 and S2 are accepted. RFC 034 is implemented. This is the last item.*
+
+Adding `infeasibility_evidence` to `ConstrainedSolveRecord<S>` is
+**source-breaking** — the struct has public fields and no `#[non_exhaustive]`,
+and shipped in `0.21.1`. Verified: `error[E0063]: missing field
+infeasibility_evidence`. Under Cargo's `0.x` rules the minor is the breaking
+position, so **the release carrying RFC 034 is `0.22.0`** (Amendment 3, §0.3).
+
+**Do:**
+
+- add **`#[non_exhaustive]`** to `ConstrainedSolveRecord<S>` only — the release
+  already breaks this type, so it costs nothing extra and no future field
+  addition to it breaks again;
+- **do not** add it to `BatchSolveReport`, `ProjectedFirstOrderSolveRecord`,
+  `DeviceSolveReport` or `ConstrainedSolveReport`: none is gaining a field and it
+  would be a gratuitous break (Amendment 3 §0.3.3);
+- state the break in `CHANGELOG.md` under the unreleased record, naming the
+  affected pattern (constructing `ConstrainedSolveRecord` by struct literal) and
+  the fix (add the field, or stop constructing it by literal now that it is
+  `#[non_exhaustive]`).
+
+**Evidence:** the usual gate set, plus a demonstration that a struct-literal
+construction of `ConstrainedSolveRecord` no longer compiles and that nothing in
+the workspace or the examples constructed one.
+
+The version bump itself is **not** part of this slice — the architect performs it
+at finalization.
+
+## 2b. C2 — field, not status (architect review 071) — CLOSED by `0d3319c`
 
 **C1 landed at `059163b` and its five-condition rule is accepted verbatim.** What
 changes is only what the rule's output is called. RFC 034 **Amendment 2 (§0.2)**

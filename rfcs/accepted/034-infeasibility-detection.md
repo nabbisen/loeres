@@ -1,7 +1,7 @@
 # RFC 034 - Conservative Infeasibility Detection
 
 **Status.** Accepted (design frozen 2026-09-24)
-**Design approval.** Amendment 2 (§0.2, 2026-09-24) by architect review 071. Amendment 1 (§0, 2026-09-24) by architect review 070. Architect-authored and scheduled as Cycle 2 in architect review 066.
+**Design approval.** Amendment 3 (§0.3, 2026-09-24) by architect review 072. Amendment 2 (§0.2, 2026-09-24) by architect review 071. Amendment 1 (§0, 2026-09-24) by architect review 070. Architect-authored and scheduled as Cycle 2 in architect review 066.
 **Tracks.** Closes RFC 027 §11.6's "infeasibility is not detected; reported as non-convergence". Depends on RFC 031's corpus and composes with RFC 027 Amendment 5, RFC 029 and RFC 033.
 **Touches.** `crates/loeres/src/solver.rs` (one enum variant), both constrained kernels, `conformance/adversarial/`, user-facing docs.
 
@@ -118,6 +118,42 @@ rule, which is the finding, not a failure to meet it. It is replaced by: the
 false-positive **rate** of `infeasibility_evidence` is measured on both ordinary
 and thin-sliver distributions and **stated** in the user-facing documentation,
 together with the detection rate by margin decade.
+
+## 0.3 Amendment 3 — 2026-09-24 (architect review 072)
+
+**The release carrying this RFC is `0.22.0`, not `0.21.4`.**
+
+Amendment 2 §0.2.3 said "both solve records gain `infeasibility_evidence`"
+without checking that one of the two could take a field compatibly.
+`ConstrainedSolveRecord<S>` is a public struct with public fields and **no**
+`#[non_exhaustive]`, shipped in `0.21.1`. Adding a field is therefore
+source-breaking, verified:
+
+```text
+error[E0063]: missing field `infeasibility_evidence` in initializer of
+              `constrained::ConstrainedSolveRecord<_>`
+```
+
+Under Cargo's `0.x` rules the **minor** is the breaking position, so this cannot
+ship as a patch. The device side is unaffected — its fields are private behind
+accessors — and the asymmetry was not checked when Amendment 2 was written. The
+error is the architect's.
+
+**0.3.1** The release carrying RFC 034 is **`0.22.0`**. Architect review 066 §1's
+statement that no `0.22.0` would be manufactured held for Cycle 1 and does not
+survive this amendment.
+
+**0.3.2** `#[non_exhaustive]` is added to `ConstrainedSolveRecord<S>` **in the
+same release**. It is breaking in itself, but the release already breaks this
+type, so the marginal cost is zero and no future field addition to this record
+breaks again.
+
+**0.3.3** `#[non_exhaustive]` is **not** added to the other public record types in
+this release — none is gaining a field, so it would be a gratuitous break. That
+they lack it is a **known exposure**: the next field addition to
+`BatchSolveReport` or `ProjectedFirstOrderSolveRecord` forces the same decision.
+`DeviceSolveReport` and `ConstrainedSolveReport` are lower risk, their fields
+being private behind accessors.
 
 ## 1. Summary
 
