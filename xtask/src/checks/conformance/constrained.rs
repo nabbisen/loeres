@@ -35,6 +35,7 @@ use loeres_device::solve::{
 };
 use serde::Deserialize;
 
+use super::difficulty::PathDifficulty;
 use super::{CategoryResult, ClusterDiagonalProblem, ExecutionMode, Fixture, within_tolerance};
 
 // ---------------------------------------------------------------------------
@@ -264,15 +265,15 @@ pub(super) struct ConstrainedFixture {
     suite: String,
     problem_class: String,
     solver_family: String,
-    dimension: usize,
-    constraints: usize,
+    pub(super) dimension: usize,
+    pub(super) constraints: usize,
     scalar_family: String,
     validation_state: String,
     conformance_groups: Vec<String>,
-    variant: String,
+    pub(super) variant: String,
     config: ConstrainedConfig,
-    problem: ConstrainedProblem,
-    expected: ConstrainedExpected,
+    pub(super) problem: ConstrainedProblem,
+    pub(super) expected: ConstrainedExpected,
     tolerance: ConstrainedTolerance,
 }
 
@@ -286,31 +287,40 @@ struct ConstrainedConfig {
 }
 
 #[derive(Clone, Debug, Deserialize)]
-struct ConstrainedProblem {
-    lower: Vec<f64>,
-    upper: Vec<f64>,
-    initial: Vec<f64>,
-    quadratic_diag: Vec<f64>,
-    center: Vec<f64>,
+pub(super) struct ConstrainedProblem {
+    pub(super) lower: Vec<f64>,
+    pub(super) upper: Vec<f64>,
+    pub(super) initial: Vec<f64>,
+    pub(super) quadratic_diag: Vec<f64>,
+    pub(super) center: Vec<f64>,
     /// Row-major `constraints × dimension`.
-    constraint_matrix: Vec<f64>,
-    constraint_rhs: Vec<f64>,
+    pub(super) constraint_matrix: Vec<f64>,
+    pub(super) constraint_rhs: Vec<f64>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
-struct ConstrainedExpected {
-    status: String,
-    termination: String,
-    solution: Vec<f64>,
-    error: String,
+pub(super) struct ConstrainedExpected {
+    pub(super) status: String,
+    pub(super) termination: String,
+    pub(super) solution: Vec<f64>,
+    pub(super) error: String,
     /// Feasible fixtures: the returned point may violate its constraints by at
     /// most this much.
     #[serde(default)]
-    violation_max: Option<f64>,
+    pub(super) violation_max: Option<f64>,
     /// Infeasible fixtures: the returned point must violate by at least this.
     #[serde(default)]
-    violation_min: Option<f64>,
+    pub(super) violation_min: Option<f64>,
+    /// Infeasible fixtures: a Farkas certificate `λ >= 0` with `Σ λᵢ aᵢ = 0` and
+    /// `Σ λᵢ bᵢ < 0`, one entry per constraint row. It proves the rows
+    /// inconsistent without running any kernel, and bounds the violation below
+    /// by `-Σ λᵢ bᵢ / Σ λᵢ`. The runner ignores it; the reference test checks it.
+    #[serde(default)]
+    pub(super) infeasibility_certificate: Option<Vec<f64>>,
 }
+
+/// The largest dimension or constraint count outside the smoke suite.
+const MAX_SIZE: usize = 16;
 
 #[derive(Clone, Debug, Deserialize)]
 struct ConstrainedTolerance {
@@ -344,14 +354,28 @@ impl ConstrainedFixture {
             "solver_family must be constrained_projected_first_order",
         )?;
         expect(self.scalar_family == "float", "scalar_family must be float")?;
-        expect(
-            matches!(self.dimension, 2 | 3),
-            "dimension must be 2 or 3 (the device kernel is instantiated per shape)",
-        )?;
-        expect(
-            (1..=3).contains(&self.constraints),
-            "constraints must be 1..=3 (m = 0 is the RFC 006 entrypoint on device and is covered by m0_identity)",
-        )?;
+        let smoke = suite == "smoke";
+        if smoke {
+            expect(
+                matches!(self.dimension, 2 | 3),
+                "dimension must be 2 or 3 in the smoke suite",
+            )?;
+            expect(
+                (1..=3).contains(&self.constraints),
+                "constraints must be 1..=3 in the smoke suite (m = 0 is the RFC 006 entrypoint on device and is covered by m0_identity)",
+            )?;
+        } else {
+            // RFC 031: sizes above the smoke corpus. `m = 0` stays out for the
+            // same reason as in smoke.
+            expect(
+                (2..=MAX_SIZE).contains(&self.dimension),
+                "dimension must be 2..=16",
+            )?;
+            expect(
+                (1..=MAX_SIZE).contains(&self.constraints),
+                "constraints must be 1..=16",
+            )?;
+        }
         expect(
             matches!(
                 self.validation_state.as_str(),
@@ -366,9 +390,15 @@ impl ConstrainedFixture {
         expect(
             self.conformance_groups
                 .iter()
-                .any(|g| g == "cluster-reference-smoke"),
-            "conformance_groups must contain cluster-reference-smoke",
+                .any(|g| *g == format!("cluster-reference-{suite}")),
+            &format!("conformance_groups must contain cluster-reference-{suite}"),
         )?;
+        if self.has_device() {
+            expect(
+                device_shape_supported(self.dimension, self.constraints),
+                "no device instantiation for this dimension and constraint count",
+            )?;
+        }
         let (n, m) = (self.dimension, self.constraints);
         for (name, len, want) in [
             ("lower", self.problem.lower.len(), n),
@@ -388,10 +418,29 @@ impl ConstrainedFixture {
                 &format!("{name} has {len} values, expected {want}"),
             )?;
         }
-        expect(
-            self.problem.quadratic_diag.iter().all(|q| *q == 1.0),
-            "quadratic_diag must be all 1.0: closed-form optima here are Euclidean projections, which holds only for Q = I",
-        )?;
+        if smoke {
+            expect(
+                self.problem.quadratic_diag.iter().all(|q| *q == 1.0),
+                "quadratic_diag must be all 1.0 in smoke: its closed-form optima are Euclidean projections, which holds only for Q = I",
+            )?;
+        } else {
+            // Outside smoke the expected values come from an exact active-set
+            // reference in `Q`'s metric (see `reference`), so any positive
+            // diagonal is allowed.
+            expect(
+                self.problem
+                    .quadratic_diag
+                    .iter()
+                    .all(|q| q.is_finite() && *q > 0.0),
+                "quadratic_diag must be finite and > 0",
+            )?;
+        }
+        if let Some(certificate) = &self.expected.infeasibility_certificate {
+            expect(
+                self.variant == "infeasible" && certificate.len() == m,
+                "infeasibility_certificate is for infeasible fixtures and needs one entry per constraint",
+            )?;
+        }
         expect(
             self.config.max_iterations > 0 && self.config.projection_max_sweeps > 0,
             "caps must be > 0",
@@ -403,10 +452,10 @@ impl ConstrainedFixture {
         Ok(())
     }
 
-    fn has_device(&self) -> bool {
+    pub(super) fn has_device(&self) -> bool {
         self.conformance_groups
             .iter()
-            .any(|g| g == "device-reference-smoke")
+            .any(|g| *g == format!("device-reference-{}", self.suite))
     }
 
     fn policy(&self) -> ClusterValidationPolicy {
@@ -546,8 +595,16 @@ fn run_device_shape<const N: usize, const M: usize, const NN: usize, const MN: u
     })
 }
 
+/// The `(dimension, constraints)` shapes the device kernel is instantiated for
+/// here; a shape is a const-generic instantiation, not a fixture field.
+fn device_shape_supported(n: usize, m: usize) -> bool {
+    matches!((n, m), (2 | 3, 1..=3) | (4, 4) | (5, 5))
+}
+
 fn run_device(f: &ConstrainedFixture, sweeps: u32) -> Result<PathRun, String> {
     match (f.dimension, f.constraints) {
+        (4, 4) => run_device_shape::<4, 4, 16, 16>(f, sweeps),
+        (5, 5) => run_device_shape::<5, 5, 25, 25>(f, sweeps),
         (2, 1) => run_device_shape::<2, 1, 4, 2>(f, sweeps),
         (2, 2) => run_device_shape::<2, 2, 4, 4>(f, sweeps),
         (2, 3) => run_device_shape::<2, 3, 4, 6>(f, sweeps),
@@ -671,6 +728,25 @@ pub(super) struct ConstrainedResult {
     pub(super) solution_within_tolerance: CategoryResult,
     pub(super) expected_failure_match: CategoryResult,
     pub(super) feasibility_within_tolerance: CategoryResult,
+    /// RFC 031 §3.3: reported, never part of the pass decision.
+    pub(super) difficulty: Vec<PathDifficulty>,
+}
+
+/// The difficulty figures of every path that produced a report.
+fn difficulty_of(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> Vec<PathDifficulty> {
+    paths
+        .iter()
+        .filter_map(|(name, run)| {
+            let solved = run.result.as_ref().ok()?;
+            Some(PathDifficulty {
+                path: name,
+                iterations: solved.report.iterations_executed(),
+                iteration_cap: f.config.max_iterations,
+                cap_hits: Some(solved.projection_cap_hits),
+                violation: Some(solved.max_constraint_violation),
+            })
+        })
+        .collect()
 }
 
 pub(super) fn run_constrained_fixture(f: &ConstrainedFixture) -> Result<ConstrainedResult, String> {
@@ -686,6 +762,7 @@ pub(super) fn run_constrained_fixture(f: &ConstrainedFixture) -> Result<Constrai
         solution_within_tolerance: CategoryResult::NotApplicable,
         expected_failure_match: CategoryResult::NotApplicable,
         feasibility_within_tolerance: CategoryResult::NotApplicable,
+        difficulty: difficulty_of(f, &paths),
     };
 
     if f.expected.error != "none" {
@@ -917,6 +994,7 @@ mod tests {
                 error: "none".to_owned(),
                 violation_max: None,
                 violation_min: None,
+                infeasibility_certificate: None,
             },
             tolerance: ConstrainedTolerance {
                 solution_abs: 1e-6,

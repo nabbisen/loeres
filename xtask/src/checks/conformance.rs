@@ -3,6 +3,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use difficulty::{DifficultySummary, PathDifficulty};
 use loeres::validation::{TrustToken, TrustedByCaller, ValidationScope};
 use loeres::{ContiguousVectorAccess, SolveStatus, SolverError, TerminationReason};
 use loeres_backend_static::array::FixedVector;
@@ -22,6 +23,9 @@ use loeres_device::solve::{ProjectedFirstOrderWorkspace, solve_projected_first_o
 use serde::Deserialize;
 
 mod constrained;
+mod difficulty;
+#[cfg(test)]
+mod reference;
 
 const CORPUS: &str = "conformance";
 
@@ -33,7 +37,7 @@ pub fn run(args: &[String]) -> bool {
     eprintln!("[conformance] suite: {}", suite.as_str());
     match suite {
         Suite::Smoke => run_smoke(),
-        Suite::Extended | Suite::Adversarial => run_placeholder_suite(suite),
+        Suite::Extended | Suite::Adversarial => run_constrained_suite(suite),
     }
 }
 
@@ -129,28 +133,39 @@ fn run_smoke() -> bool {
     ok
 }
 
-fn run_placeholder_suite(suite: Suite) -> bool {
-    let path = corpus_root().join(suite.as_str());
-    if !path.exists() {
-        eprintln!("  not-enforced: {}/ does not exist yet", path.display());
-        eprintln!("[conformance] NOT-ENFORCED");
-        return true;
+/// RFC 031: the `extended/` and `adversarial/` suites hold schema-3 fixtures
+/// only. They are reported, not enforced: nothing in `cargo xtask check` runs
+/// them, and the difficulty figures printed beside each fixture are not a pass
+/// criterion.
+fn run_constrained_suite(suite: Suite) -> bool {
+    let fixtures = match load_constrained_fixtures(suite.as_str()) {
+        Ok(fixtures) => fixtures,
+        Err(e) => {
+            eprintln!("  ! {e}");
+            eprintln!("[conformance] FAIL");
+            return false;
+        }
+    };
+    let mut summary = Summary::default();
+    let mut ok = true;
+    for fixture in &fixtures {
+        eprintln!("  fixture: {}", fixture.fixture_id);
+        match run_constrained(fixture) {
+            Ok(result) => {
+                ok &= result.fixture_passed();
+                summary.record(&result);
+            }
+            Err(e) => {
+                eprintln!("    FAIL: {e}");
+                ok = false;
+                summary.fixtures_total += 1;
+                summary.fixtures_failed += 1;
+            }
+        }
     }
-    let fixtures = fixture_paths(&path);
-    if fixtures.is_empty() {
-        eprintln!(
-            "  not-enforced: {}/ has no fixture TOML files",
-            path.display()
-        );
-        eprintln!("[conformance] NOT-ENFORCED");
-        return true;
-    }
-    eprintln!(
-        "  fixtures are present, but {} suite execution is not implemented for this release",
-        suite.as_str()
-    );
-    eprintln!("[conformance] FAIL");
-    false
+    summary.print();
+    eprintln!("[conformance] {}", if ok { "PASS" } else { "FAIL" });
+    ok
 }
 
 fn load_fixtures(suite: &str) -> Result<Vec<Fixture>, String> {
@@ -209,9 +224,15 @@ fn load_constrained_fixtures(suite: &str) -> Result<Vec<constrained::Constrained
         .iter()
         .map(|f| f.fixture_id.as_str())
         .collect::<Vec<_>>();
-    for required in REQUIRED_CONSTRAINED {
+    let required: &[&str] = match suite {
+        "smoke" => REQUIRED_CONSTRAINED,
+        "extended" => REQUIRED_EXTENDED,
+        "adversarial" => REQUIRED_ADVERSARIAL,
+        other => return Err(format!("unknown suite `{other}`")),
+    };
+    for required in required {
         if !found.contains(required) {
-            return Err(format!("missing required constrained fixture `{required}`"));
+            return Err(format!("missing required {suite} fixture `{required}`"));
         }
     }
     Ok(fixtures)
@@ -224,6 +245,7 @@ fn run_constrained(fixture: &constrained::ConstrainedFixture) -> Result<FixtureR
     result.solution_within_tolerance = outcome.solution_within_tolerance;
     result.expected_failure_match = outcome.expected_failure_match;
     result.feasibility_within_tolerance = outcome.feasibility_within_tolerance;
+    result.difficulty = outcome.difficulty;
     result.print();
     Ok(result)
 }
@@ -256,6 +278,20 @@ fn fixture_paths(root: &Path) -> Vec<PathBuf> {
 }
 
 /// RFC 027 S4 schema-3 fixtures.
+/// RFC 031: the fixtures each non-smoke suite must contain, so deleting one is a
+/// failure rather than a silently smaller corpus.
+const REQUIRED_EXTENDED: &[&str] = &[
+    "qp-linear-12d-6-halfspaces-001",
+    "qp-linear-4d-4-halfspaces-001",
+    "qp-linear-5d-5-box-faces-001",
+    "qp-linear-5d-5-diagonal-q-001",
+    "qp-linear-5d-5-halfspaces-001",
+    "qp-linear-7d-4-halfspaces-001",
+];
+
+/// Populated by RFC 031 S2.
+const REQUIRED_ADVERSARIAL: &[&str] = &[];
+
 const REQUIRED_CONSTRAINED: &[&str] = &[
     "qp-linear-2d-single-active-001",
     "qp-linear-2d-vertex-001",
@@ -655,10 +691,14 @@ fn run_fixture(fixture: &Fixture) -> Result<FixtureResult, String> {
         _ => return Err("fixture must be validated before running".to_owned()),
     };
     let mut result = FixtureResult::new(fixture.fixture_id.clone());
+    // Outer iterations per solve path, for RFC 031 difficulty reporting.
+    let mut result_paths: Vec<(&'static str, Option<u32>)> = Vec::new();
     match (fixture.schema_version, execution_mode) {
         (1, ExecutionMode::Solve) => {
             let device = run_device(fixture)?;
             let cluster = run_cluster(fixture)?;
+            result_paths.push(("device", device.iterations));
+            result_paths.push(("cluster", cluster.iterations));
             result.status_match =
                 compare_status(fixture, &[("device", &device), ("cluster", &cluster)]);
             result.solution_within_tolerance =
@@ -670,6 +710,9 @@ fn run_fixture(fixture: &Fixture) -> Result<FixtureResult, String> {
             let device = run_device(fixture)?;
             let cluster_validate_all = run_cluster(fixture)?;
             let cluster_cached = run_cluster_cached(fixture)?;
+            result_paths.push(("device", device.iterations));
+            result_paths.push(("cluster_validate_all", cluster_validate_all.iterations));
+            result_paths.push(("cluster_cached", cluster_cached.iterations));
             result.status_match = compare_status(
                 fixture,
                 &[
@@ -703,13 +746,37 @@ fn run_fixture(fixture: &Fixture) -> Result<FixtureResult, String> {
     result.objective_within_tolerance = CategoryResult::NotApplicable;
     result.residual_within_tolerance = CategoryResult::NotApplicable;
     result.m0_identity = constrained::m0_identity(fixture)?;
+    result.difficulty = box_only_difficulty(fixture, &result_paths);
     result.print();
     Ok(result)
+}
+
+/// Difficulty for a box-only (schema 1/2) fixture: iterations against the cap.
+/// The box-only kernels have no inner projection, so cap hits and constraint
+/// violation are not reported for them.
+fn box_only_difficulty(
+    fixture: &Fixture,
+    paths: &[(&'static str, Option<u32>)],
+) -> Vec<PathDifficulty> {
+    paths
+        .iter()
+        .filter_map(|(path, iterations)| {
+            Some(PathDifficulty {
+                path,
+                iterations: (*iterations)?,
+                iteration_cap: fixture.config.max_iterations,
+                cap_hits: None,
+                violation: None,
+            })
+        })
+        .collect()
 }
 
 #[derive(Debug)]
 struct RunOutcome {
     report: Option<(SolveStatus, TerminationReason)>,
+    /// Outer iterations executed (RFC 031 difficulty reporting).
+    iterations: Option<u32>,
     solution: Option<[f64; 2]>,
     error: Option<SolverError>,
 }
@@ -727,11 +794,13 @@ fn run_device(fixture: &Fixture) -> Result<RunOutcome, String> {
         match solve_projected_first_order(&problem, &mut x, &mut workspace, &config) {
             Ok(report) => RunOutcome {
                 report: Some((report.status(), report.core().termination())),
+                iterations: Some(report.iterations_executed()),
                 solution: Some(*array_ref(x.as_slice())?),
                 error: None,
             },
             Err(error) => RunOutcome {
                 report: None,
+                iterations: None,
                 solution: None,
                 error: Some(error),
             },
@@ -757,6 +826,7 @@ fn run_cluster(fixture: &Fixture) -> Result<RunOutcome, String> {
         match solve_projected_first_order_dyn(&problem, &mut x, &mut workspace, &config, &ctx) {
             Ok(record) => RunOutcome {
                 report: Some((record.report.status(), record.report.termination())),
+                iterations: Some(record.report.iterations_executed()),
                 solution: Some(*array_ref(
                     x.as_contiguous()
                         .ok_or("cluster solution is not contiguous")?,
@@ -765,6 +835,7 @@ fn run_cluster(fixture: &Fixture) -> Result<RunOutcome, String> {
             },
             Err(error) => RunOutcome {
                 report: None,
+                iterations: None,
                 solution: None,
                 error: Some(error),
             },
@@ -853,6 +924,7 @@ fn run_cluster_cached(fixture: &Fixture) -> Result<RunOutcome, String> {
         ) {
             Ok(record) => RunOutcome {
                 report: Some((record.report.status(), record.report.termination())),
+                iterations: Some(record.report.iterations_executed()),
                 solution: Some(*array_ref(
                     x.as_contiguous()
                         .ok_or("cluster cached solution is not contiguous")?,
@@ -861,6 +933,7 @@ fn run_cluster_cached(fixture: &Fixture) -> Result<RunOutcome, String> {
             },
             Err(error) => RunOutcome {
                 report: None,
+                iterations: None,
                 solution: None,
                 error: Some(error),
             },
@@ -908,11 +981,13 @@ fn run_cache_insert(fixture: &Fixture) -> Result<RunOutcome, String> {
     Ok(match cache.insert(key, evidence) {
         Ok(()) => RunOutcome {
             report: None,
+            iterations: None,
             solution: None,
             error: None,
         },
         Err(error) => RunOutcome {
             report: None,
+            iterations: None,
             solution: None,
             error: Some(error),
         },
@@ -1212,6 +1287,8 @@ struct FixtureResult {
     /// constraints (feasible fixtures), or reports a non-shrinking violation
     /// with the projection cap hit (infeasible fixtures).
     feasibility_within_tolerance: CategoryResult,
+    /// RFC 031 §3.3: reported, never part of `fixture_passed`.
+    difficulty: Vec<PathDifficulty>,
 }
 
 impl FixtureResult {
@@ -1225,6 +1302,7 @@ impl FixtureResult {
             residual_within_tolerance: CategoryResult::NotApplicable,
             m0_identity: CategoryResult::NotApplicable,
             feasibility_within_tolerance: CategoryResult::NotApplicable,
+            difficulty: Vec::new(),
         }
     }
 
@@ -1268,6 +1346,9 @@ impl FixtureResult {
                 eprintln!("      {detail}");
             }
         }
+        for path in &self.difficulty {
+            eprintln!("    difficulty: {}", path.line());
+        }
     }
 }
 
@@ -1283,6 +1364,7 @@ struct Summary {
     residual_within_tolerance: CategorySummary,
     m0_identity: CategorySummary,
     feasibility_within_tolerance: CategorySummary,
+    difficulty: DifficultySummary,
 }
 
 impl Summary {
@@ -1305,6 +1387,7 @@ impl Summary {
         self.m0_identity.record(&result.m0_identity);
         self.feasibility_within_tolerance
             .record(&result.feasibility_within_tolerance);
+        self.difficulty.record(&result.difficulty);
     }
 
     fn print(&self) {
@@ -1323,6 +1406,7 @@ impl Summary {
         self.m0_identity.print("m0_identity");
         self.feasibility_within_tolerance
             .print("feasibility_within_tolerance");
+        self.difficulty.print();
     }
 }
 
@@ -1382,6 +1466,47 @@ mod tests {
             .unwrap();
         fixture.expected_solution_for_test(vec![1.0, 0.75]);
         assert!(!run_constrained(&fixture).unwrap().fixture_passed());
+    }
+
+    /// RFC 031: the extended suite is parsed, validated and run by the same
+    /// runner, and every fixture in it passes.
+    #[test]
+    fn the_extended_suite_parses_validates_and_passes() {
+        let fixtures = load_constrained_fixtures("extended").unwrap();
+        assert_eq!(fixtures.len(), REQUIRED_EXTENDED.len());
+        for fixture in &fixtures {
+            assert!(
+                run_constrained(fixture).unwrap().fixture_passed(),
+                "{} failed",
+                fixture.fixture_id
+            );
+        }
+    }
+
+    /// RFC 031 §3.3: difficulty is reported beside a fixture and is never part of
+    /// its verdict. The smoke infeasible fixture hits its projection cap on every
+    /// outer iteration and still passes; absurd figures do not change a verdict.
+    #[test]
+    fn difficulty_is_reported_and_never_decides_the_verdict() {
+        let fixture = load_constrained_fixtures("smoke")
+            .unwrap()
+            .into_iter()
+            .find(|f| f.fixture_id == "qp-linear-2d-infeasible-001")
+            .unwrap();
+        let mut result = run_constrained(&fixture).unwrap();
+        assert!(result.fixture_passed());
+        assert_eq!(result.difficulty.len(), 2, "device and cluster");
+        for path in &result.difficulty {
+            assert!(path.cap_hits.is_some_and(|hits| hits > 0), "{path:?}");
+            assert!(path.violation.is_some_and(|v| v >= 0.5), "{path:?}");
+            assert!(path.iterations > 0 && path.iteration_cap == 5000);
+        }
+        for path in &mut result.difficulty {
+            path.cap_hits = Some(u32::MAX);
+            path.violation = Some(f64::MAX);
+            path.iterations = u32::MAX;
+        }
+        assert!(result.fixture_passed());
     }
 
     /// The zero-coordinate fixture is where raw `to_bits()` would report a

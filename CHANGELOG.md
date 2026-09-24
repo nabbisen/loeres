@@ -31,6 +31,24 @@ Everything under `crates/` in this release is test code. A consumer upgrading
 from `0.21.1` observes nothing different; what changes is what the project can
 detect about itself.
 
+### RFC 031 S1 — difficulty reporting and the extended suite
+
+- The conformance runner now reports, per solve path and per fixture, the outer
+  iterations executed against the configured cap and, for the constrained kernels, the
+  `projection_cap_hits` and the terminal `max_constraint_violation`, with a per-suite
+  aggregate (including the projection cap-hit rate). It is reporting only: no pass
+  criterion, threshold or budget was added, and `cargo xtask conformance` still prints
+  `24 total / 24 passed / 0 failed`.
+- `cargo xtask conformance --suite extended` runs six new schema-3 fixtures at
+  `n = 4` to `12` and up to six halfspaces (device and cluster where the device kernel is
+  instantiated for the shape, cluster only otherwise). Expected values come from an exact
+  rational active-set reference, cross-checked on every `cargo test` by a second `f64`
+  implementation; none was read off a kernel. The suite is reported, not enforced, and
+  `cargo xtask check` still runs smoke only.
+- Outside smoke, a fixture's `quadratic_diag` may be any positive diagonal, and
+  `[expected]` may carry an `infeasibility_certificate` (a Farkas certificate) that a test
+  checks. No kernel, crate or dependency changed.
+
 ### RFC 030 S1 — the `differential` gate
 
 - `cargo xtask check` gains a seventeenth gate, `differential` (also runnable as

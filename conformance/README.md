@@ -17,7 +17,36 @@ The `trusted-cache-smoke` fixture group is a corpus-local review tag, not an RFC
 path only; the provided-evidence happy path remains covered by RFC 015 unit
 tests and is later-work conformance scope.
 
-`extended/` and `adversarial/` are staged placeholders.
+## Difficulty reporting (RFC 031)
+
+Beside each fixture the runner prints, per solve path, the **outer iterations
+executed against the configured cap** and, for the constrained kernels, the
+**`projection_cap_hits`** and the terminal **`max_constraint_violation`**; each
+suite ends with an aggregate (total iterations, the largest fraction of a cap
+used, the projection cap-hit rate, the largest violation). This is **reporting
+only**. A fixture passes or fails exactly as it did before, and no figure has a
+threshold or a budget: measuring comes first.
+
+## Extended and adversarial suites (RFC 031)
+
+`cargo xtask conformance --suite extended` (and `--suite adversarial`) run
+schema-3 fixtures above the smoke corpus. **They are reported, not enforced:**
+`cargo xtask conformance` and `cargo xtask check` still run smoke only.
+
+`extended/` holds the same geometry at larger sizes than smoke's `n <= 3`,
+`m <= 3`: dimensions 4 to 12 and up to six halfspaces, on both kernels wherever
+the device kernel has an instantiation for the shape, and on the cluster kernel
+alone otherwise (the device kernel is instantiated per shape, so a cluster-only
+fixture is how a runtime dimension the smoke corpus never uses is covered).
+Outside smoke, `quadratic_diag` may be any positive diagonal.
+
+**Every expected value comes from an independent exact reference, never from a
+kernel.** Each fixture's comment states its derivation: an active-set enumeration
+over the constraint rows **and** the box faces in `Q`'s metric, in exact rational
+arithmetic. A test in `xtask` re-derives every value with a second implementation
+on each `cargo test`. An infeasible fixture carries a Farkas certificate
+(`infeasibility_certificate`) that proves the rows inconsistent without running a
+kernel and bounds the violation from below; the same test checks it.
 
 ## Constrained kernels (RFC 027)
 

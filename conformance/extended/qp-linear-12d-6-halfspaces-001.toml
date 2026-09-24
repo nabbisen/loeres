@@ -1,0 +1,47 @@
+schema_version = 3
+fixture_id = "qp-linear-12d-6-halfspaces-001"
+suite = "extended"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 12
+constraints = 6
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["cluster-reference-extended"]
+variant = "solve"
+
+# RFC 031 extended suite. Stresses: size. n = 12, m = 6 (cluster only (no device instantiation for this shape)); the smoke corpus stops at
+# n = 3, m = 3. Q = diag(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1); step_scale 1.0 = 1/max(q).
+# Instance: seeded pick (python random.Random(12101), attempt 203) of a random polyhedron with entries in
+# tenths, feasible by construction, and a target chosen outside it, kept only because its exact
+# optimum has at least 3 active rows.
+#
+# Exact reference (fractions.Fraction, active-set enumeration over the rows AND the box
+# faces, in Q's metric; no kernel run). Active set at the optimum: row1 (multiplier 0.230187), row2 (multiplier 0.565922), row3 (multiplier 0.040779), row5 (multiplier 0.779513).
+
+[config]
+max_iterations = 5000
+tolerance = 1e-12
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-13
+
+[problem]
+lower = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+upper = [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+initial = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+quadratic_diag = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+center = [2.0, -0.1, -1.8, 2.6, -2.0, -2.1, 2.9, -2.0, -0.2, 2.3, 0.3, 1.6]
+constraint_matrix = [-0.1, 0.2, 0.5, -1.4, 0.0, -0.7, 0.7, 0.9, 0.8, -0.8, 0.0, -1.6, 0.0, -1.8, -0.5, 2.0, -0.2, -1.4, 0.6, 1.1, 0.8, 0.4, -2.0, -0.7, 1.5, 1.9, 0.8, 0.4, -1.0, -1.3, 0.9, -1.6, 1.2, -0.3, -1.1, 0.3, -0.6, -0.5, 2.0, -0.9, 1.3, 1.3, 1.3, 1.8, 0.6, 1.5, 1.1, 0.8, 0.7, -0.2, -0.1, -1.7, 1.7, 1.3, 0.7, 0.8, 0.8, -1.1, -0.6, 1.7, -0.1, 1.2, -1.3, 0.0, 0.4, -1.9, 1.7, 0.0, -0.5, 0.5, -0.4, 0.6]
+constraint_rhs = [-1.05, 2.44, -0.08, -2.12, -2.58, 0.79]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [1.2535357013775859, -1.67594232998198, -1.205834926463507, 1.9499590002888478, -1.7528586293575645, 0.3860224795471551, 0.8743729974636463, -1.4211322118885443, -0.6979664349999118, 1.9267768733095851, 1.6498359223493562, 1.0910229061549854]
+error = "none"
+violation_max = 1e-8
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001

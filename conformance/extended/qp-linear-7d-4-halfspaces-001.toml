@@ -1,0 +1,47 @@
+schema_version = 3
+fixture_id = "qp-linear-7d-4-halfspaces-001"
+suite = "extended"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 7
+constraints = 4
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["cluster-reference-extended"]
+variant = "solve"
+
+# RFC 031 extended suite. Stresses: size. n = 7, m = 4 (cluster only (no device instantiation for this shape)); the smoke corpus stops at
+# n = 3, m = 3. Q = diag(1, 1, 1, 1, 1, 1, 1); step_scale 1.0 = 1/max(q).
+# Instance: seeded pick (python random.Random(7101), attempt 30) of a random polyhedron with entries in
+# tenths, feasible by construction, and a target chosen outside it, kept only because its exact
+# optimum has at least 3 active rows.
+#
+# Exact reference (fractions.Fraction, active-set enumeration over the rows AND the box
+# faces, in Q's metric; no kernel run). Active set at the optimum: row0 (multiplier 1.33993), row1 (multiplier 3.16418), row2 (multiplier 1.05589), row3 (multiplier 1.71754).
+
+[config]
+max_iterations = 5000
+tolerance = 1e-12
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-13
+
+[problem]
+lower = [-2.0, -2.0, -2.0, -2.0, -2.0, -2.0, -2.0]
+upper = [2.0, 2.0, 2.0, 2.0, 2.0, 2.0, 2.0]
+initial = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+quadratic_diag = [1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+center = [4.6, 3.0, 2.1, -1.7, 2.5, -0.1, -0.9]
+constraint_matrix = [1.6, -1.8, 1.4, -1.8, -1.0, -1.2, 2.0, 0.6, 2.0, -0.6, 0.3, 0.7, 1.6, -0.4, -1.5, 0.3, 1.2, -0.4, -1.0, -1.8, -0.5, 1.3, -0.8, 0.5, 0.4, 1.8, -1.2, -0.3]
+constraint_rhs = [-2.12, 0.95, 0.69, -1.28]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [-0.09136404803011892, 0.14078084150111808, -0.003233638531064276, -0.5020362277069699, -0.4106736299812033, 0.4068781037677343, -1.2709850149193875]
+error = "none"
+violation_max = 1e-8
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001
