@@ -5,13 +5,50 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.21.4] — unreleased — post-0.21.3 development
+## [0.22.0] — 2026-09-24 — An honest infeasibility hint
 
 **Release status:** unreleased
 
-Development toward the next release.
+Repository release `0.22.0` adds a heuristic hint that a constrained solve may be
+infeasible, and is the first minor release since `0.21.0`. RFC 034 is implemented and
+moves to `rfcs/done/` in this revision. This tree is not itself a release until it is
+tagged and distributed.
 
-### RFC 034 — infeasibility evidence (S1, C1, C2; a heuristic field, not a status)
+**A source break, and who it affects.** `loeres-cluster`'s `ConstrainedSolveRecord<S>`,
+which shipped in `0.21.1` with public fields and no `#[non_exhaustive]`, gains a field
+and is now `#[non_exhaustive]`. **Anyone who constructs a `ConstrainedSolveRecord` by
+struct literal no longer compiles** (`error[E0063]` for the missing field; `error[E0639]`
+now that the struct cannot be built by literal from outside the crate), and a
+destructuring pattern without `..` no longer compiles either (`error[E0638]`). The
+record is an *output* of `solve_constrained_projected_first_order_dyn`: stop constructing
+it (a test double should wrap the solve), destructure with a trailing `..`, or read its
+public fields, which is unaffected. Under Cargo's `0.x` rules the minor is the breaking
+position, hence `0.22.0` rather than `0.21.4`. **No other type changed shape**: the
+device's `ConstrainedSolveReport` keeps its `from_core` signature and gains
+`with_infeasibility_evidence`; `BatchSolveReport`, `ProjectedFirstOrderSolveRecord`,
+`DeviceSolveReport` and `SolveStatus` are untouched (a `SolveStatus::Infeasible` was added
+during development and withdrawn before release).
+
+**What the new field is, and is not.** Both constrained solve records now carry
+`infeasibility_evidence: bool`, set at a stationary outer step only when the final
+projection hit its sweep cap, the cap is at least 64 sweeps, the largest Hildreth
+multiplier at the final sweep is at least 1.9 times its midpoint value, and the terminal
+violation is not shrinking and exceeds `projection_tolerance`. It is a **heuristic, wrong in
+both directions, and never a status**. Measured on random problems, it is set on about **3
+in 100,000** feasible near-(anti)parallel trials and **2 in 10,000** feasible thin slivers
+(wedges whose projection needs `10^6`-`10^7` sweeps, which no signal computed inside the cap
+distinguishes from an infeasible system), and it misses most weakly infeasible systems: set
+for 15% / 25% / 38% / 45% of random infeasible polytopes at caps of 100 / 300 / 1000 / 3000
+sweeps, about 86% of the strongly infeasible ones and about 21% of the weakly infeasible ones
+at 3000. Do not use it for control flow.
+
+**No answer changes.** Every solve returns the same iterate and the same status as in
+`0.21.3`; the field is additional information. The batch path carries the status only and
+never carries the hint. The conformance corpus (smoke 24/24, extended 6/6, adversarial 26 of
+31, the same five nearly-parallel fixtures) is unchanged in outcome, and its runner now also
+reports on how many constrained paths the hint was set.
+
+### RFC 034 — infeasibility evidence (S1, C1, C2, C3; a heuristic field, not a status)
 
 - Both solve records gain **`infeasibility_evidence: bool`** (`ConstrainedSolveReport::
   infeasibility_evidence()` on the device, a public field on the cluster's

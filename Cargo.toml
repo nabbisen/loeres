@@ -22,11 +22,11 @@ exclude = [
 ]
 
 # Shared metadata inherited by every member via `field.workspace = true`.
-# Member crates expose implemented public APIs through RFCs 001-033. Repository
+# Member crates expose implemented public APIs through RFCs 001-034. Repository
 # state alone does not establish external registry publication; workspace
 # metadata and CHANGELOG.md define the release-local version baseline.
 [workspace.package]
-version = "0.21.4"
+version = "0.22.0"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"

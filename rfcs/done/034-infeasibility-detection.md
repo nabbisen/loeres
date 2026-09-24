@@ -1,6 +1,6 @@
 # RFC 034 - Conservative Infeasibility Detection
 
-**Status.** Accepted (design frozen 2026-09-24)
+**Status.** Implemented (v0.22.0). Amendments 1-3 were made while Accepted, under RFC 000's in-place-amendment rule.
 **Design approval.** Amendment 3 (§0.3, 2026-09-24) by architect review 072. Amendment 2 (§0.2, 2026-09-24) by architect review 071. Amendment 1 (§0, 2026-09-24) by architect review 070. Architect-authored and scheduled as Cycle 2 in architect review 066.
 **Tracks.** Closes RFC 027 §11.6's "infeasibility is not detected; reported as non-convergence". Depends on RFC 031's corpus and composes with RFC 027 Amendment 5, RFC 029 and RFC 033.
 **Touches.** `crates/loeres/src/solver.rs` (one enum variant), both constrained kernels, `conformance/adversarial/`, user-facing docs.

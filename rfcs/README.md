@@ -25,7 +25,7 @@ behavior is not yet claimed.
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [034](accepted/034-infeasibility-detection.md) | Conservative Infeasibility Detection | Accepted (design frozen 2026-09-24) | Hildreth's multipliers diverge linearly on an infeasible polyhedron and stay bounded on a feasible one however slowly it converges — measured separation of ten orders (`3.6e-08` worst feasible growth against `4.0e+02`). Three required conditions, one scalar of new state, and a `#[non_exhaustive]` `SolveStatus::Infeasible`. Detection is one-sided by design. Cycle 2. |
+None currently.
 
 ## Done RFCs
 
@@ -65,6 +65,7 @@ behavior is not yet claimed.
 | [031](done/031-adversarial-and-extended-conformance.md) | Adversarial and Extended Conformance Suites | Implemented (v0.21.3) | Populates the two suites RFC 013 staged as placeholders and reports cap hits, terminal violation and iterations per fixture, making RFC 027 §11.6's "stated, not solved" projection-rate limitation observable. Reported, not enforced; no kernel change. R3 assurance expansion, second bounded slice. |
 | [032](done/032-step-size-guidance.md) | Step-Size Guidance and a Stated Convergence Rate | Implemented (v0.21.3) | Two cheap eigenvalue bounds — Gershgorin `U >= λ_max` and diagonal `L <= λ_max`, both verified over 600 random PSD matrices — license a provably safe `suggested_step_scale` of `1/U` and a provably divergent rejection at `α >= 2/L`, with an honest indeterminate band between. No new scalar tier; device path unaffected. Paired with RFC 031. |
 | [033](done/033-exact-projection-in-the-converged-claim.md) | An Exact Projection as Part of the `Converged` Claim | Implemented (v0.21.3) | RFC 031's adversarial suite found solves that are feasible, stationary and reported `Converged` while `1.3e-3` from the optimum, with only `projection_cap_hits` signalling it. Adds the third leg — the final projection must not have capped — after Amendment 5's feasibility and RFC 029's stationarity. Verified to downgrade nothing else in the corpus. Does **not** improve any answer. |
+| [034](done/034-infeasibility-detection.md) | Conservative Infeasibility Detection | Implemented (v0.22.0) | Hildreth's multipliers grow linearly on an infeasible polyhedron and stay bounded on a feasible one, but a cap binds *below* the convergence time, so no signal computed inside the cap separates a feasible wedge needing `10^6`-`10^7` sweeps from an infeasible system. Amendment 1 replaced the original three-condition rule with five (cap >= 64, multiplier growth >= 1.9x, a not-shrinking violation, a positive violation, a capped final projection); Amendment 2 withdrew the `SolveStatus::Infeasible` it first shipped and made the result a heuristic `infeasibility_evidence` field on both solve records, documented as **wrong in both directions** (set on about `3e-5` of random feasible near-(anti)parallel trials and `2e-4` of thin slivers; on 15%-45% of random infeasible polytopes by cap); Amendment 3 marks `ConstrainedSolveRecord` `#[non_exhaustive]`, a source break that makes this `0.22.0`, the first minor since `0.21.0`. No answer changes and no other type changed shape. Amendments 1-3 were made while Accepted. Cycle 2. |
 
 ## Archived RFCs
 
