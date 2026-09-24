@@ -146,7 +146,7 @@ separate, reviewed pass.
 | `062` | 2026-09-24 | rfc027 closeout and exit criteria | `da54109b11c2c95ae7af5956c2f546978851e95baf50acbba26c98db51b44812` | `architect` | ✓ |
 | `063` | 2026-09-24 | 0.21.1 distribution closeout | `d586a570cc312fac113ed64c518408b3dd92f2217d0bf61eb276620be08ad813` | `architect` | ✓ |
 | `064` | 2026-09-24 | rfc030 s1 s3 differential testing architect review | `c73e67701d273d3d96d7ffaba9b75bdd21e35c1084f043cfd1023447dcc987f4` | `architect` | ✓ |
-| `065` | 2026-09-24 | post 0.21.2 capability theme scoping | `77ed407c529ab715d70a8e39f6e04a29d76a42d33148115e7ca40fa08f2fe00d` | `architect` |  |
+| `065` | 2026-09-24 | post 0.21.2 capability theme scoping | `77ed407c529ab715d70a8e39f6e04a29d76a42d33148115e7ca40fa08f2fe00d` | `architect` | ✓ |
 | `066` | 2026-09-24 | post 0.21.2 release schedule | `cb6bad0f753ce7cbad0466aae4d300a1b91b65b055e80cb9033aeeb46ea3e086` | `architect` | ✓ |
 | `067` | 2026-09-24 | rfc031 s1 s2 conformance depth architect review | `31f2a1afc40beb90cf90753d17d003ee2e1a6c7b3f7ae603222f65f40f613da1` | `architect` | ✓ |
 | `068` | 2026-09-24 | rfc031 f1 rfc032 rfc033 architect review | `a408bbe3d49b095fb191c3abbdde823674eb7e2d961ab108cb72f2969da59ed6` | `architect` | ✓ |

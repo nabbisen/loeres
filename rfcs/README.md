@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [034](proposed/034-infeasibility-detection.md) | Conservative Infeasibility Detection | Proposed (2026-09-24) | Hildreth's multipliers diverge linearly on an infeasible polyhedron and stay bounded on a feasible one however slowly it converges — measured separation of ten orders (`3.6e-08` worst feasible growth against `4.0e+02`). Three required conditions, one scalar of new state, and a `#[non_exhaustive]` `SolveStatus::Infeasible`. Detection is one-sided by design. Cycle 2. |
 
 ## Accepted RFCs
 

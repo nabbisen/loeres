@@ -1,0 +1,126 @@
+# RFC 034 - Conservative Infeasibility Detection
+
+**Status.** Proposed (2026-09-24)
+**Design approval.** Architect-authored and scheduled as Cycle 2 in architect review 066.
+**Tracks.** Closes RFC 027 §11.6's "infeasibility is not detected; reported as non-convergence". Depends on RFC 031's corpus and composes with RFC 027 Amendment 5, RFC 029 and RFC 033.
+**Touches.** `crates/loeres/src/solver.rs` (one enum variant), both constrained kernels, `conformance/adversarial/`, user-facing docs.
+
+---
+
+## 1. Summary
+
+When the polyhedron is infeasible, say so, instead of reporting a bounded
+non-convergence that a caller must interpret. The signal is already computed:
+Hildreth's multipliers **diverge linearly** on an infeasible system and stay
+**bounded** on a feasible one, however slowly it converges.
+
+## 2. Why it is now safe to attempt
+
+Review 065 rated this the highest-risk theme for one reason: *a rule that fires
+on a slow-but-feasible problem is worse than no detection, because it converts an
+honest "not converged, here is the violation" into a false claim.*
+
+Cycle 1 built the thing that can test that. The adversarial suite now contains
+the exactly-cancelling infeasible family **and** the nearly-parallel family whose
+projections cap while remaining feasible — the precise false-positive shape this
+rule must survive. RFC 034 is scheduled now because that corpus exists, not
+because the idea got better.
+
+## 3. The signal, measured
+
+Tracing `max|λ|` per sweep under the shipped `m + 1`-set formulation:
+
+| Case | `max|λ|` at 4000 sweeps | `max|Δλ|` per sweep |
+|---|---|---|
+| infeasible, antipodal | `8.0e+03`, growing linearly | **`2.0000`**, constant |
+| infeasible, 3-halfspace cycle | `8.0e+03`, growing | **`2.0001`**, constant |
+| infeasible, 4 rows in 3-D | `8.0e+03`, growing | constant |
+| **feasible**, near-parallel `ε = 1e-3` (the hardest shipped fixture) | `1.996`, **bounded** | `1.0e-06` |
+| **feasible**, near-parallel `ε = 1e-5` | `2.000`, bounded | `1.0e-08` |
+| **feasible**, barely feasible `w = 1e-9` | `4.000`, bounded | ~0 |
+| **feasible**, ordinary vertex | `1.250`, bounded | `0` |
+
+This is Farkas duality showing itself: an infeasible system has an unbounded
+dual, and the constant `Δλ` is the certificate direction.
+
+**Growth over the second half of a capped run**, which needs no division:
+
+```text
+286 random feasible polytopes   worst absolute growth = 3.587e-08
+infeasible antipodal / 3-cycle  absolute growth       = 4.0e+02
+```
+
+Ten orders of magnitude apart.
+
+**A false-positive shape found while measuring, and excluded by design.** A first
+attempt used the *ratio* `λ(S)/λ(S/2)` and reported `inf` on the random feasible
+set. That was `0/0`: **100 of 286 instances had `λ` identically zero** because no
+row was ever active. A ratio is the wrong instrument; absolute growth with a
+positive-violation precondition is not, and §4's rule uses the latter.
+
+## 4. The rule — three conditions, all required
+
+Report `SolveStatus::Infeasible` only when **all** hold:
+
+1. the **final** projection hit `projection_max_sweeps` (already computed for
+   RFC 033);
+2. `max|λ|` at the final sweep is at least **twice** its value at the midpoint
+   sweep — linear divergence, not slow convergence;
+3. `max_constraint_violation > projection_tolerance` at the returned iterate.
+
+Condition 3 alone excludes every `λ ≈ 0` instance, which is what made the naive
+ratio unusable. Conditions 1 and 2 together exclude a feasible problem whose
+projection is merely capped: those have bounded `λ` (§3).
+
+**Otherwise the existing behaviour is unchanged** — `NotConverged` with
+`NoProgress` and the two honest fields, exactly as RFC 033 leaves it.
+
+**Cost:** one scalar of extra state, `max|λ|` snapshotted at the midpoint sweep.
+No new allocation, no new scalar tier, no `sqrt`.
+
+## 5. Public surface
+
+`SolveStatus` gains `Infeasible`. The enum is **`#[non_exhaustive]`**, so
+downstream matches already carry a wildcard arm and this is **not a breaking
+change**.
+
+`Infeasible` means: *the kernel has evidence the polyhedron is empty.* It does
+not mean the kernel has proved it — see §6.
+
+## 6. What this RFC deliberately does not claim
+
+**Detection is one-sided.** A `Infeasible` verdict is strong evidence; the
+absence of one proves nothing. An infeasible polyhedron whose divergence is too
+slow to register within the cap is still reported `NotConverged`, and that is
+correct rather than a gap.
+
+**No Farkas certificate is produced.** Extracting and validating a certificate
+is a separate, larger piece of work; RFC 031's infeasible fixtures already carry
+externally computed certificates for the corpus's own use.
+
+**No LP.** Deciding feasibility in general is an LP; this detects a signal the
+existing iteration already produces.
+
+## 7. Risks
+
+| Risk | Mitigation |
+|---|---|
+| **A false `Infeasible` on a slow-but-feasible problem** — the risk that governs the whole design | Three independent conditions; measured separation of ten orders; the adversarial suite's nearly-parallel family is exactly this shape and must keep reporting `NotConverged` |
+| Thresholds tuned to the corpus that measured them | The factor-of-two in condition 2 is a *property of linear divergence*, not a fitted constant. It must be justified against random instances the implementer generates, not only against the fixtures |
+| A caller treats `Infeasible` as an error | It is an `Ok` outcome like every other status (RFC 006 DEVICE-006). Documented |
+
+## 8. Exit criteria
+
+1. `SolveStatus::Infeasible` ships; no downstream match breaks.
+2. Both constrained kernels implement §4's three-condition rule, with the
+   midpoint snapshot as the only new state.
+3. **Every** nearly-parallel and barely-feasible adversarial fixture continues to
+   report `NotConverged`, never `Infeasible`. This is the criterion that matters.
+4. The exactly-cancelling infeasible family reports `Infeasible`, and its
+   fixtures declare it.
+5. A randomized differential test (RFC 030): over random **feasible** polytopes,
+   `Infeasible` is never reported; over randomly generated infeasible ones, the
+   rate at which it is reported is measured and stated, not asserted to be 1.
+6. `TERMS_OF_USE.md` and both user guides state that detection is one-sided.
+7. 17 gates, smoke 24/24, extended 6/6; the adversarial suite's failure count
+   unchanged or reduced, never increased.
