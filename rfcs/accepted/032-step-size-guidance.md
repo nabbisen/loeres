@@ -1,6 +1,6 @@
 # RFC 032 - Step-Size Guidance and a Stated Convergence Rate
 
-**Status.** Proposed (2026-09-24)
+**Status.** Accepted (design frozen 2026-09-24)
 **Design approval.** Architect-authored and scheduled in architect review 066 (Cycle 1); project owner authorized the cycle on 2026-09-24.
 **Tracks.** Closes RFC 027 §11.6's "no convergence rate is claimed; `step_scale` is the caller's responsibility". Paired with RFC 031 in the same release.
 **Touches.** `crates/loeres/src/problem.rs` (additive), `crates/loeres-device/src/solve/constrained.rs` and `crates/loeres-cluster/src/solve/constrained.rs` (validation only), user-facing docs.
