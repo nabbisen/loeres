@@ -5,9 +5,39 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.21.3] — unreleased — post-0.21.2 development
+## [0.21.3] — 2026-09-24 — Measured limits and a truthful `Converged`
 
 **Release status:** unreleased
+
+Repository release `0.21.3` measures what the constrained kernels actually do on
+hard geometry, and narrows what `Converged` claims. RFCs 031, 032 and 033 are
+implemented and move to `rfcs/done/` in this revision.
+
+**Two observable behaviour changes.** A `step_scale` at or above `2/L`, where
+`L = maxᵢ Qᵢᵢ` is a lower bound on `λ_max(Q)`, is now rejected as `InvalidInput`;
+it previously ran to the iteration cap and reported `NotConverged`. And a solve
+whose **final** projection hit `projection_max_sweeps` now reports
+`NotConverged` with `NoProgress` rather than `Converged`. **No answer changes**
+— the kernel returns the same iterate and stops claiming it is the projection.
+A caller who treats `NotConverged` as failure will see new failures on nearly
+parallel constraint normals; those solves were previously reported as converged
+while being as much as `1.3e-3` from the optimum.
+
+The `extended/` and `adversarial/` conformance suites, staged as placeholders
+since RFC 013, are populated, and every fixture now reports its outer iterations,
+projection cap hits, terminal violation and deviation from the exact optimum.
+The suites are **reported, not enforced**: neither is part of `cargo xtask check`.
+
+**The adversarial suite ships failing 5 of its 31 fixtures, deliberately.** Four
+are nearly-parallel-normal geometries whose optimum the projection does not reach
+within its cap, and one binds the cap while landing within tolerance. That is a
+measured limitation of the shipped kernels — the limitation RFC 027 §11.6 stated
+without measuring — recorded rather than hidden.
+
+`loeres::problem` gains `curvature_bounds` and `suggested_step_scale`: a
+Gershgorin upper bound and a diagonal lower bound on `λ_max(Q)`, needing no
+`sqrt` and no new scalar tier, licensing a provably safe step and a provably
+divergent rejection with an honest indeterminate band between them.
 
 Development toward the next release.
 

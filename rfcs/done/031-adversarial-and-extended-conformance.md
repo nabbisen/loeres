@@ -1,6 +1,6 @@
 # RFC 031 - Adversarial and Extended Conformance Suites
 
-**Status.** Accepted (design frozen 2026-09-24)
+**Status.** Implemented (v0.21.3).
 **Design approval.** Architect-authored and scheduled in architect review 066 (Cycle 1); project owner authorized the cycle on 2026-09-24.
 **Tracks.** R3 assurance expansion — the "wider numerical conformance" candidate, second bounded slice after RFC 026. Extends RFC 013; amends nothing.
 **Touches.** `conformance/extended/`, `conformance/adversarial/`, `xtask/src/checks/conformance*`, `conformance/README.md`.

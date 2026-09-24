@@ -34,7 +34,7 @@ This book summarizes the architecture and threat model. The authoritative,
 detailed design lives in the specifications under `docs/specs/` and in the RFC
 set under `rfcs/`.
 
-Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Current solver
+Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. This tree is `0.21.3` and is not itself a release until it is tagged and distributed. Current solver
 breadth is one projected-first-order family on device and cluster, over a box
 and, in the `0.21.1` release (RFC 027), over a box with linear
 inequalities `Ax <= b`. LP is not solved and infeasibility is not detected. The

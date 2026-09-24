@@ -1,6 +1,6 @@
 # RFC 033 - An Exact Projection as Part of the `Converged` Claim
 
-**Status.** Accepted (design frozen 2026-09-24)
+**Status.** Implemented (v0.21.3).
 **Design approval.** Architect-authored from RFC 031 S2's finding (architect review 067); project owner approved adding it to Cycle 1 on 2026-09-24.
 **Tracks.** Completes the line RFC 027 Amendment 5 and RFC 029 began. Resolves review 056 L1 properly, replacing the argument review 067 falsified.
 **Touches.** `crates/loeres-device/src/solve/constrained.rs`, `crates/loeres-cluster/src/solve/constrained.rs`, the RFC 031 adversarial fixtures' expected status, user-facing docs.

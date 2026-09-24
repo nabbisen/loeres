@@ -8,7 +8,7 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > **Release currency metadata.**
 > This tree: **0.21.3**.
 > Last reconciled repository release: **0.21.2**.
-> Implemented scope: **RFCs 001-030**.
+> Implemented scope: **RFCs 001-033**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
 > orchestration, one dynamic box/bound-constrained projected-first-order kernel,
@@ -20,7 +20,7 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > conditional apparatus after `0.20.2` shipped; RFC 019 release packaging now
 > uses the ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. This tree is `0.21.3` and is not itself a release until it is tagged and distributed.
 
 ---
 

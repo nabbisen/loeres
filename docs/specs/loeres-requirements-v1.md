@@ -12,7 +12,7 @@
 > **Release currency metadata.**
 > This tree: **0.21.3**.
 > Last reconciled repository release: **0.21.2**.
-> Implemented scope: **RFCs 001-030**.
+> Implemented scope: **RFCs 001-033**.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,
@@ -26,7 +26,7 @@
 > RFC 021 conditional apparatus after `0.20.2` shipped; the release package
 > gate now uses the ordinary steady-state form.
 
-Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030.
+Repository release `0.20.2` shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. This tree is `0.21.3` and is not itself a release until it is tagged and distributed.
 
 ---
 
