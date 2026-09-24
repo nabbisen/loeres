@@ -17,7 +17,43 @@ positive**, so read §5 before §3.
 **S1 — the status and the rule**, both kernels.
 **S2 — conformance fixtures and documentation.** One review request each.
 
-## 2a. C1 — the corrective slice (architect review 070). Do this first.
+## 2b. C2 — field, not status (architect review 071). Do this first.
+
+**C1 landed at `059163b` and its five-condition rule is accepted verbatim.** What
+changes is only what the rule's output is called. RFC 034 **Amendment 2 (§0.2)**
+withdraws `SolveStatus::Infeasible`.
+
+**Why:** the residual false-positive rate (`3e-5` ordinary, `2e-4` slivers) is a
+floor on any cap-local rule, not a tuning error — a feasible wedge needing `10^7`
+sweeps is, at a cap of `10^4`, indistinguishable from an infeasible system. The
+architect tried a Farkas-certificate check to beat it and it removed **none** of
+the false positives on the distribution that produces them. A status is a claim;
+this is an observation.
+
+**Do:**
+
+- **remove** `SolveStatus::Infeasible` and its `SolveReport` constructor; nothing
+  is released, so there is no compatibility concern;
+- **keep Amendment 1 §0.1.2's five conditions exactly as you implemented them** —
+  constants, the `100·final >= 99·midpoint` integer form, the `cap >= 64`
+  precondition, the stationary-returns placement, the four scalars. Only the
+  output changes;
+- **add `infeasibility_evidence: bool`** to both solve records, beside
+  `projection_cap_hits` and `max_constraint_violation`;
+- **revert the four infeasible fixtures** (smoke and the three exactly-cancelling
+  adversarial ones) to declare `not-converged` / `no-progress`, with a comment
+  that the evidence field is set. The adversarial failure count must stay at 5;
+- **un-ignore both strict tests** by restating them as the rate guard they can
+  actually be — `infeasibility_evidence` false-positive rate below a stated
+  bound on each distribution — and delete the `#[ignore]`d "never" forms. The
+  "never" criterion is retired by Amendment 2 §0.2.6, so nothing is being
+  weakened to pass.
+
+**Then S2**, whose documentation must describe the field as heuristic in **both**
+directions, with your measured rates and the reason (convergence time exceeding
+the cap). Drop the "one-sided" framing; it applied only to the status.
+
+## 2a. C1 — the corrective slice (architect review 070) — CLOSED by `059163b`
 
 **S1 landed at `1d905cf` and is accepted as an implementation. The rule it
 implements is the architect's and is unsound**; RFC 034 **Amendment 1 (§0)**

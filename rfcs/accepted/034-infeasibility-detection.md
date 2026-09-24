@@ -1,7 +1,7 @@
 # RFC 034 - Conservative Infeasibility Detection
 
 **Status.** Accepted (design frozen 2026-09-24)
-**Design approval.** Amendment 1 (§0, 2026-09-24) by architect review 070. Architect-authored and scheduled as Cycle 2 in architect review 066.
+**Design approval.** Amendment 2 (§0.2, 2026-09-24) by architect review 071. Amendment 1 (§0, 2026-09-24) by architect review 070. Architect-authored and scheduled as Cycle 2 in architect review 066.
 **Tracks.** Closes RFC 027 §11.6's "infeasibility is not detected; reported as non-convergence". Depends on RFC 031's corpus and composes with RFC 027 Amendment 5, RFC 029 and RFC 033.
 **Touches.** `crates/loeres/src/solver.rs` (one enum variant), both constrained kernels, `conformance/adversarial/`, user-facing docs.
 
@@ -67,6 +67,57 @@ tier, no `sqrt`.
 **0.1.7 Exit criterion 5 stands unchanged** and is now achievable: over random
 feasible polytopes `Infeasible` is never reported, and the detection rate on
 infeasible instances is measured and stated rather than asserted.
+
+## 0.2 Amendment 2 — 2026-09-24 (architect review 071)
+
+**`SolveStatus::Infeasible` is withdrawn. The detection becomes a report field.**
+
+Amendment 1's five-condition rule is **sound and is kept verbatim**. What is
+withdrawn is promoting its output to a status.
+
+**0.2.1 The residual false-positive rate is a floor, not a tuning error.**
+Measured over 134,973 trials: `≈3e-5` on ordinary random feasible polytopes and
+`≈2e-4` on thin slivers. The instances are feasible wedges whose Dykstra
+convergence time is `10^6`–`10^7` sweeps; at a cap of `10^4` such a system is the
+limiting case of one that never converges, and no signal computed **inside** the
+cap distinguishes them.
+
+Review 070's "0 false positives in 20,132 trials" did **not** establish zero: at
+`p = 3e-5` that sample shows zero 55% of the time. A Farkas-certificate check was
+then tried — `bᵀy < 0` with `y = λ/max(λ)` separated hand-picked cases perfectly
+— and **removed none** of the false positives on the distribution that produces
+them (2 of 2 survived across 4,050 trials).
+
+**0.2.2 A status is a claim; a field is an observation.** RFC 027 Amendment 5,
+RFC 029 and RFC 033 each *removed* an over-claim from `SolveStatus`. A status
+that tells a caller their feasible problem has no solution, at any rate, and
+which the caller cannot check, reverses that. Detection is also only **44.7%** at
+cap 3000 on genuinely infeasible input, so the status was never usable for
+control flow; its value is diagnostic.
+
+**0.2.3 The replacement.** `SolveStatus::Infeasible` is removed. The status
+remains `NotConverged` / `NoProgress` as RFC 033 leaves it. Both solve records
+gain **`infeasibility_evidence: bool`**, set by Amendment 1 §0.1.2's unchanged
+five conditions, beside `projection_cap_hits` and `max_constraint_violation` —
+the honest fields RFC 027 §11.3 established for exactly this purpose.
+
+**0.2.4 Documented as heuristic in both directions.** It misses most weakly
+infeasible systems (see the by-margin figures) **and** can be set on a feasible
+problem whose convergence time exceeds the cap, at the rates in §0.2.1. The
+"one-sided" language of §6 applied only to the status framing and does not
+survive this amendment.
+
+**0.2.5 The batch seam carrying status only is now correct**, not a limitation:
+an unverifiable hint should not propagate where it cannot be checked. This
+supersedes the part of review 056 L1's disposition that assumed `Infeasible`
+would reach batch callers.
+
+**0.2.6 Exit criteria.** Criterion 5's "`Infeasible` is never reported over
+random feasible polytopes" is **retired** — it is unachievable by any cap-local
+rule, which is the finding, not a failure to meet it. It is replaced by: the
+false-positive **rate** of `infeasibility_evidence` is measured on both ordinary
+and thin-sliver distributions and **stated** in the user-facing documentation,
+together with the detection rate by margin decade.
 
 ## 1. Summary
 
