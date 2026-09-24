@@ -40,6 +40,13 @@ pub enum SolveStatus {
     /// The solver terminated without meeting the convergence criterion. Bounded,
     /// expected progress information — never an error.
     NotConverged,
+    /// The solver has **evidence that the problem's constraint set is empty**
+    /// (RFC 034). Not a proof: no certificate is produced, and detection is
+    /// one-sided — an infeasible problem whose evidence is too weak to register
+    /// is still reported [`NotConverged`](SolveStatus::NotConverged). Like the
+    /// other statuses it is an `Ok` outcome, never an error, and it does not
+    /// count as [`Converged`](SolveStatus::Converged).
+    Infeasible,
 }
 
 impl SolveStatus {
@@ -107,8 +114,9 @@ impl IterationReport {
 ///
 /// Fields are private; construct only through the named constructors, which
 /// admit exactly the valid `(SolveStatus, TerminationReason)` combinations
-/// (RFC 014 §3.3). `Converged + NoProgress` and `NotConverged +
-/// ConvergenceCriterion` are unconstructable by design.
+/// (RFC 014 §3.3). `Converged + NoProgress`, `NotConverged +
+/// ConvergenceCriterion` and `Infeasible` with anything but `NoProgress` are
+/// unconstructable by design.
 #[repr(C)]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub struct SolveReport {
@@ -147,6 +155,18 @@ impl SolveReport {
         Self {
             status: SolveStatus::NotConverged,
             iteration: IterationReport::new(iterations_executed, TerminationReason::IterationCap),
+        }
+    }
+
+    /// The solver has evidence the constraint set is empty (RFC 034); stopped on
+    /// no usable progress. See [`SolveStatus::Infeasible`] for what that does and
+    /// does not claim.
+    #[inline]
+    #[must_use]
+    pub const fn infeasible(iterations_executed: u32) -> Self {
+        Self {
+            status: SolveStatus::Infeasible,
+            iteration: IterationReport::new(iterations_executed, TerminationReason::NoProgress),
         }
     }
 

@@ -402,6 +402,66 @@ where
     Ok(())
 }
 
+/// What one Dykstra projection reports (private; RFC 033, RFC 034).
+#[derive(Copy, Clone)]
+struct Projection {
+    /// The sweep cap bound before the projection converged (RFC 033).
+    capped: bool,
+    /// RFC 034 condition 2: `max|λ|` at the final sweep is at least 1.5 times its
+    /// value at the midpoint sweep — the multipliers grow linearly, which they do
+    /// on an infeasible system and do not on a feasible one, however slowly it
+    /// converges. Only meaningful when `capped`.
+    multipliers_diverging: bool,
+}
+
+/// `max|λ|` over the multipliers.
+fn largest_multiplier<S: MetricScalar>(multipliers: &[S]) -> S {
+    multipliers
+        .iter()
+        .fold(S::zero(), |largest, &value| largest.max(value.abs()))
+}
+
+/// RFC 034 condition 2: `final ≥ 1.5 × midpoint`, written `2·final ≥ 3·midpoint`
+/// so it needs no division and no conversion from a float.
+///
+/// **The factor is 1.5, not 2; do not "tidy" it.** Linear divergence from zero
+/// gives a ratio approaching exactly 2 from below (`1.99889` at 200 sweeps on the
+/// three-halfspace cycle), so a threshold *at* 2 misses real cases, while feasible
+/// cases sit at `0.976` to `1.000`. Raising it to 2 is a regression.
+fn multipliers_are_diverging<S: MetricScalar>(midpoint: S, last: S) -> bool {
+    let one = S::one();
+    let two = one.add(one);
+    let three = two.add(one);
+    two.mul(last) >= three.mul(midpoint)
+}
+
+/// The report for a *stationary* outer step, which is where RFC 027 §0.5.1,
+/// RFC 033 and RFC 034 decide between the three outcomes:
+///
+/// - **`converged`** when the iterate is feasible and the final projection was
+///   exact (not capped);
+/// - **`Infeasible`** (RFC 034) only when **all three** hold — the final
+///   projection capped, its multipliers were diverging (`max|λ|` at the final
+///   sweep ≥ 1.5 × at the midpoint), **and** the violation exceeds
+///   `projection_tolerance`. The third condition is what excludes every feasible
+///   problem whose multipliers are identically zero (a ratio alone reads `0/0`
+///   there); dropping it, or the other two, is wrong;
+/// - otherwise `NotConverged` with `NoProgress`, unchanged.
+fn stationary_report(
+    feasible: bool,
+    last: Projection,
+    executed: u32,
+    converged: SolveReport,
+) -> SolveReport {
+    if feasible && !last.capped {
+        converged
+    } else if !feasible && last.capped && last.multipliers_diverging {
+        SolveReport::infeasible(executed)
+    } else {
+        SolveReport::not_converged_stalled(executed)
+    }
+}
+
 /// Run the bounded Dykstra projection `x ← Π_C(x)` where `C = {lo ≤ x ≤ hi}
 /// ∩ {Ax ≤ b}` (RFC 027 §11.2, §11.3, Amendment 3), mutating `x` in place.
 /// Resets the box increment and the multipliers to zero at the start of every
@@ -419,8 +479,9 @@ where
 /// Converged only when, in the same sweep, `maxⱼ|Δxⱼ|`, `maxᵢ|Δλᵢ|` **and** the
 /// terminal constraint violation are all within `projection_tolerance`
 /// (§0.3.3); the violation pass is evaluated only in a sweep where the first
-/// two already hold. Returns whether the sweep cap bound (`true`) without that
-/// happening.
+/// two already hold. Reports whether the sweep cap bound without that happening,
+/// and whether the multipliers were diverging at the end of a capped run
+/// (RFC 034).
 ///
 /// `workspace.gradient` is reused here as the "iterate before this sweep"
 /// snapshot: its gradient role for this outer iteration is over by the time
@@ -433,7 +494,7 @@ fn dykstra_project<P, S, const N: usize, const M: usize>(
     x: &mut FixedVector<S, N>,
     workspace: &mut ConstrainedProjectedWorkspace<S, N, M>,
     config: &ConstrainedSolveConfig<S>,
-) -> Result<bool, SolverError>
+) -> Result<Projection, SolverError>
 where
     P: QuadraticProgram<S>,
     S: FiniteScalar + MetricScalar + DivisibleScalar,
@@ -447,8 +508,13 @@ where
     let b = problem.constraint_rhs();
 
     let mut cap_hit = true;
+    // RFC 034: two scalar snapshots of `max|λ|`, no copy of the multipliers.
+    let midpoint_sweep = config.projection_max_sweeps / 2;
+    let final_sweep = config.projection_max_sweeps - 1;
+    let mut midpoint_multiplier = S::zero();
+    let mut final_multiplier = S::zero();
 
-    for _sweep in 0..config.projection_max_sweeps {
+    for sweep in 0..config.projection_max_sweeps {
         // `workspace.gradient` now holds x-before-this-sweep (see doc above).
         copy_in_place(&mut workspace.gradient, x);
 
@@ -485,6 +551,13 @@ where
             workspace.multipliers.set(i, new_lambda)?;
         }
 
+        if sweep == midpoint_sweep {
+            midpoint_multiplier = largest_multiplier(workspace.multipliers.as_slice());
+        }
+        if sweep == final_sweep {
+            final_multiplier = largest_multiplier(workspace.multipliers.as_slice());
+        }
+
         // --- box correction: target = x + box_increment(old), exact clamp ---
         let mut change = S::zero();
         for j in 0..N {
@@ -512,7 +585,10 @@ where
         }
     }
 
-    Ok(cap_hit)
+    Ok(Projection {
+        capped: cap_hit,
+        multipliers_diverging: multipliers_are_diverging(midpoint_multiplier, final_multiplier),
+    })
 }
 
 /// `max(0, maxᵢ(aᵢᵀx − bᵢ))` at `x` — the terminal constraint violation
@@ -627,10 +703,14 @@ where
     };
 
     let mut converged = false;
-    // Whether the *final* outer iteration's projection hit its sweep cap
-    // (RFC 033). Assigned every iteration, like `converged`: it must describe the
-    // returned iterate, not an earlier one.
-    let mut last_capped = false;
+    // What the *final* outer iteration's projection reported (RFC 033: whether it
+    // hit its sweep cap; RFC 034: whether its multipliers were diverging).
+    // Assigned every iteration, like `converged`: it must describe the returned
+    // iterate, not an earlier one.
+    let mut last_projection = Projection {
+        capped: false,
+        multipliers_diverging: false,
+    };
     let mut projection_cap_hits: u32 = 0;
     let mut executed: u32 = 0;
     while executed < max_iterations {
@@ -648,8 +728,8 @@ where
             x.set(j, candidate_j)?;
         }
 
-        last_capped = dykstra_project(problem, x, workspace, config)?;
-        if last_capped {
+        last_projection = dykstra_project(problem, x, workspace, config)?;
+        if last_projection.capped {
             projection_cap_hits += 1;
         }
 
@@ -670,11 +750,12 @@ where
             // projection returns a feasible point that need not be *the*
             // projection.
             let violation = max_constraint_violation(problem, x)?;
-            let core = if violation.lte_tolerance(config.projection_tolerance) && !last_capped {
-                SolveReport::converged_early(executed)
-            } else {
-                SolveReport::not_converged_stalled(executed)
-            };
+            let core = stationary_report(
+                violation.lte_tolerance(config.projection_tolerance),
+                last_projection,
+                executed,
+                SolveReport::converged_early(executed),
+            );
             return Ok(ConstrainedSolveReport::from_core(
                 core,
                 projection_cap_hits,
@@ -686,11 +767,14 @@ where
     let violation = max_constraint_violation(problem, x)?;
     let core = if !converged {
         SolveReport::not_converged_cap(max_iterations)
-    } else if violation.lte_tolerance(config.projection_tolerance) && !last_capped {
-        SolveReport::converged_at_cap(max_iterations)
     } else {
-        // RFC 027 §0.5.1 and RFC 033, as for the early exit above.
-        SolveReport::not_converged_stalled(max_iterations)
+        // Stationary at the final iteration; decided exactly as at the early exit.
+        stationary_report(
+            violation.lte_tolerance(config.projection_tolerance),
+            last_projection,
+            max_iterations,
+            SolveReport::converged_at_cap(max_iterations),
+        )
     };
     Ok(ConstrainedSolveReport::from_core(
         core,

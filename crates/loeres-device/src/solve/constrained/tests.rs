@@ -542,13 +542,15 @@ fn an_infeasible_polyhedron_hits_the_cap_and_reports_its_true_violation() {
 
 // RFC 027 Amendment 5 (§0.5.1): `Converged` means feasible. The capped
 // projection map has a fixed point even when the polyhedron is empty, so the
-// outer step stops moving; that is `NotConverged`/`NoProgress`, never
-// `Converged`, and the violation and cap hits stay reported unchanged.
+// outer step stops moving; that is never `Converged` (Amendment 5 reported it as
+// `NotConverged`/`NoProgress`; RFC 034 now reports the evidence as `Infeasible`),
+// and the violation and cap hits stay reported unchanged.
 #[test]
-fn an_infeasible_polyhedron_is_not_converged_with_no_progress() {
+fn an_infeasible_polyhedron_is_reported_infeasible_with_no_progress() {
     let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &box_only_config(200, 1e-12)).unwrap();
 
-    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.status(), SolveStatus::Infeasible);
+    assert!(!report.status().is_converged());
     assert_eq!(report.core().termination(), TerminationReason::NoProgress);
     assert!(report.projection_cap_hits() > 0);
     assert!((report.max_constraint_violation() - 2.0).abs() < 1e-9);
@@ -580,7 +582,7 @@ fn constant_iteration_does_not_report_converged_on_an_infeasible_polyhedron() {
     };
     let report = solve_1x2(&qp_1x2([-1.0, -1.0]), &cfg).unwrap();
     assert_eq!(report.iterations_executed(), 50);
-    assert_eq!(report.status(), SolveStatus::NotConverged);
+    assert_eq!(report.status(), SolveStatus::Infeasible);
     assert_eq!(report.core().termination(), TerminationReason::NoProgress);
 
     let control = solve_1x2(&qp_1x2([1.0, 1.0]), &cfg).unwrap();
@@ -927,6 +929,53 @@ fn constant_iteration_applies_the_rule_to_the_final_projection() {
     assert!(early.projection_cap_hits() >= 1);
     assert_eq!(early.status(), SolveStatus::Converged);
     assert_eq!(early.core().termination(), TerminationReason::IterationCap);
+}
+
+// ---------------------------------------------------------------------------
+// RFC 034: `Infeasible` only when the final projection capped, its multipliers
+// diverged AND the terminal violation exceeds `projection_tolerance`.
+// ---------------------------------------------------------------------------
+
+/// The false-positive shape RFC 034 found: a feasible problem whose rows never
+/// bind, so every multiplier is identically zero. One sweep cannot clamp the far
+/// target into the box, so the projection caps; only the positive-violation
+/// condition keeps it `NotConverged`.
+#[test]
+fn a_feasible_problem_whose_rows_are_never_active_is_never_infeasible() {
+    let problem = projection_program([1.0, 1.0, -1.0, 0.0], [1e9, 1e9], [50.0, 50.0]);
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace_2x2();
+    let report = solve_constrained_projected_first_order(
+        &problem,
+        1.0,
+        &mut x,
+        &mut ws,
+        &config_2x2(1e-10, 1),
+    )
+    .unwrap();
+    assert!(report.projection_cap_hits() > 0);
+    assert_eq!(report.max_constraint_violation(), 0.0);
+    assert_eq!(report.status(), SolveStatus::NotConverged);
+}
+
+/// RFC 031's nearly-parallel FEASIBLE family (ε = 0.001): the projection caps and
+/// the kernel reports `NotConverged`, never `Infeasible`.
+#[test]
+fn a_nearly_parallel_feasible_projection_that_caps_is_not_infeasible() {
+    let eps = 0.001;
+    let problem = projection_program([1.0, 0.0, 1.0, eps], [1.0, 1.0 + eps], [3.0, 1.0 + eps]);
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace_2x2();
+    let report = solve_constrained_projected_first_order(
+        &problem,
+        1.0,
+        &mut x,
+        &mut ws,
+        &config_2x2(1e-10, 100_000),
+    )
+    .unwrap();
+    assert!(report.projection_cap_hits() > 0);
+    assert_eq!(report.status(), SolveStatus::NotConverged);
 }
 
 // ---------------------------------------------------------------------------

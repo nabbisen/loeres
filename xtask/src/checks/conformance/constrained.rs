@@ -795,6 +795,7 @@ fn compare_status(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> 
     let status = match f.expected.status.as_str() {
         "converged" => SolveStatus::Converged,
         "not-converged" => SolveStatus::NotConverged,
+        "infeasible" => SolveStatus::Infeasible,
         other => return CategoryResult::Fail(format!("unknown expected status `{other}`")),
     };
     let termination = match f.expected.termination.as_str() {

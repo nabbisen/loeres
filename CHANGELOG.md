@@ -5,6 +5,30 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.21.4] — unreleased — post-0.21.3 development
+
+**Release status:** unreleased
+
+Development toward the next release.
+
+### RFC 034 S1 — `SolveStatus::Infeasible` and the detection rule (under review; **open finding**)
+
+- `SolveStatus` gains `Infeasible` (the enum is `#[non_exhaustive]`, so this is not a
+  breaking change) and `SolveReport::infeasible(n)` (`Infeasible` + `NoProgress`).
+  Both constrained kernels report it, at the same stationary-outer-step sites as
+  RFC 033's gate, only when **all three** hold: the final projection hit
+  `projection_max_sweeps`; `max|λ|` at the final sweep is at least 1.5 times its value at
+  the midpoint sweep; and the terminal violation exceeds `projection_tolerance`. State is two
+  scalar snapshots of `max|λ|`, no allocation. It is evidence, not a proof, and detection is
+  one-sided. It does not count as `Converged`; a batch summary counts it with
+  `solved_not_converged`.
+- The smoke infeasible fixture and the three exactly-cancelling adversarial fixtures now
+  declare `infeasible`. The five nearly-parallel fixtures still report `NotConverged`.
+- **Open finding:** on random *feasible* polytopes the rule reports `Infeasible` at sweep
+  caps up to about 1000 (slow-but-feasible problems whose multipliers have not yet
+  plateaued), contrary to RFC 034's premise. The strict test is `#[ignore]`d and
+  reproduces it; see the S1 review request. Not for release until the architect rules.
+
 ## [0.21.3] — 2026-09-24 — Measured limits and a truthful `Converged`
 
 **Release status:** released (tagged 2026-09-24, distributed 2026-09-24)

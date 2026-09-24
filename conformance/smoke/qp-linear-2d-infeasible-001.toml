@@ -19,7 +19,11 @@ variant = "infeasible"
 # settles on a fixed point of the capped projection map after 42 outer iterations,
 # every one of which hit its projection cap, with a violation of exactly 2,
 # identically on the device and cluster kernels. That stationary-but-infeasible
-# iterate is reported as NotConverged / NoProgress, never Converged.
+# iterate is never Converged (RFC 027 Amendment 5 reported it NotConverged /
+# NoProgress). RFC 034: the final projection capped, its multipliers diverge linearly
+# (they grow without bound on an empty polyhedron and stay bounded on a feasible one),
+# and the violation exceeds projection_tolerance, so it is reported Infeasible / NoProgress
+# - evidence the polyhedron is empty, not a proof; detection is one-sided.
 # `projection_cap_hits` and `max_constraint_violation` remain the way to learn how
 # infeasible the answer is (RFC 027 section 11.3).
 
@@ -40,7 +44,7 @@ constraint_matrix = [1.0, 0.0, -1.0, 0.0, 0.0, 1.0]
 constraint_rhs = [-1.0, -1.0, 5.0]
 
 [expected]
-status = "not-converged"
+status = "infeasible"
 termination = "no-progress"
 solution = []
 error = "none"
