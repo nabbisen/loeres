@@ -40,7 +40,7 @@
 
 use crate::access::{MatrixAccess, VectorAccess, VectorAccessMut, dim_u32};
 use crate::error::SolverError;
-use crate::scalar::BaseScalar;
+use crate::scalar::{BaseScalar, DivisibleScalar, FiniteScalar, MetricScalar};
 
 /// The objective `f(x) = ½ xᵀQx + cᵀx`.
 ///
@@ -151,6 +151,20 @@ pub struct ProgramShape {
     pub constraints: usize,
 }
 
+/// Two cheap bounds on the largest eigenvalue of `Q`, from
+/// [`QuadraticProgram::curvature_bounds`] (RFC 032).
+///
+/// Both assume `Q` is symmetric positive semidefinite — the unverified caller
+/// precondition of RFC 027 §11.5 — and are meaningless without it.
+#[derive(Copy, Clone, Debug, PartialEq)]
+#[non_exhaustive]
+pub struct CurvatureBounds<S> {
+    /// `U = maxᵢ Σⱼ |Qᵢⱼ|` (Gershgorin): an upper bound, `U ≥ λ_max(Q)`.
+    pub lambda_max_upper: S,
+    /// `L = maxᵢ Qᵢᵢ`: a lower bound, `L ≤ λ_max(Q)`.
+    pub lambda_max_lower: S,
+}
+
 /// A complete quadratic program: objective, box bounds, and linear inequalities.
 ///
 /// Implemented automatically for every type that implements
@@ -199,6 +213,91 @@ pub trait QuadraticProgram<S: BaseScalar>:
             variables,
             constraints: constraints.rows,
         })
+    }
+
+    /// Bounds on `λ_max(Q)`: `U = maxᵢ Σⱼ |Qᵢⱼ|` from above (Gershgorin) and
+    /// `L = maxᵢ Qᵢᵢ` from below (RFC 032).
+    ///
+    /// For symmetric positive semidefinite `Q`, projected gradient with step
+    /// `α` converges for `α < 2/λ_max`, so:
+    ///
+    /// | Condition | Conclusion |
+    /// |---|---|
+    /// | `α < 2/U` | provably convergent |
+    /// | `α ≥ 2/L` | provably divergent |
+    /// | `2/U ≤ α < 2/L` | **indeterminate**: neither bound decides it |
+    ///
+    /// The kernels reject only the second row; the middle band is accepted and
+    /// no claim is made about it. **Both bounds are meaningless unless `Q` is
+    /// symmetric positive semidefinite**, which is the caller's responsibility
+    /// and is not verified.
+    ///
+    /// Uses only `abs`, `add`, `mul` and `max`: no division, no square root, no
+    /// iteration, no allocation. It reads every element of `Q` (`O(n²)`), in a
+    /// fixed order. Because the trait is implemented automatically, this cannot
+    /// be overridden.
+    ///
+    /// # Errors
+    ///
+    /// [`SolverError::InvalidDimension`] when `Q` has no rows;
+    /// [`SolverError::DimensionMismatch`] when `Q` is not square;
+    /// [`SolverError::NonFiniteInput`] for a non-finite element;
+    /// [`SolverError::Overflow`] when a row sum overflows. Element-access errors
+    /// propagate unchanged.
+    fn curvature_bounds(&self) -> Result<CurvatureBounds<S>, SolverError>
+    where
+        S: FiniteScalar + MetricScalar,
+    {
+        let hessian = self.hessian();
+        let dims = hessian.dims();
+        if dims.rows == 0 {
+            return Err(SolverError::InvalidDimension);
+        }
+        require_len(dims.cols, dims.rows)?;
+
+        let mut upper = S::zero();
+        let mut lower = S::zero();
+        for i in 0..dims.rows {
+            let mut row_sum = S::zero();
+            for j in 0..dims.cols {
+                let element = hessian.get(i, j)?;
+                if !element.is_finite() {
+                    return Err(SolverError::NonFiniteInput);
+                }
+                row_sum = row_sum.add(element.abs());
+                if !row_sum.is_finite() {
+                    return Err(SolverError::Overflow);
+                }
+                if i == j {
+                    lower = lower.max(element);
+                }
+            }
+            upper = upper.max(row_sum);
+        }
+        Ok(CurvatureBounds {
+            lambda_max_upper: upper,
+            lambda_max_lower: lower,
+        })
+    }
+
+    /// A step `1/U` that is provably inside the convergent interval
+    /// `(0, 2/λ_max)` for symmetric positive semidefinite `Q` (RFC 032):
+    /// always safe, never optimal, since `U` overestimates `λ_max`.
+    ///
+    /// **Nothing calls this on the caller's behalf.** The kernels take the step
+    /// they are given; substituting one silently would change results for
+    /// existing callers. Cannot be overridden (blanket implementation).
+    ///
+    /// # Errors
+    ///
+    /// As [`curvature_bounds`](Self::curvature_bounds), plus
+    /// [`SolverError::NumericalDomain`] when `U = 0` — an all-zero `Q` has no
+    /// curvature and so no step this bound can call safe.
+    fn suggested_step_scale(&self) -> Result<S, SolverError>
+    where
+        S: FiniteScalar + MetricScalar + DivisibleScalar,
+    {
+        S::one().checked_div(self.curvature_bounds()?.lambda_max_upper)
     }
 }
 

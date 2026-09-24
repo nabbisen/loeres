@@ -31,6 +31,21 @@ Everything under `crates/` in this release is test code. A consumer upgrading
 from `0.21.1` observes nothing different; what changes is what the project can
 detect about itself.
 
+### RFC 032 S1 — curvature bounds and a suggested step
+
+- `QuadraticProgram` gains two provided methods (additive; the trait is
+  blanket-implemented, so neither can be overridden). `curvature_bounds()` returns a new
+  `#[non_exhaustive]` `CurvatureBounds<S>` with `lambda_max_upper = maxᵢ Σⱼ |Qᵢⱼ|`
+  (Gershgorin, `≥ λ_max`) and `lambda_max_lower = maxᵢ Qᵢᵢ` (`≤ λ_max`);
+  `suggested_step_scale()` returns `1 / lambda_max_upper`, a step provably inside the
+  convergent interval `(0, 2/λ_max)`: always safe, never optimal. They need only
+  `abs`, `add`, `mul`, `max` and one checked division: no new scalar tier, no square
+  root, no iteration. Both assume `Q` is symmetric positive semidefinite, the existing
+  unverified caller precondition. Nothing calls `suggested_step_scale` on the caller's
+  behalf, and the kernels are unchanged in this slice.
+- Tested against an independent power-iteration `λ_max` over 600 random non-diagonal PSD
+  matrices (`L ≤ λ_max ≤ U` every time), including that the suggested step contracts.
+
 ### RFC 031 handoff 5a (F1) — a box-interacting adversarial family
 
 - Five new adversarial fixtures (`qp-adv-box-row-*`, 2 to 4 dimensions) each have a

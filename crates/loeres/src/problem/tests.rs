@@ -319,3 +319,207 @@ fn shape_reads_no_element() {
         })
     );
 }
+
+// ---------------------------------------------------------------------------
+// RFC 032: curvature bounds and the suggested step.
+// ---------------------------------------------------------------------------
+
+/// Run `check` on a program whose `Q` is the given row-major `rows × cols`
+/// matrix; every other part is inert (`c`, bounds zero, no constraints).
+fn with_hessian<R>(
+    q: &[f64],
+    rows: usize,
+    cols: usize,
+    check: impl FnOnce(&ViewProgram<'_>) -> R,
+) -> R {
+    let zeros = vec![0.0; rows.max(cols)];
+    let none: [f64; 0] = [];
+    let p = ViewProgram {
+        q: MatrixView::from_row_major(q, rows, cols).expect("Q backing"),
+        c: VectorView::from_slice(&zeros[..rows]),
+        lo: VectorView::from_slice(&zeros[..rows]),
+        hi: VectorView::from_slice(&zeros[..rows]),
+        a: MatrixView::from_row_major(&none, 0, cols).expect("zero-row backing"),
+        b: VectorView::from_slice(&none),
+    };
+    check(&p)
+}
+
+fn bounds_of(q: &[f64], n: usize) -> Result<(f64, f64), SolverError> {
+    with_hessian(q, n, n, |p| {
+        p.curvature_bounds()
+            .map(|b| (b.lambda_max_upper, b.lambda_max_lower))
+    })
+}
+
+#[test]
+fn the_bounds_of_a_known_matrix_are_the_gershgorin_row_sum_and_the_largest_diagonal() {
+    // Q = [[2, 1], [1, 3]]: row sums 3 and 4, diagonal 2 and 3. Its eigenvalues
+    // are (5 ± √5)/2 = 1.38 and 3.62, inside [L, U] = [3, 4].
+    assert_eq!(bounds_of(&[2.0, 1.0, 1.0, 3.0], 2), Ok((4.0, 3.0)));
+    // Off-diagonal signs do not matter to U: it sums magnitudes.
+    assert_eq!(bounds_of(&[2.0, -1.0, -1.0, 3.0], 2), Ok((4.0, 3.0)));
+    with_hessian(&[2.0, 1.0, 1.0, 3.0], 2, 2, |p| {
+        assert_eq!(p.suggested_step_scale(), Ok(0.25));
+    });
+}
+
+#[test]
+fn a_diagonal_q_has_coinciding_bounds() {
+    assert_eq!(bounds_of(&[1.0, 0.0, 0.0, 5.0], 2), Ok((5.0, 5.0)));
+}
+
+#[test]
+fn the_bounds_reject_malformed_or_non_finite_curvature() {
+    assert_eq!(
+        with_hessian(&[1.0, 2.0, 3.0, 4.0, 5.0, 6.0], 2, 3, |p| p
+            .curvature_bounds()),
+        Err(SolverError::DimensionMismatch { lhs: 3, rhs: 2 })
+    );
+    assert_eq!(
+        with_hessian(&[], 0, 0, |p| p.curvature_bounds()),
+        Err(SolverError::InvalidDimension)
+    );
+    assert_eq!(
+        bounds_of(&[1.0, f64::NAN, 0.0, 1.0], 2),
+        Err(SolverError::NonFiniteInput)
+    );
+    assert_eq!(
+        bounds_of(&[1.0, 0.0, f64::INFINITY, 1.0], 2),
+        Err(SolverError::NonFiniteInput)
+    );
+    // Finite elements whose magnitudes sum past the range are an overflow, not a
+    // silently infinite bound.
+    assert_eq!(
+        bounds_of(&[f64::MAX, f64::MAX, 0.0, 1.0], 2),
+        Err(SolverError::Overflow)
+    );
+}
+
+#[test]
+fn an_all_zero_q_has_no_suggested_step() {
+    // No curvature (a linear objective): 1/U would be 1/0.
+    with_hessian(&[0.0; 4], 2, 2, |p| {
+        assert_eq!(p.curvature_bounds().map(|b| b.lambda_max_upper), Ok(0.0));
+        assert_eq!(p.suggested_step_scale(), Err(SolverError::NumericalDomain));
+    });
+}
+
+/// A small deterministic generator; no dependency.
+struct Lcg(u64);
+
+impl Lcg {
+    fn next(&mut self) -> f64 {
+        self.0 = self
+            .0
+            .wrapping_mul(6364136223846793005)
+            .wrapping_add(1442695040888963407);
+        ((self.0 >> 11) as f64) / ((1u64 << 53) as f64)
+    }
+}
+
+/// The largest eigenvalue of a symmetric positive semidefinite `n × n` matrix by
+/// power iteration, **in the test only** — the shipped code computes no
+/// eigenvalue and iterates nothing. The Rayleigh quotient of the final iterate
+/// is returned; for PSD `Q` it approaches `λ_max` from below.
+fn power_iteration_lambda_max(q: &[f64], n: usize) -> f64 {
+    let mut v: Vec<f64> = (0..n).map(|i| 1.0 + 0.37 * i as f64).collect();
+    let mut lambda = 0.0;
+    for _ in 0..100_000 {
+        let w: Vec<f64> = (0..n)
+            .map(|i| (0..n).map(|j| q[i * n + j] * v[j]).sum())
+            .collect();
+        let norm = w.iter().map(|x| x * x).sum::<f64>().sqrt();
+        if norm == 0.0 {
+            return 0.0;
+        }
+        let next: Vec<f64> = w.iter().map(|x| x / norm).collect();
+        let quotient: f64 = (0..n)
+            .map(|i| next[i] * (0..n).map(|j| q[i * n + j] * next[j]).sum::<f64>())
+            .sum();
+        let done = (quotient - lambda).abs() <= 1e-15 * quotient.abs().max(1.0);
+        lambda = quotient;
+        v = next;
+        if done {
+            break;
+        }
+    }
+    lambda
+}
+
+/// A random symmetric positive semidefinite `Q = AᵀA` — PSD by construction —
+/// from a random `k × n` `A`.
+fn random_psd(rng: &mut Lcg, n: usize) -> Vec<f64> {
+    let k = 1 + (rng.next() * 6.0) as usize;
+    let a: Vec<f64> = (0..k * n).map(|_| rng.next() * 2.0 - 1.0).collect();
+    let mut q = vec![0.0; n * n];
+    for i in 0..n {
+        for j in 0..n {
+            q[i * n + j] = (0..k).map(|r| a[r * n + i] * a[r * n + j]).sum();
+        }
+    }
+    q
+}
+
+/// RFC 032 exit criterion 3: `L ≤ λ_max ≤ U` against an **independently
+/// computed** `λ_max`, over random PSD `Q` that is deliberately not diagonal
+/// (for a diagonal `Q`, `U` and `L` coincide and the test would say nothing
+/// about the band), and the suggested step converges.
+#[test]
+fn random_psd_matrices_satisfy_l_le_lambda_max_le_u() {
+    let mut rng = Lcg(0x9E37_79B9_7F4A_7C15);
+    let (mut worst_upper, mut worst_lower, mut wide_band) = (0.0_f64, 0.0_f64, 0);
+    for instance in 0..600 {
+        let n = 2 + (rng.next() * 5.0) as usize;
+        let q = random_psd(&mut rng, n);
+        let (upper, lower) = bounds_of(&q, n).unwrap();
+        let lambda_max = power_iteration_lambda_max(&q, n);
+
+        let slack = 1e-9 * upper.max(1.0);
+        assert!(
+            lower <= lambda_max + slack,
+            "instance {instance}: L {lower} exceeds λ_max {lambda_max} (n {n}, Q {q:?})"
+        );
+        assert!(
+            lambda_max <= upper + slack,
+            "instance {instance}: λ_max {lambda_max} exceeds U {upper} (n {n}, Q {q:?})"
+        );
+        worst_upper = worst_upper.max(upper / lambda_max);
+        worst_lower = worst_lower.max(lambda_max / lower);
+        if upper > 1.2 * lower {
+            wide_band += 1;
+        }
+
+        // The suggested step 1/U is inside (0, 2/λ_max): the iteration
+        // x ← x − αQx contracts every component.
+        with_hessian(&q, n, n, |p| {
+            let alpha = p.suggested_step_scale().unwrap();
+            assert!(
+                alpha > 0.0 && alpha * lambda_max < 2.0,
+                "instance {instance}"
+            );
+            let mut x: Vec<f64> = (0..n).map(|i| 1.0 + i as f64).collect();
+            let start: f64 = x.iter().map(|v| v * v).sum::<f64>().sqrt();
+            for _ in 0..200 {
+                let qx: Vec<f64> = (0..n)
+                    .map(|i| (0..n).map(|j| q[i * n + j] * x[j]).sum())
+                    .collect();
+                for (xi, g) in x.iter_mut().zip(qx) {
+                    *xi -= alpha * g;
+                }
+            }
+            let end: f64 = x.iter().map(|v| v * v).sum::<f64>().sqrt();
+            assert!(
+                end.is_finite() && end <= start,
+                "instance {instance}: {start} -> {end}"
+            );
+        });
+    }
+    // The generator really exercises the band: a good share of instances have
+    // `U` noticeably above `L`, and the bounds are not vacuously tight.
+    assert!(wide_band >= 300, "only {wide_band} of 600 had U > 1.2 L");
+    assert!(
+        worst_upper > 1.05 && worst_lower > 1.05,
+        "{worst_upper} {worst_lower}"
+    );
+}

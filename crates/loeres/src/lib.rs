@@ -35,7 +35,8 @@ pub use diagnostic::{DiagnosticCode, DiagnosticSnapshot};
 pub use dimension::{Dim2, DimensionKind};
 pub use error::{SolverError, error_code_to_str};
 pub use problem::{
-    BoxBounds, LinearInequalities, ProgramShape, QuadraticObjective, QuadraticProgram,
+    BoxBounds, CurvatureBounds, LinearInequalities, ProgramShape, QuadraticObjective,
+    QuadraticProgram,
 };
 pub use scalar::{
     AdvancedNumericalScalar, BaseScalar, DivisibleScalar, FiniteScalar, MetricScalar, OrderedScalar,
