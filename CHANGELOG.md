@@ -31,6 +31,23 @@ Everything under `crates/` in this release is test code. A consumer upgrading
 from `0.21.1` observes nothing different; what changes is what the project can
 detect about itself.
 
+### RFC 031 S2 — the adversarial suite
+
+- `cargo xtask conformance --suite adversarial` runs 26 schema-3 fixtures, one family
+  per property RFC 027 §11.6 names as hard: nearly parallel constraint normals (nine
+  angles, smallest `atan(0.001)`), degenerate boxes (including `lo == hi` on every
+  coordinate), ill-conditioned `Q` (condition numbers 10 to 1000), barely feasible regions
+  (volume down to `1.7e-16`) and exactly cancelling infeasible geometry (each with a
+  Farkas certificate). Expected values come from an exact rational active-set reference
+  and are cross-checked on every `cargo test`; none was read off a kernel. The suite is
+  reported, not enforced.
+- **Finding, not fixed:** 5 of the 26 fixtures fail. All are nearly parallel normals at
+  angles of 0.01 rad or less: the projection hits its sweep cap, the returned point is
+  feasible but up to `9e-4` from the exact projection, and the solve is still reported
+  `Converged`. This is RFC 027 §11.6's "nearly parallel constraints can make the inner
+  cap bind", now measured; it is reported to the architect and no fixture or tolerance
+  was adjusted. No kernel, crate or dependency changed.
+
 ### RFC 031 S1 — difficulty reporting and the extended suite
 
 - The conformance runner now reports, per solve path and per fixture, the outer

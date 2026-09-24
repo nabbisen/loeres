@@ -289,8 +289,34 @@ const REQUIRED_EXTENDED: &[&str] = &[
     "qp-linear-7d-4-halfspaces-001",
 ];
 
-/// Populated by RFC 031 S2.
-const REQUIRED_ADVERSARIAL: &[&str] = &[];
+const REQUIRED_ADVERSARIAL: &[&str] = &[
+    "qp-adv-barely-feasible-3d-w1e-5-001",
+    "qp-adv-barely-feasible-w1e-2-001",
+    "qp-adv-barely-feasible-w1e-4-001",
+    "qp-adv-barely-feasible-w1e-6-001",
+    "qp-adv-barely-feasible-w1e-6-vertex-001",
+    "qp-adv-cancelling-cycle-2d-001",
+    "qp-adv-cancelling-cycle-3d-001",
+    "qp-adv-cancelling-opposite-rows-3d-001",
+    "qp-adv-degenerate-box-all-pinned-001",
+    "qp-adv-degenerate-box-mid-pinned-001",
+    "qp-adv-degenerate-box-pinned-forces-row-001",
+    "qp-adv-degenerate-box-two-rows-001",
+    "qp-adv-ill-conditioned-3d-k100-001",
+    "qp-adv-ill-conditioned-k10-001",
+    "qp-adv-ill-conditioned-k100-001",
+    "qp-adv-ill-conditioned-k1000-001",
+    "qp-adv-parallel-3d-e0p02-001",
+    "qp-adv-parallel-angle-e0p001-001",
+    "qp-adv-parallel-angle-e0p002-001",
+    "qp-adv-parallel-angle-e0p004-001",
+    "qp-adv-parallel-angle-e0p005-001",
+    "qp-adv-parallel-angle-e0p01-001",
+    "qp-adv-parallel-angle-e0p02-001",
+    "qp-adv-parallel-angle-e0p05-001",
+    "qp-adv-parallel-angle-e0p1-001",
+    "qp-adv-parallel-angle-e0p5-001",
+];
 
 const REQUIRED_CONSTRAINED: &[&str] = &[
     "qp-linear-2d-single-active-001",
@@ -1480,6 +1506,21 @@ mod tests {
                 "{} failed",
                 fixture.fixture_id
             );
+        }
+    }
+
+    /// RFC 031: the adversarial suite is parsed, validated and **run** by the same
+    /// runner. It is not asserted to pass: an adversarial fixture the kernel fails
+    /// is a finding for the architect, not something a test hides (RFC 031 §5).
+    #[test]
+    fn the_adversarial_suite_parses_validates_and_runs() {
+        let fixtures = load_constrained_fixtures("adversarial").unwrap();
+        assert_eq!(fixtures.len(), REQUIRED_ADVERSARIAL.len());
+        // The infeasible fixtures re-run at ten times the sweep cap, which is
+        // slow at these caps; `--suite adversarial` runs them.
+        for fixture in fixtures.iter().filter(|f| f.variant == "solve") {
+            let result = run_constrained(fixture);
+            assert!(result.is_ok(), "{}: {result:?}", fixture.fixture_id);
         }
     }
 

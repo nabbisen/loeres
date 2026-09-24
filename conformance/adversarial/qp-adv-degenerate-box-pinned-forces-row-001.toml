@@ -1,0 +1,45 @@
+schema_version = 3
+fixture_id = "qp-adv-degenerate-box-pinned-forces-row-001"
+suite = "adversarial"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 2
+constraints = 1
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["device-reference-adversarial", "cluster-reference-adversarial"]
+variant = "solve"
+
+# RFC 031 adversarial suite. Stresses: a degenerate box that forces a row active. Coordinate 0 has lo == hi == 2, so x0 + x1 <= 1 forces x1 <= -1
+# even though the target (0, 0) is unconstrained by it.
+# Q = I, step_scale 1.0.
+#
+# Exact reference (fractions.Fraction, active-set enumeration over the rows AND the box
+# faces, in Q's metric; no kernel run). Active set at the optimum: row0 (multiplier 1), lo0 (multiplier 3).
+
+[config]
+max_iterations = 5000
+tolerance = 1e-10
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-10
+
+[problem]
+lower = [2.0, -10.0]
+upper = [2.0, 10.0]
+initial = [0.0, 0.0]
+quadratic_diag = [1.0, 1.0]
+center = [0.0, 0.0]
+constraint_matrix = [1.0, 1.0]
+constraint_rhs = [1.0]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [2.0, -1.0]
+error = "none"
+violation_max = 1e-8
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001

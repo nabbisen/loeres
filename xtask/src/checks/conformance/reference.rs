@@ -167,7 +167,9 @@ fn suite(name: &str) -> Vec<ConstrainedFixture> {
 }
 
 fn non_smoke() -> Vec<ConstrainedFixture> {
-    suite("extended")
+    let mut all = suite("extended");
+    all.extend(suite("adversarial"));
+    all
 }
 
 #[test]
@@ -194,11 +196,12 @@ fn every_expected_solution_matches_an_independent_active_set_reference() {
         }
         checked += 1;
     }
-    assert!(checked >= 6, "only {checked} solve fixtures were checked");
+    assert!(checked >= 20, "only {checked} solve fixtures were checked");
 }
 
 #[test]
 fn every_infeasible_fixture_carries_a_valid_farkas_certificate() {
+    let mut checked = 0;
     for f in non_smoke() {
         if f.variant != "infeasible" {
             continue;
@@ -237,9 +240,12 @@ fn every_infeasible_fixture_carries_a_valid_farkas_certificate() {
             "{}: violation_min {stated} exceeds what the certificate proves ({bound})",
             f.fixture_id
         );
+        checked += 1;
     }
-    // The extended suite has no infeasible fixture; RFC 031 S2 adds them and
-    // asserts they exist.
+    assert!(
+        checked >= 3,
+        "only {checked} infeasible fixtures were checked"
+    );
 }
 
 /// RFC 031 §3.1: sizes above the smoke corpus, including `n = 5` and `m = 5`, and
@@ -266,4 +272,58 @@ fn the_extended_suite_covers_the_sizes_the_rfc_names() {
             .any(|f| !f.has_device() && !smoke_dims.contains(&f.dimension)),
         "no cluster-only fixture at a dimension the smoke corpus never uses"
     );
+}
+
+/// RFC 031 §5: one fixture family per property.
+#[test]
+fn the_adversarial_suite_has_one_family_per_property() {
+    let adversarial = suite("adversarial");
+    for prefix in [
+        "qp-adv-parallel-",
+        "qp-adv-degenerate-box-",
+        "qp-adv-ill-conditioned-",
+        "qp-adv-barely-feasible-",
+        "qp-adv-cancelling-",
+    ] {
+        let family = adversarial
+            .iter()
+            .filter(|f| f.fixture_id.starts_with(prefix))
+            .count();
+        assert!(family >= 2, "family `{prefix}` has {family} fixture(s)");
+    }
+    // A degenerate box has a zero-width coordinate; the family must contain one.
+    assert!(adversarial.iter().any(|f| {
+        f.fixture_id.starts_with("qp-adv-degenerate-box-")
+            && f.problem
+                .lower
+                .iter()
+                .zip(&f.problem.upper)
+                .any(|(lo, hi)| lo == hi)
+    }));
+    // Cancelling geometry is kept, not avoided (RFC 027 §0.3.4).
+    assert!(adversarial.iter().any(|f| f.variant == "infeasible"));
+}
+
+/// The nearly-parallel family decreases in angle, and the fixtures say so: each
+/// records the angle between its normals, and the smallest used is stated.
+#[test]
+fn the_nearly_parallel_family_records_decreasing_angles_and_the_smallest() {
+    let mut angles: Vec<f64> = suite("adversarial")
+        .iter()
+        .filter(|f| f.fixture_id.starts_with("qp-adv-parallel-angle-"))
+        .map(|f| {
+            let (a, b) = (
+                &f.problem.constraint_matrix[0..2],
+                &f.problem.constraint_matrix[2..4],
+            );
+            let cos = (a[0] * b[0] + a[1] * b[1])
+                / ((a[0] * a[0] + a[1] * a[1]).sqrt() * (b[0] * b[0] + b[1] * b[1]).sqrt());
+            cos.acos()
+        })
+        .collect();
+    angles.sort_by(f64::total_cmp);
+    assert!(angles.len() >= 6, "{angles:?}");
+    assert!(angles.windows(2).all(|w| w[0] < w[1]), "{angles:?}");
+    // The smallest angle is atan(0.001), as the fixtures' comments state.
+    assert!((angles[0] - 0.001_f64.atan()).abs() < 1e-9, "{angles:?}");
 }

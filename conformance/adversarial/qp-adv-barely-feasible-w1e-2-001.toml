@@ -1,0 +1,46 @@
+schema_version = 3
+fixture_id = "qp-adv-barely-feasible-w1e-2-001"
+suite = "adversarial"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 2
+constraints = 3
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["device-reference-adversarial", "cluster-reference-adversarial"]
+variant = "solve"
+
+# RFC 031 adversarial suite. Stresses: a barely feasible region. The feasible set is the triangle
+# x0 >= 0, x1 >= 0, x0 + x1 <= w with w = 0.01: area w^2/2 = 5.000000e-05, versus the box's 400. Family across
+# fixtures: w in {1e-2, 1e-4, 1e-6}; the smallest area used is 5e-13. Here the optimum is the hypotenuse midpoint (w/2, w/2).
+# The solution tolerance is one percent of w (abs), so it cannot be met by any point of the triangle.
+#
+# Exact reference (fractions.Fraction, active-set enumeration over the rows AND the box
+# faces, in Q's metric; no kernel run). Active set at the optimum: row2 (multiplier 4.995).
+
+[config]
+max_iterations = 5000
+tolerance = 1e-10
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-10
+
+[problem]
+lower = [-10.0, -10.0]
+upper = [10.0, 10.0]
+initial = [0.0, 0.0]
+quadratic_diag = [1.0, 1.0]
+center = [5.0, 5.0]
+constraint_matrix = [-1.0, 0.0, 0.0, -1.0, 1.0, 1.0]
+constraint_rhs = [0.0, 0.0, 0.01]
+
+[expected]
+status = "converged"
+termination = "convergence-criterion"
+solution = [0.005, 0.005]
+error = "none"
+violation_max = 1e-8
+
+[tolerance]
+solution_abs = 0.0001
+solution_rel = 0.0

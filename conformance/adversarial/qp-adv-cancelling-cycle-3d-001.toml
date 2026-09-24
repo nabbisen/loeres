@@ -1,0 +1,48 @@
+schema_version = 3
+fixture_id = "qp-adv-cancelling-cycle-3d-001"
+suite = "adversarial"
+problem_class = "box_quadratic_linear_inequalities"
+solver_family = "constrained_projected_first_order"
+dimension = 3
+constraints = 4
+scalar_family = "float"
+validation_state = "validate-all-inputs"
+conformance_groups = ["cluster-reference-adversarial"]
+variant = "infeasible"
+
+# RFC 031 adversarial suite. Stresses: Exactly cancelling geometry in three dimensions, cluster only (no device instantiation for n = 3, m = 4): normals
+# e0, e1, e2 and -(e0+e1+e2) sum to exactly zero and every offset is -1.
+# Q = I, step_scale 1.0.
+#
+# Farkas certificate lambda = [1, 1, 1, 1]: lambda >= 0, sum lambda_i a_i = 0 and sum lambda_i b_i < 0
+# (checked exactly in fractions.Fraction), so the rows are inconsistent for every x and every box.
+# Every point violates some row by at least -sum(lambda b)/sum(lambda) = 1.0 (the
+# lambda-weighted mean of the row violations is that constant), which is the violation_min below.
+
+[config]
+max_iterations = 5000
+tolerance = 1e-10
+step_scale = 1.0
+projection_max_sweeps = 100000
+projection_tolerance = 1e-10
+
+[problem]
+lower = [-10.0, -10.0, -10.0]
+upper = [10.0, 10.0, 10.0]
+initial = [0.0, 0.0, 0.0]
+quadratic_diag = [1.0, 1.0, 1.0]
+center = [0.0, 0.0, 0.0]
+constraint_matrix = [1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, -1.0, -1.0, -1.0]
+constraint_rhs = [-1.0, -1.0, -1.0, -1.0]
+
+[expected]
+status = "not-converged"
+termination = "no-progress"
+solution = []
+error = "none"
+violation_min = 1.0
+infeasibility_certificate = [1.0, 1.0, 1.0, 1.0]
+
+[tolerance]
+solution_abs = 0.000001
+solution_rel = 0.000001
