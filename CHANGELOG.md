@@ -7,7 +7,7 @@ sign-off (see RFC 000 and the requirements specification).
 
 ## [0.21.3] — 2026-09-24 — Measured limits and a truthful `Converged`
 
-**Release status:** unreleased
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
 
 Repository release `0.21.3` measures what the constrained kernels actually do on
 hard geometry, and narrows what `Converged` claims. RFCs 031, 032 and 033 are
