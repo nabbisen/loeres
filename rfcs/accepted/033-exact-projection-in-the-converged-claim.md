@@ -1,6 +1,6 @@
 # RFC 033 - An Exact Projection as Part of the `Converged` Claim
 
-**Status.** Proposed (2026-09-24)
+**Status.** Accepted (design frozen 2026-09-24)
 **Design approval.** Architect-authored from RFC 031 S2's finding (architect review 067); project owner approved adding it to Cycle 1 on 2026-09-24.
 **Tracks.** Completes the line RFC 027 Amendment 5 and RFC 029 began. Resolves review 056 L1 properly, replacing the argument review 067 falsified.
 **Touches.** `crates/loeres-device/src/solve/constrained.rs`, `crates/loeres-cluster/src/solve/constrained.rs`, the RFC 031 adversarial fixtures' expected status, user-facing docs.
@@ -120,5 +120,8 @@ generalisation, and `BatchItemOutcome` still does not need widening.
    unchanged.
 5. `TERMS_OF_USE.md` and both user guides state the three requirements of
    `Converged` together.
-6. RFC 027 §0.5.4's claim that the status alone suffices for a batch caller is
-   corrected to cite this RFC.
+6. RFC 027 §0.5.4's over-strong claim is superseded **by this RFC's §6**, not by
+   editing RFC 027: RFC 027 is in `done/`, and RFC 025 §11 forbids amending a
+   `done/` RFC in place. The correction reaches readers through this RFC, the
+   `rfcs/README.md` index row, and the user-facing surfaces of criterion 5.
+   **Do not edit `rfcs/done/027-*.md`.**

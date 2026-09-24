@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [033](proposed/033-exact-projection-in-the-converged-claim.md) | An Exact Projection as Part of the `Converged` Claim | Proposed (2026-09-24) | RFC 031's adversarial suite found solves that are feasible, stationary and reported `Converged` while `1.3e-3` from the optimum, with only `projection_cap_hits` signalling it. Adds the third leg — the final projection must not have capped — after Amendment 5's feasibility and RFC 029's stationarity. Verified to downgrade nothing else in the corpus. Does **not** improve any answer. |
+None currently.
 
 ## Accepted RFCs
 
@@ -27,6 +27,7 @@ behavior is not yet claimed.
 |---:|---|---|---|
 | [031](accepted/031-adversarial-and-extended-conformance.md) | Adversarial and Extended Conformance Suites | Accepted (design frozen 2026-09-24) | Populates the two suites RFC 013 staged as placeholders and reports cap hits, terminal violation and iterations per fixture, making RFC 027 §11.6's "stated, not solved" projection-rate limitation observable. Reported, not enforced; no kernel change. R3 assurance expansion, second bounded slice. |
 | [032](accepted/032-step-size-guidance.md) | Step-Size Guidance and a Stated Convergence Rate | Accepted (design frozen 2026-09-24) | Two cheap eigenvalue bounds — Gershgorin `U >= λ_max` and diagonal `L <= λ_max`, both verified over 600 random PSD matrices — license a provably safe `suggested_step_scale` of `1/U` and a provably divergent rejection at `α >= 2/L`, with an honest indeterminate band between. No new scalar tier; device path unaffected. Paired with RFC 031. |
+| [033](accepted/033-exact-projection-in-the-converged-claim.md) | An Exact Projection as Part of the `Converged` Claim | Accepted (design frozen 2026-09-24) | RFC 031's adversarial suite found solves that are feasible, stationary and reported `Converged` while `1.3e-3` from the optimum, with only `projection_cap_hits` signalling it. Adds the third leg — the final projection must not have capped — after Amendment 5's feasibility and RFC 029's stationarity. Verified to downgrade nothing else in the corpus. Does **not** improve any answer. |
 
 ## Done RFCs
 
