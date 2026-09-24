@@ -31,6 +31,30 @@ Everything under `crates/` in this release is test code. A consumer upgrading
 from `0.21.1` observes nothing different; what changes is what the project can
 detect about itself.
 
+### RFC 032 S2 — kernel validation, and the docs
+
+- Both constrained kernels now reject `step_scale >= 2/L` (`L = maxᵢ Qᵢᵢ ≤ λ_max`) as
+  `InvalidInput`, an `O(n)` diagonal scan. This is a **behaviour change**: a step that could
+  never converge was previously accepted and reported `NotConverged` after running to the
+  cap. The indeterminate band `2/U ≤ step_scale < 2/L` is accepted unchanged, and `L = 0`
+  never rejects. The check is structural, so `TrustedByCaller` does not skip it. The RFC 006
+  and RFC 016 box kernels are unchanged.
+- **Two RFC 029 device tests were re-based**, not weakened: they diverged through a diagonal
+  `Q` at a step at or above `2/λ_max`, which is exactly what is now rejected (for a diagonal
+  `Q`, `L = λ_max`, so every divergent step is provably divergent). They now diverge through
+  a non-diagonal `Q` whose step lies in the indeterminate band, with the same eigenvalue
+  factors, and the mid-run dip is asserted from a kernel-free simulation. Both still fail
+  against the set-once revert.
+- `TERMS_OF_USE.md`, both user guides, the crate READMEs and the kernels' rustdoc replace
+  "no convergence rate is claimed" with what each bound licenses (including that the middle
+  band is accepted without a claim) and the *form* of the rate; no numeric rate is stated,
+  because the library computes neither `λ_min` nor `λ_max`.
+- The conformance runner's difficulty report gains the deviation from the exact optimum
+  (reporting only), because cap hits alone cannot judge a step rule.
+- Measured effect on the corpus: none. The per-fixture output of smoke, extended and the
+  adversarial suite is identical before and after, as RFC 032 §4 predicts: every fixture
+  already uses a step below `2/U`.
+
 ### RFC 032 S1 — curvature bounds and a suggested step
 
 - `QuadraticProgram` gains two provided methods (additive; the trait is

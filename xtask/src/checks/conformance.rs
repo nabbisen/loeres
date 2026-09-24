@@ -798,6 +798,7 @@ fn box_only_difficulty(
                 iteration_cap: fixture.config.max_iterations,
                 cap_hits: None,
                 violation: None,
+                deviation: None,
             })
         })
         .collect()

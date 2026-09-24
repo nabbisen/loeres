@@ -9,7 +9,8 @@ use crate::problem::ProjectedFirstOrderProblem;
 use crate::solve::{ProjectedFirstOrderWorkspace, solve_projected_first_order};
 use crate::workspace::{DeviceWorkspace, DeviceWorkspaceDiagnostic};
 use loeres::{
-    BoxBounds, LinearInequalities, QuadraticObjective, SolveStatus, SolverError, TerminationReason,
+    BoxBounds, LinearInequalities, QuadraticObjective, QuadraticProgram, SolveStatus, SolverError,
+    TerminationReason,
 };
 use loeres_backend_static::array::{FixedMatrix, FixedVector};
 use loeres_backend_static::workspace::WorkspaceFootprint;
@@ -656,10 +657,18 @@ fn constant_iteration_runs_the_full_cap_when_the_feature_is_enabled() {
 // iteration, so `converged_at_cap` is a claim about the returned iterate. An
 // earlier sticky flag, set the first time an outer step fell within tolerance
 // and never cleared, reported `Converged` for a run that diverged afterwards.
+//
+// RFC 032 re-based the divergent cases below. They used a diagonal `Q` with a
+// step at or above `2/λ_max` (`Q = I`, step 2.1), and a step at or above `2/L`
+// is now rejected up front as `InvalidInput` — for a diagonal `Q`, `L = λ_max`,
+// so *every* divergent step is provably divergent and rejected. A divergent run
+// can still be accepted where the bounds cannot decide it, so these cases use a
+// non-diagonal `Q` whose step lies in the indeterminate band `2/U ≤ α < 2/L`:
+// same eigenvalue factors (`0.5` and `−1.1`), rotated by 45 degrees.
 #[cfg(feature = "constant-iteration")]
-fn constant_iteration_qp(q_diag: [f64; 2], c: [f64; 2]) -> Qp2x1 {
+fn constant_iteration_qp(q: [f64; 4], c: [f64; 2]) -> Qp2x1 {
     Qp2x1 {
-        q: FixedMatrix::from_row_major_array([q_diag[0], 0.0, 0.0, q_diag[1]]),
+        q: FixedMatrix::from_row_major_array(q),
         c: FixedVector::from_array(c),
         lo: FixedVector::from_array([-1e6, -1e6]),
         hi: FixedVector::from_array([1e6, 1e6]),
@@ -668,6 +677,13 @@ fn constant_iteration_qp(q_diag: [f64; 2], c: [f64; 2]) -> Qp2x1 {
         b: FixedVector::from_array([1e9]),
     }
 }
+
+/// `Q = [[1.3, 0.8], [0.8, 1.3]]` has eigenvalues `2.1` (along `(1, 1)`) and
+/// `0.5` (along `(1, −1)`), so with step `1` the iteration `x ← x − Qx` scales
+/// those modes by `−1.1` (divergent) and `0.5`. `L = 1.3` and `U = 2.1`, so the
+/// step `1` lies in the band `[2/U, 2/L) = [0.952, 1.538)`: accepted, no claim.
+#[cfg(feature = "constant-iteration")]
+const BAND_Q: [f64; 4] = [1.3, 0.8, 0.8, 1.3];
 
 #[cfg(feature = "constant-iteration")]
 fn solve_constant_iteration(
@@ -690,21 +706,58 @@ fn solve_constant_iteration(
     (report, [x.as_slice()[0], x.as_slice()[1]])
 }
 
-/// `x <- -1.1·x` diverges. Iteration 1's change is `2.1e-13`, within
-/// `tolerance = 1e-12`, but the run keeps going and the last step moves by
-/// roughly 340: the returned iterate is not stationary.
+/// The largest coordinate change of each step of `x ← x − αQx`, computed here
+/// with no kernel, so a test can state where the criterion holds along a run.
+#[cfg(feature = "constant-iteration")]
+fn step_changes(q: [f64; 4], alpha: f64, start: [f64; 2], steps: usize) -> Vec<f64> {
+    let mut x = start;
+    let mut changes = Vec::with_capacity(steps);
+    for _ in 0..steps {
+        let g = [q[0] * x[0] + q[1] * x[1], q[2] * x[0] + q[3] * x[1]];
+        let next = [x[0] - alpha * g[0], x[1] - alpha * g[1]];
+        changes.push((next[0] - x[0]).abs().max((next[1] - x[1]).abs()));
+        x = next;
+    }
+    changes
+}
+
+/// The old divergent configuration is now rejected before the loop.
+#[test]
+#[cfg(feature = "constant-iteration")]
+fn the_pre_rfc_032_divergent_configurations_are_now_rejected_up_front() {
+    for (q, step) in [([1.0, 0.0, 0.0, 1.0], 2.1), ([0.5, 0.0, 0.0, 2.1], 1.0)] {
+        let problem = constant_iteration_qp(q, [0.0, 0.0]);
+        let mut x = FixedVector::from_array([1e-13, 0.0]);
+        let mut ws = workspace_2x1();
+        let cfg = ConstrainedSolveConfig {
+            max_iterations: 400,
+            tolerance: 1e-12,
+            timing_mode: TimingMode::ConstantIteration,
+            projection_max_sweeps: 5000,
+            projection_tolerance: 1e-12,
+        };
+        assert_eq!(
+            solve_constrained_projected_first_order(&problem, step, &mut x, &mut ws, &cfg)
+                .map(|_| ()),
+            Err(SolverError::InvalidInput)
+        );
+    }
+}
+
+/// `x ← −1.1·x` along `(1, 1)` diverges. Iteration 1's change is far within
+/// `tolerance = 1e-12`, but the run keeps going and the returned iterate is
+/// nowhere near stationary.
 #[test]
 #[cfg(feature = "constant-iteration")]
 fn constant_iteration_does_not_report_converged_for_a_run_that_diverges_after_a_small_first_step() {
-    let (report, x) = solve_constant_iteration(
-        &constant_iteration_qp([1.0, 1.0], [0.0, 0.0]),
-        2.1,
-        [1e-13, 0.0],
-    );
+    let start = [1e-13, 1e-13];
+    assert!(step_changes(BAND_Q, 1.0, start, 1)[0] <= 1e-12);
+    let (report, x) =
+        solve_constant_iteration(&constant_iteration_qp(BAND_Q, [0.0, 0.0]), 1.0, start);
 
     assert_eq!(report.iterations_executed(), 400);
-    // The iterate really moved: it is nowhere near the start.
-    assert!(x[0].abs() > 1e3, "final x0 = {}", x[0]);
+    // The iterate really moved: it is nowhere near the start (about 3606).
+    assert!(x[0].abs() > 1e3 && x[1].abs() > 1e3, "final x = {x:?}");
     assert_eq!(report.max_constraint_violation(), 0.0);
     assert_eq!(report.status(), SolveStatus::NotConverged);
     assert_eq!(report.core().termination(), TerminationReason::IterationCap);
@@ -716,7 +769,7 @@ fn constant_iteration_does_not_report_converged_for_a_run_that_diverges_after_a_
 #[cfg(feature = "constant-iteration")]
 fn constant_iteration_still_reports_converged_for_a_genuinely_converged_run() {
     let (report, x) = solve_constant_iteration(
-        &constant_iteration_qp([1.0, 1.0], [-1.0, -1.0]),
+        &constant_iteration_qp([1.0, 0.0, 0.0, 1.0], [-1.0, -1.0]),
         0.5,
         [0.0, 0.0],
     );
@@ -727,29 +780,141 @@ fn constant_iteration_still_reports_converged_for_a_genuinely_converged_run() {
     assert_eq!(report.core().termination(), TerminationReason::IterationCap);
 }
 
-/// Review 059 F2: the two tests above diverge after a small *first* step, so a
-/// narrowing to "distrust only the first iteration" would satisfy them. Here
-/// `x <- diag(0.5, -1.1)·x`: coordinate 0 halves toward zero while coordinate 1
-/// grows from `1e-15`. The largest coordinate change dips below `tolerance`
-/// near iteration 40 and rises again near iteration 73, so the criterion holds
-/// mid-run and fails at the end. Violation `0` shows the Amendment 5 gate is not
-/// what decides the outcome.
+/// Review 059 F2: the tests above diverge after a small *first* step, so a
+/// narrowing to "distrust only the first iteration" would satisfy them. Here the
+/// `0.5` mode (along `(1, −1)`) starts at 1 and the divergent `−1.1` mode (along
+/// `(1, 1)`) at `1e-15`. The largest coordinate change dips below `tolerance`
+/// near iteration 40 and rises above it again near iteration 65, so the
+/// criterion holds mid-run and fails at the end. Violation `0` shows the
+/// Amendment 5 gate is not what decides the outcome.
 #[test]
 #[cfg(feature = "constant-iteration")]
 fn constant_iteration_does_not_report_converged_for_a_run_that_dips_within_tolerance_mid_run() {
-    let (report, x) = solve_constant_iteration(
-        &constant_iteration_qp([0.5, 2.1], [0.0, 0.0]),
-        1.0,
-        [1.0, 1e-15],
-    );
+    let s = core::f64::consts::FRAC_1_SQRT_2;
+    let start = [(1.0 + 1e-15) * s, (-1.0 + 1e-15) * s];
+
+    // The premise, computed with no kernel: the criterion holds at some
+    // iteration and fails again later, and fails at the last one.
+    let changes = step_changes(BAND_Q, 1.0, start, 400);
+    let dip = changes.iter().position(|&c| c <= 1e-12).expect("dips");
+    assert!(dip > 20 && changes[dip..].iter().any(|&c| c > 1e-12));
+    assert!(changes[399] > 1e-12);
+
+    let (report, x) =
+        solve_constant_iteration(&constant_iteration_qp(BAND_Q, [0.0, 0.0]), 1.0, start);
 
     assert_eq!(report.iterations_executed(), 400);
-    // Coordinate 1 really grew (1e-15 · 1.1^400 ≈ 36.06); coordinate 0 collapsed.
-    assert!((x[1] - 36.064014).abs() < 1e-5, "final x1 = {}", x[1]);
-    assert!(x[0].abs() < 1e-9, "final x0 = {}", x[0]);
+    // The divergent mode grew by `1.1^400` from its (rounded) initial size of
+    // about 1e-15, to about 36; the stable mode collapsed.
+    let (unstable, stable) = ((x[0] + x[1]) * s, (x[0] - x[1]) * s);
+    let expected = (start[0] + start[1]) * s * 1.1_f64.powi(400);
+    // Not to more than a few percent: rotating the modes couples them, so
+    // round-off of about 1e-16 per step while the stable mode is still of order one
+    // seeds the divergent mode as much as its own initial 1e-15 does.
+    assert!(
+        (unstable - expected).abs() < 0.1 * expected,
+        "unstable mode = {unstable}, expected about {expected}"
+    );
+    assert!(unstable > 30.0);
+    assert!(stable.abs() < 1e-9, "stable mode = {stable}");
     assert_eq!(report.max_constraint_violation(), 0.0);
     assert_eq!(report.status(), SolveStatus::NotConverged);
     assert_eq!(report.core().termination(), TerminationReason::IterationCap);
+}
+
+// ---------------------------------------------------------------------------
+// RFC 032: a step at or above 2/L is rejected; the band [2/U, 2/L) is not.
+//
+// Q = [[4, 1], [1, 3]]: L = 4 (largest diagonal), U = 5 (largest absolute row
+// sum), λ_max = (7 + √5)/2 = 4.618. So a step below 2/U = 0.4 provably
+// converges, a step at or above 2/L = 0.5 provably diverges, and the band
+// [0.4, 0.5) is indeterminate — it contains steps that converge (0.42) and steps
+// that do not (0.45 > 2/λ_max = 0.433).
+// ---------------------------------------------------------------------------
+
+fn band_qp(q: [f64; 4]) -> Qp2x1 {
+    Qp2x1 {
+        q: FixedMatrix::from_row_major_array(q),
+        c: FixedVector::from_array([-1.0, -1.0]),
+        lo: FixedVector::from_array([-10.0, -10.0]),
+        hi: FixedVector::from_array([10.0, 10.0]),
+        a: FixedMatrix::from_row_major_array([1.0, 0.0]),
+        b: FixedVector::from_array([1e9]),
+    }
+}
+
+fn solve_with_step(
+    problem: &Qp2x1,
+    step: f64,
+    max_iterations: u32,
+) -> Result<ConstrainedSolveReport<f64>, SolverError> {
+    let mut x = FixedVector::from_array([0.0, 0.0]);
+    let mut ws = workspace_2x1();
+    solve_constrained_projected_first_order(
+        problem,
+        step,
+        &mut x,
+        &mut ws,
+        &box_only_config(max_iterations, 1e-10),
+    )
+}
+
+const BAND: [f64; 4] = [4.0, 1.0, 1.0, 3.0];
+
+#[test]
+fn a_step_at_exactly_two_over_l_is_rejected() {
+    let problem = band_qp(BAND);
+    // 2/L = 2/4 = 0.5 exactly.
+    assert_eq!(
+        solve_with_step(&problem, 0.5, 100).map(|_| ()),
+        Err(SolverError::InvalidInput)
+    );
+    assert_eq!(
+        solve_with_step(&problem, 0.75, 100).map(|_| ()),
+        Err(SolverError::InvalidInput)
+    );
+}
+
+#[test]
+fn a_step_just_below_two_over_u_is_accepted_and_converges() {
+    let problem = band_qp(BAND);
+    // 2/U = 0.4.
+    let report = solve_with_step(&problem, 0.399, 5000).unwrap();
+    assert_eq!(report.status(), SolveStatus::Converged);
+    assert_eq!(report.max_constraint_violation(), 0.0);
+}
+
+/// The regression guard against over-rejection: the indeterminate band is
+/// accepted. A rule that rejected everything outside `(0, 2/U)` would refuse the
+/// usable step 0.42 below and is wrong.
+#[test]
+fn the_indeterminate_band_is_accepted_without_a_claim() {
+    let problem = band_qp(BAND);
+    // Inside the band and convergent (0.42 < 2/λ_max = 0.433): accepted and solved.
+    let usable = solve_with_step(&problem, 0.42, 5000).unwrap();
+    assert_eq!(usable.status(), SolveStatus::Converged);
+    // Inside the band and divergent (0.45 > 0.433): accepted, no claim made. It
+    // does not converge, but it is not rejected by validation.
+    let unusable = solve_with_step(&problem, 0.45, 200).unwrap();
+    assert_eq!(unusable.status(), SolveStatus::NotConverged);
+}
+
+#[test]
+fn the_suggested_step_is_accepted_and_converges() {
+    let problem = band_qp(BAND);
+    let step = problem.suggested_step_scale().unwrap();
+    assert_eq!(step, 0.2);
+    let report = solve_with_step(&problem, step, 5000).unwrap();
+    assert_eq!(report.status(), SolveStatus::Converged);
+}
+
+/// `L = 0` (no curvature) has no `2/L`: the rule never fires.
+#[test]
+fn a_zero_q_is_never_rejected_by_the_step_rule() {
+    let mut problem = band_qp([0.0; 4]);
+    problem.c = FixedVector::from_array([0.0, 0.0]);
+    let report = solve_with_step(&problem, 1e6, 100).unwrap();
+    assert_eq!(report.status(), SolveStatus::Converged);
 }
 
 // ---------------------------------------------------------------------------

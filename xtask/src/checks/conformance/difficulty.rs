@@ -13,6 +13,10 @@
 //! cap are now distinguishable in the output; whether either is acceptable is a
 //! decision for the corpus's owner, made on evidence.
 
+/// The cut-off below which a deviation is not counted as "deviating" in the
+/// aggregate line. Reporting only.
+const REPORTED_DEVIATION: f64 = 1e-6;
+
 /// One solve path's difficulty figures for one fixture.
 #[derive(Clone, Debug, PartialEq)]
 pub(super) struct PathDifficulty {
@@ -26,6 +30,11 @@ pub(super) struct PathDifficulty {
     pub(super) cap_hits: Option<u32>,
     /// Terminal `max(0, maxᵢ(aᵢᵀx − bᵢ))`. `None` for the box-only kernels.
     pub(super) violation: Option<f64>,
+    /// `maxⱼ |xⱼ − expectedⱼ|` against the fixture's exact expected solution
+    /// (RFC 032 exit criterion 6: cap hits alone cannot judge a step rule, because
+    /// the deviation is not monotone in the geometry). `None` where the fixture
+    /// carries no expected solution.
+    pub(super) deviation: Option<f64>,
 }
 
 impl PathDifficulty {
@@ -39,6 +48,9 @@ impl PathDifficulty {
         }
         if let Some(violation) = self.violation {
             line.push_str(&format!("; max_constraint_violation {violation:e}"));
+        }
+        if let Some(deviation) = self.deviation {
+            line.push_str(&format!("; deviation from the exact optimum {deviation:e}"));
         }
         line
     }
@@ -60,6 +72,12 @@ pub(super) struct DifficultySummary {
     runs_with_cap_hit: u32,
     max_violation: f64,
     runs_with_violation: u32,
+    /// Paths that had an exact expected solution to deviate from.
+    deviation_runs: u32,
+    max_deviation: f64,
+    /// Paths whose deviation exceeds `1e-6`, the corpus's usual solution tolerance
+    /// (a reporting cut-off, not a pass criterion).
+    runs_deviating: u32,
 }
 
 impl DifficultySummary {
@@ -83,6 +101,13 @@ impl DifficultySummary {
                 self.max_violation = self.max_violation.max(violation);
                 if violation > 0.0 {
                     self.runs_with_violation += 1;
+                }
+            }
+            if let Some(deviation) = path.deviation {
+                self.deviation_runs += 1;
+                self.max_deviation = self.max_deviation.max(deviation);
+                if deviation > REPORTED_DEVIATION {
+                    self.runs_deviating += 1;
                 }
             }
         }
@@ -113,6 +138,12 @@ impl DifficultySummary {
             "    terminal max_constraint_violation: largest {:e}; paths with a positive violation: {} of {}",
             self.max_violation, self.runs_with_violation, self.constrained_runs
         );
+        if self.deviation_runs > 0 {
+            eprintln!(
+                "    deviation from the exact optimum: largest {:e}; paths deviating by more than {REPORTED_DEVIATION:e}: {} of {}",
+                self.max_deviation, self.runs_deviating, self.deviation_runs
+            );
+        }
     }
 
     /// Projection cap hits per hundred outer iterations, over the constrained
@@ -142,6 +173,7 @@ mod tests {
             iteration_cap: cap,
             cap_hits: hits,
             violation,
+            deviation: None,
         }
     }
 
@@ -174,6 +206,23 @@ mod tests {
         assert_eq!(summary.max_violation, 2.0);
         assert!((summary.cap_hit_rate_percent() - 12.5).abs() < 1e-12);
         assert!((summary.max_iteration_fraction - 0.1).abs() < 1e-12);
+    }
+
+    #[test]
+    fn the_aggregate_reports_the_largest_deviation_and_how_many_paths_exceed_the_cut_off() {
+        let mut summary = DifficultySummary::default();
+        let with = |deviation| {
+            let mut p = path(2, 5000, Some(0), Some(0.0));
+            p.deviation = deviation;
+            p
+        };
+        summary.record(&[with(Some(1e-9)), with(Some(9e-4)), with(None)]);
+        assert_eq!(summary.deviation_runs, 2);
+        assert_eq!(summary.runs_deviating, 1);
+        assert_eq!(summary.max_deviation, 9e-4);
+        let mut p = path(2, 5000, Some(0), Some(0.0));
+        p.deviation = Some(3e-6);
+        assert!(p.line().ends_with("deviation from the exact optimum 3e-6"));
     }
 
     #[test]

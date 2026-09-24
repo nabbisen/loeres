@@ -86,8 +86,7 @@ is not detected (reported as `NotConverged` / `NoProgress` with a positive
 violation that does not shrink as the sweep cap is raised); the projection is
 inexact by design, converging linearly at a rate set by constraint-normal
 angles, so nearly parallel constraints can make the inner cap bind routinely and
-`projection_max_sweeps` has no default; no convergence rate is claimed and
-`step_scale` must lie in `(0, 2 / λ_max(Q))`; `Q` symmetric positive semidefinite
+`projection_max_sweeps` has no default; the step is bounded, not chosen for you: for symmetric positive semidefinite `Q`, `curvature_bounds()` gives `U ≥ λ_max` and `L ≤ λ_max`, a step `< 2/U` is provably convergent, a step `≥ 2/L` is provably divergent and is rejected as `InvalidInput`, the band between is accepted with no claim, `suggested_step_scale()` returns `1/U` (safe, never optimal, never applied for you), and no numeric convergence rate is claimed (RFC 032); `Q` symmetric positive semidefinite
 is a caller precondition and is not verified; and device and cluster agree within
 tolerance, not bitwise (RFC 013).
 

@@ -395,8 +395,13 @@ where
 ///   set by the angles between constraint normals; nearly parallel constraints
 ///   can make the inner cap bind routinely. `projection_max_sweeps` has no
 ///   default and must suit `projection_tolerance`.
-/// - No convergence rate is claimed; `step_scale ∈ (0, 2/λ_max(Q))` is the
-///   caller's responsibility.
+/// - The step is bounded, not chosen for you (RFC 032). For symmetric positive
+///   semidefinite `Q`: `step_scale ≥ 2/L` (`L = maxᵢ Qᵢᵢ ≤ λ_max`) is provably
+///   divergent and is rejected as [`SolverError::InvalidInput`];
+///   `step_scale < 2/U` (`U = maxᵢ Σⱼ|Qᵢⱼ| ≥ λ_max`) is provably convergent; the
+///   band `2/U ≤ step_scale < 2/L` is **accepted and no claim is made**. See
+///   `QuadraticProgram::curvature_bounds` and `suggested_step_scale`. No numeric
+///   convergence rate is claimed.
 /// - `Q` symmetric positive semidefinite is a caller precondition, not verified.
 /// - Device and cluster results agree within tolerance, not bitwise (RFC 013).
 pub fn solve_constrained_projected_first_order_dyn<P, S>(
@@ -453,6 +458,22 @@ where
             scan_vector(problem.constraint_rhs())?;
         }
         scan_vector(x)?;
+    }
+
+    // RFC 032: a step at or above 2/L, with L = max diag(Q) <= lambda_max, is
+    // provably divergent. The indeterminate band 2/U <= step < 2/L is NOT
+    // rejected. Written as `step * L >= 2` (the same test for L > 0, no division;
+    // never true for L = 0). An O(n) scan; a non-finite diagonal under trust makes
+    // the comparison false and is left to the hot loop, as before this rule.
+    {
+        let hessian = problem.hessian();
+        let mut largest_diagonal = S::zero();
+        for j in 0..n {
+            largest_diagonal = largest_diagonal.max(hessian.get(j, j)?);
+        }
+        if step_scale.mul(largest_diagonal) >= S::one().add(S::one()) {
+            return Err(SolverError::InvalidInput);
+        }
     }
 
     // Structural: only a *finite* lo > hi is InvalidInput; non-finite bounds

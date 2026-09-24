@@ -52,8 +52,12 @@ feasible-approximate.
   the angles between constraint normals, and nearly parallel constraints can make
   the inner cap bind routinely. `projection_max_sweeps` has no default and must
   suit `projection_tolerance`.
-- No convergence rate is claimed; `step_scale` must lie in `(0, 2 / λ_max(Q))`,
-  the caller's responsibility.
+- The step is bounded, not chosen for you (RFC 032): for symmetric positive
+  semidefinite `Q`, `curvature_bounds()` gives `U ≥ λ_max` and `L ≤ λ_max`; a step
+  `< 2/U` is provably convergent, a step `≥ 2/L` is provably divergent and is
+  rejected as `InvalidInput`, and the band between is accepted with no claim.
+  `suggested_step_scale()` returns `1/U`: safe, never optimal, never applied for
+  you. No numeric convergence rate is claimed.
 - `Q` symmetric positive semidefinite is a caller precondition and is not
   verified.
 - Device and cluster agree within tolerance, not bitwise (RFC 013).

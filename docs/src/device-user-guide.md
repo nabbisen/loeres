@@ -90,8 +90,9 @@ What differs from the box-only solve:
   `WorkspaceFootprint`. A problem with no inequalities is not an `M = 0`
   instantiation: it uses `solve_projected_first_order`.
 - **The step scale is an argument**, since the contract carries no execution
-  parameter. `Q` must be symmetric positive semidefinite and `step_scale` must lie
-  in `(0, 2 / lambda_max(Q))`; neither is verified.
+  parameter. `Q` must be symmetric positive semidefinite, which is not verified.
+  The step is only partly checked: a provably divergent step is rejected, and
+  nothing else about it is verified (see **Choosing the step** below).
 - **There are two caps and two tolerances.** `ConstrainedSolveConfig` adds
   `projection_max_sweeps` and `projection_tolerance` to the outer
   `max_iterations` and `tolerance`. The sweep cap has no default: Dykstra
@@ -122,9 +123,43 @@ Under `ConstantIteration` the criterion is evaluated at the **final** iteration
 - The projection is inexact by design. Its rate is set by the angles between
   constraint normals, and nearly parallel constraints can make the inner cap bind
   routinely.
-- No convergence rate is claimed.
+- The step is bounded, not chosen for you; see **Choosing the step** below. No
+  numeric convergence rate is claimed.
 - `Q` symmetric positive semidefinite is a caller precondition.
 - Device and cluster results agree within tolerance, not bitwise.
+
+**Choosing the step (RFC 032).** The kernels take `step_scale` as an argument and
+never choose it. For symmetric positive semidefinite `Q`, projected gradient
+converges only for a step below `2 / lambda_max(Q)`, which the library does not
+compute. It gives you two cheap bounds instead, from
+`QuadraticProgram::curvature_bounds()`:
+
+| Bound | Value | Guarantees |
+|---|---|---|
+| `lambda_max_upper` (`U`, Gershgorin) | `max_i sum_j abs(Q_ij)` | `U >= lambda_max` |
+| `lambda_max_lower` (`L`) | `max_i Q_ii` | `L <= lambda_max` |
+
+| Your step `a` | What is known | What the kernel does |
+|---|---|---|
+| `a < 2 / U` | provably convergent | accepts |
+| `2 / U <= a < 2 / L` | **indeterminate**: it holds steps that converge and steps that do not | **accepts, and makes no claim** |
+| `a >= 2 / L` | provably divergent | rejects as `InvalidInput` |
+
+`suggested_step_scale()` returns `1 / U`, which is always in the first row: safe,
+never optimal (`U` overestimates `lambda_max`). **Nothing calls it for you** —
+substituting a step silently would change results — so pass it yourself. If you
+know `lambda_max`, or have measured your own step, use that. Both bounds are
+**meaningless unless `Q` is symmetric positive semidefinite**, which is your
+responsibility and is not verified.
+
+**The rate.** With an exact projection, `Q` positive *definite* and a step in
+`(0, 2 / U)`, the iteration contracts linearly by
+`max(|1 - a*lambda_min|, |1 - a*lambda_max|)`. The library computes neither
+eigenvalue, so it states this *form* and its dependence on `lambda_min`, not a
+number; for a merely semidefinite `Q` no rate is claimed. The inexact projection
+is a separate matter (see the limits above). Choosing the safe step does **not**
+make the projection exact: the nearly-parallel-constraint fixtures in the
+adversarial conformance suite fail *at* the suggested step.
 
 The cluster counterpart, with a runnable example, is in the
 [Cluster User Guide](cluster-user-guide.md#constrained-quadratic-programs).

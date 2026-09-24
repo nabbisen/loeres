@@ -70,9 +70,21 @@ constrained (quadratic-program) kernels are:
   by the angles between constraint normals, and nearly parallel constraints can
   make the inner cap bind routinely. A cap hit is not an error: read
   `projection_cap_hits` and `max_constraint_violation` on the typed entrypoint.
-- **No convergence rate is claimed.** `step_scale` must lie in
-  `(0, 2 / lambda_max(Q))`; that is the caller's responsibility, as in the
-  box-only kernels.
+- **The step size is bounded, not chosen for you.** For symmetric positive
+  semidefinite `Q`, `curvature_bounds()` returns `U = max_i sum_j |Q_ij|`
+  (`U >= lambda_max`) and `L = max_i Q_ii` (`L <= lambda_max`). A step
+  `step_scale < 2 / U` is **provably convergent**; a step `step_scale >= 2 / L` is
+  **provably divergent** and both constrained kernels reject it as
+  `InvalidInput`; the band `2 / U <= step_scale < 2 / L` is **accepted and no
+  claim is made** (it holds steps that converge and steps that do not).
+  `suggested_step_scale()` returns `1 / U`: always safe, never optimal, and
+  **nothing calls it on your behalf**. Both bounds are meaningless unless `Q` is
+  symmetric positive semidefinite.
+- **The rate is stated in form, not as a number.** With an exact projection, `Q`
+  positive **definite** and `step_scale` in `(0, 2 / U)`, the iteration contracts
+  linearly by `max(|1 - a*lambda_min|, |1 - a*lambda_max|)` (`a` the step). The
+  library computes neither `lambda_min` nor `lambda_max`, so it gives no numeric
+  rate; for a merely semidefinite `Q` no rate is claimed.
 - **`Q` must be symmetric positive semidefinite.** That is a documented caller
   precondition; it is not verified, because verifying it needs a factorization.
 - **Device and cluster agree within tolerance, not bitwise** (RFC 013).

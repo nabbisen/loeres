@@ -390,6 +390,156 @@ fn a_feasible_control_still_reports_converged() {
 }
 
 // ---------------------------------------------------------------------------
+// RFC 032: a step at or above 2/L is rejected; the band [2/U, 2/L) is not.
+//
+// Q = [[4, 1], [1, 3]]: L = 4, U = 5, λ_max = (7 + √5)/2 = 4.618. A step below
+// 2/U = 0.4 provably converges, one at or above 2/L = 0.5 provably diverges, and
+// the band [0.4, 0.5) is indeterminate: it holds steps that converge (0.42) and
+// steps that do not (0.45 > 2/λ_max = 0.433).
+// ---------------------------------------------------------------------------
+
+fn band_program(q: [f64; 4]) -> Dense {
+    Qp {
+        q: DenseMatrix::from_row_major_vec(2, 2, q.to_vec()).unwrap(),
+        c: dv(&[-1.0, -1.0]),
+        lo: dv(&[-10.0, -10.0]),
+        hi: dv(&[10.0, 10.0]),
+        a: DenseMatrix::from_row_major_vec(1, 2, vec![1.0, 0.0]).unwrap(),
+        b: dv(&[1e9]),
+    }
+}
+
+fn solve_with_step(
+    problem: &Dense,
+    step: f64,
+    max_iterations: u32,
+    policy: ClusterValidationPolicy,
+) -> Result<ConstrainedSolveRecord<f64>, SolverError> {
+    let mut x = dv(&[0.0, 0.0]);
+    let mut ws = ClusterConstrainedWorkspace::new(2, 1).unwrap();
+    let config = ConstrainedProjectedConfig {
+        max_iterations,
+        tolerance: 1e-10,
+        projection_max_sweeps: 5000,
+        projection_tolerance: 1e-12,
+    };
+    solve_constrained_projected_first_order_dyn(
+        problem,
+        step,
+        &mut x,
+        &mut ws,
+        &config,
+        &ctx(policy),
+    )
+}
+
+const BAND: [f64; 4] = [4.0, 1.0, 1.0, 3.0];
+
+#[test]
+fn a_step_at_exactly_two_over_l_is_rejected() {
+    let problem = band_program(BAND);
+    for step in [0.5, 0.75] {
+        assert_eq!(
+            solve_with_step(
+                &problem,
+                step,
+                100,
+                ClusterValidationPolicy::ValidateAllInputs
+            )
+            .map(|_| ()),
+            Err(SolverError::InvalidInput),
+            "step {step}"
+        );
+    }
+}
+
+/// Structural, so it holds under `TrustedByCaller` as well: trust skips the
+/// finite scans, not the step rule.
+#[test]
+fn the_step_rule_is_not_skippable_under_trust() {
+    let trust = TrustedByCaller::caller_assertion(
+        loeres::validation::ValidationScope::FINITE,
+        TrustToken::new(32),
+        Some("rfc032"),
+    );
+    assert_eq!(
+        solve_with_step(
+            &band_program(BAND),
+            0.5,
+            100,
+            ClusterValidationPolicy::TrustedByCaller(trust)
+        )
+        .map(|_| ()),
+        Err(SolverError::InvalidInput)
+    );
+}
+
+#[test]
+fn a_step_just_below_two_over_u_is_accepted_and_converges() {
+    let record = solve_with_step(
+        &band_program(BAND),
+        0.399,
+        5000,
+        ClusterValidationPolicy::ValidateAllInputs,
+    )
+    .unwrap();
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+    assert_eq!(record.max_constraint_violation, 0.0);
+}
+
+/// The regression guard against over-rejection: the indeterminate band is
+/// accepted.
+#[test]
+fn the_indeterminate_band_is_accepted_without_a_claim() {
+    let problem = band_program(BAND);
+    let usable = solve_with_step(
+        &problem,
+        0.42,
+        5000,
+        ClusterValidationPolicy::ValidateAllInputs,
+    )
+    .unwrap();
+    assert_eq!(usable.report.status(), SolveStatus::Converged);
+    let unusable = solve_with_step(
+        &problem,
+        0.45,
+        200,
+        ClusterValidationPolicy::ValidateAllInputs,
+    )
+    .unwrap();
+    assert_eq!(unusable.report.status(), SolveStatus::NotConverged);
+}
+
+#[test]
+fn the_suggested_step_is_accepted_and_converges() {
+    let problem = band_program(BAND);
+    let step = problem.suggested_step_scale().unwrap();
+    assert_eq!(step, 0.2);
+    let record = solve_with_step(
+        &problem,
+        step,
+        5000,
+        ClusterValidationPolicy::ValidateAllInputs,
+    )
+    .unwrap();
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+}
+
+#[test]
+fn a_zero_q_is_never_rejected_by_the_step_rule() {
+    let mut problem = band_program([0.0; 4]);
+    problem.c = dv(&[0.0, 0.0]);
+    let record = solve_with_step(
+        &problem,
+        1e6,
+        100,
+        ClusterValidationPolicy::ValidateAllInputs,
+    )
+    .unwrap();
+    assert_eq!(record.report.status(), SolveStatus::Converged);
+}
+
+// ---------------------------------------------------------------------------
 // Randomized differential tests against an exact active-set reference. A
 // per-sweep multiplier reset (violating §0.3.2) is caught by these and by none
 // of the deterministic cases above (review 055).

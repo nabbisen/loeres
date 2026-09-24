@@ -330,6 +330,7 @@ where
     if step_scale <= S::zero() {
         return Err(SolverError::InvalidInput);
     }
+    reject_provably_divergent_step(problem, step_scale, N)?;
 
     let lo = problem.lower_bounds();
     let hi = problem.upper_bounds();
@@ -367,6 +368,37 @@ where
         workspace.row_norms_sq.set(i, sum_sq)?;
     }
 
+    Ok(())
+}
+
+/// RFC 032: reject `step_scale ≥ 2/L`, where `L = maxᵢ Qᵢᵢ ≤ λ_max(Q)`.
+///
+/// `α ≥ 2/L` implies `α ≥ 2/λ_max`, and projected gradient does not converge for
+/// any symmetric positive semidefinite `Q` at such a step, so the step is provably
+/// divergent. The band `2/U ≤ α < 2/L` (with `U` the Gershgorin bound) is **not**
+/// rejected: neither bound decides it, and refusing it would refuse usable steps.
+///
+/// Written as `α·L ≥ 2`, which is the same test for `L > 0` without a division,
+/// and never fires for `L = 0` (no curvature). An `O(n)` diagonal scan. A
+/// non-finite diagonal entry is left for the hot loop's finiteness check, exactly
+/// as before this rule: it makes the comparison false rather than an error here.
+fn reject_provably_divergent_step<P, S>(
+    problem: &P,
+    step_scale: S,
+    n: usize,
+) -> Result<(), SolverError>
+where
+    P: QuadraticProgram<S>,
+    S: FiniteScalar + MetricScalar,
+{
+    let hessian = problem.hessian();
+    let mut largest_diagonal = S::zero();
+    for j in 0..n {
+        largest_diagonal = largest_diagonal.max(hessian.get(j, j)?);
+    }
+    if step_scale.mul(largest_diagonal) >= S::one().add(S::one()) {
+        return Err(SolverError::InvalidInput);
+    }
     Ok(())
 }
 
@@ -553,8 +585,13 @@ where
 ///   set by the angles between constraint normals; nearly parallel constraints
 ///   can make the inner cap bind routinely. `projection_max_sweeps` has no
 ///   default and must suit `projection_tolerance`.
-/// - No convergence rate is claimed; `step_scale ∈ (0, 2/λ_max(Q))` is the
-///   caller's responsibility.
+/// - The step is bounded, not chosen for you (RFC 032). For symmetric positive
+///   semidefinite `Q`: `step_scale ≥ 2/L` (`L = maxᵢ Qᵢᵢ ≤ λ_max`) is provably
+///   divergent and is rejected as [`SolverError::InvalidInput`];
+///   `step_scale < 2/U` (`U = maxᵢ Σⱼ|Qᵢⱼ| ≥ λ_max`) is provably convergent; the
+///   band `2/U ≤ step_scale < 2/L` is **accepted and no claim is made**. See
+///   `QuadraticProgram::curvature_bounds` and `suggested_step_scale`. No numeric
+///   convergence rate is claimed.
 /// - `Q` symmetric positive semidefinite is a caller precondition, not verified.
 /// - Device and cluster results agree within tolerance, not bitwise (RFC 013).
 pub fn solve_constrained_projected_first_order<P, S, const N: usize, const M: usize>(
