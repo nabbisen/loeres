@@ -142,7 +142,8 @@ is accepted and performs the single exact box projection with no Dykstra sweep �
 the RFC 016 step, operation for operation. Results match RFC 016 up to the sign of
 zero **when the two oracles coincide** (`Q = I`, `c = −t`); for a general `Q` the
 oracles differ in floating point and the agreement is within tolerance, not exact
-(RFC 027 §0.2.5).
+(RFC 027 §0.2.5). It additionally validates `step_scale` against `2/L` (RFC 032), so a provably divergent
+step is rejected where RFC 016 would run to its cap.
 
 **Limits of this kernel** (RFC 027 §11.6):
 

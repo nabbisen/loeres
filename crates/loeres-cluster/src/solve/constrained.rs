@@ -20,7 +20,9 @@
 //! `m = 0` is accepted at runtime — a zero-row `MatrixAccess`, canonically
 //! core's `MatrixView` over an empty slice (§0.2.2) — and short-circuits to the
 //! single exact box projection with no Dykstra sweep, so it performs precisely
-//! the RFC 016 step (§0.2.3).
+//! the RFC 016 step (§0.2.3). It additionally validates `step_scale` against
+//! `2/L` (RFC 032), so a provably divergent step is rejected where RFC 016 would
+//! run to its cap.
 //!
 //! Validation per RFC 012/016: structural checks always run; finite scans of
 //! `Q, c, A, b, lo, hi, x₀` are skippable under `TrustedByCaller(FINITE)`;

@@ -54,6 +54,9 @@ Development toward the next release.
   "no convergence rate is claimed" with what each bound licenses (including that the middle
   band is accepted without a claim) and the *form* of the rate; no numeric rate is stated,
   because the library computes neither `λ_min` nor `λ_max`.
+- The cluster README, user guide and kernel rustdoc note that `m = 0`, while the RFC 016 step
+  operation for operation, additionally validates `step_scale` against `2/L`, so a provably
+  divergent step is rejected where RFC 016 would run to its cap.
 - The conformance runner's difficulty report gains the deviation from the exact optimum
   (reporting only), because cap hits alone cannot judge a step rule.
 - Measured effect on the corpus: none. The per-fixture output of smoke, extended and the

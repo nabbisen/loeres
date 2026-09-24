@@ -70,7 +70,9 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   Dykstra sweep — the RFC 016 step, operation for operation. Results match
   RFC 016 up to the sign of zero **when the two oracles coincide** (`Q = I`,
   `c = −t`); for a general `Q` the oracles differ in floating point and the
-  agreement is within tolerance, not exact (RFC 027 §0.2.5).
+  agreement is within tolerance, not exact (RFC 027 §0.2.5). It additionally
+  validates `step_scale` against `2/L` (RFC 032), so a provably divergent step is
+  rejected where RFC 016 would run to its cap.
 - `Converged` requires three things together: the iterate is **feasible within
   `projection_tolerance`** (Amendment 5), **stationary** at the final iteration
   (RFC 029), and produced by an **exact projection** — the final outer iteration's
