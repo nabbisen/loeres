@@ -37,6 +37,7 @@ constraint_rhs = [0.0, 0.0, 1e-06]
 [expected]
 status = "converged"
 termination = "convergence-criterion"
+infeasibility_evidence = false
 solution = [5e-07, 5e-07]
 error = "none"
 violation_max = 1e-8

@@ -57,10 +57,17 @@ constrained cluster kernel, against closed-form optima (each derived and
 KKT-checked in the fixture's own comment). Every closed form is a Euclidean
 projection, so `quadratic_diag` must be all `1.0`. `variant = "infeasible"`
 fixtures assert `NotConverged` with `NoProgress` (`Converged` means feasible,
-RFC 027 Amendment 5, and needs an uncapped final projection, RFC 033), `projection_cap_hits > 0` and a violation that does **not
-shrink** when the sweep cap is raised tenfold; they must not be reshaped to avoid
+RFC 027 Amendment 5, and needs an uncapped final projection, RFC 033),
+`projection_cap_hits > 0` and a violation that does **not shrink** when the sweep
+cap is raised tenfold; they must not be reshaped to avoid
 exactly-cancelling geometry (RFC 027 section 0.3.4). A `trusted-by-caller` fixture
 is cluster-only and also checks that the record says finiteness was trusted.
+
+An optional `[expected] infeasibility_evidence` asserts the kernels' heuristic hint
+(RFC 034 Amendment 2) on every path. A fixture states it only where the geometry makes the
+answer unambiguous: `true` for the exactly-cancelling infeasible systems, `false` for the
+nearly-parallel and barely-feasible families; absent means unasserted. It is a hint, wrong in
+both directions, never a status. The runner reports on how many constrained paths it was set.
 
 A new `m0_identity` category runs every schema-1/2 solve fixture through the
 constrained cluster kernel with `m = 0` and the fixtures' own oracle, and requires

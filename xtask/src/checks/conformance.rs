@@ -799,6 +799,7 @@ fn box_only_difficulty(
                 cap_hits: None,
                 violation: None,
                 deviation: None,
+                infeasibility_evidence: None,
             })
         })
         .collect()

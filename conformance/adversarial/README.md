@@ -19,3 +19,7 @@ terminal `max_constraint_violation`) beside each fixture.
 | `qp-adv-barely-feasible-` | small non-zero feasible volume | triangle areas down to `5e-13`; a simplex volume of `1.7e-16` |
 | `qp-adv-box-row-` | a box face and a constraint row **both active** at the optimum, so the box's Dykstra increment is exercised (handoff 5a; a box wide enough never to bind hides that) | targets cut off by a row and one or two box faces (2, 3 and 4 dimensions), and targets inside the box whose row projection carries the iterate out of it (2 and 3 dimensions); each fixture names its active row and face |
 | `qp-adv-cancelling-` | exactly cancelling infeasible geometry (RFC 027 section 0.3.4) | exactly opposite normals; normals summing to exactly zero; each with a Farkas certificate |
+
+The exactly-cancelling fixtures assert `infeasibility_evidence = true` and the nearly-parallel and
+barely-feasible fixtures assert `false` (RFC 034 Amendment 2). That field is a heuristic hint, wrong
+in both directions and never a status; it is asserted only where the geometry is unambiguous.

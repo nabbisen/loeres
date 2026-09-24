@@ -434,7 +434,9 @@ Important scope rule:
 - **PF-004** is realized by the solver-specific RFC 006/RFC 016 oracle traits and,
   for the constrained case, by the `loeres::problem` contract; there is no
   separate generic iterative-problem contract.
-- Infeasibility is not detected (it is reported as non-convergence), and the
+- Infeasibility is not detected as a status (it is reported as non-convergence;
+  post-`0.21.3` trees add only a heuristic `infeasibility_evidence` record field, RFC 034,
+  wrong in both directions), and the
   projection is inexact by design; see RFC 027 §11.6, which is stated in every
   user-facing surface.
 

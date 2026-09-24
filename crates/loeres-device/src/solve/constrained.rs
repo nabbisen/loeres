@@ -740,9 +740,12 @@ where
 /// # What this does not claim (RFC 027 §11.6)
 ///
 /// - LP is expressible (`Q = 0`) but not solved.
-/// - Infeasibility is not detected: it is reported as `NotConverged` with
-///   `NoProgress`, with `projection_cap_hits > 0` and a positive violation that
-///   does not shrink as `projection_max_sweeps` is raised. It is never an error.
+/// - Infeasibility is not detected as a status: it is reported as `NotConverged`
+///   with `NoProgress`, with `projection_cap_hits > 0` and a positive violation
+///   that does not shrink as `projection_max_sweeps` is raised. It is never an
+///   error. The record's `infeasibility_evidence` is a heuristic hint, wrong in
+///   both directions (RFC 034 Amendment 2): see its documentation for the measured
+///   rates and the reason.
 /// - The projection is inexact by design. Dykstra converges linearly at a rate
 ///   set by the angles between constraint normals; nearly parallel constraints
 ///   can make the inner cap bind routinely. `projection_max_sweeps` has no

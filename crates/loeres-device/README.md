@@ -49,8 +49,12 @@ and the returned point may be only feasible-approximate.
 ### Limits of the constrained kernel (RFC 027 §11.6)
 
 - LP is expressible (`Q = 0`) but not solved.
-- Infeasibility is not detected; it is reported as `NotConverged` / `NoProgress`
-  with a positive violation that does not shrink as the sweep cap is raised.
+- Infeasibility is not detected as a status; it is reported as `NotConverged` /
+  `NoProgress` with a positive violation that does not shrink as the sweep cap is
+  raised. `infeasibility_evidence()` on the report is only a heuristic hint, wrong in
+  both directions (RFC 034): set on about 3 in 100,000 feasible near-parallel problems
+  and 2 in 10,000 thin slivers (wedges whose projection needs far more sweeps than the
+  cap), and missing most weakly infeasible systems.
 - The projection is inexact by design: it converges linearly at a rate set by
   the angles between constraint normals, and nearly parallel constraints can make
   the inner cap bind routinely. `projection_max_sweeps` has no default and must

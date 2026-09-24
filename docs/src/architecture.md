@@ -29,7 +29,8 @@ set). The status is truthful: `Converged` means feasible within
 `projection_tolerance`, stationary at the final iteration, and produced by a
 projection that did not hit its sweep cap (RFC 027 Amendment 5, RFC 029, RFC 033);
 an infeasible polyhedron, or a capped projection, is `NotConverged` with
-`NoProgress`, never an error. The kernel's limits (RFC 027 §11.6) are in the
+`NoProgress`, never an error. The solve record also carries a heuristic
+`infeasibility_evidence` hint (RFC 034), documented as wrong in both directions. The kernel's limits (RFC 027 §11.6) are in the
 [device](device-user-guide.md) and [cluster](cluster-user-guide.md) user guides.
 
 The PFO problem traits are execution-crate contracts, not implementations of a

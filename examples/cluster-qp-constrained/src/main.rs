@@ -7,7 +7,8 @@
 //!   `QuadraticProgram` — over dynamic dense storage,
 //! - solving it through the typed cluster entrypoint and reading the **terminal
 //!   constraint violation beside the status**, for a slack, an active and an
-//!   infeasible polyhedron,
+//!   infeasible polyhedron, together with the heuristic `infeasibility_evidence`
+//!   hint (wrong in both directions; never use it for control flow),
 //! - what the batch seam does and does not carry: status only.
 //!
 //! The problem is `minimize ½ xᵀQx + cᵀx` over `0 ≤ x ≤ 10` and `Ax ≤ b`, with
@@ -15,8 +16,9 @@
 //! semidefinite; that is a caller precondition the kernel does not verify.
 //!
 //! What this example does **not** show: LP (expressible with `Q = 0`, not solved
-//! by this kernel), infeasibility *detection* (an infeasible polyhedron is only
-//! reported as a non-converged status), or any rate claim. See RFC 027 §11.6.
+//! by this kernel), infeasibility *detection* as a status (an infeasible polyhedron
+//! is only reported as a non-converged status, with the heuristic hint beside it), or
+//! any numeric rate claim. See RFC 027 §11.6 and RFC 034.
 
 use loeres::{
     BoxBounds, LinearInequalities, QuadraticObjective, QuadraticProgram, SolveStatus,
@@ -180,12 +182,13 @@ fn solve_typed(program: &Program) -> String {
         &context,
     ) {
         Ok(record) => format!(
-            "{} in {} iteration(s); x = {}; violation = {:.3e}; projection cap hits = {}",
+            "{} in {} iteration(s); x = {}; violation = {:.3e}; projection cap hits = {}; infeasibility evidence (heuristic) = {}",
             verdict(record.report.status(), record.report.termination()),
             record.report.iterations_executed(),
             render(&x),
             record.max_constraint_violation,
             record.projection_cap_hits,
+            record.infeasibility_evidence,
         ),
         Err(e) => format!("failed: {e:?}"),
     }

@@ -22,8 +22,9 @@ verified. `curvature_bounds()` and `suggested_step_scale()` (RFC 032) bound
 `λ_max(Q)` from above (Gershgorin) and below (the largest diagonal entry) so a
 caller can pick a provably safe step; both bounds are meaningless without that
 precondition. The kernels that consume it (`loeres-device`, `loeres-cluster`) report
-`Converged` only for a feasible, stationary iterate produced by an exact (uncapped) projection; infeasibility is not detected (it is
-reported as `NotConverged` with `NoProgress`); the projection is inexact by design
+`Converged` only for a feasible, stationary iterate produced by an exact (uncapped) projection; infeasibility is not detected as a status
+(it is reported as `NotConverged` with `NoProgress`; the kernels' records carry only a
+heuristic `infeasibility_evidence` hint, wrong in both directions, RFC 034); the projection is inexact by design
 and no numeric convergence rate is claimed (RFC 027 §11.6, RFC 032).
 
 See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)

@@ -68,8 +68,9 @@ as `max_iterations x projection_max_sweeps`: a service that accepts those caps
 from a request must bound both. Cluster solves poll cancellation between
 sweeps. `Q` symmetric positive semidefinite is an unverified caller precondition;
 a violation degrades convergence, it does not corrupt memory. An infeasible
-polyhedron is reported as `NotConverged` with `NoProgress`, not detected or
-rejected.
+polyhedron is reported as `NotConverged` with `NoProgress`, not rejected; the
+record's `infeasibility_evidence` is a heuristic hint, wrong in both directions,
+and must not gate a security decision.
 
 These controls do not establish broad LP/SOCP support, high-throughput or
 large-N capacity, memory-pressure behavior, denial-of-service resistance, or

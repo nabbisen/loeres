@@ -62,9 +62,22 @@ constrained (quadratic-program) kernels are:
 
 - **LP is expressible, not solved.** `Q = 0` is a legal input, but projected
   gradient on a linear objective has no curvature to converge against.
-- **Infeasibility is not detected.** An infeasible polyhedron is reported as
+- **Infeasibility is not detected as a status — there is a heuristic hint, and it
+  is wrong in both directions.** An infeasible polyhedron is reported as
   `NotConverged` with `NoProgress` and a positive `max_constraint_violation`
   that does not shrink as the projection cap is raised; it is never an error.
+  The solve record additionally carries `infeasibility_evidence`, set only at a
+  stationary outer step whose final projection hit its sweep cap, when the cap is
+  at least 64 sweeps, the largest Hildreth multiplier at the final sweep is at
+  least 1.9 times its midpoint value, and the violation is not shrinking and
+  exceeds `projection_tolerance` (RFC 034). Measured on random problems: it is
+  **set on about 3 in 100,000** feasible near-parallel problems and **2 in
+  10,000** feasible thin slivers, which are wedges whose projection needs far more
+  sweeps than the cap and which nothing computed inside the cap can tell from an
+  infeasible system; and it **misses** most weakly infeasible ones (set for 15% of
+  random infeasible polytopes at a cap of 100 sweeps, 45% at 3000, and about 86%
+  of the strongly infeasible ones at 3000). **Do not use it for control flow.**
+  The batch path carries the status only and never carries the hint.
   `Converged` on a constrained solve requires **three things together**: the
   returned iterate is **feasible** within `projection_tolerance` (RFC 027
   Amendment 5); it is **stationary**, the outer step being within `tolerance`, at

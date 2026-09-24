@@ -35,6 +35,15 @@ Development toward the next release.
   `not-converged` / `no-progress` and assert `infeasibility_evidence = true`; the five
   nearly-parallel feasible fixtures assert `false`. The fixture schema gains the optional
   `[expected] infeasibility_evidence`.
+- **Documentation (S2):** `TERMS_OF_USE.md`, both user guides, the crate READMEs, the kernels'
+  rustdoc, the introduction, architecture and threat-model chapters and the conformance READMEs
+  describe the field as a heuristic hint, **wrong in both directions**, with the measured rates
+  (set on about 3 in 100,000 feasible near-parallel problems and 2 in 10,000 thin slivers;
+  set for 15% to 45% of random infeasible polytopes depending on the cap) and the reason
+  (a feasible wedge needing `10^6`–`10^7` sweeps is, at a cap of `10^4`, indistinguishable from
+  an infeasible system). The earlier "one-sided" framing is gone. The example prints the field;
+  the conformance runner reports on how many constrained paths it was set, and the
+  barely-feasible fixtures assert it `false`.
 - Rate tests bound the evidence's false-positive rate on ordinary and thin-sliver feasible
   polytopes (below `3e-4` and `1e-3` of trials; measured `3e-5` and `2e-4`).
 

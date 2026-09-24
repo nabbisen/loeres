@@ -120,13 +120,44 @@ hard geometry — nearly parallel constraint normals — a point that is feasibl
 within tolerance can therefore still read `NotConverged`: the kernel will not
 claim an exact projection it did not compute.
 
+**Reading `infeasibility_evidence` (RFC 034) — a heuristic, wrong in both
+directions.** The report's `infeasibility_evidence()` is `true` only at a stationary
+outer step whose final projection hit `projection_max_sweeps`, when that cap is at
+least 64 sweeps, the largest Hildreth multiplier at the final sweep is at least 1.9
+times its value at the midpoint sweep, and the terminal violation is not shrinking
+(at least 0.99 of its midpoint value) and exceeds `projection_tolerance`. The status
+is untouched: an infeasible polyhedron is `NotConverged` / `NoProgress` either way,
+and there is deliberately **no** `Infeasible` status, because a status is a claim and
+this is an observation. Do not use it for control flow. Measured, on random problems
+(`Q = I`, step 1; the tests in `loeres-cluster` reproduce these):
+
+| Question | Measured |
+|---|---|
+| set on a **feasible** near-parallel / near-antiparallel problem | about **3 in 100,000** trials (4 of 134,973, caps 10 to 10,000) |
+| set on a **feasible thin sliver** (a wedge of half-angle about `1e-3`) | about **2 in 10,000** trials (30 of 134,964) |
+| set on an **infeasible** polytope, by sweep cap 100 / 300 / 1000 / 3000 | **15% / 25% / 38% / 45%** of 600 |
+| … the strongly infeasible ones (margin 0.1 to 1) at a cap of 3000 | about **86%** |
+| … the weakly infeasible ones (margin 1e-3 to 1e-4) at a cap of 3000 | about **21%** |
+
+**Why it cannot be better than this.** A feasible wedge whose projection needs
+`10^6` to `10^7` sweeps is, at a cap of `10^4`, the limiting case of a system that
+never converges: its multipliers are still rising roughly linearly and its violation
+has barely started to shrink, exactly like an infeasible one. No signal computed
+inside the cap separates them, so the rate above is a floor for any rule of this
+kind, not a tuning error. A Farkas-certificate check was tried and removed none of
+the false positives. Detection is not one-sided: it misses most weakly infeasible
+systems **and** it is set on some feasible problems whose convergence time exceeds
+the cap. (The cluster batch path carries the status only, so it never carries the hint.)
+
 **Limits of this kernel** (RFC 027 §11.6):
 
 - LP is expressible (`Q = 0`) but not solved; projected gradient on a linear
   objective has no curvature to converge against.
-- Infeasibility is not detected. It is reported as `NotConverged` / `NoProgress`
-  with a positive violation that does not shrink as `projection_max_sweeps` is
-  raised. It is never an error.
+- Infeasibility is not detected as a status. It is reported as `NotConverged` /
+  `NoProgress` with a positive violation that does not shrink as
+  `projection_max_sweeps` is raised; it is never an error. The `infeasibility_evidence`
+  hint is heuristic and wrong in both directions; see **Reading
+  `infeasibility_evidence`** above.
 - The projection is inexact by design. Its rate is set by the angles between
   constraint normals, and nearly parallel constraints can make the inner cap bind
   routinely.

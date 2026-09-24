@@ -778,8 +778,9 @@ the `loeres::problem` contract: any type implementing `QuadraticObjective`,
 (and the `ClusterConstrainedJob` batch adapter, which carries the status only).
 A `ModelBuilder`-style construction API for it is **deferred**; the shipped
 example, `examples/cluster-qp-constrained/`, implements the traits directly. LP
-is expressible (`Q = 0`) but not solved, infeasibility is not detected, and the
-projection is inexact by design (RFC 027 §11.6).
+is expressible (`Q = 0`) but not solved, infeasibility is not detected as a status
+(post-`0.21.3` trees add only a heuristic `infeasibility_evidence` record field, RFC 034, wrong
+in both directions), and the projection is inexact by design (RFC 027 §11.6).
 
 ### 3.3 Cluster Storage Binding
 

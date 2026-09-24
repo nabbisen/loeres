@@ -754,6 +754,7 @@ fn difficulty_of(f: &ConstrainedFixture, paths: &[(&'static str, PathRun)]) -> V
                 iterations: solved.report.iterations_executed(),
                 iteration_cap: f.config.max_iterations,
                 cap_hits: Some(solved.projection_cap_hits),
+                infeasibility_evidence: Some(solved.infeasibility_evidence),
                 violation: Some(solved.max_constraint_violation),
                 deviation: (!f.expected.solution.is_empty()).then(|| {
                     solved

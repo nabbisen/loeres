@@ -35,6 +35,9 @@ pub(super) struct PathDifficulty {
     /// the deviation is not monotone in the geometry). `None` where the fixture
     /// carries no expected solution.
     pub(super) deviation: Option<f64>,
+    /// The kernels' heuristic `infeasibility_evidence` observation (RFC 034
+    /// Amendment 2). `None` for the box-only kernels.
+    pub(super) infeasibility_evidence: Option<bool>,
 }
 
 impl PathDifficulty {
@@ -51,6 +54,9 @@ impl PathDifficulty {
         }
         if let Some(deviation) = self.deviation {
             line.push_str(&format!("; deviation from the exact optimum {deviation:e}"));
+        }
+        if self.infeasibility_evidence == Some(true) {
+            line.push_str("; infeasibility_evidence set");
         }
         line
     }
@@ -78,6 +84,8 @@ pub(super) struct DifficultySummary {
     /// Paths whose deviation exceeds `1e-6`, the corpus's usual solution tolerance
     /// (a reporting cut-off, not a pass criterion).
     runs_deviating: u32,
+    /// Constrained paths on which the heuristic `infeasibility_evidence` was set.
+    runs_with_evidence: u32,
 }
 
 impl DifficultySummary {
@@ -102,6 +110,9 @@ impl DifficultySummary {
                 if violation > 0.0 {
                     self.runs_with_violation += 1;
                 }
+            }
+            if path.infeasibility_evidence == Some(true) {
+                self.runs_with_evidence += 1;
             }
             if let Some(deviation) = path.deviation {
                 self.deviation_runs += 1;
@@ -137,6 +148,10 @@ impl DifficultySummary {
         eprintln!(
             "    terminal max_constraint_violation: largest {:e}; paths with a positive violation: {} of {}",
             self.max_violation, self.runs_with_violation, self.constrained_runs
+        );
+        eprintln!(
+            "    infeasibility_evidence (heuristic, RFC 034): set on {} of {} constrained paths",
+            self.runs_with_evidence, self.constrained_runs
         );
         if self.deviation_runs > 0 {
             eprintln!(
@@ -174,6 +189,7 @@ mod tests {
             cap_hits: hits,
             violation,
             deviation: None,
+            infeasibility_evidence: None,
         }
     }
 
@@ -223,6 +239,22 @@ mod tests {
         let mut p = path(2, 5000, Some(0), Some(0.0));
         p.deviation = Some(3e-6);
         assert!(p.line().ends_with("deviation from the exact optimum 3e-6"));
+    }
+
+    #[test]
+    fn the_aggregate_counts_paths_where_the_heuristic_evidence_was_set() {
+        let mut summary = DifficultySummary::default();
+        let with = |evidence| {
+            let mut p = path(2, 5000, Some(2), Some(1.0));
+            p.infeasibility_evidence = evidence;
+            p
+        };
+        let set = with(Some(true));
+        assert!(set.line().ends_with("; infeasibility_evidence set"));
+        summary.record(&[set, with(Some(false)), with(None)]);
+        assert_eq!(summary.runs_with_evidence, 1);
+        assert_eq!(summary.constrained_runs, 3);
+        assert!(!with(Some(false)).line().contains("infeasibility_evidence"));
     }
 
     #[test]

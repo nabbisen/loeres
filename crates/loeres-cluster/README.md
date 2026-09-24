@@ -89,8 +89,11 @@ cluster now does real solving (not only orchestration of deterministic test jobs
 - See `examples/cluster-qp-constrained/`.
 
 Limits (RFC 027 §11.6): LP is expressible (`Q = 0`) but not solved; infeasibility
-is not detected (reported as `NotConverged` / `NoProgress` with a positive
-violation that does not shrink as the sweep cap is raised); the projection is
+is not detected as a status (reported as `NotConverged` / `NoProgress` with a positive
+violation that does not shrink as the sweep cap is raised) and `infeasibility_evidence`
+on the record is only a heuristic hint, wrong in both directions (RFC 034: set on about
+3 in 100,000 feasible near-parallel problems and 2 in 10,000 thin slivers, and missing
+most weakly infeasible systems); the projection is
 inexact by design, converging linearly at a rate set by constraint-normal
 angles, so nearly parallel constraints can make the inner cap bind routinely and
 `projection_max_sweeps` has no default; the step is bounded, not chosen for you: for symmetric positive semidefinite `Q`, `curvature_bounds()` gives `U ≥ λ_max` and `L ≤ λ_max`, a step `< 2/U` is provably convergent, a step `≥ 2/L` is provably divergent and is rejected as `InvalidInput`, the band between is accepted with no claim, `suggested_step_scale()` returns `1/U` (safe, never optimal, never applied for you), and no numeric convergence rate is claimed (RFC 032); `Q` symmetric positive semidefinite
