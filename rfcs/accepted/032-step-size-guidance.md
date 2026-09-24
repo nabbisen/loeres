@@ -98,6 +98,12 @@ merely semidefinite, no rate is claimed — the same position as today.
 - **No change to the box-only RFC 006/016 kernels' problem traits**, which carry
   their own `step_scale` and no `Q`.
 - No new dependency; no existing signature changed.
+- **This RFC does not address RFC 031 S2's nearly-parallel-normals finding**
+  (architect review 067), and
+  must not be described as if it did. Those fixtures fail *at* `step_scale = 1.0`,
+  which is exactly this RFC's suggested step for `Q = I` (`U = 1`). The defect
+  there is the inner projection's accuracy, not the outer step size; RFC 033
+  covers it.
 
 ## 5. Risks
 
@@ -120,5 +126,10 @@ merely semidefinite, no rate is claimed — the same position as today.
 4. `TERMS_OF_USE.md` and both user guides state what the bounds license and the
    indeterminate band.
 5. `cargo xtask check` 17 gates, `differential` PASS, smoke conformance 24/24.
-6. RFC 031's adversarial suite reports its step-related figures before and after,
-   so the rule's effect is measured rather than assumed.
+6. RFC 031's adversarial suite reports, before and after, both its cap-hit rates
+   **and the deviation from the exact optimum**, so the rule's effect is measured
+   rather than assumed. Deviation is required because RFC 031 S2 showed it is
+   **not monotone** in the angle between constraint normals (architect review 067
+   measured `1.34e-3` at
+   `ε = 0.002` against `4.10e-4` at `ε = 0.005`), so cap hits alone cannot judge
+   a step rule.
