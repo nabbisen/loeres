@@ -7,12 +7,11 @@ sign-off (see RFC 000 and the requirements specification).
 
 ## [0.22.0] — 2026-09-24 — An honest infeasibility hint
 
-**Release status:** unreleased
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
 
 Repository release `0.22.0` adds a heuristic hint that a constrained solve may be
 infeasible, and is the first minor release since `0.21.0`. RFC 034 is implemented and
-moves to `rfcs/done/` in this revision. This tree is not itself a release until it is
-tagged and distributed.
+moves to `rfcs/done/` in this revision.
 
 **A source break, and who it affects.** `loeres-cluster`'s `ConstrainedSolveRecord<S>`,
 which shipped in `0.21.1` with public fields and no `#[non_exhaustive]`, gains a field
