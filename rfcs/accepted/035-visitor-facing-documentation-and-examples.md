@@ -1,6 +1,6 @@
 # RFC 035 - Visitor-Facing Documentation and Real-World Examples
 
-**Status.** Proposed (2026-09-26)
+**Status.** Accepted (design frozen 2026-09-26)
 **Design approval.** Architect-authored from the project owner's 2026-09-25 request and reference guideline; assessment in architect review 075.
 **Tracks.** The landing page, the book's entry path, and the example set. Adopts a documentation convention so the regression this RFC fixes does not recur.
 **Touches.** `README.md`, `docs/src/` (new chapters, `SUMMARY.md`), `examples/`, `Cargo.toml` (workspace `exclude`), `xtask/src/checks/doc_currency.rs`, `CONTRIBUTING.md`.
