@@ -14,6 +14,12 @@ problem they recognise, and reads six sentences of release bookkeeping before th
 one-line summary. Fix the landing page, add two examples that state a real
 problem before they name a type, and adopt a convention so it stays fixed.
 
+**Examples are documents, and this RFC treats them as such.** Today they are
+maintained as build artifacts: the `examples` gate compiles each one and checks
+its resolved dependency graph, and **never runs it**. Nine lines of captured
+example output are quoted verbatim in the two user guides, and nothing checks
+them. `doc-currency` does not mention examples at all.
+
 ## 2. What is wrong, measured
 
 `README.md` is **94 lines** — inside the reference guideline's 100–200 band. The
@@ -35,6 +41,20 @@ page, added by the architect nine surfaces at a time.
 The three existing examples each open with *"What this example demonstrates
 (RFC NNN §…)"* and exercise an API surface. The README claims robotics, MPC,
 scheduling and energy; **no example is any of them**.
+
+**And nothing keeps them honest.** Measured:
+
+| Asset | Guarded by |
+|---|---|
+| example compiles | `examples` gate |
+| example's resolved dependency graph | `examples` gate (forbidden crates) |
+| **example actually runs** | **nothing — the gate never runs one** |
+| **9 captured-output lines quoted in the user guides** | **nothing** |
+| **example prose** (what it claims to demonstrate) | **nothing** |
+
+RFC 034 S2 updated one of those captured blocks when the printed line gained a
+field — because the implementer remembered, not because anything would have
+caught it.
 
 ## 3. Design
 
@@ -91,6 +111,13 @@ a tracked chapter in the book's maintainer section and is linked from
 `CONTRIBUTING.md`. Its mechanically checkable parts — README line ceiling, the
 snippet match — become `doc-currency` assertions; the rest is guidance.
 
+**The convention covers examples explicitly**, because they are documents:
+§3.1's four criteria are stated there as the standard for any new example; each
+example says which problem it solves and for whom; and the workflow rule is
+recorded — **a slice that changes a public surface or a printed record states
+whether an example is affected, in its review request**, the way slices already
+state their evidence.
+
 ### 3.3 S3 — an entry path in the book, and one home for currency
 
 - **A getting-started chapter that is a tutorial**, not a reference: install,
@@ -101,6 +128,29 @@ snippet match — become `doc-currency` assertions; the rest is guidance.
   carries RFCs …" sentence collapses to a single passage in the book, which the
   README links. The apex trio's RFC 024 blocks are **untouched** — they are the
   normative currency record and are not what this RFC is about.
+
+### 3.4 S4 — examples maintained like documents
+
+**The `examples` gate runs each example**, not only builds it. Compilation proves
+a signature; running proves the program still works. Cost is seconds for three
+short programs, and it closes the gap that an example can compile while being
+broken.
+
+**Captured output in the book is checked.** The nine lines quoted in the two user
+guides become verifiable: each captured block is delimited, and the gate compares
+it against the output the example actually produces. Same mechanism as §3.2's
+README snippet, same reason — the alternative is that it silently rots and a
+reader copies a number that is no longer true.
+
+Where output is legitimately unstable (timings, anything environment-dependent),
+the block is **not** quoted verbatim; it is described. A block that cannot be
+checked must not be presented as captured output.
+
+**Not in scope, deliberately:** an example *coverage registry* on the RFC 030
+pattern, asserting that every kernel or capability has an example. That needs a
+rule for what deserves one, which is a judgement call that would harden into a
+gate. The convention states the obligation (§3.2) and review enforces it; if
+coverage later proves to drift, a registry is the right answer then, on evidence.
 
 ## 4. Explicit non-scope
 
@@ -139,5 +189,12 @@ snippet match — become `doc-currency` assertions; the rest is guidance.
 5. A getting-started chapter exists, is in `SUMMARY.md`, and is a tutorial.
 6. The documentation convention is tracked in the book and linked from
    `CONTRIBUTING.md`.
-7. `cargo xtask check` (17 gates), conformance 24/24, 6/6, 26 of 31 — all
-   unchanged; no crate code touched.
+7. The `examples` gate **runs** every example, and every captured-output block in
+   the book is checked against real output; a deliberately changed number fails
+   the gate.
+8. The convention states §3.1's criteria as the standard for new examples and
+   records the workflow rule that a slice touching a public surface or a printed
+   record says whether an example is affected.
+9. `cargo xtask check` (17 gates — the `examples` gate gains work, not a new
+   gate), conformance 24/24, 6/6, 26 of 31 — all unchanged; no crate code
+   touched.

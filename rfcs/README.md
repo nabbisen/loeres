@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-| [035](proposed/035-visitor-facing-documentation-and-examples.md) | Visitor-Facing Documentation and Real-World Examples | Proposed (2026-09-26) | `README.md` is 94 lines — inside the guideline band — yet opens with six accumulating release sentences, contains zero Rust, carries a five-release-stale note and a contract range stale by thirteen RFCs, and links two empty folders. Adds two examples that state a real problem before naming a type, restructures the landing page to 3-30-3 with its snippet **extracted from a gated example and checked**, and adopts the documentation convention. No performance claim: that needs measurement this tree does not have. |
+| [035](proposed/035-visitor-facing-documentation-and-examples.md) | Visitor-Facing Documentation and Real-World Examples | Proposed (2026-09-26) | `README.md` is 94 lines — inside the guideline band — yet opens with six accumulating release sentences, contains zero Rust, carries a five-release-stale note and a contract range stale by thirteen RFCs, and links two empty folders. Adds two examples that state a real problem before naming a type, restructures the landing page to 3-30-3 with its snippet **extracted from a gated example and checked**, and adopts the documentation convention. **Examples become maintained documents**: the gate runs them rather than only building them, and the nine captured-output lines quoted in the user guides — today guarded by nothing — are checked against real output. No performance claim: that needs measurement this tree does not have. |
 
 ## Accepted RFCs
 
