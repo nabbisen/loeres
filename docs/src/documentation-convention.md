@@ -92,6 +92,22 @@ Where output depends on the environment, such as timings, describe it; do not
 quote part of it. The gate requires a marked block for each example the book
 quotes, so one cannot silently lose its check.
 
+The comparison includes every digit of a printed float. This is deliberate: a
+float that prints differently is a result that changed, and the gate cannot tell
+a last-digit difference that does not matter from one that does. The cost is that
+the check is only as portable as the values it quotes, so an example whose output
+is not identical across the supported targets describes its output in prose
+instead.
+
+Two limits are known and accepted. The gate's registry of captured examples
+lives in `xtask/src/checks/examples.rs`, and the symmetry it enforces runs from
+that registry to the book: every registered example must have a marked block, and
+every marked block must match its run. It does not run the other way. A fence
+that shows output but carries no marker is indistinguishable from any other
+fence, so quoting output without a marker loses its check — and adding a captured
+block means adding its example to that registry. Review is the only backstop for
+both, which is why §4 requires a slice to state whether an example is affected.
+
 ## 4. Workflow rule
 
 **A slice that changes a public surface or a printed record states, in its
@@ -109,6 +125,8 @@ changed in each. A changed printed record is one a reader could copy.
 | No stale release phrases or release notes in current-facing docs | `doc-currency` |
 | Each example builds, runs, and is dependency-isolated | `examples` gate |
 | Captured output in the book matches the run | `examples` gate, via the `example-output` marker |
+| Every registered captured example has a marked block | `examples` gate |
+| An **unmarked** block that shows output | Review only — not enforced |
 | The four criteria for an example | Review |
 | "Which problem and for whom" in an example | Review |
 | The workflow rule in §4 | Review |

@@ -93,6 +93,24 @@ build from nothing — and the gate neither reads nor deletes anything outside
 GNU `tar`, and `sha256sum`; the release workflow supplies the reviewed execution
 environment.
 
+### Clippy runs in `release-gate`, on a floating channel
+
+`cargo xtask check` does not run clippy. `release-gate` does, as
+`cargo +stable clippy --workspace --all-features --all-targets -- -D warnings`.
+Two consequences follow, and both are accepted rather than worked around.
+
+A lint failure is a **release blocker and nothing less**: it cannot be found by
+the aggregate check, so it surfaces for the first time when a release candidate
+is run. Run `release-gate` before scheduling a release, not after.
+
+`rust-toolchain.toml` pins `channel = "stable"`, which floats. A new stable
+toolchain can therefore turn a passing tree into a failing one with no
+repository change, because `-D warnings` promotes a newly added lint — a fresh
+deprecation, most often — into an error. The channel is deliberately not pinned:
+an upstream deprecation is information worth receiving early, and pinning would
+defer it to a larger upgrade. The cost is that a release may need a lint-fixing
+commit before it can be cut, which is ordinary work, not an incident.
+
 RFC 011 makes `target-profiles` manifest-driven through
 `xtask/target-profiles.toml`. Mandatory profiles fail the aggregate on missing
 targets or failed commands; advisory-installed profiles report unavailable when
