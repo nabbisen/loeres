@@ -233,3 +233,121 @@ fn carrier_clone_gets_distinct_identity() {
     assert_ne!(carrier.identity(), cloned.identity());
     assert_eq!(cloned.mutation_epoch(), MutationEpoch::INITIAL);
 }
+
+#[test]
+fn taking_an_identity_returns_the_value_held_before_the_increment() {
+    let counter = AtomicU64::new(41);
+    assert_eq!(next_identity_from(&counter).unwrap().value(), 41);
+    assert_eq!(counter.load(Ordering::Relaxed), 42);
+}
+
+#[test]
+fn successive_identities_are_consecutive_and_start_at_the_initial_value() {
+    let counter = AtomicU64::new(1);
+    let taken: Vec<u64> = (0..4)
+        .map(|_| next_identity_from(&counter).unwrap().value())
+        .collect();
+    assert_eq!(taken, vec![1, 2, 3, 4]);
+    assert_eq!(counter.load(Ordering::Relaxed), 5);
+}
+
+#[test]
+fn the_last_identity_before_saturation_is_issued_and_then_the_counter_refuses() {
+    let counter = AtomicU64::new(u64::MAX - 1);
+    assert_eq!(next_identity_from(&counter).unwrap().value(), u64::MAX - 1);
+    assert_eq!(counter.load(Ordering::Relaxed), u64::MAX);
+
+    for _ in 0..3 {
+        assert_eq!(
+            next_identity_from(&counter),
+            Err(SolverError::InternalInvariantViolation)
+        );
+        assert_eq!(
+            counter.load(Ordering::Relaxed),
+            u64::MAX,
+            "a saturated counter must not advance or wrap"
+        );
+    }
+}
+
+#[test]
+fn a_saturated_counter_never_issues_the_reserved_non_cacheable_identity() {
+    let counter = AtomicU64::new(u64::MAX);
+    assert_eq!(
+        next_identity_from(&counter),
+        Err(SolverError::InternalInvariantViolation)
+    );
+}
+
+#[test]
+fn concurrent_takers_share_out_each_identity_exactly_once() {
+    use std::sync::Arc;
+
+    let counter = Arc::new(AtomicU64::new(1));
+    let handles: Vec<_> = (0..8)
+        .map(|_| {
+            let counter = Arc::clone(&counter);
+            std::thread::spawn(move || {
+                (0..1_000)
+                    .map(|_| next_identity_from(&counter).unwrap().value())
+                    .collect::<Vec<u64>>()
+            })
+        })
+        .collect();
+
+    let mut issued: Vec<u64> = handles
+        .into_iter()
+        .flat_map(|handle| handle.join().expect("taker thread panicked"))
+        .collect();
+    issued.sort_unstable();
+    let count = issued.len();
+    issued.dedup();
+
+    assert_eq!(issued.len(), count, "an identity was issued twice");
+    assert_eq!(issued.first().copied(), Some(1));
+    assert_eq!(issued.last().copied(), Some(count as u64));
+}
+
+#[test]
+fn identities_are_shared_out_exactly_once_up_to_the_saturation_boundary() {
+    use std::sync::Arc;
+
+    // Saturation is re-checked on every retry, not once before the loop. A taker
+    // can load a value below the ceiling, lose the exchange while other takers
+    // consume the rest, and come back holding the ceiling; checking only before
+    // the loop would then exchange the ceiling for a wrapped value and hand out
+    // the reserved non-cacheable identity. Reaching that interleaving needs real
+    // contention, so takers ask for twice what remains and the run is repeated.
+    const REMAINING: u64 = 16_384;
+    const TAKERS: usize = 8;
+    const ASKS: usize = (REMAINING as usize / TAKERS) * 2;
+
+    for attempt in 0..8 {
+        let counter = Arc::new(AtomicU64::new(u64::MAX - REMAINING));
+        let handles: Vec<_> = (0..TAKERS)
+            .map(|_| {
+                let counter = Arc::clone(&counter);
+                std::thread::spawn(move || {
+                    (0..ASKS)
+                        .filter(|_| next_identity_from(&counter).is_ok())
+                        .count()
+                })
+            })
+            .collect();
+
+        let issued: usize = handles
+            .into_iter()
+            .map(|handle| handle.join().expect("taker thread panicked"))
+            .sum();
+
+        assert_eq!(
+            counter.load(Ordering::Relaxed),
+            u64::MAX,
+            "attempt {attempt}: a saturated counter wrapped instead of refusing"
+        );
+        assert_eq!(
+            issued, REMAINING as usize,
+            "attempt {attempt}: exactly the remaining identities may be issued"
+        );
+    }
+}

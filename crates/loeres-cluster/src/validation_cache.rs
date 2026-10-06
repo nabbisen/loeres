@@ -53,16 +53,26 @@ impl MutationEpoch {
 }
 
 fn next_model_identity() -> Result<ModelIdentity, SolverError> {
-    // Compare-exchange loop rather than `fetch_update`, which rustc 1.99 deprecates
-    // and whose replacement, `try_update`, is not available on MSRV 1.85. Returns
-    // the value before the increment, as `fetch_update` did, and fails only at
-    // saturation.
-    let mut current = NEXT_MODEL_ID.load(Ordering::Relaxed);
+    next_identity_from(&NEXT_MODEL_ID)
+}
+
+/// Takes the next identity from `counter`, returning the value it held before the
+/// increment and `InternalInvariantViolation` once it has saturated.
+///
+/// Separate from [`next_model_identity`] so the previous-value contract and the
+/// saturation edge can be tested without disturbing the process-global counter.
+///
+/// A compare-exchange loop rather than `fetch_update`, which rustc 1.99 deprecates
+/// and whose replacement, `try_update`, is not available on MSRV 1.85.
+/// Saturation is re-checked on every retry: a taker that loses the exchange can
+/// come back holding the ceiling, and must refuse rather than wrap.
+fn next_identity_from(counter: &AtomicU64) -> Result<ModelIdentity, SolverError> {
+    let mut current = counter.load(Ordering::Relaxed);
     loop {
         if current == u64::MAX {
             return Err(SolverError::InternalInvariantViolation);
         }
-        match NEXT_MODEL_ID.compare_exchange_weak(
+        match counter.compare_exchange_weak(
             current,
             current + 1,
             Ordering::Relaxed,
