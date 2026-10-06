@@ -204,10 +204,11 @@ The cluster counterpart, with a runnable example, is in the
 
 ## What running the example shows
 
+<!-- example-output: device-box-pfo -->
 ```text
-interior optimum:      converged in 93 iteration(s); ...
-bounds active:         converged in 28 iteration(s); ...
-cap reached:           not converged (iteration cap reached) in 5 iteration(s); ...
+interior optimum:      converged in 93 iteration(s); x = [1.4999999999999998, -2.0, 3.999999996114662], f(x) = 3.773963e-18
+bounds active:         converged in 28 iteration(s); x = [1.0, -1.0, 0.24999999906867743], f(x) = 1.600000e1
+cap reached:           not converged (iteration cap reached) in 5 iteration(s); x = [0.4410895508999999, 0.4410895508999999, 0.4410895508999999], f(x) = 1.098824e2
 ```
 
 Three cases: an optimum inside the box, an optimum outside it (so the solution

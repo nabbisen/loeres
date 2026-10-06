@@ -51,7 +51,7 @@ cargo xtask no-std           # edge crates build for thumbv7em-none-eabihf (no s
 cargo xtask doc-currency     # bounded RFC 020/024 apex metadata/lifecycle/navigation assertions
 cargo xtask review-evidence  # RFC 022 architecture-review citation and provenance integrity
 cargo xtask supply-chain     # RFC 026 dependency advisories, licenses, bans, sources
-cargo xtask examples         # RFC 023 per-example build and resolved-graph isolation
+cargo xtask examples         # RFC 023/035 per-example build, run, resolved-graph isolation, captured output
 cargo xtask check            # canonical developer architecture aggregate
 cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidence
 ```

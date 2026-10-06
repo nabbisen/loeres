@@ -80,10 +80,11 @@ Match with a catch-all arm.
 
 ## What running the example shows
 
+<!-- example-output: cluster-batch-solve -->
 ```text
-interior optimum:          converged in 93 iteration(s); ...
-bounds active:             converged in 2 iteration(s); ...
-cap reached:               not converged (cap reached) in 5 iteration(s); ...
+interior optimum:          converged in 93 iteration(s); x = [1.4999999999999998, -2.0, 3.999999996114662]
+bounds active:             converged in 2 iteration(s); x = [1.0, -1.0]
+cap reached:               not converged (cap reached) in 5 iteration(s); x = [0.4410895508999999, 0.4410895508999999]
 inverted bounds:           failed: InvalidInput
 
 4 item(s): 2 converged, 1 not converged, 1 failed, 0 cancelled, 0 panicked
@@ -124,6 +125,7 @@ capped projection, early ones included; only the final one decides the status. O
 hard geometry (nearly parallel constraint normals) a feasible point within
 tolerance can therefore read `NotConverged`. The example shows three cases:
 
+<!-- example-output: cluster-qp-constrained -->
 ```text
 slack halfspace:     converged in 56 iteration(s); x = [1.714286, 1.142857]; violation = 0.000e0; projection cap hits = 0; infeasibility evidence (heuristic) = false
 active halfspace:    converged in 41 iteration(s); x = [1.500000, 0.500000]; violation = 0.000e0; projection cap hits = 0; infeasibility evidence (heuristic) = false

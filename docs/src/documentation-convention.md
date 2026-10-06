@@ -66,8 +66,8 @@ correct. Every new example meets the four criteria below.
    result**. It is not a sequence of API calls.
 3. **It prints something a reader can interpret** without the source open.
 4. **It is workspace-excluded** with its own lockfile and **passes the
-   `examples` gate**, which builds it and checks its dependency isolation.
-   Running each example under the gate is RFC 035 S4.
+   `examples` gate**, which builds it, runs it, and checks its dependency
+   isolation.
 
 Each example also says **which problem it solves and for whom**, in its module
 comment. The problem is one a reader in that field would name; the audience is
@@ -79,10 +79,18 @@ standard for new examples.
 
 ### Captured output
 
-A block of output quoted in the book is either **exact** (checked byte-for-byte
-against the example's run) or **described in prose**. A fenced output block must
-not contain `...` in place of lines. Where output depends on the environment,
-such as timings, describe it; do not quote part of it.
+A block of output quoted in the book is either **exact** or **described in
+prose**. An exact block is marked by an `example-output` comment, naming the
+example, on the line immediately before its fence. The comment for
+`device-box-pfo` is written as inline code here, not as a line, so the gate does
+not read this paragraph as a marker.
+
+The `examples` gate runs the named example and requires the block to be a
+contiguous run of that example's own output, byte-for-byte. A block with `...`
+in it is refused: quote the complete lines, or describe the output in prose.
+Where output depends on the environment, such as timings, describe it; do not
+quote part of it. The gate requires a marked block for each example the book
+quotes, so one cannot silently lose its check.
 
 ## 4. Workflow rule
 
@@ -99,8 +107,8 @@ changed in each. A changed printed record is one a reader could copy.
 | README Quick Start equals the marked example region, byte-for-byte | `doc-currency` |
 | Marked region under 20 lines | `doc-currency` |
 | No stale release phrases or release notes in current-facing docs | `doc-currency` |
-| Each example builds and is dependency-isolated | `examples` gate (running it: RFC 035 S4) |
-| Captured output in the book matches the run | `examples` gate (RFC 035 §3.4, in progress) |
+| Each example builds, runs, and is dependency-isolated | `examples` gate |
+| Captured output in the book matches the run | `examples` gate, via the `example-output` marker |
 | The four criteria for an example | Review |
 | "Which problem and for whom" in an example | Review |
 | The workflow rule in §4 | Review |

@@ -34,6 +34,7 @@ cargo run --manifest-path examples/device-mpc-step/Cargo.toml
 
 The run prints:
 
+<!-- example-output: device-mpc-step -->
 ```text
 step    state     move at limit  outcome
    0   0.0000   1.0000      yes  applied
