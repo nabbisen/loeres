@@ -5,6 +5,48 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+## [0.22.1] — unreleased — Visitor-facing documentation and examples
+
+**Release status:** unreleased
+
+Repository release `0.22.1` makes the landing page and the example set legible to a
+visitor, and makes the examples maintained documents. RFC 035 is implemented and
+moves to `rfcs/done/` with its release. **No crate behaviour changed in RFC 035**: no
+line under `crates/` is part of it.
+
+- **The README is a landing page.** It opens with a summary and features, carries a
+  Quick Start example of under twenty lines, and links the book and the RFC index.
+  The release bookkeeping that stood above the summary moved to one table in the book
+  (*Specifications & RFCs*, release currency). The README is 100–200 lines, checked by
+  `doc-currency`.
+- **The README example is extracted, not written.** It is a marked region of the
+  `device-mpc-step` example, copied verbatim, and `doc-currency` fails when the two
+  differ by one character.
+- **Two new examples, each naming the problem it solves before the types it uses.**
+  `device-mpc-step` plans the moves of a process with an actuator limit (model-predictive
+  control, on the device path). `cluster-capacity-dispatch` dispatches production units
+  against a demand floor, and shows the shortfall when demand exceeds capacity (on the
+  server path). Both are workspace-excluded with their own lockfiles.
+- **A getting-started tutorial** is the first entry after the introduction: install,
+  solve one problem, read the result, and change one thing.
+- **A documentation convention** is in the book's maintainer section and linked from
+  `CONTRIBUTING.md`. It states the four criteria for a new example, and the rule that a
+  slice changing a public surface or a printed record says in its review request whether
+  an example is affected.
+- **The `examples` gate runs each example and checks captured output.** Each example
+  must run to a successful exit. Every output block the book quotes is marked
+  (`<!-- example-output: NAME -->`) and must be a contiguous, byte-for-byte run of that
+  example's own output; a block with `...` in it is refused. The three blocks that
+  elided lines are now complete.
+
+**Lint-driven refactor, identical semantics (not a behaviour change).** The release gate
+runs clippy with `-D warnings` on a floating `stable` toolchain, and rustc 1.99 deprecated
+`AtomicU64::fetch_update`, which `loeres-cluster`'s model identity used. `next_model_identity`
+now uses an explicit compare-exchange loop. It returns the value before the increment, as
+before, and fails only at saturation; identities are issued in the same sequence. The
+replacement `try_update` is not available on MSRV 1.85, so it was not used, and no
+`#[allow]` was added. The MSRV and the toolchain pin are unchanged.
+
 ## [0.22.0] — 2026-09-24 — An honest infeasibility hint
 
 **Release status:** released (tagged 2026-09-24, distributed 2026-09-24)

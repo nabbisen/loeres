@@ -53,16 +53,25 @@ impl MutationEpoch {
 }
 
 fn next_model_identity() -> Result<ModelIdentity, SolverError> {
-    let id = NEXT_MODEL_ID
-        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |current| {
-            if current == u64::MAX {
-                None
-            } else {
-                Some(current + 1)
-            }
-        })
-        .map_err(|_| SolverError::InternalInvariantViolation)?;
-    Ok(ModelIdentity(id))
+    // Compare-exchange loop rather than `fetch_update`, which rustc 1.99 deprecates
+    // and whose replacement, `try_update`, is not available on MSRV 1.85. Returns
+    // the value before the increment, as `fetch_update` did, and fails only at
+    // saturation.
+    let mut current = NEXT_MODEL_ID.load(Ordering::Relaxed);
+    loop {
+        if current == u64::MAX {
+            return Err(SolverError::InternalInvariantViolation);
+        }
+        match NEXT_MODEL_ID.compare_exchange_weak(
+            current,
+            current + 1,
+            Ordering::Relaxed,
+            Ordering::Relaxed,
+        ) {
+            Ok(previous) => return Ok(ModelIdentity(previous)),
+            Err(observed) => current = observed,
+        }
+    }
 }
 
 /// Solver-family key dimension for cached validation evidence.
