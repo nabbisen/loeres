@@ -15,6 +15,14 @@ this before opening an RFC, a pull request, or a substantial issue.
 The book *summarizes*; `docs/specs/` and `rfcs/` are what you edit when the
 design changes.
 
+## Documentation
+
+Documentation, including the examples under `examples/`, follows
+[`docs/src/documentation-convention.md`](docs/src/documentation-convention.md).
+It sets the README's length and its extracted example, the four criteria for a
+new example, and the rule that a slice changing a public surface or a printed
+record says in its review request whether an example is affected.
+
 ## Development workflow
 
 Changes move through stages, design before code:

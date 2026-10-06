@@ -9,6 +9,26 @@ contributors edit those documents directly; readers can browse them here.
 > Default-branch web links are labeled navigation to moving development state;
 > they are not the sole source for a tag or extracted release.
 
+## Release currency
+
+This is the one home for release currency. The README links here (RFC 035 §3.3).
+
+> **Publication and recovery status.** Repository state does not establish
+> that every workspace crate or its hosted documentation is published or
+> current, so external registry/documentation badges are intentionally
+> omitted.
+
+Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034.
+
+The apex specifications' currency blocks are the normative record; see the
+the RFC index (`rfcs/README.md`) for the RFC states.
+
+### Historical release notes
+
+**v0.20.0 — Trusted/cache conformance hardening.** RFC 017 extends the enforced `conformance/smoke/` corpus with validation-cache fixtures for cache hit/miss, insufficient scope, stale/wrong evidence, current-iterate scan retention, hot-loop numerical-domain retention, and reusable-cache insertion rejection. Runtime crate APIs are unchanged.
+
+At the 0.20.x line the shipped contracts were `000`–`021`. The list has grown since; the RFC index (`rfcs/README.md`) is current.
+
 ## Specifications (`docs/specs/`)
 
 > **Currency notice.** The apex trio carries RFC 024's ordinary post-release

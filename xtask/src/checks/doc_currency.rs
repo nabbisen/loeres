@@ -309,6 +309,7 @@ fn validate_repository() -> Vec<String> {
     check_release_local_paths(&mut errors);
     check_stale_ledger(&mut errors);
     check_conditional_current_prose(&mut errors);
+    check_readme_landing(&mut errors);
     errors
 }
 
@@ -797,6 +798,97 @@ fn normalize_whitespace(source: &str) -> String {
         .join(" ")
 }
 
+/// RFC 035 §3.2: the README stays inside the reference guideline's band, and its
+/// Quick Start example is the region marked in a gated example, byte-for-byte.
+const README_PATH: &str = "README.md";
+const README_LINE_RANGE: (usize, usize) = (100, 200);
+const README_EXAMPLE_SOURCE: &str = "examples/device-mpc-step/src/main.rs";
+const README_EXAMPLE_BEGIN: &str = "// README-EXAMPLE-BEGIN";
+const README_EXAMPLE_END: &str = "// README-EXAMPLE-END";
+/// The guideline's minimal working example is under 20 lines.
+const README_EXAMPLE_MAX_LINES: usize = 19;
+
+fn check_readme_landing(errors: &mut Vec<String>) {
+    let Some(readme) = read_required(README_PATH, errors) else {
+        return;
+    };
+    let Some(source) = read_required(README_EXAMPLE_SOURCE, errors) else {
+        return;
+    };
+    errors.extend(readme_length_findings(&readme));
+    errors.extend(readme_example_findings(&readme, &source));
+}
+
+fn readme_length_findings(readme: &str) -> Vec<String> {
+    let lines = readme.lines().count();
+    let (min, max) = README_LINE_RANGE;
+    if (min..=max).contains(&lines) {
+        Vec::new()
+    } else {
+        vec![format!(
+            "README LENGTH: {README_PATH} has {lines} lines; RFC 035 requires {min}-{max}"
+        )]
+    }
+}
+
+fn readme_example_findings(readme: &str, source: &str) -> Vec<String> {
+    let Some(quick_start) = quick_start_rust_block(readme) else {
+        return vec![format!(
+            "README EXAMPLE: no ```rust block under `## Quick Start` in {README_PATH}"
+        )];
+    };
+    let Some(region) = marked_region(source) else {
+        return vec![format!(
+            "README EXAMPLE: {README_EXAMPLE_SOURCE} has no complete \
+             `{README_EXAMPLE_BEGIN}` / `{README_EXAMPLE_END}` region"
+        )];
+    };
+    let mut findings = Vec::new();
+    if region.lines().count() > README_EXAMPLE_MAX_LINES {
+        findings.push(format!(
+            "README EXAMPLE: the marked region in {README_EXAMPLE_SOURCE} is {} lines; the limit is {README_EXAMPLE_MAX_LINES}",
+            region.lines().count()
+        ));
+    }
+    if quick_start != region {
+        findings.push(format!(
+            "README EXAMPLE: the Quick Start block in {README_PATH} does not match the region marked in {README_EXAMPLE_SOURCE}; copy the region again"
+        ));
+    }
+    findings
+}
+
+/// The first ```rust block after the `## Quick Start` heading, body only, with
+/// the newline that ends its last line.
+fn quick_start_rust_block(readme: &str) -> Option<String> {
+    let (_, after_heading) = readme.split_once("\n## Quick Start\n")?;
+    let (_, after_open) = after_heading.split_once("\n```rust\n")?;
+    let (body, _) = after_open.split_once("\n```\n")?;
+    Some(format!("{body}\n"))
+}
+
+/// The lines between the begin and end markers, each ending in a newline.
+/// `None` if a marker is missing, repeated, or the region never closes.
+fn marked_region(source: &str) -> Option<String> {
+    let mut inside = false;
+    let mut region = String::new();
+    for line in source.lines() {
+        let trimmed = line.trim();
+        if trimmed == README_EXAMPLE_BEGIN {
+            if inside {
+                return None;
+            }
+            inside = true;
+        } else if trimmed == README_EXAMPLE_END {
+            return inside.then_some(region);
+        } else if inside {
+            region.push_str(line);
+            region.push('\n');
+        }
+    }
+    None
+}
+
 fn bounded_value(source: &str, prefix: &str, suffix: &str) -> Option<String> {
     let (_, after_prefix) = source.split_once(prefix)?;
     let (value, _) = after_prefix.split_once(suffix)?;
@@ -1192,5 +1284,73 @@ mod tests {
         let mut errors = Vec::new();
         stale_phrases_in(current_before_historical(source), "synthetic", &mut errors);
         assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn readme_length_accepts_the_band_and_rejects_either_side() {
+        let body = |n: usize| "line\n".repeat(n);
+        assert!(super::readme_length_findings(&body(100)).is_empty());
+        assert!(super::readme_length_findings(&body(200)).is_empty());
+        assert_eq!(super::readme_length_findings(&body(99)).len(), 1);
+        assert_eq!(super::readme_length_findings(&body(201)).len(), 1);
+    }
+
+    fn readme_with(block: &str) -> String {
+        format!(
+            "# Loeres\n\n## Overview\n\n```rust\nnot the example\n```\n\n\
+             ## Quick Start\n\n```sh\ncargo check\n```\n\n```rust\n{block}```\n\n## More\n"
+        )
+    }
+
+    fn source_with(region: &str) -> String {
+        format!(
+            "fn a() {{}}\n// README-EXAMPLE-BEGIN\n{region}// README-EXAMPLE-END\nfn b() {{}}\n"
+        )
+    }
+
+    #[test]
+    fn readme_example_matches_the_marked_region_and_reports_a_changed_digit() {
+        let region = "fn step() -> f64 {\n    0.9\n}\n";
+        assert!(
+            super::readme_example_findings(&readme_with(region), &source_with(region)).is_empty()
+        );
+
+        let changed = readme_with("fn step() -> f64 {\n    0.8\n}\n");
+        let findings = super::readme_example_findings(&changed, &source_with(region));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("does not match"), "{findings:?}");
+    }
+
+    #[test]
+    fn readme_example_reports_an_over_long_region_and_missing_markers() {
+        let long: String = "let x = 0;\n".repeat(20);
+        let findings = super::readme_example_findings(&readme_with(&long), &source_with(&long));
+        assert!(
+            findings.iter().any(|f| f.contains("limit is 19")),
+            "{findings:?}"
+        );
+
+        let no_markers = super::readme_example_findings(&readme_with("x\n"), "fn a() {}\n");
+        assert_eq!(no_markers.len(), 1, "{no_markers:?}");
+        assert!(no_markers[0].contains("no complete"), "{no_markers:?}");
+
+        let unclosed = "// README-EXAMPLE-BEGIN\nx\n";
+        assert!(super::marked_region(unclosed).is_none());
+        assert!(
+            super::marked_region(
+                "// README-EXAMPLE-BEGIN\n// README-EXAMPLE-BEGIN\n// README-EXAMPLE-END\n"
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn quick_start_block_ignores_rust_blocks_before_the_heading() {
+        let readme = readme_with("fn real() {}\n");
+        assert_eq!(
+            super::quick_start_rust_block(&readme).as_deref(),
+            Some("fn real() {}\n")
+        );
+        assert!(super::quick_start_rust_block("# no quick start\n```rust\nx\n```\n").is_none());
     }
 }

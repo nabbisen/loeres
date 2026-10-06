@@ -2,44 +2,57 @@
 
 [License: Apache-2.0](LICENSE)
 
-> **Publication and recovery status.** Repository state does not establish
-> that every workspace crate or its hosted documentation is published or
-> current, so external registry/documentation badges are intentionally
-> omitted. Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034.
-
 **One optimization contract, two worlds — high-throughput server solving and deterministic `no_std` edge solving, without letting either contaminate the other.**
 
-## Overview
+Loeres is a Rust workspace of optimization kernels for constrained quadratic programs (`min ½xᵀQx + cᵀx`), with a hard compile-time boundary between two execution environments.
 
-Loeres is a Rust workspace of mathematical-optimization crates that share a single set of mathematical contracts while keeping a hard, compile-time boundary between two execution environments:
-
-- **Cluster / server** — dynamic problem sizes, heap allocation, parallelism, async, and observability.
-- **Device / edge** — `#![no_std]`, no `alloc`, bounded iteration, caller-owned workspaces, and panic-averse solve paths suitable for real-time and WCET-oriented review.
-
-The guiding rule is: **share mathematical contracts, not storage, allocation, runtime, or operating-system assumptions.**
-
-## Why / When
-
-Reach for Loeres when you need optimization on *both* sides of that boundary from one consistent contract:
-
-- **Server**: SaaS solvers, batch and scheduling systems, energy/logistics, analytics pipelines — where throughput, dynamic sizes, and integration matter.
-- **Edge**: robotics, model-predictive control, industrial controllers, medical IoT — where no heap, bounded time, and analyzable failure matter.
-
-The point is that a cloud service can use allocation, threads, and tracing without contaminating an embedded controller that depends only on the edge crates — and vice versa. Server breadth never becomes a device obligation.
+- **Two paths, one contract.** A cluster path with dynamic sizes, heap, threads and batching; a device path that is `no_std`, has no `alloc`, bounds its iteration and takes caller-owned workspaces.
+- **Box and linear-inequality QPs.** Projected first-order solves over a box, and over a box with `Ax ≤ b` (RFC 027).
+- **Honest status.** Non-convergence is a status returned in `Ok`; rejected input is an error. Infeasibility is not a status: a heuristic `infeasibility_evidence` field is reported beside it.
+- **Checked, not asserted.** A conformance corpus and a randomized differential test against exact answers gate `cargo xtask check`.
 
 ## Quick Start
 
-> **v0.20.0 — Trusted/cache conformance hardening.** RFC 017 extends the enforced `conformance/smoke/` corpus with validation-cache fixtures for cache hit/miss, insufficient scope, stale/wrong evidence, current-iterate scan retention, hot-loop numerical-domain retention, and reusable-cache insertion rejection. Runtime crate APIs are unchanged.
-
-Build and verify from source:
+Build and check from source. The toolchain, components and bare-metal target come from `rust-toolchain.toml`.
 
 ```sh
-# toolchain, components, and the bare-metal target come from rust-toolchain.toml
 cargo check --workspace --all-features
 cargo xtask check        # developer aggregate; not release approval
+cargo xtask examples     # builds and runs each example, checks its dependency isolation
 ```
 
-The intended downstream import model (specified in the external design, §1.4) is environment-selected by crate choice:
+A device-side control step, copied from [`examples/device-mpc-step`](examples/device-mpc-step/src/main.rs). Run the whole example with `cargo run --manifest-path examples/device-mpc-step/Cargo.toml`:
+
+```rust
+/// One sample: plan from the measured state and return the first move, or
+/// `None` if the plan did not converge, in which case no move is trusted.
+fn plan_move(
+    state: f64,
+    workspace: &mut ProjectedFirstOrderWorkspace<f64, N>,
+    config: &DeviceSolveConfig<f64>,
+) -> Result<Option<f64>, SolverError> {
+    let plan = MpcPlan::new(state);
+    let mut moves = FixedVector::from_array([0.0; N]);
+    let report = solve_projected_first_order(&plan, &mut moves, workspace, config)?;
+    match report.status() {
+        SolveStatus::Converged => Ok(Some(moves.get(0)?)),
+        // `SolveStatus` is `#[non_exhaustive]` downstream: every status other
+        // than `Converged` is treated as untrusted, so a future variant is held.
+        _ => Ok(None),
+    }
+}
+```
+
+The problem type `MpcPlan` and the `main` that calls this function are in that file.
+
+Choose the crates by where the solve runs:
+
+| You are building | Use | Storage | Threads |
+|---|---|---|---|
+| an embedded controller with bounded time | `loeres-device` + `loeres-backend-static` | fixed-size, caller-owned | none |
+| a server, batch or scheduler | `loeres-cluster` + `loeres-backend-std` | heap, dynamic sizes | optional (`parallel-rayon`) |
+
+The dependency snippets for both:
 
 ```toml
 # Cluster / server user
@@ -51,43 +64,40 @@ loeres-device         = { version = "0.x", default-features = false }
 loeres-backend-static = { version = "0.x", default-features = false, features = ["owned-arrays"] }
 ```
 
-To navigate this release: the workspace lives under `crates/` (five crates) and `xtask/`; the design lives in `docs/specs/` (requirements → external design → roadmap) and `rfcs/`. For local development see `docs/src/development.md`.
+## Reading a result
+
+A solve returns `Ok` with a status even when it did not converge. Read the status first, then the figures:
+
+- `Converged` means feasible and stationary at the final iterate, with a projection that did not hit its cap (RFC 027 Amendment 5, RFC 029, RFC 033).
+- `NotConverged` is a result to handle, not an exception. Check the termination reason and the constraint violation before acting on the iterate.
+
+## Examples
+
+Each example names the problem it solves in its first paragraph.
+
+| Example | Problem | Path |
+|---|---|---|
+| [`device-mpc-step`](examples/device-mpc-step/) | model-predictive control of a process with an actuator limit | device |
+| [`device-box-pfo`](examples/device-box-pfo/) | fixed-size box-constrained solve with a reused workspace | device |
+| [`cluster-capacity-dispatch`](examples/cluster-capacity-dispatch/) | production units dispatched against a demand floor | cluster |
+| [`cluster-qp-constrained`](examples/cluster-qp-constrained/) | constrained QP, status beside the constraint violation | cluster |
+| [`cluster-batch-solve`](examples/cluster-batch-solve/) | batch of dynamic box problems with per-item outcomes | cluster |
 
 ## Design Notes
 
-- **Five crates, one contract.** `loeres` (`no_std`, no-`alloc`) defines scalar,
-  vector/matrix access, solver-outcome, validation, error, diagnostic, and
-  dimension contracts. Its `problem` namespace defines a storage-agnostic
-  quadratic-program contract (RFC 027); LP is expressible as `Q = 0` but not
-  solved, and no SOCP contract exists. Implemented PFO problem contracts
-  belong to `loeres-device` and `loeres-cluster`. Backends (`-backend-std`,
-  `-backend-static`) own storage; execution crates (`-cluster`, `-device`) own
-  solve paths. The dependency graph is acyclic and environment-separated.
-- **Stratified scalar capabilities** — six tiers (`BaseScalar`, `OrderedScalar`, `FiniteScalar`, `DivisibleScalar`, `MetricScalar`, `AdvancedNumericalScalar`) rather than one monolithic `Scalar` trait, so edge solvers are not forced to implement operations they never use. Ordering is split out of the base tier so order-free numeric types stay valid and floating-point `min`/`max` behavior is pinned.
-- **Status / error split.** Bounded solver progress (including non-convergence at the iteration cap) is a *status* returned in `Ok`; boundary rejection and fail-safe conditions are *errors* returned in `Err`.
-- **Caller-owned typed workspaces** on device — no hidden allocation; memory footprint is reviewable before execution.
-- **Target-scoped determinism.** Floating-point reproducibility claims are tied to documented target profiles, not asserted globally.
-- **Narrow current solver scope.** Device and cluster paths share one
-  projected-first-order family, over a box and over a box with linear
-  inequalities `Ax <= b` (a quadratic program, RFC 027). LP is expressible but not solved; infeasibility is not detected as a status (it is reported as `NotConverged` with `NoProgress` and a positive constraint violation) and the solve record carries only a heuristic `infeasibility_evidence` hint that is wrong in both directions; the projection is inexact by design and its rate depends on constraint geometry; a step at or above `2/L` (`L` the largest diagonal entry of `Q`) is rejected, one below `2/U` (Gershgorin) is provably convergent, the band between is accepted with no claim, and no numeric convergence rate is claimed; `Q` must be symmetric positive semidefinite, a caller precondition that is not verified; and device and cluster agree within tolerance, not bitwise. The full statement is in [Terms of Engineering Use](TERMS_OF_USE.md). The
-  conformance suite is a bounded smoke corpus; broad LP/SOCP, large-N, and
-  throughput parity are not claimed.
-- **Bounded server integrations.** Observability is metadata-only, the gateway
-  is mock-only, and validation caching is process-local. No concrete native
-  adapter, persistent/distributed cache, or broad multi-tenant isolation
-  evidence ships.
+- **Five crates, one contract.** `loeres` (`no_std`, no `alloc`) defines the scalar, vector, solver-outcome, validation, error and problem contracts. `loeres-backend-std` and `loeres-backend-static` own storage; `loeres-cluster` and `loeres-device` own the solve paths. The dependency graph is acyclic and environment-separated.
+- **Narrow solver scope.** Box and `Ax ≤ b` QPs are solved. LP is expressible as `Q = 0` but not solved; no SOCP contract exists. `Q` must be symmetric positive semidefinite, a caller precondition that is not verified. Device and cluster agree within tolerance, not bitwise. The full statement is in [Terms of Engineering Use](TERMS_OF_USE.md).
+- **Caller-owned workspaces on device.** No hidden allocation; the memory footprint is reviewable before execution.
+- **Bounded server integrations.** Observability is metadata-only, the gateway is mock-only, and validation caching is process-local. No concrete native adapter or persistent or distributed cache ships.
 
 ## More Detail
 
-- Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap & milestones.
-- RFCs: [`rfcs/`](rfcs/) — shipped contracts `000`–`021` live in
-  [`rfcs/done/`](rfcs/done/). Accepted work (design frozen, implementation
-  authorized or in review) lives in [`rfcs/accepted/`](rfcs/accepted/) and
-  review-active work in [`rfcs/proposed/`](rfcs/proposed/) when present. See
-  the [RFC index](rfcs/README.md).
-- Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and a maintainer bridge to the specs/RFCs (mdbook).
-- Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md) — the design-first workflow and the RFC process.
-- Roadmap & status: [`ROADMAP.md`](ROADMAP.md).
+- Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and the maintainer bridge to the specifications (mdBook).
+- Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap and milestones.
+- RFCs: the [RFC index](rfcs/README.md) lists every RFC by state.
+- Release currency: [release currency](docs/src/specifications.md#release-currency) — which release carries which RFCs, and the publication status.
+- Contributing: [`CONTRIBUTING.md`](CONTRIBUTING.md), and the [documentation convention](docs/src/documentation-convention.md) that governs this file and the examples.
+- Roadmap and status: [`ROADMAP.md`](ROADMAP.md).
 
 ## License
 

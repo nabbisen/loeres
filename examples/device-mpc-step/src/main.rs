@@ -29,10 +29,10 @@
 //! programme is rebuilt from the measured state at the next sample.
 //!
 //! What it prints, one row per sample: the state before the move, the move
-//! applied, whether the actuator limit is active, the predicted cost of the plan,
-//! and the solve status. A row marked `yes` at the limit is the constraint doing
-//! its job; a `not converged` row means the plan was not solved to tolerance and
-//! its first move should not be trusted.
+//! applied, whether the actuator limit is active, and the outcome. A `yes` at the
+//! limit is the constraint doing its job. A `not converged` row means the plan was
+//! not solved to tolerance, so the example applies no planned move rather than
+//! trust it.
 
 use loeres::{SolveStatus, SolverError, VectorAccess, VectorAccessMut};
 use loeres_backend_static::array::FixedVector;
@@ -168,6 +168,26 @@ impl ProjectedFirstOrderProblem<f64, N> for MpcPlan {
     }
 }
 
+// README-EXAMPLE-BEGIN
+/// One sample: plan from the measured state and return the first move, or
+/// `None` if the plan did not converge, in which case no move is trusted.
+fn plan_move(
+    state: f64,
+    workspace: &mut ProjectedFirstOrderWorkspace<f64, N>,
+    config: &DeviceSolveConfig<f64>,
+) -> Result<Option<f64>, SolverError> {
+    let plan = MpcPlan::new(state);
+    let mut moves = FixedVector::from_array([0.0; N]);
+    let report = solve_projected_first_order(&plan, &mut moves, workspace, config)?;
+    match report.status() {
+        SolveStatus::Converged => Ok(Some(moves.get(0)?)),
+        // `SolveStatus` is `#[non_exhaustive]` downstream: every status other
+        // than `Converged` is treated as untrusted, so a future variant is held.
+        _ => Ok(None),
+    }
+}
+// README-EXAMPLE-END
+
 fn main() -> Result<(), SolverError> {
     // One workspace for the whole run: the plans differ, the scratch does not.
     let mut workspace = ProjectedFirstOrderWorkspace::new(FixedVector::from_array([0.0; N]));
@@ -178,30 +198,21 @@ fn main() -> Result<(), SolverError> {
     };
 
     println!(
-        "{:>4} {:>8} {:>8} {:>8} {:>10}  solve",
-        "step", "state", "move", "at limit", "plan cost"
+        "{:>4} {:>8} {:>8} {:>8}  outcome",
+        "step", "state", "move", "at limit"
     );
 
     let mut state = 0.0;
     for step in 0..STEPS {
-        let plan = MpcPlan::new(state);
-        // Each plan starts from zero moves; the kernel needs no warm start.
-        let mut moves = FixedVector::from_array([0.0; N]);
-        let report = solve_projected_first_order(&plan, &mut moves, &mut workspace, &config)?;
-
-        let first_move = moves.get(0)?;
-        let at_limit = (first_move.abs() - LIMIT).abs() < 1e-6;
-        let verdict = match report.status() {
-            SolveStatus::Converged => format!("converged in {}", report.iterations_executed()),
-            SolveStatus::NotConverged => "not converged: do not trust this move".to_owned(),
-            // `SolveStatus` is `#[non_exhaustive]` downstream: name a future
-            // variant rather than panic.
-            _ => "unrecognized status".to_owned(),
+        let (first_move, outcome) = match plan_move(state, &mut workspace, &config)? {
+            Some(u) => (u, "applied"),
+            // No trusted move this sample: apply zero, the assumed rest position.
+            None => (0.0, "not converged: zero move applied"),
         };
+        let at_limit = (first_move.abs() - LIMIT).abs() < 1e-6;
         println!(
-            "{step:>4} {state:>8.4} {first_move:>8.4} {:>8} {:>10.4}  {verdict}",
+            "{step:>4} {state:>8.4} {first_move:>8.4} {:>8}  {outcome}",
             if at_limit { "yes" } else { "no" },
-            plan.objective_at(&moves)?,
         );
 
         // Act on the first move only; the process is the same model the plan used.
