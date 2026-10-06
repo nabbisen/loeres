@@ -27,6 +27,12 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 | `0.21.3` | 2026-09-24 | 001-033 |
 | `0.22.0` | 2026-09-24 | 001-034 |
 
+**What is on crates.io.** The newest published version of every Loeres crate is `0.20.2`.
+The releases after it (`0.21.0` to `0.22.0` in the table above) are tagged and distributed,
+but not published. To install Loeres today from the registry, depend on `0.20.2`, which
+predates the constrained quadratic-program contract (RFC 027). To use the current tree, depend
+on the repository by git revision or by path, and pin the revision you reviewed.
+
 The apex specifications' currency blocks are the normative record; see the
 the RFC index (`rfcs/README.md`) for the RFC states.
 

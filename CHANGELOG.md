@@ -5,6 +5,12 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
+**Two words, two facts.** A release is **distributed** when its tag is accepted by the
+authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7). It is
+**published** when its version is in the crates.io index for every publishable crate. The
+two are independent: a release can be distributed and not published. Release-status lines
+from `0.21.0` onward say which of the two hold.
+
 ## [0.22.1] — 2026-10-07 — Visitor-facing documentation and examples
 
 **Release status:** unreleased
@@ -49,7 +55,7 @@ replacement `try_update` is not available on MSRV 1.85, so it was not used, and 
 
 ## [0.22.0] — 2026-09-24 — An honest infeasibility hint
 
-**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24); not published to crates.io
 
 Repository release `0.22.0` adds a heuristic hint that a constrained solve may be
 infeasible, and is the first minor release since `0.21.0`. RFC 034 is implemented and
@@ -141,7 +147,7 @@ reports on how many constrained paths the hint was set.
 
 ## [0.21.3] — 2026-09-24 — Measured limits and a truthful `Converged`
 
-**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24); not published to crates.io
 
 Repository release `0.21.3` measures what the constrained kernels actually do on
 hard geometry, and narrows what `Converged` claims. RFCs 031, 032 and 033 are
@@ -291,7 +297,7 @@ Development toward the next release.
 
 ## [0.21.2] — 2026-09-24 — Enforced differential testing
 
-**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24); not published to crates.io
 
 Repository release `0.21.2` makes randomized differential testing of numerical
 kernels an enforced gate. RFC 030 is implemented and moves to `rfcs/done/` in
@@ -354,7 +360,7 @@ detect about itself.
 
 ## [0.21.1] — 2026-09-24 — Constrained quadratic programming
 
-**Release status:** released (tagged 2026-09-24, distributed 2026-09-24)
+**Release status:** released (tagged 2026-09-24, distributed 2026-09-24); not published to crates.io
 
 Repository release `0.21.1` is the first capability release after the `0.21.0`
 consolidation baseline. RFCs 027, 028 and 029 are implemented and move to
@@ -567,7 +573,7 @@ dependency was added.
 
 ## [0.21.0] — 2026-09-12 — Consolidation baseline
 
-**Release status:** released (tagged 2026-09-12, distributed 2026-09-12)
+**Release status:** released (tagged 2026-09-12, distributed 2026-09-12); not published to crates.io
 
 Repository release `0.21.0` is the consolidation baseline: RFCs 022 through 026
 are implemented and move to `rfcs/done/` in this revision, carrying the

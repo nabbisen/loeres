@@ -59,7 +59,8 @@ cargo xtask release-gate     # complete non-publishing RFC 019 candidate evidenc
 RFC 010 implements the stable command namespace: `check-rfcs`, `zero-bleed`,
 `check-public-api`, `feature-matrix`, `target-profiles`, `panic-audit`,
 `size-budget`, `unsafe-audit`, `conformance`, `doc-currency`, `review-evidence`,
-`supply-chain`, `examples`, `link-audit`, and (RFC 030) `differential`.
+`supply-chain`, `examples`, `link-audit`, (RFC 030) `differential`, and (RFC 036)
+`published-metadata` and `doc-build`.
 The aggregate summary labels commands as enforced, advisory/reporting, or
 owner-RFC hooks; threshold-less baselines and missing future corpora are not
 reported as enforced verification passes.
@@ -229,6 +230,33 @@ What this establishes is **dependency reachability**, not bare-metal
 buildability. An example is a host program and its own `main` may use `std`; the
 edge crates remain `#![no_std]` with no `alloc`, and that claim belongs to
 `no-std` against `thumbv7em-none-eabihf`. Keep the two apart in prose.
+
+### Publication is a separate, human step
+
+Publishing to crates.io is authorized separately from distribution (RFC 021 §7). It is run
+by the architect and the project owner. No workflow in this repository publishes, and the
+development team does not publish.
+
+- **Order.** Publish `loeres`, then `loeres-backend-static`, `loeres-backend-std`,
+  `loeres-device` and `loeres-cluster`. A dependent needs its siblings in the registry at
+  the same version first.
+- **`cargo publish --dry-run` cannot verify a dependent before its siblings are
+  published.** On `0.22.1` it refuses, as it should:
+
+  ```text
+  error: failed to select a version for the requirement `loeres = "^0.22.1"`
+    candidate versions found which didn't match: 0.20.2, 0.20.1, 0.20.0, ...
+  ```
+
+  `cargo package` of a dependent refuses in the same way, before any upload. This was
+  observed on cargo 1.99.0, including with a `[patch.crates-io]` table in the root manifest.
+  A dry-run of a root crate with no internal dependencies succeeds.
+- **What verifies the set before publication.** `cargo check --workspace --all-features` in
+  the tagged tree compiles the five crates together by path. The file set of each package is
+  shown by `cargo package -p <crate> --list`, which must include `LICENSE`.
+- **Publication is irreversible.** A version can be yanked but never replaced, so its
+  metadata ships permanently. Check `cargo xtask published-metadata` and the package listings
+  before the first `cargo publish`.
 
 ## Release version convention
 

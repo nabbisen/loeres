@@ -53,6 +53,8 @@ it actually asserts.
 | `conformance` | Enforced | the smoke corpus, comparing the real device and cluster solvers; for the constrained (QP) kernels, closed-form optima with 1-3 halfspaces, an infeasible polyhedron asserting `NotConverged`/`NoProgress`, `m = 0` identity with RFC 016 on every solve fixture, and feasibility of every returned point; `--suite extended` (RFC 031, larger sizes, exact-reference expected values) and `--suite adversarial` are reported with per-fixture difficulty figures but **not enforced** in this aggregate |
 | `differential` | Enforced | every numerical solve kernel has a registered randomized differential test (or a reasoned exemption), the named test exists, and the registry and the code agree in both directions; it checks the discipline is present, not that a reference is sound |
 | `link-audit` | Enforced | every relative Markdown link resolves |
+| `published-metadata` | Enforced | the artifact a crates.io user receives: internal dependency requirements equal the workspace version; each crate's `LICENSE` is byte-identical to the workspace one; keywords and categories are valid; no packaged README has a relative link; every feature label names a declared feature (RFC 036) |
+| `doc-build` | Enforced | the API reference builds under `-D warnings` (RFC 036). It omits `--cfg docsrs`, which needs nightly |
 
 `target-profiles` is manifest-driven and its profiles carry their own classes:
 **mandatory** profiles fail the aggregate on a missing target or failed command,
