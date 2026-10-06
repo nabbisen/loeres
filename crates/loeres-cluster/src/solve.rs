@@ -134,6 +134,7 @@ where
 /// As [`solve_batch`], plus [`ClusterError::Shutdown`] if the blocking task
 /// cannot complete (e.g. runtime shutdown).
 #[cfg(feature = "async-tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async-tokio")))]
 pub async fn solve_batch_async<S>(
     jobs: Vec<Box<dyn ClusterJob<S>>>,
     config: ClusterSolveConfig,

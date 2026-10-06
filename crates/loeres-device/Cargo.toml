@@ -20,3 +20,7 @@ panic-gate = []           # CI release-gate instrumentation for panic-path detec
 [dependencies]
 loeres = { workspace = true }
 loeres-backend-static = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

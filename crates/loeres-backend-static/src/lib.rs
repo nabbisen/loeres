@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! `loeres-backend-static` — fixed-size, allocation-free storage for the edge.
 //!
 //! Environment: `#![no_std]`, no `alloc`. Provides owned fixed arrays and
@@ -9,7 +10,7 @@
 //! Public module topography (external design §1.5):
 //! - [`dimension`] — static dimension descriptors and shared access support (baseline).
 //! - [`view`] — borrowed const-sized contiguous static views (baseline).
-//! - [`array`] — owned `FixedVector` / `FixedMatrix` (feature `owned-arrays`).
+//! - [`mod@array`] — owned `FixedVector` / `FixedMatrix` (feature `owned-arrays`).
 //! - [`workspace`] — the implemented RFC 005 [`workspace::WorkspaceFootprint`]
 //!   contract; owned-array implementations require feature `owned-arrays`.
 //!
@@ -20,6 +21,7 @@
 #![cfg_attr(not(test), no_std)]
 
 #[cfg(feature = "owned-arrays")]
+#[cfg_attr(docsrs, doc(cfg(feature = "owned-arrays")))]
 pub mod array;
 pub mod dimension;
 pub mod view;

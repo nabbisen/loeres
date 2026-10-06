@@ -21,6 +21,7 @@ pub enum TimingMode {
     EarlyExitAllowed,
     /// Fixed iteration count for timing stability (requires `constant-iteration`).
     #[cfg(feature = "constant-iteration")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "constant-iteration")))]
     ConstantIteration,
 }
 

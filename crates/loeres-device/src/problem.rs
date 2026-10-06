@@ -23,6 +23,7 @@ use loeres_backend_static::array::FixedVector;
 ///
 /// [`gradient_at`]: ProjectedFirstOrderProblem::gradient_at
 #[cfg(feature = "owned-arrays")]
+#[cfg_attr(docsrs, doc(cfg(feature = "owned-arrays")))]
 pub trait ProjectedFirstOrderProblem<S, const N: usize> {
     /// Read-only contiguous storage for the lower/upper box bounds.
     type Bounds: ContiguousVectorAccess<Scalar = S>;

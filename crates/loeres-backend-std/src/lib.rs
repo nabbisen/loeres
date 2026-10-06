@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! `loeres-backend-std` — dynamic, heap-backed storage for the server.
 //!
 //! Environment: `std`, dynamic allocation. Provides dense/sparse storage
@@ -18,8 +19,10 @@
 pub mod adapter;
 pub mod batch;
 #[cfg(feature = "dense")]
+#[cfg_attr(docsrs, doc(cfg(feature = "dense")))]
 pub mod dense;
 #[cfg(feature = "sparse")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sparse")))]
 pub mod sparse;
 pub mod view;
 
@@ -27,6 +30,8 @@ pub mod view;
 pub(crate) mod internal;
 
 #[cfg(feature = "dense")]
+#[cfg_attr(docsrs, doc(cfg(feature = "dense")))]
 pub use dense::{DenseIngestOptions, DenseMatrix, DenseVector};
 #[cfg(feature = "sparse")]
+#[cfg_attr(docsrs, doc(cfg(feature = "sparse")))]
 pub use sparse::{SparseIngestOptions, SparseMatrix};

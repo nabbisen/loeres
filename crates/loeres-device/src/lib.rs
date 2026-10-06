@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! `loeres-device` — deterministic edge-side solver entrypoints.
 //!
 //! Environment: `#![no_std]`, no `alloc`. Optimizes for bounded iteration,

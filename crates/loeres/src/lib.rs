@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! `loeres` — the shared mathematical vocabulary of the Loeres family.
 //!
 //! Environment: `#![no_std]`, no `alloc`. Defines contracts only; it owns no

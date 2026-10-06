@@ -24,3 +24,7 @@ native-linalg = []   # BLAS/LAPACK-like adapters; must never be pulled by defaul
 
 [dependencies]
 loeres = { workspace = true }
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]

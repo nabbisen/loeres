@@ -3,7 +3,8 @@
 //!
 //! The public surface here is runtime-agnostic (RFC 008 F4): no Tokio or Rayon
 //! type appears. Parallel and async backends live behind `parallel-rayon` and
-//! `async-tokio` as internal implementation details of [`executor`].
+//! `async-tokio` as internal implementation details of the private `executor`
+//! module.
 
 pub mod cancel;
 pub(crate) mod executor;

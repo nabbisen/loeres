@@ -1,3 +1,4 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
 //! `loeres-cluster` — the server-side developer interface.
 //!
 //! Environment: `std`, heap allocation, and optional async/parallel integration
@@ -17,13 +18,13 @@
 //! `runtime`, and `solve`: the per-item batch contract, a runtime-agnostic
 //! configuration / cancellation / executor layer (with `parallel-rayon` and
 //! `async-tokio` backends behind feature gates), and the hybrid dispatch
-//! barrier ([`ClusterJob`](solve::ClusterJob)). It consumes the RFC 012
+//! barrier ([`solve::ClusterJob`]). It consumes the RFC 012
 //! validation vocabulary at the orchestration boundary.
 //!
 //! RFC 016 (v0.14.0) adds the first std-side numerical kernel: a dynamic
 //! box/bound-constrained projected first-order solver over `DenseVector`
-//! ([`model`] types plus [`solve_projected_first_order_dyn`](solve::solve_projected_first_order_dyn)
-//! and its [`ClusterProjectedFirstOrderJob`](solve::ClusterProjectedFirstOrderJob)
+//! ([`model`] types plus [`solve::solve_projected_first_order_dyn`]
+//! and its [`solve::ClusterProjectedFirstOrderJob`]
 //! adapter), plugged into the `ClusterJob` seam. RFC 009 adds cluster-only
 //! metadata observability and the safe gateway boundary. RFC 015 adds the
 //! cluster-only validation evidence cache for model-owned scans. RFC 027 adds
@@ -66,6 +67,7 @@ pub use solve::{
 };
 
 #[cfg(feature = "async-tokio")]
+#[cfg_attr(docsrs, doc(cfg(feature = "async-tokio")))]
 pub use solve::solve_batch_async;
 pub use validation_cache::{
     CacheableProjectedFirstOrderProblem, CachedValidationEvidence, ModelIdentity, MutationEpoch,

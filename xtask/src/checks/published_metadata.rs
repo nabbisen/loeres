@@ -19,6 +19,11 @@
 //!   characters, and 1–5 categories, every one a slug in `VALID_CATEGORIES`.
 //!   crates.io rejects an unknown slug at publish time, which is too late to find
 //!   out, so the list is held here.
+//! - **Feature labels** (RFC 036 §3.2): every `doc(cfg(feature = "X"))` in a crate
+//!   names a feature that crate declares in `[features]`. The `docsrs` build that
+//!   would compile these labels needs nightly, and `doc-build` deliberately omits
+//!   that flag, so this lexical check is the only guard against a typo or a
+//!   removed feature.
 //! - **Packaged READMEs** (§2.5): no `crates/<name>/README.md` carries a relative
 //!   link target, because a relative target 404s on crates.io when the file it
 //!   names is not in the tarball. The **root** `README.md` is deliberately exempt:
@@ -73,6 +78,7 @@ pub fn run() -> bool {
                 .map_err(|e| e.to_string())
                 .cloned(),
         ));
+        findings.extend(doc_cfg_symmetry_findings(name, &dir));
         match fs::read_to_string(format!("{dir}/README.md")) {
             Ok(source) => findings.extend(readme_link_findings(name, &source)),
             Err(error) => findings.push(format!("README: cannot read {dir}/README.md: {error}")),
@@ -150,6 +156,74 @@ fn internal_requirement_findings(document: &toml::Value, version: &str) -> Vec<S
         }
     }
     findings
+}
+
+/// Every `doc(cfg(feature = "X"))` under `dir/src` must name a feature in the
+/// crate's `[features]` table.
+fn doc_cfg_symmetry_findings(name: &str, dir: &str) -> Vec<String> {
+    let manifest = match fs::read_to_string(format!("{dir}/Cargo.toml")) {
+        Ok(source) => source,
+        Err(error) => {
+            return vec![format!(
+                "FEATURES: `{name}`: cannot read its manifest: {error}"
+            )];
+        }
+    };
+    let declared = match declared_features(&manifest) {
+        Ok(features) => features,
+        Err(error) => return vec![format!("FEATURES: `{name}`: {error}")],
+    };
+    let mut files = Vec::new();
+    super::util::collect_ext(
+        std::path::Path::new(&format!("{dir}/src")),
+        "rs",
+        &mut files,
+    );
+    let mut findings = Vec::new();
+    for path in files {
+        let Ok(source) = fs::read_to_string(&path) else {
+            findings.push(format!(
+                "FEATURES: `{name}`: cannot read {}",
+                path.display()
+            ));
+            continue;
+        };
+        for feature in doc_cfg_features(&source) {
+            if !declared.contains(&feature) {
+                findings.push(format!(
+                    "FEATURE LABEL: `{name}` labels an item `doc(cfg(feature = \"{feature}\"))` in {}, but [features] declares no `{feature}`",
+                    path.display()
+                ));
+            }
+        }
+    }
+    findings
+}
+
+/// The keys of a manifest's `[features]` table.
+fn declared_features(manifest: &str) -> Result<Vec<String>, String> {
+    let document = manifest
+        .parse::<toml::Value>()
+        .map_err(|error| format!("cannot parse its manifest: {error}"))?;
+    let table = document
+        .get("features")
+        .and_then(toml::Value::as_table)
+        .ok_or_else(|| "has no [features] table".to_owned())?;
+    Ok(table.keys().cloned().collect())
+}
+
+/// Every feature named in a `doc(cfg(feature = "…"))` attribute in `source`.
+fn doc_cfg_features(source: &str) -> Vec<String> {
+    let mut features = Vec::new();
+    let mut rest = source;
+    while let Some(index) = rest.find("doc(cfg(feature = \"") {
+        let after = &rest[index + "doc(cfg(feature = \"".len()..];
+        if let Some(end) = after.find('"') {
+            features.push(after[..end].to_owned());
+        }
+        rest = after;
+    }
+    features
 }
 
 /// The `[package]` discovery metadata of one crate.
@@ -465,6 +539,23 @@ mod tests {
     }
 
     #[test]
+    fn a_doc_cfg_naming_an_undeclared_feature_is_refused() {
+        let source = "#[cfg_attr(docsrs, doc(cfg(feature = \"parallel-rayon\")))]\npub fn f() {}\n\
+                      #[cfg_attr(docsrs, doc(cfg(feature = \"dense\")))]\n";
+        assert_eq!(
+            super::doc_cfg_features(source),
+            vec!["parallel-rayon", "dense"]
+        );
+        let manifest = "[features]\ndense = []\ndefault = []\n";
+        let declared = super::declared_features(manifest).expect("parses");
+        let unknown: Vec<_> = super::doc_cfg_features(source)
+            .into_iter()
+            .filter(|f| !declared.contains(f))
+            .collect();
+        assert_eq!(unknown, vec!["parallel-rayon".to_owned()]);
+    }
+
+    #[test]
     fn the_real_published_crates_pass_every_assertion() {
         let root = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
         let workspace_license =
@@ -486,6 +577,12 @@ mod tests {
             assert!(
                 super::readme_link_findings(name, &readme).is_empty(),
                 "{name}"
+            );
+            let dir = format!("{root}/crates/{name}");
+            assert!(
+                super::doc_cfg_symmetry_findings(name, &dir).is_empty(),
+                "{name}: {:?}",
+                super::doc_cfg_symmetry_findings(name, &dir)
             );
         }
     }

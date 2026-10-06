@@ -18,3 +18,7 @@ libm = []               # optional no_std math adapters for AdvancedNumericalSca
 fixed-point-hooks = []  # integration hooks for fixed-point scalars (RFC 001)
 
 [dependencies]
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
