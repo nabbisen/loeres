@@ -2,6 +2,8 @@
 
 [Introduction](introduction.md)
 
+[Getting Started](getting-started.md)
+
 # Users & Integrators
 
 - [Cluster User Guide](cluster-user-guide.md)

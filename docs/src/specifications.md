@@ -18,7 +18,14 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 > current, so external registry/documentation badges are intentionally
 > omitted.
 
-Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034.
+| Repository release | Shipped | Carries RFCs |
+|---|---|---|
+| `0.20.2` | released | 001-021 |
+| `0.21.0` | 2026-09-12 | 001-026 |
+| `0.21.1` | 2026-09-24 | 001-029 |
+| `0.21.2` | 2026-09-24 | 001-030 |
+| `0.21.3` | 2026-09-24 | 001-033 |
+| `0.22.0` | 2026-09-24 | 001-034 |
 
 The apex specifications' currency blocks are the normative record; see the
 the RFC index (`rfcs/README.md`) for the RFC states.

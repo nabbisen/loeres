@@ -92,6 +92,7 @@ Each example names the problem it solves in its first paragraph.
 
 ## More Detail
 
+- Start here: [Getting Started](docs/src/getting-started.md) — install, solve one problem, read the result.
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and the maintainer bridge to the specifications (mdBook).
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap and milestones.
 - RFCs: the [RFC index](rfcs/README.md) lists every RFC by state.
