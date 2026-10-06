@@ -5,7 +5,7 @@ Keep a Changelog, and the project follows semantic versioning. Versions below
 `1.0.0` are pre-stability; a `1.0.0` release requires explicit project-owner
 sign-off (see RFC 000 and the requirements specification).
 
-## [0.22.1] — unreleased — Visitor-facing documentation and examples
+## [0.22.1] — 2026-10-07 — Visitor-facing documentation and examples
 
 **Release status:** unreleased
 

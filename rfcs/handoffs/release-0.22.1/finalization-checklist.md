@@ -41,7 +41,7 @@ No crate behaviour changed. No public surface changed.
 3. **Leave `Last reconciled repository release:` at `0.22.0`** and `This tree:` at
    `0.22.1`. RFC 024's invariant is **strict**: `This tree` > `Last reconciled`.
    Equality is never valid at any point, including mid-cut.
-4. **Date the `CHANGELOG.md` heading** — `## [0.22.1] — 2026-10-06 — Visitor-facing
+4. **Date the `CHANGELOG.md` heading** — `## [0.22.1] — 2026-10-07 — Visitor-facing
    documentation and examples` — and **leave `**Release status:** unreleased`**.
    The status changes only in the post-release commit.
 5. `cargo xtask check` → 17 gates PASS.
@@ -60,7 +60,7 @@ No crate behaviour changed. No public surface changed.
 
 ## 4. Post-release commit
 
-1. `**Release status:**` → `released (tagged 2026-10-06, distributed 2026-10-06)`.
+1. `**Release status:**` → `released (tagged 2026-10-07, distributed 2026-10-07)`.
 2. Apex `Last reconciled repository release:` → `0.22.1`.
 3. Bump the workspace version to the next patch so `This tree:` > `Last reconciled`
    holds strictly again, and set apex `This tree:` to match.
