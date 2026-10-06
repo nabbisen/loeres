@@ -1,6 +1,6 @@
 # RFC 036 - The Published Artifact
 
-**Status.** Proposed (2026-10-07).
+**Status.** Accepted (design frozen 2026-10-07)
 
 **Author tier.** `architect`.
 
