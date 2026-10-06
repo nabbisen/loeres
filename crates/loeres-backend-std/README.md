@@ -23,7 +23,7 @@ Dynamic dense/sparse storage and optional third-party numerical adapters for the
   `native-linalg` are off by default and inert pending later RFCs; `view` /
   `batch` / `adapter` are placeholders.
 
-See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)
-chapter, and the [RFC index](../../rfcs/README.md).
+See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
+chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 
 Licensed under Apache-2.0.

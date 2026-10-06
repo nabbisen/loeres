@@ -6,13 +6,41 @@
 //! sees the package a user installs, so this gate reads the manifests and the
 //! packaged files directly.
 //!
-//! S1 (this module's first assertion): every internal entry in
-//! `[workspace.dependencies]` requires exactly the workspace version. A `"0"`
-//! requirement admits every `0.x` release, so a published dependent can advertise
-//! compatibility with a sibling it cannot compile against (RFC 036 §2.1). The
-//! version is pinned here so a version bump that forgets one entry fails closed.
+//! Assertions, all over the five published crates:
+//!
+//! - **Internal requirements** (RFC 036 §2.1): every internal entry in
+//!   `[workspace.dependencies]` requires exactly the workspace version. A `"0"`
+//!   requirement admits every `0.x` release, so a published dependent can advertise
+//!   compatibility with a sibling it cannot compile against.
+//! - **License text** (§2.2): each crate directory holds a `LICENSE` byte-identical
+//!   to the workspace `LICENSE`. The copies are real files, not symlinks, because
+//!   `release_gate/package.rs` rejects anything that is not a regular file.
+//! - **Discovery** (§2.7): each crate declares 1–5 keywords of at most twenty
+//!   characters, and 1–5 categories, every one a slug in `VALID_CATEGORIES`.
+//!   crates.io rejects an unknown slug at publish time, which is too late to find
+//!   out, so the list is held here.
+//! - **Packaged READMEs** (§2.5): no `crates/<name>/README.md` carries a relative
+//!   link target, because a relative target 404s on crates.io when the file it
+//!   names is not in the tarball. The **root** `README.md` is deliberately exempt:
+//!   it ships with no crate, and its relative links are correct on GitHub. Do not
+//!   "fix" it to absolute URLs.
 
 use std::fs;
+
+/// The category slugs the crates use, each verified against the crates.io list.
+/// A slug added to a manifest must be added here first.
+const VALID_CATEGORIES: &[&str] = &[
+    "science",
+    "mathematics",
+    "no-std",
+    "embedded",
+    "data-structures",
+    "concurrency",
+];
+
+/// Keyword limits on crates.io.
+const MAX_KEYWORDS: usize = 5;
+const MAX_KEYWORD_LENGTH: usize = 20;
 
 /// The five crates that are published, in dependency order (RFC 036 §4.3).
 const PUBLISHED_CRATES: &[&str] = &[
@@ -30,11 +58,34 @@ pub fn run() -> bool {
         Ok(source) => findings.extend(manifest_findings(&source)),
         Err(error) => findings.push(format!("CARGO: cannot read Cargo.toml: {error}")),
     }
+    let workspace_license = fs::read("LICENSE");
+    for name in PUBLISHED_CRATES {
+        let dir = format!("crates/{name}");
+        match fs::read_to_string(format!("{dir}/Cargo.toml")) {
+            Ok(source) => findings.extend(package_metadata_findings(name, &source)),
+            Err(error) => findings.push(format!("PACKAGE: cannot read {dir}/Cargo.toml: {error}")),
+        }
+        findings.extend(license_findings(
+            name,
+            fs::read(format!("{dir}/LICENSE")),
+            workspace_license
+                .as_ref()
+                .map_err(|e| e.to_string())
+                .cloned(),
+        ));
+        match fs::read_to_string(format!("{dir}/README.md")) {
+            Ok(source) => findings.extend(readme_link_findings(name, &source)),
+            Err(error) => findings.push(format!("README: cannot read {dir}/README.md: {error}")),
+        }
+    }
     for finding in &findings {
         eprintln!("  {finding}");
     }
     let ok = findings.is_empty();
-    eprintln!("  checked {} published crate(s)", PUBLISHED_CRATES.len());
+    eprintln!(
+        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links",
+        PUBLISHED_CRATES.len()
+    );
     eprintln!("[published-metadata] {}", if ok { "PASS" } else { "FAIL" });
     ok
 }
@@ -99,6 +150,149 @@ fn internal_requirement_findings(document: &toml::Value, version: &str) -> Vec<S
         }
     }
     findings
+}
+
+/// The `[package]` discovery metadata of one crate.
+fn package_metadata_findings(name: &str, source: &str) -> Vec<String> {
+    let document = match source.parse::<toml::Value>() {
+        Ok(document) => document,
+        Err(error) => {
+            return vec![format!(
+                "PACKAGE: `{name}`: cannot parse its manifest: {error}"
+            )];
+        }
+    };
+    let Some(package) = document.get("package").and_then(toml::Value::as_table) else {
+        return vec![format!("PACKAGE: `{name}` has no [package] table")];
+    };
+    let mut findings = Vec::new();
+
+    match string_array(package.get("keywords")) {
+        None => findings.push(format!("KEYWORDS: `{name}` declares no `keywords` array")),
+        Some(keywords) => {
+            if keywords.is_empty() || keywords.len() > MAX_KEYWORDS {
+                findings.push(format!(
+                    "KEYWORDS: `{name}` declares {} keyword(s); crates.io allows 1 to {MAX_KEYWORDS}",
+                    keywords.len()
+                ));
+            }
+            for keyword in keywords {
+                if keyword.is_empty() || keyword.chars().count() > MAX_KEYWORD_LENGTH {
+                    findings.push(format!(
+                        "KEYWORDS: `{name}` keyword \"{keyword}\" is not 1 to {MAX_KEYWORD_LENGTH} characters"
+                    ));
+                }
+            }
+        }
+    }
+
+    match string_array(package.get("categories")) {
+        None => findings.push(format!(
+            "CATEGORIES: `{name}` declares no `categories` array"
+        )),
+        Some(categories) => {
+            if categories.is_empty() || categories.len() > MAX_KEYWORDS {
+                findings.push(format!(
+                    "CATEGORIES: `{name}` declares {} categor(ies); crates.io allows 1 to {MAX_KEYWORDS}",
+                    categories.len()
+                ));
+            }
+            for category in categories {
+                if !VALID_CATEGORIES.contains(&category.as_str()) {
+                    findings.push(format!(
+                        "CATEGORIES: `{name}` category \"{category}\" is not in VALID_CATEGORIES"
+                    ));
+                }
+            }
+        }
+    }
+    findings
+}
+
+fn string_array(value: Option<&toml::Value>) -> Option<Vec<String>> {
+    value?
+        .as_array()?
+        .iter()
+        .map(|item| item.as_str().map(str::to_owned))
+        .collect()
+}
+
+/// The crate's `LICENSE` must exist and match the workspace `LICENSE` byte for byte.
+fn license_findings(
+    name: &str,
+    crate_license: std::io::Result<Vec<u8>>,
+    workspace_license: Result<Vec<u8>, String>,
+) -> Vec<String> {
+    let workspace = match workspace_license {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            return vec![format!(
+                "LICENSE: cannot read the workspace LICENSE: {error}"
+            )];
+        }
+    };
+    match crate_license {
+        Err(error) => vec![format!("LICENSE: `{name}` has no LICENSE file: {error}")],
+        Ok(bytes) if bytes != workspace => vec![format!(
+            "LICENSE: `{name}`'s LICENSE differs from the workspace LICENSE ({} bytes against {})",
+            bytes.len(),
+            workspace.len()
+        )],
+        Ok(_) => Vec::new(),
+    }
+}
+
+/// Every relative link target in a packaged README. Inline `](target)` and
+/// reference definitions `[label]: target` are both checked.
+fn readme_link_findings(name: &str, source: &str) -> Vec<String> {
+    let mut findings = Vec::new();
+    for target in link_targets(source) {
+        if is_relative(&target) {
+            findings.push(format!(
+                "README LINK: `{name}`'s README links `{target}`, a relative path that will 404 on crates.io"
+            ));
+        }
+    }
+    findings
+}
+
+fn link_targets(source: &str) -> Vec<String> {
+    let mut targets = Vec::new();
+    let mut rest = source;
+    while let Some(index) = rest.find("](") {
+        let after = &rest[index + 2..];
+        if let Some(end) = after.find(')') {
+            let target = after[..end].split_whitespace().next().unwrap_or("");
+            targets.push(target.to_owned());
+        }
+        rest = after;
+    }
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        let definition = trimmed
+            .strip_prefix('[')
+            .and_then(|stripped| stripped.split_once("]:"))
+            .and_then(|(_, after)| after.split_whitespace().next());
+        if let Some(target) = definition {
+            targets.push(target.to_owned());
+        }
+    }
+    targets
+}
+
+/// A target that is neither absolute (a scheme such as `https:`) nor a fragment
+/// within the same page. Everything else resolves only inside the checkout.
+fn is_relative(target: &str) -> bool {
+    if target.is_empty() || target.starts_with('#') {
+        return false;
+    }
+    let has_scheme = target.split_once(':').is_some_and(|(scheme, _)| {
+        !scheme.is_empty()
+            && scheme
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '+' || c == '-' || c == '.')
+    });
+    !has_scheme && !target.starts_with('/')
 }
 
 #[cfg(test)]
@@ -188,5 +382,111 @@ mod tests {
             "{:?}",
             manifest_findings(&source)
         );
+    }
+
+    fn package(keywords: &str, categories: &str) -> String {
+        format!("[package]\nname = \"x\"\nkeywords = [{keywords}]\ncategories = [{categories}]\n")
+    }
+
+    #[test]
+    fn valid_discovery_metadata_passes() {
+        let text = package("\"optimization\", \"solver\"", "\"science\"");
+        assert!(super::package_metadata_findings("x", &text).is_empty());
+    }
+
+    #[test]
+    fn an_unknown_category_slug_is_refused_by_name() {
+        let text = package("\"solver\"", "\"science::math\"");
+        let findings = super::package_metadata_findings("x", &text);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("science::math"), "{findings:?}");
+    }
+
+    #[test]
+    fn too_many_or_too_long_keywords_are_refused() {
+        let six = package("\"a\", \"b\", \"c\", \"d\", \"e\", \"f\"", "\"science\"");
+        assert!(
+            super::package_metadata_findings("x", &six)
+                .iter()
+                .any(|f| f.contains("6 keyword"))
+        );
+        let long = package(&format!("\"{}\"", "k".repeat(21)), "\"science\"");
+        assert!(
+            super::package_metadata_findings("x", &long)
+                .iter()
+                .any(|f| f.contains("1 to 20"))
+        );
+    }
+
+    #[test]
+    fn an_empty_categories_list_is_refused() {
+        let text = package("\"solver\"", "");
+        assert!(
+            super::package_metadata_findings("x", &text)
+                .iter()
+                .any(|f| f.contains("0 categor"))
+        );
+    }
+
+    #[test]
+    fn a_license_byte_for_byte_copy_passes_and_a_single_byte_difference_fails() {
+        let workspace = b"Apache License\n".to_vec();
+        assert!(
+            super::license_findings("x", Ok(workspace.clone()), Ok(workspace.clone())).is_empty()
+        );
+        let mut changed = workspace.clone();
+        changed[0] = b'x';
+        let findings = super::license_findings("x", Ok(changed), Ok(workspace));
+        assert!(
+            findings.iter().any(|f| f.contains("differs")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_missing_license_file_is_reported() {
+        let missing = Err(std::io::Error::from(std::io::ErrorKind::NotFound));
+        let findings = super::license_findings("x", missing, Ok(b"A".to_vec()));
+        assert!(
+            findings.iter().any(|f| f.contains("has no LICENSE file")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_relative_readme_link_is_refused_and_absolute_and_fragment_links_pass() {
+        let relative = "See the [README](../../README.md).";
+        assert_eq!(super::readme_link_findings("x", relative).len(), 1);
+        let reference = "[index]: ../../rfcs/README.md\n";
+        assert_eq!(super::readme_link_findings("x", reference).len(), 1);
+        let absolute =
+            "[a](https://github.com/nabbisen/loeres) and [b](#top) and [c](mailto:x@y.z)";
+        assert!(super::readme_link_findings("x", absolute).is_empty());
+    }
+
+    #[test]
+    fn the_real_published_crates_pass_every_assertion() {
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+        let workspace_license =
+            std::fs::read(format!("{root}/LICENSE")).expect("workspace LICENSE");
+        for name in PUBLISHED_CRATES {
+            let dir = format!("{root}/crates/{name}");
+            let manifest = std::fs::read_to_string(format!("{dir}/Cargo.toml")).expect("manifest");
+            assert!(
+                super::package_metadata_findings(name, &manifest).is_empty(),
+                "{name}: {:?}",
+                super::package_metadata_findings(name, &manifest)
+            );
+            let license = std::fs::read(format!("{dir}/LICENSE")).expect("crate LICENSE");
+            assert!(
+                super::license_findings(name, Ok(license), Ok(workspace_license.clone()))
+                    .is_empty()
+            );
+            let readme = std::fs::read_to_string(format!("{dir}/README.md")).expect("crate README");
+            assert!(
+                super::readme_link_findings(name, &readme).is_empty(),
+                "{name}"
+            );
+        }
     }
 }

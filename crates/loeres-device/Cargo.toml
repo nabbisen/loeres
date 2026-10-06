@@ -7,6 +7,8 @@ rust-version.workspace  = true
 license.workspace       = true
 authors.workspace       = true
 repository.workspace    = true
+keywords   = ["embedded", "no-std", "optimization", "mpc", "solver"]
+categories = ["embedded", "no-std", "science"]
 
 [features]
 default = []

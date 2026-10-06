@@ -27,7 +27,7 @@ precondition. The kernels that consume it (`loeres-device`, `loeres-cluster`) re
 heuristic `infeasibility_evidence` hint, wrong in both directions, RFC 034); the projection is inexact by design
 and no numeric convergence rate is claimed (RFC 027 §11.6, RFC 032).
 
-See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)
-chapter, and the [RFC index](../../rfcs/README.md).
+See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
+chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 
 Licensed under Apache-2.0.

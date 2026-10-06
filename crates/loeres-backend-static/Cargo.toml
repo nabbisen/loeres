@@ -7,6 +7,8 @@ rust-version.workspace  = true
 license.workspace       = true
 authors.workspace       = true
 repository.workspace    = true
+keywords   = ["no-std", "embedded", "matrix", "linear-algebra", "storage"]
+categories = ["no-std", "embedded", "data-structures"]
 
 [features]
 default = []

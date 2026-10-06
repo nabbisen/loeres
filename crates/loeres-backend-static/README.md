@@ -19,7 +19,7 @@ Advanced strided/row/column/sub-matrix `static-views` and richer
 `diagnostic-snapshot` behavior remain deferred. No feature enables `std`,
 `alloc`, server storage, async, logging, or FFI.
 
-See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)
-chapter, and the [RFC index](../../rfcs/README.md).
+See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
+chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 
 Licensed under Apache-2.0.

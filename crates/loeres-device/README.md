@@ -69,7 +69,7 @@ and the returned point may be only feasible-approximate.
   verified.
 - Device and cluster agree within tolerance, not bitwise (RFC 013).
 
-See the workspace [README](../../README.md), the [architecture](../../docs/src/architecture.md)
-chapter, and the [RFC index](../../rfcs/README.md).
+See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
+chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 
 Licensed under Apache-2.0.

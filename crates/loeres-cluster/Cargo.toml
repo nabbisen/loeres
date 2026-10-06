@@ -7,6 +7,8 @@ rust-version.workspace  = true
 license.workspace       = true
 authors.workspace       = true
 repository.workspace    = true
+keywords   = ["optimization", "solver", "batch", "quadratic-program", "server"]
+categories = ["science", "mathematics", "concurrency"]
 
 [features]
 # All features are server-only. The baseline synchronous batch path is

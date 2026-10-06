@@ -7,6 +7,8 @@ rust-version.workspace  = true
 license.workspace       = true
 authors.workspace       = true
 repository.workspace    = true
+keywords   = ["optimization", "quadratic-program", "solver", "no-std", "math"]
+categories = ["science", "mathematics", "no-std"]
 
 [features]
 # Baseline is the implemented no_std / no-alloc contract surface. Optional
