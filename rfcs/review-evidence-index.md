@@ -158,6 +158,7 @@ separate, reviewed pass.
 | `074` | 2026-09-24 | release 0.22.0 prep architect review | `230eacf444276bdeaace8d1ce59b8aeb9474a6e16d9771d4c2a55053b6afee7a` | `architect` |  |
 | `075` | 2026-09-25 | visitor facing documentation assessment | `b9eb3d0b02a08c4e20b969cb2672ee5731fcb9491e34af2282c75ee3408c1d8c` | `architect` | ✓ |
 | `076` | 2026-10-06 | rfc035 s1 s4 architect review | `7bea38b641efb7f1e2ef54ba47baf15f57e37ae138e7fa4e18f802468b763a3c` | `architect` | ✓ |
+| `077` | 2026-10-06 | c1 clippy release blocker architect review | `a6c09dc5de758cfa698fb1ce2b11917cda97bf01b67538c3bc28e5728584697b` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
