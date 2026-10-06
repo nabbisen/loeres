@@ -1,0 +1,25 @@
+# RFC 023 §11.1: excluded from the root workspace on purpose, with its own
+# lockfile, so this crate's resolved dependency graph is independent evidence
+# that a device integrator reaches no server-side crate. See the root
+# `[workspace] exclude` comment.
+#
+# RFC 023 §0.2 (Amendment 2): an empty `[workspace]` table makes this crate its
+# own workspace root, so cargo's upward search for a manifest stops here.
+[workspace]
+
+[package]
+name = "device-mpc-step"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "Model-predictive control with actuator limits on the edge path (RFC 035 example)"
+
+# Edge crates only, default features off, as in `device-box-pfo`. The
+# `cargo xtask examples` gate asserts the forbidden set against the resolved
+# graph, not this file.
+[dependencies]
+loeres = { path = "../../crates/loeres", default-features = false }
+loeres-device = { path = "../../crates/loeres-device", default-features = false, features = ["owned-arrays"] }
+loeres-backend-static = { path = "../../crates/loeres-backend-static", default-features = false, features = ["owned-arrays"] }

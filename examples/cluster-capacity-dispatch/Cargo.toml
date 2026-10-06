@@ -1,0 +1,22 @@
+# RFC 023 §11.1: excluded from the root workspace on purpose, with its own
+# lockfile, so this crate's resolved dependency graph is its own evidence. See
+# the root `[workspace] exclude` comment.
+# RFC 023 §0.2 (Amendment 2): an empty `[workspace]` table makes this crate its
+# own workspace root, so cargo's upward search for a manifest stops here.
+[workspace]
+
+[package]
+name = "cluster-capacity-dispatch"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "Capacity-limited dispatch with a demand floor on the server path (RFC 035 example)"
+
+# Server-side feature set from external design §1.4, minus `parallel-rayon`: a
+# single solve needs no runtime crate.
+[dependencies]
+loeres = { path = "../../crates/loeres", default-features = false }
+loeres-cluster = { path = "../../crates/loeres-cluster", default-features = false }
+loeres-backend-std = { path = "../../crates/loeres-backend-std", default-features = false, features = ["dense"] }

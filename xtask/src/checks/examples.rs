@@ -59,6 +59,22 @@ const EXAMPLES: &[Example] = &[
             "tracing",
         ],
     },
+    Example {
+        name: "cluster-capacity-dispatch",
+        dir: "examples/cluster-capacity-dispatch",
+        forbidden: &[],
+    },
+    Example {
+        name: "device-mpc-step",
+        dir: "examples/device-mpc-step",
+        forbidden: &[
+            "loeres-cluster",
+            "loeres-backend-std",
+            "tokio",
+            "rayon",
+            "tracing",
+        ],
+    },
 ];
 
 pub fn run() -> bool {
