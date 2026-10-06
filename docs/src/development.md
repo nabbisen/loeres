@@ -93,6 +93,31 @@ build from nothing — and the gate neither reads nor deletes anything outside
 GNU `tar`, and `sha256sum`; the release workflow supplies the reviewed execution
 environment.
 
+### A candidate run is once-per-revision, and does not clean up after itself
+
+`release-gate` writes its evidence to
+`.git-exclude/release-evidence/<revision>-v<version>/` and creates that directory
+with `create_dir`, not `create_dir_all`. A second candidate run on the **same
+revision** therefore stops with
+
+```text
+cannot create fresh evidence directory .../<revision>-v<version>: File exists
+```
+
+and a non-zero exit. This is the gate refusing to overwrite evidence, not a gate
+failure: RFC 019 evidence is meant to be written once and read afterwards, and
+silently merging a new run into an older directory would make it untrustworthy.
+
+The consequence is that re-running a candidate on an unchanged revision needs that
+one directory removed first. Remove only the directory named for the revision you
+are re-running, after looking at what is in it. Nothing else under
+`.git-exclude/release-evidence/` belongs to the new run.
+
+Do not pipe a candidate run through `head`, `tail` or any other command that can
+close the pipe early — that kills the run partway through and leaves exactly the
+part-written evidence directory described above. Redirect the whole stream to a
+file and read the file afterwards.
+
 ### Clippy runs in `release-gate`, on a floating channel
 
 `cargo xtask check` does not run clippy. `release-gate` does, as
