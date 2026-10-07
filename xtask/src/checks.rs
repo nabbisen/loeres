@@ -11,6 +11,7 @@ pub mod doc_currency;
 pub mod exact;
 pub mod examples;
 pub mod feature_matrix;
+pub mod fixed_point;
 pub mod link_audit;
 pub mod lp;
 pub mod no_std;

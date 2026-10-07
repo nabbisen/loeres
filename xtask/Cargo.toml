@@ -10,7 +10,7 @@ repository.workspace    = true
 publish = false
 
 [dependencies]
-loeres = { workspace = true }
+loeres = { workspace = true, features = ["fixed-point-hooks"] }
 loeres-backend-static = { workspace = true, features = ["owned-arrays"] }
 loeres-backend-std = { workspace = true }
 # `parallel-rayon` is what makes `cargo xtask throughput`'s parallel batch reach the
