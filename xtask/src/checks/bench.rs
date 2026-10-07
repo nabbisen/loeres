@@ -31,7 +31,9 @@
 //! The corpus, the measurement, the derived figures and the table layout are pure
 //! functions with unit tests, because nothing else exercises this command.
 
-use loeres::{BoxBounds, LinearInequalities, QuadraticObjective, SolveStatus, SolverError};
+use loeres::{
+    BoxBounds, LinearInequalities, QuadraticObjective, SolveStatus, SolverError, VectorAccess,
+};
 use loeres_backend_static::array::{FixedMatrix, FixedVector};
 use loeres_backend_static::workspace::WorkspaceFootprint;
 use loeres_backend_std::{DenseMatrix, DenseVector};
@@ -491,6 +493,13 @@ pub fn derived(family: Family) -> Derived {
 
 /// One solve of the family, measured from its record.
 pub fn measure(family: Family) -> Result<Measured, String> {
+    measure_with_iterate(family).map(|(measured, _)| measured)
+}
+
+/// The same solve as `measure`, also returning the returned iterate. Separate so the
+/// common case (`measure`) does not carry the iterate around, and so S6's deviation
+/// figures can read it without a second solve.
+pub fn measure_with_iterate(family: Family) -> Result<(Measured, Vec<f64>), String> {
     let program = Program::new(family).map_err(|e| format!("corpus rejected: {e:?}"))?;
     let mut workspace = ClusterConstrainedWorkspace::new(family.n, family.m)
         .map_err(|e| format!("workspace rejected: {e:?}"))?;
@@ -515,14 +524,48 @@ pub fn measure(family: Family) -> Result<Measured, String> {
         &context,
     )
     .map_err(|e| format!("solve failed: {e:?}"))?;
-    Ok(Measured {
-        outer_iterations: record.report.iterations_executed(),
-        status: render_status(record.report.status()),
-        termination: format!("{:?}", record.report.termination()),
-        cap_hits: record.projection_cap_hits,
-        violation: record.max_constraint_violation,
-        infeasibility_evidence: record.infeasibility_evidence,
-    })
+    let iterate: Vec<f64> = (0..family.n)
+        .map(|i| x.get(i))
+        .collect::<Result<_, _>>()
+        .map_err(|e| format!("cannot read the returned iterate: {e:?}"))?;
+    Ok((
+        Measured {
+            outer_iterations: record.report.iterations_executed(),
+            status: render_status(record.report.status()),
+            termination: format!("{:?}", record.report.termination()),
+            cap_hits: record.projection_cap_hits,
+            violation: record.max_constraint_violation,
+            infeasibility_evidence: record.infeasibility_evidence,
+        },
+        iterate,
+    ))
+}
+
+/// RFC 037 §5.6: the deviation between the solver's returned iterate and the exact
+/// optimum, for a corpus member within the dense reference's scope (`n ≤ exact::MAX_N`).
+/// `None` if the family is out of scope; an error if the solve or the reference failed.
+pub fn exact_deviation(family: Family) -> Result<Option<f64>, String> {
+    if family.n > super::exact::MAX_N {
+        return Ok(None);
+    }
+    let (_, iterate) = measure_with_iterate(family)?;
+    let problem = super::exact::DenseQp {
+        n: family.n,
+        q: q_row_major(family.n, family.off),
+        c: vec![-1.0; family.n],
+        lower: vec![0.0; family.n],
+        upper: vec![10.0; family.n],
+        a: a_row_major(family.n, family.m),
+        b: vec![1.0; family.m],
+    };
+    let exact = super::exact::exact_optimum(&problem)
+        .ok_or_else(|| "the dense reference found no KKT point for this family".to_owned())?;
+    let deviation = iterate
+        .iter()
+        .zip(&exact)
+        .map(|(a, b)| (a - b).abs())
+        .fold(0.0_f64, f64::max);
+    Ok(Some(deviation))
 }
 
 fn render_status(status: SolveStatus) -> String {
@@ -712,12 +755,53 @@ fn print_truthfulness(complete: &mut bool) {
         "  legs: feasible within projection_tolerance (RFC 027 Am. 5); stationary, i.e. ConvergenceCriterion (RFC 029);"
     );
     println!("        uncapped final projection, settled by zero cap hits (RFC 033).");
+    println!();
     println!(
-        "  deviation from the exact optimum: NOT REPORTED. The exact reference in conformance/reference.rs"
+        "  deviation from the exact optimum (RFC 037 S6, n <= {}): the exact reference is a dense",
+        super::exact::MAX_N
     );
+    println!("  active-set enumeration, cross-validated against the separable reference on every");
     println!(
-        "  handles separable (diagonal) Q only; the corpus family is tridiagonal. See the review request."
+        "  fixture in its scope (cargo test -p xtask the_dense_enumeration_agrees ... --nocapture)."
     );
+    for family in [
+        Family {
+            n: 4,
+            m: 2,
+            off: 0.50,
+        },
+        Family {
+            n: 8,
+            m: 4,
+            off: 0.50,
+        },
+    ] {
+        match exact_deviation(family) {
+            Ok(Some(deviation)) => println!(
+                "    n={}, m={}, off={:.2}: largest |iterate - exact| = {deviation:e}  [measured; exact reference n <= {}]",
+                family.n,
+                family.m,
+                family.off,
+                super::exact::MAX_N
+            ),
+            Ok(None) => println!(
+                "    n={}, m={}, off={:.2}: out of the exact reference's scope",
+                family.n, family.m, family.off
+            ),
+            Err(error) => {
+                *complete = false;
+                println!(
+                    "    n={}, m={}, off={:.2}: FAILED: {error}",
+                    family.n, family.m, family.off
+                );
+            }
+        }
+    }
+    println!(
+        "  Nothing larger than n = {} is exactly checked; larger instances rest on the three legs",
+        super::exact::MAX_N
+    );
+    println!("  above and the conformance suites, not on a direct comparison to an exact optimum.");
 }
 
 #[cfg(test)]

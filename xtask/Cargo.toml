@@ -13,6 +13,8 @@ publish = false
 loeres = { workspace = true }
 loeres-backend-static = { workspace = true, features = ["owned-arrays"] }
 loeres-backend-std = { workspace = true }
+# `parallel-rayon` is what makes `cargo xtask throughput`'s parallel batch reach the
+# parallel path (RFC 037 S4); without it the measurement would be silently sequential.
 loeres-cluster = { workspace = true, features = ["parallel-rayon"] }
 loeres-device = { workspace = true, features = ["owned-arrays"] }
 serde = { workspace = true }

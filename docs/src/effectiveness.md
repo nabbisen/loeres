@@ -68,10 +68,23 @@ all three conditions the solver promises: it is feasible within tolerance, it st
 convergence criterion rather than on its iteration cap, and no projection was cut short. This
 is reported by `cargo xtask bench`, which checks the solve records directly.
 
-**Not reported: the deviation from the exact optimum for this family.** The repository's exact
-reference solves only problems whose objective is separable, and this family is not separable.
-Until a reference for it exists, this chapter does not state how close the solver gets to the
-true optimum. That is the most important open question about effectiveness.
+**The deviation from the exact optimum is checked for `n = 4` and `n = 8`.** The repository's
+original exact reference solves only a separable objective, and this family is not separable, so
+a second, independent reference was built: a dense active-set enumeration, scoped to `n ≤ 8`
+because its search space grows too large past that. It is cross-validated against the original
+reference on every fixture where both apply (43 fixtures, largest disagreement `1.8e-15`, which is
+floating-point noise), so the two agreeing is evidence the new one is correct, not merely an
+assertion that it is.
+
+| `n` | `m` | `off` | largest `|solver iterate − exact optimum|` |
+|---:|---:|---:|---:|
+| 4 | 2 | 0.50 | `1.4e-10` |
+| 8 | 4 | 0.50 | `1.6e-10` |
+
+Both are near the solver's own tolerance (`1e-10`), which is what a correctly converged solve
+should show. **Nothing larger than `n = 8` is checked this way.** For `n = 16` and above, this
+chapter's evidence is the three legs above and the conformance suites, not a direct comparison to
+an exact optimum.
 
 ## Throughput (wall time, unchecked)
 
@@ -85,14 +98,16 @@ Measured 2026-10-07 on: x86_64 Linux, 32 logical threads, rustc 1.99.0. The prob
 
 | Measure | Median of repeats | Range observed | Status |
 |---|---:|---:|---|
-| One solve (50 repeats) | 3.2 ms | 3.1 to 5.4 ms | unchecked |
-| Batch of 64, sequential (5 repeats) | 204 ms | 202 to 208 ms | unchecked |
-| Batch of 64, parallel (5 repeats) | 17 ms | 16 to 19 ms | unchecked |
-| Parallel speedup, three separate runs | — | 9.8× to 13.3× | unchecked, not a claim |
+| One solve (50 repeats) | 3.1 ms | 3.1 to 3.2 ms | unchecked |
+| Batch of 64, sequential (5 repeats) | 201 ms | 200 to 201 ms | unchecked |
+| Batch of 64, parallel (5 repeats) | 14 ms | 13 to 16 ms | unchecked |
 
-The parallel speedup varies by nearly a third between runs on the same machine. It should not be
-quoted as a single figure. The batch figures use the host's logical thread count as the worker
-count.
+**Parallel speedup is never one number.** It is reported as the range across 5 paired
+sequential/parallel runs of the same batch: **13.1× to 15.2×**, on this run. The batch is 64 items
+on 32 logical threads, so an *ideal* speedup is near 32×; the observed range is roughly 41% to 48%
+of that. The gap is scheduling and work granularity at this batch size, not a defect — a batch
+this small does not give 32 threads enough to divide evenly. The batch figures use the host's
+logical thread count as the worker count.
 
 Reproduce the table with `cargo xtask throughput`, which prints the host and the toolchain
 beside every figure.

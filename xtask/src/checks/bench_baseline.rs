@@ -25,6 +25,10 @@
 
 use super::bench::{Family, Measured, corpus, measure, measure_device};
 
+/// RFC 037 C1: the manifest of the example that carries a second copy of the corpus
+/// family, so a drift between `bench` and the example fails here rather than silently.
+const EXAMPLE_MANIFEST: &str = "examples/cluster-counted-work/Cargo.toml";
+
 /// One pinned point of the corpus: the family member and its expected counted work.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Pin {
@@ -123,7 +127,7 @@ pub const PINNED: &[Pin] = &[
 
 pub fn run() -> bool {
     eprintln!("[bench-baseline] RFC 037 counted-work baseline, host target");
-    let findings = baseline_findings(
+    let mut findings = baseline_findings(
         PINNED,
         &corpus().into_iter().map(|(_, f)| f).collect::<Vec<_>>(),
         measure,
@@ -137,16 +141,92 @@ pub fn run() -> bool {
             })
         },
     );
+    findings.extend(example_output_findings());
     for finding in &findings {
         eprintln!("  {finding}");
     }
     let ok = findings.is_empty();
     eprintln!(
-        "  checked {} pinned point(s) on both paths, the pinned set against the corpus, and the device footprint against RFC 027",
+        "  checked {} pinned point(s) on both paths, the pinned set against the corpus, the device footprint against RFC 027, and the cluster-counted-work example's printed rows",
         PINNED.len()
     );
     eprintln!("[bench-baseline] {}", if ok { "PASS" } else { "FAIL" });
     ok
+}
+
+/// RFC 037 C1: runs `cluster-counted-work`, parses its printed rows, and checks each one
+/// against the same pinned table. Closes the loop pinned table -> `bench` -> example: a
+/// drift in either copy of the family now fails here, not only in a reader's eye.
+fn example_output_findings() -> Vec<String> {
+    let Some(output) = super::util::cargo_stdout(&[
+        "run",
+        "--locked",
+        "--quiet",
+        "--manifest-path",
+        EXAMPLE_MANIFEST,
+    ]) else {
+        return vec!["BASELINE: cluster-counted-work did not run to a successful exit".to_owned()];
+    };
+    let rows = parse_example_rows(&output);
+    if rows.is_empty() {
+        return vec![
+            "BASELINE: cluster-counted-work printed no parseable row; its output format may have changed"
+                .to_owned(),
+        ];
+    }
+    example_row_findings(&rows, PINNED)
+}
+
+/// One row of the example's table: `n`, `m`, `off`, the printed iteration count and cap
+/// hits. Lines that do not parse as six whitespace-separated columns (the header, blank
+/// lines, the closing prose) are skipped rather than treated as a malformed row.
+fn parse_example_rows(output: &str) -> Vec<(Family, u32, u32)> {
+    let mut rows = Vec::new();
+    for line in output.lines() {
+        let fields: Vec<&str> = line.split_whitespace().collect();
+        let [n, m, off, iterations, cap_hits, _accepted] = fields.as_slice() else {
+            continue;
+        };
+        let (Ok(n), Ok(m), Ok(off), Ok(iterations), Ok(cap_hits)) = (
+            n.parse::<usize>(),
+            m.parse::<usize>(),
+            off.parse::<f64>(),
+            iterations.parse::<u32>(),
+            cap_hits.parse::<u32>(),
+        ) else {
+            continue;
+        };
+        rows.push((Family { n, m, off }, iterations, cap_hits));
+    }
+    rows
+}
+
+/// Pure core: each parsed row must match its pinned row's iteration count and cap hits.
+/// A row the pinned table does not contain is itself a finding, fail-closed.
+fn example_row_findings(rows: &[(Family, u32, u32)], pins: &[Pin]) -> Vec<String> {
+    let mut findings = Vec::new();
+    for (family, iterations, cap_hits) in rows {
+        let Some(pin) = pins.iter().find(|p| same_point(p, *family)) else {
+            findings.push(format!(
+                "BASELINE: cluster-counted-work prints n={}, m={}, off={:.2}, which has no pinned row",
+                family.n, family.m, family.off
+            ));
+            continue;
+        };
+        if *iterations != pin.outer_iterations {
+            findings.push(format!(
+                "BASELINE: n={}, m={}, off={:.2} (cluster-counted-work example): outer iterations expected {}, measured {}",
+                family.n, family.m, family.off, pin.outer_iterations, iterations
+            ));
+        }
+        if *cap_hits != pin.cap_hits {
+            findings.push(format!(
+                "BASELINE: n={}, m={}, off={:.2} (cluster-counted-work example): projection cap hits expected {}, measured {}",
+                family.n, family.m, family.off, pin.cap_hits, cap_hits
+            ));
+        }
+    }
+    findings
 }
 
 /// Every finding for the baseline. Pure, with the measurements passed in, so the tests
@@ -429,5 +509,91 @@ mod tests {
             .iter()
             .find(|p| p.n == family.n && p.m == family.m && (p.off - family.off).abs() < 1e-12)
             .map_or(0, |p| p.outer_iterations)
+    }
+
+    #[test]
+    fn parse_example_rows_reads_the_data_rows_and_skips_the_header_and_prose() {
+        let output = "     n      m    off   iterations   cap hits   accepted\n\
+                       \x20    4      2   0.50           30          0        yes\n\
+                       \x20   32     16   0.99          989          0        yes\n\
+                       \n\
+                       A result is used only when accepted = yes.\n";
+        let rows = super::parse_example_rows(output);
+        assert_eq!(
+            rows,
+            vec![
+                (
+                    super::Family {
+                        n: 4,
+                        m: 2,
+                        off: 0.50
+                    },
+                    30,
+                    0
+                ),
+                (
+                    super::Family {
+                        n: 32,
+                        m: 16,
+                        off: 0.99
+                    },
+                    989,
+                    0
+                ),
+            ]
+        );
+    }
+
+    #[test]
+    fn a_row_matching_its_pin_passes() {
+        let rows = vec![(
+            super::Family {
+                n: 4,
+                m: 2,
+                off: 0.50,
+            },
+            30,
+            0,
+        )];
+        assert!(super::example_row_findings(&rows, PINNED).is_empty());
+    }
+
+    #[test]
+    fn a_row_disagreeing_with_its_pin_names_the_row_and_both_values() {
+        let rows = vec![(
+            super::Family {
+                n: 4,
+                m: 2,
+                off: 0.50,
+            },
+            31,
+            0,
+        )];
+        let findings = super::example_row_findings(&rows, PINNED);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("cluster-counted-work example"),
+            "{findings:?}"
+        );
+        assert!(
+            findings[0].contains("expected 30, measured 31"),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_row_with_no_pinned_point_fails_closed() {
+        let rows = vec![(
+            super::Family {
+                n: 2,
+                m: 1,
+                off: 0.5,
+            },
+            1,
+            0,
+        )];
+        let findings = super::example_row_findings(&rows, PINNED);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("no pinned row"), "{findings:?}");
     }
 }

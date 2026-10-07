@@ -8,6 +8,7 @@ pub mod conformance;
 pub mod differential;
 pub mod doc_build;
 pub mod doc_currency;
+pub mod exact;
 pub mod examples;
 pub mod feature_matrix;
 pub mod link_audit;

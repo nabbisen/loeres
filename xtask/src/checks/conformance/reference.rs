@@ -162,6 +162,91 @@ fn optimum(f: &ConstrainedFixture) -> Option<Vec<f64>> {
     None
 }
 
+/// Every tracked suite, for the cross-validation test only (`non_smoke` is what the
+/// existing solution/Farkas tests use, and is left as it is).
+fn all_suites() -> Vec<ConstrainedFixture> {
+    let mut all = suite("smoke");
+    all.extend(non_smoke());
+    all
+}
+
+/// The fixture's objective, restated as a dense `DenseQp`: `Q = diag(quadratic_diag)`,
+/// `c_i = -quadratic_diag_i · center_i` (so `½xᵀQx + cᵀx` equals the fixture's
+/// `½ Σ qᵢ(xᵢ − tᵢ)²` up to the constant the KKT conditions do not see).
+fn dense_equivalent(f: &ConstrainedFixture) -> super::super::exact::DenseQp {
+    let p = &f.problem;
+    let c: Vec<f64> = p
+        .quadratic_diag
+        .iter()
+        .zip(&p.center)
+        .map(|(q, t)| -(q * t))
+        .collect();
+    let mut q = vec![0.0; f.dimension * f.dimension];
+    for (i, d) in p.quadratic_diag.iter().enumerate() {
+        q[i * f.dimension + i] = *d;
+    }
+    super::super::exact::DenseQp {
+        n: f.dimension,
+        q,
+        c,
+        lower: p.lower.clone(),
+        upper: p.upper.clone(),
+        a: p.constraint_matrix.clone(),
+        b: p.constraint_rhs.clone(),
+    }
+}
+
+/// RFC 037 §5.6: the dense enumeration in `checks::exact` is new numerical code, and it
+/// must agree with this module's own, independently-implemented separable reference on
+/// every fixture where both apply — a diagonal `Q` is a special case of a dense one. This
+/// is the evidence that the generalisation is correct, not a side check: `bench`'s S6
+/// deviation figures depend on `checks::exact::exact_optimum` being right.
+///
+/// Fixtures with `dimension > checks::exact::MAX_N` are outside the dense enumeration's
+/// scope (RFC 037 §5.6) and are skipped, not treated as a disagreement.
+#[test]
+fn the_dense_enumeration_agrees_with_the_separable_reference_on_every_fixture_in_scope() {
+    let mut checked = 0;
+    let mut largest_disagreement: f64 = 0.0;
+    for f in all_suites() {
+        if f.variant != "solve" || f.dimension > super::super::exact::MAX_N {
+            continue;
+        }
+        let diagonal = optimum(&f);
+        let dense = super::super::exact::exact_optimum(&dense_equivalent(&f));
+        match (diagonal, dense) {
+            (Some(a), Some(b)) => {
+                for (i, (x, y)) in a.iter().zip(&b).enumerate() {
+                    let disagreement = (x - y).abs();
+                    largest_disagreement = largest_disagreement.max(disagreement);
+                    let allowed = 1e-9 + 1e-6 * x.abs();
+                    assert!(
+                        disagreement <= allowed,
+                        "{}: coordinate {i}: separable reference {x}, dense reference {y}",
+                        f.fixture_id
+                    );
+                }
+                checked += 1;
+            }
+            (None, None) => {
+                // Both agree the fixture is infeasible (or found no KKT point); the
+                // existing Farkas-certificate test already covers the infeasible case.
+                checked += 1;
+            }
+            (one, other) => panic!(
+                "{}: the two references disagree on feasibility: separable {:?}, dense {:?}",
+                f.fixture_id,
+                one.is_some(),
+                other.is_some()
+            ),
+        }
+    }
+    eprintln!(
+        "dense-vs-separable cross-validation: {checked} fixture(s) checked, largest disagreement {largest_disagreement:e}"
+    );
+    assert!(checked >= 20, "only {checked} fixtures were checked");
+}
+
 fn suite(name: &str) -> Vec<ConstrainedFixture> {
     load_constrained_fixtures(name).unwrap()
 }

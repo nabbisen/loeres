@@ -245,12 +245,34 @@ pub fn run() -> bool {
             }
         }
     }
-    if let (Ok(seq), Ok(par)) = (&seq, &par) {
-        let speedup = seq.median.as_secs_f64() / par.median.as_secs_f64();
+    if let (Ok(_), Ok(par)) = (&seq, &par) {
         println!();
-        println!(
-            "parallel speedup over sequential: {speedup:.2}×  [derived: ratio of two wall-time medians; {env}]"
-        );
+        match paired_speedup_ratios(threads, BATCH_REPEATS) {
+            Ok(ratios) => {
+                let lo = ratios.iter().copied().fold(f64::INFINITY, f64::min);
+                let hi = ratios.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+                let ideal = threads as f64;
+                println!(
+                    "parallel speedup over sequential, batch of {BATCH_ITEMS} items on {threads} logical threads, {} paired runs:",
+                    ratios.len()
+                );
+                println!(
+                    "  observed {lo:.1}× to {hi:.1}×  [derived: ratio of paired wall-time runs; never quoted as a single number; {env}]"
+                );
+                println!(
+                    "  ideal speedup at {threads} threads is about {ideal:.0}×. The observed range is roughly {:.0}% to {:.0}% of that,",
+                    lo / ideal * 100.0,
+                    hi / ideal * 100.0
+                );
+                println!(
+                    "  and the gap is scheduling and work granularity at this batch size, not a defect."
+                );
+            }
+            Err(error) => {
+                ok = false;
+                println!("parallel speedup FAILED: {error}");
+            }
+        }
         println!(
             "batch throughput, parallel: {:.0} solves/s  [derived: {BATCH_ITEMS} ÷ parallel median; {env}]",
             BATCH_ITEMS as f64 / par.median.as_secs_f64()
@@ -274,6 +296,19 @@ pub struct BatchSummary {
 
 /// The median batch time over `BATCH_REPEATS` runs, with its spread, the converged count of
 /// the last run, and the policy the config resolves to.
+/// RFC 037 C3: the speedup must never be a single number. Each repeat pairs one
+/// sequential batch with one parallel batch (same thread count), so the ratios below are
+/// `repeats` independent samples, not one ratio of two medians taken separately.
+fn paired_speedup_ratios(threads: usize, repeats: usize) -> Result<Vec<f64>, String> {
+    let mut ratios = Vec::with_capacity(repeats);
+    for _ in 0..repeats {
+        let (sequential, _) = time_one_batch(BatchExecutionPolicy::Sequential, threads)?;
+        let (parallel, _) = time_one_batch(BatchExecutionPolicy::Parallel, threads)?;
+        ratios.push(sequential.as_secs_f64() / parallel.as_secs_f64());
+    }
+    Ok(ratios)
+}
+
 fn repeat_batch(policy: BatchExecutionPolicy, threads: usize) -> Result<BatchSummary, String> {
     let mut times = Vec::with_capacity(BATCH_REPEATS);
     let mut converged = 0;
