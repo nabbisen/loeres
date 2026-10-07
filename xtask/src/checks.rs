@@ -20,6 +20,7 @@ pub mod review_evidence;
 pub mod size_budget;
 pub mod supply_chain;
 pub mod target_profiles;
+pub mod throughput;
 pub mod unsafe_audit;
 pub mod util;
 pub mod zero_bleed;

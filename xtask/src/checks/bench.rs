@@ -50,7 +50,7 @@ pub const STEP_SCALE: f64 = 0.3;
 const MAX_ITERATIONS: u32 = 20_000;
 const TOLERANCE: f64 = 1e-10;
 const PROJECTION_MAX_SWEEPS: u32 = 500;
-const PROJECTION_TOLERANCE: f64 = 1e-10;
+pub const PROJECTION_TOLERANCE: f64 = 1e-10;
 
 /// One member of the corpus family: a tridiagonal SPD `Q` with `off` off the diagonal,
 /// `m` sliding-window halfspaces over `n` variables, and a box.
@@ -399,6 +399,86 @@ pub struct Derived {
     pub projection_ops_upper_bound_per_outer: u64,
 }
 
+/// The three legs RFC 037 §5.3 requires a `Converged` to satisfy, as the record shows them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Leg {
+    /// Holds: the record shows it.
+    Holds,
+    /// Fails: the record shows it does not hold. A finding.
+    Fails,
+    /// Cannot be settled from the record. Reported as such, never as holding.
+    Unverifiable,
+}
+
+/// Whether one `Converged` record is truthful on each leg.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Legs {
+    /// Feasible within `projection_tolerance` (RFC 027 Amendment 5).
+    pub feasible: Leg,
+    /// Stationary at the final iteration (RFC 029): the solve stopped on the convergence
+    /// criterion, not on the iteration cap.
+    pub stationary: Leg,
+    /// Produced by an uncapped projection (RFC 033). The record counts cap hits over all
+    /// outer iterations, not only the final one, so zero cap hits settles it and any
+    /// nonzero count cannot be settled from the record.
+    pub uncapped: Leg,
+}
+
+/// The legs for a measured `Converged`. Returns `None` for any other status: the legs
+/// are conditions of `Converged`, and say nothing about a `NotConverged`.
+pub fn legs(measured: &Measured) -> Option<Legs> {
+    if measured.status != "converged" {
+        return None;
+    }
+    Some(Legs {
+        feasible: if measured.violation <= PROJECTION_TOLERANCE {
+            Leg::Holds
+        } else {
+            Leg::Fails
+        },
+        stationary: if measured.termination == "ConvergenceCriterion" {
+            Leg::Holds
+        } else {
+            Leg::Fails
+        },
+        uncapped: if measured.cap_hits == 0 {
+            Leg::Holds
+        } else {
+            Leg::Unverifiable
+        },
+    })
+}
+
+/// The truthfulness summary over a set of measured points. Every count is over the
+/// `Converged` points only.
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
+pub struct Truthfulness {
+    pub converged: usize,
+    /// Converged, and every leg holds.
+    pub truthful: usize,
+    /// Converged, and at least one leg fails. A finding, not a statistic.
+    pub failing: usize,
+    /// Converged, no leg fails, and at least one leg is unverifiable from the record.
+    pub unverifiable: usize,
+}
+
+pub fn truthfulness<'a>(points: impl IntoIterator<Item = &'a Measured>) -> Truthfulness {
+    let mut t = Truthfulness::default();
+    for measured in points {
+        let Some(l) = legs(measured) else { continue };
+        t.converged += 1;
+        let legs = [l.feasible, l.stationary, l.uncapped];
+        if legs.contains(&Leg::Fails) {
+            t.failing += 1;
+        } else if legs.contains(&Leg::Unverifiable) {
+            t.unverifiable += 1;
+        } else {
+            t.truthful += 1;
+        }
+    }
+    t
+}
+
 /// The derived figures for one family member.
 pub fn derived(family: Family) -> Derived {
     let n = family.n as u64;
@@ -606,7 +686,38 @@ pub fn run() -> bool {
     }
     println!();
     println!("{}", legend());
+    println!();
+    print_truthfulness(&mut complete);
     complete
+}
+
+/// RFC 037 §5.3: how often `Converged` is truthful on the three legs, over the cluster
+/// path (the device records are identical; see the device table). And the exact-deviation
+/// measure the RFC asks for, which this command cannot yet produce: see the note it prints.
+fn print_truthfulness(complete: &mut bool) {
+    let mut points = Vec::new();
+    for (_, family) in corpus() {
+        match measure(family) {
+            Ok(measured) => points.push(measured),
+            Err(_) => *complete = false,
+        }
+    }
+    let t = truthfulness(&points);
+    println!("effectiveness: Converged truthfulness over the corpus (cluster path)");
+    println!(
+        "  Converged points: {}; truthful on all three legs: {}; failing a leg: {}; unverifiable from the record: {}",
+        t.converged, t.truthful, t.failing, t.unverifiable
+    );
+    println!(
+        "  legs: feasible within projection_tolerance (RFC 027 Am. 5); stationary, i.e. ConvergenceCriterion (RFC 029);"
+    );
+    println!("        uncapped final projection, settled by zero cap hits (RFC 033).");
+    println!(
+        "  deviation from the exact optimum: NOT REPORTED. The exact reference in conformance/reference.rs"
+    );
+    println!(
+        "  handles separable (diagonal) Q only; the corpus family is tridiagonal. See the review request."
+    );
 }
 
 #[cfg(test)]
@@ -709,10 +820,73 @@ mod tests {
         super::Measured {
             outer_iterations: 30,
             status: "converged".to_owned(),
-            termination: "Converged".to_owned(),
+            termination: "ConvergenceCriterion".to_owned(),
             cap_hits: 0,
             violation: 0.0,
             infeasibility_evidence: false,
         }
+    }
+
+    #[test]
+    fn a_stationary_feasible_capped_free_converged_point_is_truthful_on_all_three_legs() {
+        let m = fixed_measurement();
+        let l = super::legs(&m).expect("converged");
+        assert_eq!(
+            (l.feasible, l.stationary, l.uncapped),
+            (super::Leg::Holds, super::Leg::Holds, super::Leg::Holds)
+        );
+    }
+
+    #[test]
+    fn a_converged_point_that_violates_the_projection_tolerance_fails_the_feasible_leg() {
+        let mut m = fixed_measurement();
+        m.violation = 2e-10;
+        assert_eq!(
+            super::legs(&m).expect("converged").feasible,
+            super::Leg::Fails
+        );
+    }
+
+    #[test]
+    fn a_converged_point_that_stopped_on_the_iteration_cap_fails_the_stationary_leg() {
+        let mut m = fixed_measurement();
+        m.termination = "IterationCap".to_owned();
+        assert_eq!(
+            super::legs(&m).expect("converged").stationary,
+            super::Leg::Fails
+        );
+    }
+
+    #[test]
+    fn nonzero_cap_hits_are_unverifiable_from_the_record_not_assumed_to_hold() {
+        let mut m = fixed_measurement();
+        m.cap_hits = 2;
+        assert_eq!(
+            super::legs(&m).expect("converged").uncapped,
+            super::Leg::Unverifiable
+        );
+    }
+
+    #[test]
+    fn the_legs_are_conditions_of_converged_and_say_nothing_about_other_statuses() {
+        let mut m = fixed_measurement();
+        m.status = "not converged".to_owned();
+        assert!(super::legs(&m).is_none());
+    }
+
+    #[test]
+    fn the_summary_counts_failing_before_unverifiable_and_ignores_non_converged() {
+        let good = fixed_measurement();
+        let mut capped = fixed_measurement();
+        capped.cap_hits = 1;
+        let mut bad = fixed_measurement();
+        bad.violation = 1.0;
+        let mut open = fixed_measurement();
+        open.status = "not converged".to_owned();
+        let t = super::truthfulness([&good, &capped, &bad, &open]);
+        assert_eq!(
+            (t.converged, t.truthful, t.failing, t.unverifiable),
+            (3, 1, 1, 1)
+        );
     }
 }
