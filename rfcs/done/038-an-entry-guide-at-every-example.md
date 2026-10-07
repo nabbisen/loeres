@@ -1,6 +1,6 @@
 # RFC 038 - An Entry Guide at Every Example
 
-**Status.** Accepted (design frozen 2026-10-07)
+**Status.** Implemented (v0.22.3). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 

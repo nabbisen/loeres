@@ -11,7 +11,7 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.22.3] — unreleased
+## [0.22.3] — 2026-10-07 — A linear objective, answered honestly
 
 **Release status:** unreleased
 
@@ -34,6 +34,42 @@ from `0.20.2` onward say which of the two hold.
 
 No crate changed: no public API, no behaviour, no dependency, and no example's code or
 printed output. `cargo xtask check` stays at twenty gates.
+
+**RFC 039, what the kernel does with a linear objective.** The library used to tell an LP user
+to go elsewhere. It was wrong, and thirteen documents said so — three of them this crate's own
+published README and reference.
+
+- **An LP (`Q = 0`) is solved soundly.** A `Converged` result is optimal regardless of
+  curvature, because a fixed point of the projected-gradient map is optimal for a convex
+  feasible set. Measured on 300 random instances: **zero** sub-optimal, worst deviation
+  `6.08e-10` against an exact reference.
+- **Convergence is still not guaranteed, for two reasons you can tell apart.** The projection's
+  sweep cap can bind — nonzero `projection_cap_hits`, and raising `projection_max_sweeps`
+  resolved every such instance. Or the outer iteration cap can, with **zero** cap hits, when a
+  fixed step must cross a wide feasible region.
+- **For the second, the step is the lever, and it has no ceiling.** A linear objective has no
+  curvature to overshoot, so the step scale is bounded from above by nothing: it sets distance
+  per iteration, and the count needed is about `extent / (α · |c|)`. One case that fails at
+  `α = 0.3` after 50 000 iterations converges in **eleven** at `α = 1e5`, exactly.
+  `suggested_step_scale` still refuses at `Q = 0` — there is no *curvature-derived* step — and
+  now says what to do instead.
+- **No dedicated LP algorithm was added**, and the decision is recorded with its evidence: the
+  gap was documentation and guidance, not correctness.
+
+**RFC 040, a device budget worth enforcing.** `size-budget` has reported the device artifact
+advisorily since RFC 010 asked for a threshold. The figure it reported was the wrong one: of the
+device rlib's 25 512 bytes, **23 845 are compiler metadata** and 193 are every other section,
+because the device entry points are generic and a standalone build emits almost no code.
+
+- `.text + .rodata` of a **reference instantiation that calls the kernel** is now measured
+  instead — **10 736 bytes** at `(N, M) = (8, 4)`, release, `panic = "abort"` — and **enforced**
+  against a pinned baseline with a bounded delta rather than an absolute ceiling nobody could
+  justify. The delta fraction is interim and says so.
+- The rlib figure stays, labelled advisory, with its composition stated so it cannot be
+  mistaken for a device budget again.
+
+**RFC 038, 039 and 040 change no crate behaviour and no public API.** `cargo xtask check` runs
+twenty gates.
 
 ## [0.22.2] — 2026-10-07 — Measured effectiveness and cost
 
