@@ -11,6 +11,24 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
+## [0.22.2] — unreleased — The packaged-source check fails when git is unusable
+
+**Release status:** unreleased
+
+A patch release with no change to any crate, public API or feature. It changes the
+`published-metadata` gate, which checks the package a crates.io user receives against
+what git tracks (RFC 036).
+
+- **An unusable git is now a failure.** If git is absent, broken, or the directory is not
+  a repository, the packaged-source assertion fails and says so. Before this, the assertion
+  was skipped and `cargo xtask check` still passed.
+- **Another repository is still not applicable.** The clean extraction that `release-gate`
+  makes inside this repository is reported as not applicable, in one line, with no finding.
+- **The empty-tracked-`src/` case is covered end to end.** A crate with no tracked `src/`
+  file fails the assertion by name.
+
+**No public API changed.** `check-public-api` passes.
+
 ## [0.22.1] — 2026-10-07 — Visitor-facing documentation, and a package worth publishing
 
 **Release status:** released (tagged 2026-10-07, distributed 2026-10-07); published to crates.io
