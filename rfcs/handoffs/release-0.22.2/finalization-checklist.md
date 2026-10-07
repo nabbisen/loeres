@@ -33,18 +33,40 @@ RFC 037 slice.
 ## 2. The one blocking decision
 
 RFC 037 exit criterion 7 requires `README.md:5` either to stop asserting a performance
-claim the tree cannot support, or to support it with a stated environment. Both forms are
-drafted in architect review 087 §7. The architect recommends **Form B** across reviews
-087, 088 and 089:
+claim the tree cannot support, or to support it with a stated environment. Forms A and B are
+drafted in architect review 087 §7. **The architect withdraws the Form B recommendation
+made in reviews 087, 088 and 089** and recommends **Form C** below. The owner asked, on
+2026-10-07, whether that recommendation matched their stated philosophy. It did not.
 
-> One optimization contract, two worlds — separated at compile time, not at run time: a
-> `no_std`, allocation-free edge solver, and a server solver that the edge build does not
-> depend on, with the boundary checked on every commit.
+**Why A and B both fail.** Form A asserts "high-throughput" on a figure that moved from
+`9.8×` to `15.2×` across runs, so it fails the first principle — a claim the tree cannot
+defend. Form B is defensible but fails the second: `README.md:7` already says "a hard
+compile-time boundary between two execution environments" and `:9` already says "Two
+paths, one contract … `no_std`, has no `alloc`", so Form B restates the two lines beneath
+it in more abstract words and spends the most prominent line in the project on internal
+process ("checked on every commit"). A visitor is not misled by it; they learn nothing
+from it, which the second principle also forbids.
 
-Under Form B the four disclaimers stay true exactly as written
-(`docs/src/architecture.md:20`, `docs/src/cluster-user-guide.md:248`,
-`crates/loeres-cluster/README.md:112`, `docs/src/threat-model.md:75` and `:161`). Under
-Form A each would need its word "broad" re-examined against one-host evidence.
+**What the first screen never says** is what the software is *for*. Lines 7-13 give the
+mathematics and the mechanics; no line names a problem a reader might have.
+
+**Form C:**
+
+> **Constrained quadratic programs — model-predictive control, capacity dispatch — on
+> servers and in heap-free embedded builds.**
+
+Every part is backed and additive:
+
+- *constrained quadratic programs* — RFC 027's shipped contract and kernels;
+- *model-predictive control* — `examples/device-mpc-step`, a gate-checked example;
+- *capacity dispatch* — `examples/cluster-capacity-dispatch`, likewise;
+- *heap-free embedded builds* — deliberately a **build** property, not a hardware claim:
+  nothing in this tree runs on hardware, only builds for `thumbv7em-none-eabihf` without
+  `std` or `alloc`, so "runs on a microcontroller" would be a new unsupported claim;
+- no performance claim of any kind, so all four disclaimers stay true exactly as written
+  (`docs/src/architecture.md:20`, `docs/src/cluster-user-guide.md:248`,
+  `crates/loeres-cluster/README.md:112`, `docs/src/threat-model.md:75` and `:161`), as
+  under Form B and unlike Form A.
 
 **Whichever form is chosen, the headline and the four disclaimers change in the same
 commit**, and the commit must show they agree.
