@@ -26,9 +26,12 @@ crosses it, because real `midpoint` and `final` snapshots are correlated along a
 
 **Do not treat §2's table as a prediction of what S1 will find.** If S1's corpus never
 fires the false positive, say so plainly; that is a result, not a failure, and RFC 043
-§3.1 says so. The architect's scratch harness is at
-`/tmp/claude-1000/-home-nabbisen-Desktop-loeres-loeres-git/50d3e1ea-1353-435e-83f0-e8c9fa332249/scratchpad/q32probe/src/main.rs`
-and is **not tracked** — do not depend on it; S1 owns the tracked version and may differ.
+§3.1 says so. The architect's harness was a session scratch file and is **not retained**:
+nothing to inherit, nothing to depend on. The method is in review 096 §0.1 — the predicate
+reproduced through the public `Q32` API, differenced against the same comparison in `f64`,
+`xorshift64*` seeded from the scale, 200 000 draws each. **S1 owns the tracked version**
+and may differ; it belongs under `xtask/src/checks/`, with every other path in this handoff
+relative to the project root.
 
 ### 0.2 The architect has not run the constrained kernel over `Q32` at all
 

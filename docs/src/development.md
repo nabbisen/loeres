@@ -379,3 +379,22 @@ cause is the bump, not the thing that failed to build.
 Development is **design-first**: requirement / RFC → external design → internal
 design → implementation → testing. New public-boundary work starts as an RFC
 under `rfcs/proposed/` (see `rfcs/done/000-rfc-lifecycle-policy.md`).
+
+### Every path in a tracked document is relative to the project root
+
+RFCs, handoffs, checklists and review records cite files as
+`crates/loeres/src/scalar/fixed_point.rs`, never as an absolute path and never
+elided with `…`. Two reasons, and the first is the binding one:
+
+- **An absolute path is wrong for every reader but one.** The tree is cloned to
+  a different place by each person and each CI job, so a path rooted in one
+  machine's home directory does not resolve anywhere else and cannot be pasted
+  into an editor, a `grep`, or a later document.
+- **A relative path stays true as the document is quoted.** Handoffs cite
+  reviews, reviews cite RFCs, and checklists cite all three; a root-relative
+  path survives every one of those copies unchanged.
+
+A file that genuinely lives outside the tree — a scratch harness, a temporary
+run directory — is not a path a tracked document should hand on at all. State
+the **method** instead, so the reader can rebuild it, and say which tracked
+path will own it.
