@@ -92,8 +92,13 @@ gate failing rather than by foresight. With the next version bump move:
 
 1. the five internal requirements in `[workspace.dependencies]`, or `published-metadata`
    fails closed;
-2. **all six** example lockfiles, or the `examples` gate fails with `cannot update the lock
-   file … --locked`;
+2. **every workspace-excluded crate's own lockfile** — a rule, not a count, because the count
+   has gone stale twice: five at `0.22.1`, six once RFC 037 added `cluster-counted-work`,
+   seven once RFC 040 added `device-size-reference`, which is not an example at all. Enumerate
+   them: `for d in examples/*/ device-size-reference/; do cargo update --manifest-path "$d/Cargo.toml" --offline; done`.
+   Miss an example and the `examples` gate fails with `cannot update the lock file …
+   --locked`; miss the RFC 040 fixture and `size-budget` fails instead, since no other gate
+   builds it;
 3. the next version's `## [x.y.z] — unreleased` CHANGELOG section, or `release-gate`'s
    preflight refuses for want of exactly one matching heading.
 

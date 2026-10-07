@@ -28,9 +28,10 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 | `0.22.0` | 2026-09-24 | 001-034 |
 | `0.22.1` | 2026-10-07 | 001-036 |
 | `0.22.2` | 2026-10-07 | 001-037 |
+| `0.22.3` | 2026-10-07 | 001-040 |
 
-**What is on crates.io.** The newest published version of every Loeres crate is `0.22.2`,
-published on 2026-10-07. It carries RFCs 001-037, including the constrained
+**What is on crates.io.** The newest published version of every Loeres crate is `0.22.3`,
+published on 2026-10-07. It carries RFCs 001-040, including the constrained
 quadratic-program contract (RFC 027), so the registry and this tree now describe the same
 library.
 

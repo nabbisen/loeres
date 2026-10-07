@@ -32,7 +32,7 @@ exclude = [
 # state alone does not establish external registry publication; workspace
 # metadata and CHANGELOG.md define the release-local version baseline.
 [workspace.package]
-version = "0.22.3"
+version = "0.22.4"
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
@@ -41,11 +41,11 @@ repository = "https://github.com/nabbisen/loeres"
 
 # Internal path dependencies, so members write `loeres = { workspace = true }`.
 [workspace.dependencies]
-loeres                      = { version = "0.22.3", path = "crates/loeres" }
-loeres-backend-std          = { version = "0.22.3", path = "crates/loeres-backend-std" }
-loeres-backend-static       = { version = "0.22.3", path = "crates/loeres-backend-static" }
-loeres-cluster              = { version = "0.22.3", path = "crates/loeres-cluster" }
-loeres-device               = { version = "0.22.3", path = "crates/loeres-device" }
+loeres                      = { version = "0.22.4", path = "crates/loeres" }
+loeres-backend-std          = { version = "0.22.4", path = "crates/loeres-backend-std" }
+loeres-backend-static       = { version = "0.22.4", path = "crates/loeres-backend-static" }
+loeres-cluster              = { version = "0.22.4", path = "crates/loeres-cluster" }
+loeres-device               = { version = "0.22.4", path = "crates/loeres-device" }
 
 # Shared external dependencies. Versions are centralized here; members write
 # `dep = { workspace = true, optional = true }` and add crate-specific features only.

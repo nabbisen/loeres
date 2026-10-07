@@ -6,8 +6,8 @@ Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
 > **Release currency metadata.**
-> This tree: **0.22.3**.
-> Last reconciled repository release: **0.22.2**.
+> This tree: **0.22.4**.
+> Last reconciled repository release: **0.22.3**.
 > Implemented scope: **RFCs 001-040**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
