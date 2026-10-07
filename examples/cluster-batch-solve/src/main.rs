@@ -109,7 +109,9 @@ fn main() -> Result<(), ClusterError> {
 /// solver error is `Failed`.
 fn describe(outcome: &BatchItemOutcome<f64>) -> String {
     match outcome {
-        BatchItemOutcome::Solved { solution, report } => {
+        BatchItemOutcome::Solved {
+            solution, report, ..
+        } => {
             let verdict = match report.status() {
                 SolveStatus::Converged => "converged",
                 SolveStatus::NotConverged => "not converged (cap reached)",

@@ -135,6 +135,9 @@ where
             MockGatewayResponse::Solved { solution, report } => BatchItemOutcome::Solved {
                 solution: ClusterSolution::DenseVector(solution.clone()),
                 report: *report,
+                // The mock carries no constrained-solve detail to erase in
+                // the first place (RFC 042 §2.1).
+                constrained: None,
             },
             MockGatewayResponse::Failed(
                 GatewayFailureKind::Cancelled | GatewayFailureKind::Timeout,

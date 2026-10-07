@@ -79,13 +79,14 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   projection returned without hitting `projection_max_sweeps` (RFC 033).
   `NotConverged` with `NoProgress` indicates an infeasible polyhedron or a
   projection that hit its cap.
-- **The batch seam carries status only.** `ClusterConstrainedJob` erases to
-  `BatchItemOutcome`, which holds the core `SolveReport`, so `projection_cap_hits`
-  and `max_constraint_violation` are not visible through `solve_batch`. That is
-  acceptable because the status now carries the case that matters: a solve whose
-  projection hit its cap, feasible or not, reads `NotConverged` (RFC 033 §6;
-  before RFC 033 such a solve could read `Converged` with a wrong answer). A
-  caller who needs the magnitudes uses the typed entrypoint.
+- **The batch seam carries the same detail the typed entrypoint does**
+  (RFC 042). `ClusterConstrainedJob` erases to `BatchItemOutcome`, whose
+  `constrained_detail()` gives `projection_cap_hits`, `max_constraint_violation`
+  and `infeasibility_evidence` for an item whose problem had linear
+  inequalities, and `None` for one that had none at all. The status is also
+  truthful: a solve whose projection hit its cap, feasible or not, reads
+  `NotConverged` (RFC 033 §6; before RFC 033 such a solve could read
+  `Converged` with a wrong answer).
 - See `examples/cluster-qp-constrained/`.
 
 Limits (RFC 027 §11.6): LP is expressible (`Q = 0`) and solves soundly — a

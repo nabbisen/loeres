@@ -7,6 +7,18 @@
 //! is reserved for fail-safe [`SolverError`] conditions; `Panicked` is an
 //! executor-caught worker panic (RFC 008 §4.4); `Cancelled` is cooperative
 //! cancellation or timeout (§3.6).
+//!
+//! RFC 042: a constrained item's `Solved` outcome also carries what its job
+//! computed beyond the report — `projection_cap_hits`, `max_constraint_violation`
+//! and `infeasibility_evidence` — the same fields
+//! [`ConstrainedSolveRecord`](crate::ConstrainedSolveRecord) gives a direct
+//! caller, under the same warnings. `Solved` is `#[non_exhaustive]` so the
+//! *next* field does not break a caller who already matches `Solved { .. }`
+//! (RFC 042 §2.2's decision: enum-variant fields always share the variant's
+//! own visibility — Rust has no per-field privacy there — so RFC 014 §311's
+//! private-field pattern, which protects `SolveReport` nested inside this
+//! very variant, cannot be reapplied to the variant's own field list; a
+//! plain struct like `SolveReport` is the only shape that pattern fits).
 
 use loeres::{SolveReport, SolverError};
 use loeres_backend_std::DenseVector;
@@ -24,6 +36,36 @@ pub enum ClusterSolution<S> {
     DenseVector(DenseVector<S>),
 }
 
+/// What a constrained job computed beyond the report, for an item whose
+/// problem had linear inequalities (RFC 042).
+///
+/// Carried only when there was a polyhedron to check: `Solved`'s
+/// `constrained_detail()` is `None` for an item with **no** linear
+/// inequalities at all, which is distinct from `Some` with a zero
+/// `max_constraint_violation` — the latter means there were constraints and
+/// they were satisfied. Conflating the two would let a reader draw "feasible"
+/// from an absence that actually means "nothing to check".
+#[derive(Clone, Copy, Debug)]
+#[non_exhaustive]
+pub struct ConstrainedBatchDetail<S> {
+    /// Outer iterations whose Dykstra projection hit `projection_max_sweeps`
+    /// without converging. Distinguishes RFC 039's two non-convergence causes
+    /// from this value alone: nonzero means the projection's sweep cap bound;
+    /// zero (with the item still `NotConverged`) means the outer iteration cap
+    /// did, which the sweep cap cannot be raised to fix.
+    pub projection_cap_hits: u32,
+    /// `max(0, maxᵢ(aᵢᵀx − bᵢ))` at the returned iterate.
+    pub max_constraint_violation: S,
+    /// A **heuristic observation** that the polyhedron may be empty (RFC 034
+    /// Amendment 2), **wrong in both directions** — it misses most weakly
+    /// infeasible systems and can be set on a feasible problem whose
+    /// projection needed more than the sweep cap. Not a status; never for
+    /// control flow. See
+    /// [`ConstrainedSolveRecord::infeasibility_evidence`](crate::ConstrainedSolveRecord)
+    /// for the measured error rates this crosses the seam unweakened.
+    pub infeasibility_evidence: bool,
+}
+
 /// The outcome of a single batch item.
 ///
 /// `Solved` means the attempt reached a structured terminal report and produced
@@ -36,11 +78,22 @@ pub enum ClusterSolution<S> {
 pub enum BatchItemOutcome<S> {
     /// Reached a structured terminal report (converged or not) and produced a
     /// solution.
+    ///
+    /// `#[non_exhaustive]`: a caller outside this crate must match with a
+    /// trailing `..` and must not construct this variant by struct literal,
+    /// so the next field this RFC's own `constrained` was added under does
+    /// not break anyone (RFC 042 §2.2).
+    #[non_exhaustive]
     Solved {
         /// The produced solution.
         solution: ClusterSolution<S>,
         /// The structured solve report (may be `NotConverged`).
         report: SolveReport,
+        /// What a constrained job additionally computed, or `None` if the
+        /// item's problem had no linear inequalities. Read through
+        /// [`constrained_detail`](BatchItemOutcome::constrained_detail) for
+        /// the "no constraints" documentation in one place.
+        constrained: Option<ConstrainedBatchDetail<S>>,
     },
     /// A fail-safe solver error prevented a solution.
     Failed {
@@ -53,6 +106,19 @@ pub enum BatchItemOutcome<S> {
     /// The worker task panicked and was contained at the item boundary
     /// (RFC 008 §4.4); only possible under `panic = "unwind"`.
     Panicked,
+}
+
+impl<S> BatchItemOutcome<S> {
+    /// What a constrained job computed beyond the report, for a `Solved` item
+    /// whose problem had linear inequalities. `None` for every other variant,
+    /// and for a `Solved` item whose problem had none (RFC 042 §2.1).
+    #[must_use]
+    pub const fn constrained_detail(&self) -> Option<&ConstrainedBatchDetail<S>> {
+        match self {
+            Self::Solved { constrained, .. } => constrained.as_ref(),
+            Self::Failed { .. } | Self::Cancelled | Self::Panicked => None,
+        }
+    }
 }
 
 /// Explicit per-category counts so dashboards need not scan the outcome vector.

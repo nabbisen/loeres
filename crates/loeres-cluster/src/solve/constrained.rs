@@ -36,7 +36,7 @@ use loeres::{
 };
 use loeres_backend_std::DenseVector;
 
-use crate::batch::{BatchItemOutcome, ClusterSolution};
+use crate::batch::{BatchItemOutcome, ClusterSolution, ConstrainedBatchDetail};
 use crate::model::ProjectedFirstOrderFiniteEvidence;
 use crate::runtime::ClusterValidationPolicy;
 use crate::solve::{ClusterExecutionContext, ClusterJob};
@@ -231,7 +231,9 @@ pub struct ConstrainedSolveRecord<S> {
     /// far more than the cap to converge (about `3e-5` of random feasible
     /// near-(anti)parallel trials, `2e-4` of thin slivers). No signal computed inside
     /// the cap separates a feasible wedge that needs `10^7` sweeps from an infeasible
-    /// system. The batch seam carries the status only and so never carries this.
+    /// system. The batch seam carries this too, via
+    /// [`BatchItemOutcome::constrained_detail`](crate::BatchItemOutcome::constrained_detail)
+    /// (RFC 042), unweakened.
     pub infeasibility_evidence: bool,
     /// Structural/finite scopes verified directly.
     pub checked_scope: ValidationScope,
@@ -774,9 +776,11 @@ where
 /// only immutable inputs, and each `run_boxed` allocates a local iterate clone
 /// and workspace once, before the loop.
 ///
-/// The erased [`BatchItemOutcome`] carries only the core [`SolveReport`], so
-/// `projection_cap_hits` and `max_constraint_violation` are **not** visible
-/// through the batch seam; callers who need them use the typed entrypoint
+/// The erased [`BatchItemOutcome`] carries `projection_cap_hits`,
+/// `max_constraint_violation` and `infeasibility_evidence` too, via
+/// [`BatchItemOutcome::constrained_detail`] (RFC 042) — `None` when the
+/// problem had no linear inequalities. Callers who need the typed solution
+/// directly, rather than the erased [`ClusterSolution`], still use
 /// [`solve_constrained_projected_first_order_dyn`].
 pub struct ClusterConstrainedJob<P, S> {
     problem: P,
@@ -830,6 +834,14 @@ where
             Ok(record) => BatchItemOutcome::Solved {
                 solution: ClusterSolution::DenseVector(x),
                 report: record.report,
+                // `shape.constraints` is the row count `m`: zero means the
+                // problem had no linear inequalities at all, distinct from
+                // having some that were all satisfied (RFC 042 §2.1).
+                constrained: (shape.constraints > 0).then_some(ConstrainedBatchDetail {
+                    projection_cap_hits: record.projection_cap_hits,
+                    max_constraint_violation: record.max_constraint_violation,
+                    infeasibility_evidence: record.infeasibility_evidence,
+                }),
             },
             Err(error) => BatchItemOutcome::Failed { error },
         }

@@ -135,11 +135,12 @@ infeasible:          not converged (no progress: stationary but not feasible) in
 The first two agree with the closed forms, `Q⁻¹(4, 2) = (12/7, 8/7)` and the KKT
 point `(1.5, 0.5)`; the third violates `x0 <= -1` against `x0 >= 0` by exactly 1.
 
-**The batch seam carries the status only.** `ClusterConstrainedJob` erases the
-solve to a `BatchItemOutcome`, which holds the core report. A caller reading a
-`Solved` outcome sees `Converged` or `NotConverged` — truthful about feasibility —
-but not `projection_cap_hits` or `max_constraint_violation`. A caller who needs
-the magnitudes uses the typed entrypoint above. The `m = 0` case (no inequalities)
+**The batch seam carries the same detail the typed entrypoint does** (RFC 042).
+`ClusterConstrainedJob` erases the solve to a `BatchItemOutcome`, which holds
+the core report plus, through `constrained_detail()`, `projection_cap_hits`,
+`max_constraint_violation` and `infeasibility_evidence` — `None` for an item
+whose problem had no linear inequalities at all, distinct from `Some` with a
+zero violation. The `m = 0` case (no inequalities)
 is accepted and performs the single exact box projection with no Dykstra sweep —
 the RFC 016 step, operation for operation. Results match RFC 016 up to the sign of
 zero **when the two oracles coincide** (`Q = I`, `c = −t`); for a general `Q` the
@@ -174,7 +175,7 @@ inside the cap separates them, so the rate above is a floor for any rule of this
 kind, not a tuning error. A Farkas-certificate check was tried and removed none of
 the false positives. Detection is not one-sided: it misses most weakly infeasible
 systems **and** it is set on some feasible problems whose convergence time exceeds
-the cap. The batch path carries the status only, so it never carries the hint.
+the cap. The batch path carries the hint too (RFC 042), under the same warning.
 
 **Limits of this kernel** (RFC 027 §11.6):
 

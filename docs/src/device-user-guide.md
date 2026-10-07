@@ -147,7 +147,7 @@ inside the cap separates them, so the rate above is a floor for any rule of this
 kind, not a tuning error. A Farkas-certificate check was tried and removed none of
 the false positives. Detection is not one-sided: it misses most weakly infeasible
 systems **and** it is set on some feasible problems whose convergence time exceeds
-the cap. (The cluster batch path carries the status only, so it never carries the hint.)
+the cap. (The cluster batch path carries the hint too, under the same warning — RFC 042.)
 
 **Limits of this kernel** (RFC 027 §11.6):
 

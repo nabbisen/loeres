@@ -86,7 +86,9 @@ constrained (quadratic-program) kernels are:
   infeasible system; and it **misses** most weakly infeasible ones (set for 15% of
   random infeasible polytopes at a cap of 100 sweeps, 45% at 3000, and about 86%
   of the strongly infeasible ones at 3000). **Do not use it for control flow.**
-  The batch path carries the status only and never carries the hint.
+  The batch path carries this too (RFC 042), for an item whose problem had
+  linear inequalities, under the same warning — never for control flow, wrong
+  in both directions.
   `Converged` on a constrained solve requires **three things together**: the
   returned iterate is **feasible** within `projection_tolerance` (RFC 027
   Amendment 5); it is **stationary**, the outer step being within `tolerance`, at

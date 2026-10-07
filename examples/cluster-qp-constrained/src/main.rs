@@ -9,7 +9,10 @@
 //!   constraint violation beside the status**, for a slack, an active and an
 //!   infeasible polyhedron, together with the heuristic `infeasibility_evidence`
 //!   hint (wrong in both directions; never use it for control flow),
-//! - what the batch seam does and does not carry: status only.
+//! - the batch seam carrying that same detail (RFC 042): `projection_cap_hits`,
+//!   the terminal violation and the heuristic hint all cross it too, behind
+//!   `BatchItemOutcome::constrained_detail()`, `None` for an item with no
+//!   linear inequalities at all.
 //!
 //! The problem is `minimize ½ xᵀQx + cᵀx` over `0 ≤ x ≤ 10` and `Ax ≤ b`, with
 //! `Q = [[2, 0.5], [0.5, 1]]` and `c = (−4, −2)`. `Q` must be symmetric positive
@@ -107,10 +110,10 @@ fn main() -> Result<(), ClusterError> {
     }
 
     // The batch seam erases a constrained solve to `BatchItemOutcome`, which
-    // carries the core report only. The status is truthful there (`Converged`
-    // means feasible, stationary and exactly projected: RFC 027 Amendment 5,
-    // RFC 029, RFC 033), but the magnitudes are not.
-    println!("\nbatch seam — status only:\n");
+    // carries the terminal violation, the cap-hit count and the heuristic hint
+    // alongside the report (RFC 042) — the same detail the typed entrypoint
+    // above gives directly.
+    println!("\nbatch seam — the same detail, erased:\n");
     let mut labels = Vec::new();
     let mut jobs: Vec<Box<dyn ClusterJob<f64>>> = Vec::new();
     for (label, program) in cases() {
@@ -214,13 +217,30 @@ fn verdict(status: SolveStatus, termination: TerminationReason) -> String {
 
 fn describe(outcome: &BatchItemOutcome<f64>) -> String {
     match outcome {
-        BatchItemOutcome::Solved { solution, report } => {
+        BatchItemOutcome::Solved {
+            solution, report, ..
+        } => {
             let solution = match solution {
                 ClusterSolution::DenseVector(x) => render(x),
                 _ => "solution shape not recognized by this example".to_owned(),
             };
+            // `constrained_detail()` is `None` for an item with no linear
+            // inequalities at all — distinct from `Some` with a zero
+            // violation, which means there were constraints and they were
+            // satisfied. Every job in this example has a polyhedron, so this
+            // is always `Some` here; an unconditional `expect` would be wrong
+            // for a general caller, which is why it is matched instead.
+            let detail = match outcome.constrained_detail() {
+                Some(detail) => format!(
+                    "violation = {:.3e}; projection cap hits = {}; infeasibility evidence (heuristic) = {}",
+                    detail.max_constraint_violation,
+                    detail.projection_cap_hits,
+                    detail.infeasibility_evidence,
+                ),
+                None => "no linear inequalities".to_owned(),
+            };
             format!(
-                "{} in {} iteration(s); x = {solution}",
+                "{} in {} iteration(s); x = {solution}; {detail}",
                 verdict(report.status(), report.termination()),
                 report.iterations_executed(),
             )

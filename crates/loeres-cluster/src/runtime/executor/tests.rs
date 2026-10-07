@@ -28,6 +28,7 @@ fn solved() -> BatchItemOutcome<f64> {
     BatchItemOutcome::Solved {
         solution: ClusterSolution::DenseVector(DenseVector::from_vec(vec![1.0]).unwrap()),
         report: SolveReport::converged_early(1),
+        constrained: None,
     }
 }
 

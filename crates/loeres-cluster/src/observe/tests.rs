@@ -18,6 +18,7 @@ fn solved(iterations: u32, converged: bool) -> BatchItemOutcome<f64> {
     BatchItemOutcome::Solved {
         solution: dense(&[1.0, 2.0]),
         report,
+        constrained: None,
     }
 }
 

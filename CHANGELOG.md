@@ -11,11 +11,45 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.22.4] — unreleased
+## [0.23.0] — unreleased
 
 **Release status:** unreleased
 
-No changes recorded yet.
+Repository release `0.23.0` carries the batch seam's constrained-solve detail (RFC 042),
+and is a minor because that is a source break (see below). RFC 041 (a fixed-point scalar
+baseline) targets the same release.
+
+**A source break, and who it affects.** `loeres-cluster`'s `BatchItemOutcome<S>`, which
+shipped with public fields and no `#[non_exhaustive]`, gains a field on its `Solved`
+variant and the variant is now `#[non_exhaustive]`. **A pattern match on `Solved` without a
+trailing `..` no longer compiles** (`error[E0638]`, plus `error[E0027]` naming the missing
+field), and **constructing it by struct literal from outside the crate no longer compiles**
+(`error[E0639]` — this fires regardless of whether every field is supplied, so a caller does
+not see `E0063` here; that code is only possible from inside the defining crate). The
+outcome is an *output* of `solve_batch`: add `..` to an existing pattern, or stop
+constructing it directly (a test double should wrap the solve). Under Cargo's `0.x` rules
+the minor is the compatibility unit, so a breaking change cannot ship as a patch — see
+`docs/src/development.md`'s release version convention for what that does and does not
+imply.
+
+### RFC 042 — the batch seam carries what the solve found
+
+- `BatchItemOutcome::Solved` gains `constrained: Option<ConstrainedBatchDetail<S>>`, read
+  through the new `constrained_detail()` accessor: `projection_cap_hits`,
+  `max_constraint_violation` and `infeasibility_evidence` for an item whose problem had
+  linear inequalities, under the same heuristic warning `ConstrainedSolveRecord`'s own
+  `infeasibility_evidence` carries (wrong in both directions, never for control flow).
+  `None` means the item had **no** linear inequalities at all, distinct from `Some` with a
+  zero violation, which means it had constraints and they were satisfied.
+- A batch caller can now distinguish RFC 039's two non-convergence causes from the outcome
+  alone: a nonzero `projection_cap_hits` means the projection's sweep cap bound; a zero one,
+  on a `NotConverged` item, means the outer iteration cap did instead.
+- `examples/cluster-qp-constrained` no longer says the batch seam carries status only; its
+  captured output now shows the same detail on both paths.
+- `Solved` is `#[non_exhaustive]` rather than following `SolveReport`'s private-field
+  pattern (RFC 014 §311): Rust gives enum-variant fields no per-field visibility, so that
+  pattern cannot be reapplied to the variant's own field list — only to a plain struct
+  nested inside it, which `SolveReport` already is.
 
 ## [0.22.3] — 2026-10-07 — A linear objective, answered honestly
 

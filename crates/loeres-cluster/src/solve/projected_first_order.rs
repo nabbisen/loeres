@@ -343,6 +343,10 @@ where
             Ok(record) => BatchItemOutcome::Solved {
                 solution: ClusterSolution::DenseVector(x),
                 report: record.report,
+                // The box kernel has no polyhedron at all, ever — not merely
+                // one with zero rows for this instance — so there is nothing
+                // a constrained job would have computed (RFC 042 §2.1).
+                constrained: None,
             },
             // Ride the RFC 008 F9 normalization (Failed { Cancelled } -> Cancelled).
             Err(SolverError::Cancelled) => BatchItemOutcome::Failed {
