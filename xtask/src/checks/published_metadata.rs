@@ -45,6 +45,12 @@
 //!   inline code, and gives each reserved feature's line the phrase
 //!   `reserved; no effect yet`. The gate does not parse the table or check the wording
 //!   of live features: that would be brittle and would fail on ordinary editing.
+//!   The phrase rule applies to **every** line in the section naming a reserved
+//!   feature, not only its table row. A sentence such as "must never be a default
+//!   feature" that names one therefore fails here, deliberately: a reader skimming a
+//!   single line about a reserved feature must not be left thinking it does
+//!   something. Carry the phrase on that line too, or put the sentence outside
+//!   `## Features`.
 //! - **Packaged READMEs** (§2.5): no `crates/<name>/README.md` carries a relative
 //!   link target, because a relative target 404s on crates.io when the file it
 //!   names is not in the tarball. The **root** `README.md` is deliberately exempt:
