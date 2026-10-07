@@ -41,6 +41,24 @@ RFC 030 then made randomized differential testing of numerical kernels an
 enforced gate rather than a reviewer's habit. Detailed sequencing: detailed
 roadmap §7.
 
+Since then: RFC 031 (adversarial and extended conformance), RFC 032 (two-sided
+step-size guidance), RFC 033 (an exact projection in the `Converged` claim) and
+RFC 034 (a conservative infeasibility hint) shipped across `0.21.2`, `0.21.3` and
+`0.22.0`. RFC 035 made the landing page and the examples legible to a visitor, and
+RFC 036 made the **published artifact** a reviewed deliverable; both shipped in
+`0.22.1`, which on 2026-10-07 became the first release **published to crates.io**
+since `0.20.2`.
+
+**Next theme — T4, a benchmark harness.** The owner's fourth visitor question, "how
+effective or powerful", is the one RFC 035 §4 deferred, and it is still unanswered.
+Architect review 086 scopes it: effectiveness and counted-work cost are deterministic
+and reproducible — RFC 031's difficulty reporting already measures deviation from the
+exact optimum — while wall-time throughput is environment-dependent and can only ever
+be advisory. Review 086 also records that `README.md`'s headline already claims
+"high-throughput server solving" while four tracked documents disclaim having
+throughput evidence; resolving that is the theme's first obligation. Themes after T4:
+T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars).
+
 ## Phases
 
 - **Phase 0 — Repository & policy foundation.** Workspace skeleton, crate layout,

@@ -167,6 +167,7 @@ separate, reviewed pass.
 | `083` | 2026-10-07 | 0.22.1 cut release gate failure | `8752cc659d150ad44de1bf208ba9b4bffc5de364e754817be047a7f33e48016d` | `architect` | ✓ |
 | `084` | 2026-10-07 | rfc036 c8 architect review | `ac0952c5db610f1953ea10e10d620656ff1e1a2da8bd9518699763bfe702dee1` | `architect` | ✓ |
 | `085` | 2026-10-07 | rfc036 c9 architect review | `6a679075184fc984587abed7c5d9392dc4fab83bbc3778da06de5333ada00748` | `architect` | ✓ |
+| `086` | 2026-10-07 | theme t4 benchmark harness scoping | `f1c23511364608a8b5af28129981e79e15517c9546e443b0837f3ae12bc8cfd5` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
