@@ -1,12 +1,42 @@
 # RFC 043 - The Constrained Kernel Over a Bounded Scalar
 
-**Status.** Proposed.
+**Status.** Accepted (design frozen 2026-10-08)
 
 **Author tier.** `architect`.
 
 **Governing scoping.** Architect review 096 (2026-10-08), pulling the trigger RFC 041 S3
 named and `rfcs/handoffs/release-0.23.0/finalization-checklist.md` §6 carried forward.
 Every figure below was measured by the architect on the `0.23.1` development tree.
+
+## 0.1 Amendment 1 (2026-10-08)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only
+the design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires
+that form there; **the amendment must be named in the Status line when this RFC moves to
+`rfcs/done/`**, which `check-rfcs` enforces for `done/` only.
+
+**S1 has an exact reference available, and §3.1 understated it to the `f64` solve.**
+`xtask/src/checks/exact.rs`'s `DenseQp` is "minimise ½xᵀQx + cᵀx subject to
+`lower ≤ x ≤ upper`, `Ax ≤ b`" (`exact.rs:37-49`) and `exact_optimum` enumerates active
+sets over "the `m` constraint rows, then the `2n` box faces" (`exact.rs:59`). It is **not**
+restricted to separable or box problems; RFC 041 S2 used it on box problems because box
+problems were what S2 solved.
+
+Its preconditions, which S1's corpus must respect:
+
+- `n ≤ MAX_N = 8` (`exact.rs:34-35`), RFC 037 §5.6's enumeration scope;
+- `Q` symmetric positive definite — a caller precondition, unchecked, exactly as the
+  kernels require (`exact.rs:38-40`). `Q = 0` is excluded: the routine inverts `Q`, which
+  is why it returns `None` for every linear objective.
+
+So §3.1's obligation is **strengthened**: the corpus is measured against the **exact
+optimum** as the primary reference, with the `f64` solve retained as the second reference,
+exactly the two-reference shape RFC 041 S2 used. The converged-but-wrong figure then means
+what it says, rather than "disagrees with another approximate solve".
+
+The architect wrote §3.1 against a remembered premise — "`exact_optimum` is a separable box
+reference" — without re-reading the file. That is the fourth error about this project's
+exact references, and the reason RFC 043's handoff §0.4 exists.
 
 ## 1. Summary
 
@@ -91,8 +121,9 @@ honest outcome may be that it does not.
 
 A tracked harness in the shape of `xtask/src/checks/fixed_point.rs` — `#![cfg(test)]`, not
 a gate, not a reported command, **no pinned threshold** — exercising the **constrained**
-kernel over `Q32<20>` on a random corpus of inequality-constrained QPs, each solved again in
-`f64` as the reference.
+kernel over `Q32<20>` on a random corpus of inequality-constrained QPs, measured against
+**two** references: `exact_optimum` (the exact optimum; see Amendment 1 for its
+preconditions) and the `f64` solve of the same problem.
 
 Reported per corpus, not per instance:
 
@@ -100,8 +131,9 @@ Reported per corpus, not per instance:
 2. instances where `infeasibility_evidence` disagrees, **split by direction**;
 3. the distribution of `max|λ|` reached, and the count that saturated;
 4. the converged-but-wrong count — a `Q32` solve reporting `converged` whose iterate the
-   `f64` reference says is not optimal, with the deviation measured the way RFC 041 S2
-   measured it (relative to the `f64` solve's own deviation, not to an absolute constant).
+   **exact** reference says is not optimal, with the deviation measured the way RFC 041 S2
+   measured it (relative to the `f64` solve's own deviation against the same exact optimum,
+   not to an absolute constant).
 
 Also tracked: the randomized differential of §2, which currently exists only as a scratch
 harness.
