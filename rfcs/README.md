@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [043](proposed/043-the-constrained-kernel-over-a-bounded-scalar.md) | The Constrained Kernel Over a Bounded Scalar | Proposed | Pulls the trigger RFC 041 S3 named. RFC 034 Amendment 1's infeasibility-evidence predicate avoids division by cross-multiplying with integers, so over a **saturating** scalar both operands clamp and the comparison reads `MAX >= MAX` — **`true`**, the direction that asserts divergence. The `100`/`99` form costs two decimal digits of `Q32`'s representable range; measured, the predicate disagrees with its `f64` meaning on 76% of draws at magnitude 2 000, inside `Q32<20>`'s own range, and the false-negative column is **empty at every scale** — saturation invents divergence, never hides it. Reachability on real solves is **unmeasured**, which is S1. Reformulates by `checked_div`, which cannot saturate and whose `Err` is an honest "cannot tell", behind a differential test proving no `f64` verdict moved. Architect review 096 scopes it. |
 
 ## Accepted RFCs
 
