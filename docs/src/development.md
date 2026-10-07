@@ -306,21 +306,42 @@ that is correct; read as "a minor bump signifies breakage" it is wrong, and it h
 caused that error once. Those are historical records and are not edited; this section
 is the current statement.
 
-### A breaking slice bumps the minor before the cut
+### A slice that moves the release's position bumps the version before the cut
 
-The released version is normally set in the release's own finalization revision. **A slice that
-introduces a breaking change is the exception**, because `cargo xtask release-gate
---intended-tag <v>` validates the intended tag against the workspace version, so the gate that
-is required of every slice cannot run until the version matches the release the break forces.
+The released version is normally set in the release's own finalization revision. **A slice whose
+content changes which version the next release will carry is the exception**, because `cargo
+xtask release-gate --intended-tag <v>` validates the intended tag against the workspace version,
+and that gate is required of every slice. The gate cannot run until the workspace version matches
+the release the slice's content forces.
 
-So a slice that breaks a caller bumps the minor itself — the workspace version, the five
-internal `[workspace.dependencies]` pins, all eight lockfiles, and the apex `This tree` field,
-which `doc-currency` will demand with three `APEX RELEASE` findings otherwise. `Last reconciled
-repository release` does **not** move: the release has not happened, and RFC 024's inequality is
-strict.
+What `main` carries between releases is a **placeholder, not a prediction**: the next patch,
+set by the post-release commit. Which release it actually becomes follows from the slices:
 
-RFC 042 was the first slice to hit this, and the architect's handoff had required the gate
-without accounting for it.
+| The slice | Next release | Who bumps |
+| --- | --- | --- |
+| fixes a defect, or only measures or documents | the patch already on `main` | nobody; the placeholder was right |
+| **adds** functionality a caller can call | a minor | the first such slice |
+| **breaks** a caller | a minor (Cargo's `0.x` rules) | the first such slice |
+
+The bump touches four places, every one of them gated:
+
+1. the workspace version, and the five internal `[workspace.dependencies]` pins that must move
+   with it or `published-metadata` fails closed;
+2. all eight lockfiles;
+3. the apex `This tree` field, which `doc-currency` will otherwise demand with three
+   `APEX RELEASE` findings;
+4. the `## [x.y.z] — unreleased` `CHANGELOG.md` heading, because `release-gate` requires
+   **exactly one** `## [<workspace version>]` heading and the placeholder's heading no longer
+   matches. This is the gate's *first* preflight check, ahead of the tag and cleanliness
+   checks, so `CHANGELOG: expected exactly one ...` is what a half-done bump reports.
+
+Nothing else moves. In particular `Last reconciled repository release` stays where it is: the
+release has not happened, and RFC 024's inequality is strict.
+
+RFC 042 was the first slice to hit this, as a breaking change, and the architect's handoff had
+required the gate without accounting for it. An earlier form of this section stated it only for
+that case, as "a breaking slice bumps the minor before the cut"; the trigger is the release's
+position, not breakage, so an additive slice reaches it the same way.
 
 ### Bumping after a release
 
