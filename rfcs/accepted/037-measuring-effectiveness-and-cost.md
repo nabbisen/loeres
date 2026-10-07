@@ -8,6 +8,43 @@
 2026-10-07. Every measurement quoted below was taken by the architect on `ddbf356`
 and is reproducible by the harness this RFC specifies.
 
+## 0.1 Amendment 1 (2026-10-07)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries
+only the design-freeze date while this RFC is in `accepted/`, because `doc-currency`
+requires that exact form there; **the amendment must be named in the Status line when
+this RFC moves to `rfcs/done/`**, which `check-rfcs` enforces for `done/` only.
+
+Three statements in this RFC were wrong, each found by the implementer measuring
+rather than assuming. Architect review 087 holds the evidence. The body is corrected
+in place; this section records what changed and why.
+
+1. **§4.2 said a projection sweep is `O(m)`.** It is **Θ(m·n)**. The inner loop in
+   `crates/loeres-cluster/src/solve/constrained.rs:352-371` is `for i in 0..m` over the
+   halfspaces, and each row does two `0..n` passes — a dot product and an update. The
+   figure was counting rows, not arithmetic.
+2. **§5.3 said the exact deviation could be had by "reusing RFC 030's exact solvers".
+   It cannot.** `xtask/src/checks/conformance/reference.rs` is `#[cfg(test)]` and solves
+   `½ Σ qᵢ(xᵢ − tᵢ)²` — a **separable, diagonal** `Q`. The corpus family of §3 is
+   tridiagonal, so the reference does not apply to it and has no path to a dense
+   objective. The premise was false, and S3 is split accordingly: §5.3 keeps the three
+   legs, and a new §5.6 carries the exact measure.
+3. **§4.1 said the corpus "lives in tracked fixtures".** The family is a formula, so a
+   fixture would duplicate it rather than record data. It lives in code, as the
+   implementation handoff said; the inconsistency was between this RFC and its own
+   handoff.
+
+Two clarifications, which changed no behaviour:
+
+- **"Host target only" (§4.3) means the build host**, not the cluster path. The
+  device path *built for the host* is a host-target measurement and is asserted. What
+  is never asserted is a figure from a cross-compiled `thumbv7em-none-eabihf` run.
+- **Projection cost can only be bounded, not measured.** The solve record carries
+  `projection_cap_hits` but not the sweep count, so a per-iteration projection figure
+  is an upper bound at `projection_max_sweeps`. Exposing the sweep count would be
+  kernel instrumentation, which §6 forbids; it is a candidate for the opt-in counting
+  RFC §4.2 already anticipates.
+
 ## 1. Summary
 
 The owner's fourth visitor question — **how effective or powerful is this?** — is the
@@ -93,9 +130,10 @@ The honest characterisation, which the harness must produce rather than assert:
 
 ### 4.1 A two-axis corpus
 
-The corpus is parameterised on **size and conditioning**, not size alone, and lives in
-tracked fixtures beside the existing `conformance/` corpora. Every reported figure
-names the family and both parameters, so no number is quotable without its problem.
+The corpus is parameterised on **size and conditioning**, not size alone. It lives in
+**code**, not in fixture files: the family is a formula, so a fixture would duplicate
+the formula rather than record data (Amendment 1). Every reported figure names the
+family and both parameters, so no number is quotable without its problem.
 
 ### 4.2 Measured against derived, never blurred
 
@@ -104,7 +142,8 @@ per-iteration arithmetic, and this RFC does **not** instrument the kernels to co
 that would be a crate change, and T4 measures rather than modifies.
 
 So per-iteration cost is **derived** from the algorithm — a dense `Q·x` is `n²`
-multiply-adds, the projection is `O(m)` per sweep — and every output marks each figure
+multiply-adds, and a projection sweep is `Θ(m·n)`, since each of the `m` rows costs
+two `n`-length passes (Amendment 1) — and every output marks each figure
 as *measured* or *derived*. A derived figure presented as a measurement is the failure
 mode this RFC exists to avoid; the report must make the distinction visible, not
 merely true.
@@ -176,6 +215,21 @@ every commit — one contract, two worlds, separated at compile time, which `zer
 and `no-std` prove — and let the throughput figures speak for themselves in the
 chapter, where their host can travel with them.
 
+### 5.6 S6 — the exact-deviation measure
+
+Added by Amendment 1, because §5.3's premise was false. An exact reference for a
+**dense** `Q` by active-set enumeration, for `n ≤ 8` only: the enumeration's pool is
+`m + 2n` rows with subsets up to size `n`, which is 20 rows at `n = 8` and already out
+of reach at `n = 16`.
+
+It is new numerical code, so RFC 030's standard applies: it must be **cross-validated
+against the existing separable reference** on the conformance fixtures, where both
+apply and must agree. That cross-check is the evidence that the generalisation is
+correct, and it is the reason this is its own slice rather than an addendum to S3.
+
+The chapter must then say that the exact check covers `n ∈ {4, 8}` only, and that
+larger instances rest on the three legs of §5.3 together with the conformance suites.
+
 ## 6. Explicit non-scope
 
 - **No tuning.** T4 measures. A kernel change the measurements make attractive is a
@@ -206,7 +260,10 @@ chapter, where their host can travel with them.
    parameters.
 3. Counted-work baselines are pinned for the host target and asserted; the device
    target is reported.
-4. Effectiveness is reported beyond the smoke corpus, against exact optima.
+4. Effectiveness is reported beyond the smoke corpus: the three legs of `Converged`
+   over the whole corpus (§5.3), and the deviation from the exact optimum for `n ≤ 8`
+   (§5.6, Amendment 1). Where no exact reference exists, the report says so rather
+   than omitting the line.
 5. Wall-time throughput is reported with its host, and no gate depends on it.
 6. The book answers "how effective or powerful" with figures the harness produced,
    counted-work ones gate-checked against a real run.
