@@ -178,7 +178,18 @@ the cap. The batch path carries the status only, so it never carries the hint.
 
 **Limits of this kernel** (RFC 027 §11.6):
 
-- LP is expressible (`Q = 0`) but not solved.
+- **LP is expressible (`Q = 0`) and solves soundly, without a convergence
+  guarantee** (RFC 039). A `Converged` result is optimal regardless of
+  curvature — `P(x − αc) = x` holds iff `x` is optimal for a convex feasible
+  set — measured on 298-300 of 300 random instances: zero sub-optimal, worst
+  deviation `6.08e-10`. Convergence can fail two ways, distinguishable by
+  `projection_cap_hits`: the projection's sweep cap can bind
+  (`projection_max_sweeps`, nonzero `projection_cap_hits`), or — since a linear
+  objective sets no stability upper bound on the step — the outer iteration
+  cap can, when a wide box is paired with a small step scale, with **zero**
+  cap hits. The iteration count in that case is about
+  `extent / (step_scale · |c|)`; the remedy is to scale the step to the
+  problem's extent, not to raise `max_iterations` indefinitely.
 - Infeasibility is not detected as a status. It is reported as `NotConverged` /
   `NoProgress` with a positive violation that does not shrink as
   `projection_max_sweeps` is raised; it is never an error. The `infeasibility_evidence`
@@ -217,6 +228,12 @@ substituting a step silently would change results — so pass it yourself. If yo
 know `lambda_max`, or have measured your own step, use that. Both bounds are
 **meaningless unless `Q` is symmetric positive semidefinite**, which is your
 responsibility and is not verified.
+
+None of this table applies to an LP (`Q = 0`): `U = 0`, so `suggested_step_scale()`
+returns `NumericalDomain` rather than a number — correctly, since there is no
+curvature-derived step to offer. That does not mean no safe step exists: with no
+curvature to overshoot, a linear objective has **no stability upper bound** on
+`a` at all. See **Limits of this kernel** above for how to choose one instead.
 
 **The rate.** With an exact projection, `Q` positive *definite* and a step in
 `(0, 2 / U)`, the iteration contracts linearly by

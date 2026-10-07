@@ -15,10 +15,12 @@
 //! `Q = [[2, 0.5], [0.5, 1]]` and `c = (−4, −2)`. `Q` must be symmetric positive
 //! semidefinite; that is a caller precondition the kernel does not verify.
 //!
-//! What this example does **not** show: LP (expressible with `Q = 0`, not solved
-//! by this kernel), infeasibility *detection* as a status (an infeasible polyhedron
-//! is only reported as a non-converged status, with the heuristic hint beside it), or
-//! any numeric rate claim. See RFC 027 §11.6 and RFC 034.
+//! What this example does **not** show: an LP (`Q = 0`), which this kernel solves
+//! soundly but without a convergence guarantee (RFC 039) — a different case from
+//! the one here, not demonstrated by it; infeasibility *detection* as a status (an
+//! infeasible polyhedron is only reported as a non-converged status, with the
+//! heuristic hint beside it); or any numeric rate claim. See RFC 027 §11.6,
+//! RFC 034 and RFC 039.
 
 use loeres::{
     BoxBounds, LinearInequalities, QuadraticObjective, QuadraticProgram, SolveStatus,

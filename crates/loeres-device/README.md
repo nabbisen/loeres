@@ -48,7 +48,11 @@ and the returned point may be only feasible-approximate.
 
 ### Limits of the constrained kernel (RFC 027 §11.6)
 
-- LP is expressible (`Q = 0`) but not solved.
+- LP is expressible (`Q = 0`) and solves soundly — a converged result is optimal
+  regardless of curvature — but without a convergence guarantee: the
+  projection's sweep cap can bind, or, for a wide box and a small step scale,
+  the outer iteration cap can, with **zero** projection cap hits in that case;
+  scale the step to the problem's extent to clear it (RFC 039).
 - Infeasibility is not detected as a status; it is reported as `NotConverged` /
   `NoProgress` with a positive violation that does not shrink as the sweep cap is
   raised. `infeasibility_evidence()` on the report is only a heuristic hint, wrong in

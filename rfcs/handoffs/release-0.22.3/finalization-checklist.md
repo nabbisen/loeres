@@ -86,8 +86,18 @@ Then `docs/src/specifications.md`: add the row and make it the newest published 
   measurement on a reference instantiation, with a pinned baseline and a bounded delta in
   the `bench-baseline` pattern, rather than an absolute ceiling on a file that is 93%
   metadata.
-- **Themes T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars)**, unscheduled. T5
-  is the natural next: LP is already expressible as `Q = 0` and documented as not solved.
+- **Themes T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars)**, unscheduled. RFC
+  039 (S1-S4) measured and documented LP's actual behaviour instead: a converged result is
+  sound regardless of curvature, and both non-convergence causes are configuration matters
+  (the projection's sweep cap, or the outer iteration cap when a wide box is paired with a
+  small step scale) rather than an algorithm gap. RFC 039 S4 declined a dedicated LP
+  algorithm on that evidence.
+- **A distance-aware default step for the curvature-free case** (RFC 039's b-ruling handoff
+  §3). Not whether such a rule is possible — a step scaled to the problem's extent
+  demonstrably converges a wide-box LP in eleven iterations — but whether the library should
+  **offer one as a default**, rather than leaving the caller to scale `α` themselves. The box
+  extent is available from `BoxBounds`; `‖c‖` from the linear term. A question for a future
+  RFC with its own measurement, not a commitment here.
 - Kernel instrumentation to expose the projection sweep count, which would turn RFC 037's
   bounded `proj ops ≤` into a measured figure. Recorded in RFC 037 §0.1.
 - An optional polish from review 090 §5: the six example `README.md` H1 headings end in a

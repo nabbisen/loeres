@@ -22,7 +22,8 @@ The core design principle is:
 matrix access contracts, solver outcome/status and validation categories,
 dimensions, and allocation-free error/diagnostic topology. Its `problem`
 namespace defines a storage-agnostic quadratic-program contract; LP is
-expressible as `Q = 0` but not solved, and no SOCP contract exists.
+expressible as `Q = 0` and solves soundly, without a convergence guarantee
+(see below), and no SOCP contract exists.
 Implemented PFO problem contracts belong to the device and cluster
 execution crates. `loeres` is `#![no_std]` and does not depend on `alloc`.
 Backends provide storage; execution crates provide solve paths. A cloud service
@@ -37,6 +38,11 @@ set under `rfcs/`.
 Repository release `0.20.2` is released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034. Current solver
 breadth is one projected-first-order family on device and cluster, over a box
 and, in the `0.21.1` release (RFC 027), over a box with linear
-inequalities `Ax <= b`. LP is not solved and infeasibility is not detected as a status (the solve record carries only a heuristic hint, wrong in both directions). The
+inequalities `Ax <= b`. LP (`Q = 0`) solves soundly — a converged result is
+optimal regardless of curvature — but without a convergence guarantee: the
+projection's sweep cap can bind, or, for a wide box and a small step scale,
+the outer iteration cap can, with zero projection cap hits in that case; the
+remedy is to scale the step to the problem's extent (RFC 039). Infeasibility
+is not detected as a status (the solve record carries only a heuristic hint, wrong in both directions). The
 gateway is mock-only, validation caching is process-local, and conformance is a
 bounded smoke corpus.

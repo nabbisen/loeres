@@ -5,7 +5,9 @@ storage-agnostic vector/matrix access, solver outcome/status and validation
 vocabulary, dimensions, and allocation-free errors/diagnostics. Defines **no**
 storage, runtime, or OS assumptions. The `problem` namespace defines a
 storage-agnostic quadratic-program contract (RFC 027); LP is expressible as
-`Q = 0` but not solved, and no SOCP contract exists.
+`Q = 0` and solved soundly, though without a convergence guarantee (see
+`loeres-cluster`/`loeres-device` for the two capping mechanisms), and no SOCP
+contract exists.
 
 - **Environment:** `#![no_std]`, no `alloc`
 - **Depends on:** nothing (defines contracts only)

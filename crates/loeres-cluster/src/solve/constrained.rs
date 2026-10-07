@@ -543,7 +543,11 @@ fn infeasibility_evidence_of(feasible: bool, last: Projection) -> bool {
 ///
 /// # What this does not claim (RFC 027 §11.6)
 ///
-/// - LP is expressible (`Q = 0`) but not solved.
+/// - LP is expressible (`Q = 0`) and solves soundly — a converged result is
+///   optimal regardless of curvature — but without a convergence guarantee:
+///   the projection's sweep cap can bind, or, for a wide box and a small step
+///   scale, the outer iteration cap can, with **zero** `projection_cap_hits` in
+///   that case; scale the step to the problem's extent to clear it (RFC 039).
 /// - Infeasibility is not detected as a status: it is reported as `NotConverged`
 ///   with `NoProgress`, with `projection_cap_hits > 0` and a positive violation
 ///   that does not shrink as `projection_max_sweeps` is raised. It is never an

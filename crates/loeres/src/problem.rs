@@ -32,9 +32,14 @@
 //!   bounds, and the row norms a projection needs — belongs to the solving kernel,
 //!   where RFC 012's trust policy decides what may be skipped. [`QuadraticProgram::shape`]
 //!   checks structure only.
-//! - **LP is expressible (`Q = 0`) but not solved** by the projected kernels this
-//!   contract feeds: projected gradient on a linear objective has no curvature to
-//!   converge against (RFC 027 §11.6).
+//! - **LP (`Q = 0`) solves soundly, without a convergence guarantee.** A
+//!   `Converged` result is optimal regardless of curvature (RFC 039: measured
+//!   on 298-300 of 300 random instances, zero sub-optimal). Convergence can
+//!   fail at the projection's sweep cap, or — since a linear objective sets no
+//!   stability upper bound on the step — at the outer iteration cap when a wide
+//!   box is paired with a small step scale, with **zero** projection cap hits in
+//!   that case; scale the step to the problem's extent to clear it
+//!   (RFC 027 §11.6, RFC 039).
 //!
 //! Contracts only — no modeling DSL, no expression parsing (external design §2.7).
 
@@ -292,7 +297,16 @@ pub trait QuadraticProgram<S: BaseScalar>:
     ///
     /// As [`curvature_bounds`](Self::curvature_bounds), plus
     /// [`SolverError::NumericalDomain`] when `U = 0` — an all-zero `Q` has no
-    /// curvature and so no step this bound can call safe.
+    /// curvature-derived step to offer, which is why this returns an error
+    /// rather than a number. That refusal does not mean a linear objective has
+    /// no safe step: with no curvature to overshoot, `α` has **no stability
+    /// upper bound** at all when `Q = 0`. It only sets the distance travelled
+    /// per outer iteration, so the right scale comes from the problem's
+    /// **extent**, not from `curvature_bounds`: the iteration count to
+    /// traverse an unopposed direction is about `extent / (α · |c|)`
+    /// (RFC 039). Both the projection's sweep cap and the outer iteration cap
+    /// are where non-convergence then shows up, and `projection_cap_hits`
+    /// tells them apart — nonzero for the former, zero for the latter.
     fn suggested_step_scale(&self) -> Result<S, SolverError>
     where
         S: FiniteScalar + MetricScalar + DivisibleScalar,

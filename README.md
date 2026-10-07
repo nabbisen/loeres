@@ -83,7 +83,7 @@ Each example names the problem it solves in its first paragraph.
 ## Design Notes
 
 - **Five crates, one contract.** `loeres` (`no_std`, no `alloc`) defines the scalar, vector, solver-outcome, validation, error and problem contracts. `loeres-backend-std` and `loeres-backend-static` own storage; `loeres-cluster` and `loeres-device` own the solve paths. The dependency graph is acyclic and environment-separated.
-- **Narrow solver scope.** Box and `Ax ≤ b` QPs are solved. LP is expressible as `Q = 0` but not solved; no SOCP contract exists. `Q` must be symmetric positive semidefinite, a caller precondition that is not verified. Device and cluster agree within tolerance, not bitwise. The full statement is in [Terms of Engineering Use](TERMS_OF_USE.md).
+- **Narrow solver scope.** Box and `Ax ≤ b` QPs are solved. LP is expressible as `Q = 0` and solves soundly — a converged result is always optimal — but without a convergence guarantee: the projection's sweep cap or, for a wide box and a small step scale, the outer iteration cap (zero projection cap hits in that case) can bind first; no SOCP contract exists. `Q` must be symmetric positive semidefinite, a caller precondition that is not verified. Device and cluster agree within tolerance, not bitwise. The full statement is in [Terms of Engineering Use](TERMS_OF_USE.md).
 - **Caller-owned workspaces on device.** No hidden allocation; the memory footprint is reviewable before execution.
 - **Bounded server integrations.** Observability is metadata-only, the gateway is mock-only, and validation caching is process-local. No concrete native adapter or persistent or distributed cache ships.
 

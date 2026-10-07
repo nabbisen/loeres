@@ -88,8 +88,12 @@ cluster now does real solving (not only orchestration of deterministic test jobs
   caller who needs the magnitudes uses the typed entrypoint.
 - See `examples/cluster-qp-constrained/`.
 
-Limits (RFC 027 §11.6): LP is expressible (`Q = 0`) but not solved; infeasibility
-is not detected as a status (reported as `NotConverged` / `NoProgress` with a positive
+Limits (RFC 027 §11.6): LP is expressible (`Q = 0`) and solves soundly — a
+converged result is optimal regardless of curvature — but without a convergence
+guarantee: the projection's sweep cap can bind, or, for a wide box and a small
+step scale, the outer iteration cap can, with **zero** projection cap hits in
+that case; scale the step to the problem's extent to clear it (RFC 039);
+infeasibility is not detected as a status (reported as `NotConverged` / `NoProgress` with a positive
 violation that does not shrink as the sweep cap is raised) and `infeasibility_evidence`
 on the record is only a heuristic hint, wrong in both directions (RFC 034: set on about
 3 in 100,000 feasible near-parallel problems and 2 in 10,000 thin slivers, and missing

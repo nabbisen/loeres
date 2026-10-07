@@ -83,7 +83,7 @@ guidance, an exact projection in the `Converged` claim) shipped in `0.21.3`, and
 RFC 034 (a heuristic `infeasibility_evidence` field, wrong in both directions)
 shipped in `0.22.0`. The current numerical breadth is one
 projected-first-order family on device and cluster, over a box and, since
-`0.21.1`, over a box with linear inequalities (RFC 027). Infeasibility is not detected as a status and LP is not solved.
+`0.21.1`, over a box with linear inequalities (RFC 027). Infeasibility is not detected as a status. LP (`Q = 0`) solves soundly but without a convergence guarantee: the projection's sweep cap or, for a wide box and a small step scale, the outer iteration cap (zero projection cap hits in that case) can bind first — scale the step to the problem's extent to clear the latter (RFC 039).
 Conformance is a bounded smoke corpus; no broad LP/SOCP, large-N,
 throughput, or adversarial parity claim is made. Observability is metadata-
 only, the gateway is mock-only, and validation caching is process-local.

@@ -60,8 +60,17 @@ defines a storage-agnostic quadratic-program contract. No SOCP contract exists,
 and no LP, SOCP, interior-point, or ADMM solver ships. The limits of the
 constrained (quadratic-program) kernels are:
 
-- **LP is expressible, not solved.** `Q = 0` is a legal input, but projected
-  gradient on a linear objective has no curvature to converge against.
+- **LP is expressible (`Q = 0`) and solves soundly, without a convergence
+  guarantee.** A `Converged` result is optimal regardless of curvature —
+  `P(x - αc) = x` holds iff `x` is optimal for a convex feasible set — measured
+  on 298-300 of 300 random instances: zero sub-optimal, worst deviation
+  `6.08e-10` (RFC 039). Convergence is not guaranteed, for two distinct reasons
+  distinguishable by `projection_cap_hits`: the projection's sweep cap can bind
+  (`projection_max_sweeps`, nonzero `projection_cap_hits`), or — since a linear
+  objective has no curvature to bound the step from above — a fixed step must
+  traverse the whole distance to the optimum, so a wide feasible region with a
+  small step scale exhausts `max_iterations` with **zero** cap hits. The remedy
+  for the second is to scale the step to the problem's extent.
 - **Infeasibility is not detected as a status — there is a heuristic hint, and it
   is wrong in both directions.** An infeasible polyhedron is reported as
   `NotConverged` with `NoProgress` and a positive `max_constraint_violation`
@@ -100,7 +109,11 @@ constrained (quadratic-program) kernels are:
   claim is made** (it holds steps that converge and steps that do not).
   `suggested_step_scale()` returns `1 / U`: always safe, never optimal, and
   **nothing calls it on your behalf**. Both bounds are meaningless unless `Q` is
-  symmetric positive semidefinite.
+  symmetric positive semidefinite. **None of this applies to an LP (`Q = 0`)**:
+  `U = 0`, so `suggested_step_scale()` returns `NumericalDomain` rather than a
+  number, correctly — there is no curvature-derived step to offer. That is not
+  the same as no safe step existing: see the LP bullet above for the step rule
+  that does apply.
 - **The rate is stated in form, not as a number.** With an exact projection, `Q`
   positive **definite** and `step_scale` in `(0, 2 / U)`, the iteration contracts
   linearly by `max(|1 - a*lambda_min|, |1 - a*lambda_max|)` (`a` the step). The

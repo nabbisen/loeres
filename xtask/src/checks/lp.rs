@@ -194,10 +194,15 @@ impl LinearInequalities<f64> for LpProgram {
 pub struct LpOutcome {
     pub status: String,
     pub termination: String,
+    pub outer_iterations: u32,
     pub cap_hits: u32,
     pub violation: f64,
     /// `None` if `n > exact::MAX_N`, or if no exact optimum was found (infeasible).
     pub deviation_from_exact: Option<f64>,
+    /// The returned iterate. RFC 039 Amendment 1 §3's step-scale table reports a
+    /// coordinate of this directly, so a reader can see the distance actually
+    /// travelled, not only whether it converged.
+    pub iterate: Vec<f64>,
 }
 
 fn render_status(status: SolveStatus) -> String {
@@ -208,9 +213,9 @@ fn render_status(status: SolveStatus) -> String {
     }
 }
 
-/// Solve `problem` with `projection_max_sweeps = cap`, and report the outcome plus its
-/// deviation from the exact LP optimum when in scope.
-pub fn measure(problem: &DenseQp, cap: u32) -> Result<LpOutcome, String> {
+/// Solve `problem` at `step_scale` with `projection_max_sweeps = cap`, and report the
+/// outcome plus its deviation from the exact LP optimum when in scope.
+pub fn measure(problem: &DenseQp, step_scale: f64, cap: u32) -> Result<LpOutcome, String> {
     let program = LpProgram::new(problem).map_err(|e| format!("corpus rejected: {e:?}"))?;
     let mut workspace = ClusterConstrainedWorkspace::new(problem.n, problem.b.len())
         .map_err(|e| format!("workspace rejected: {e:?}"))?;
@@ -228,7 +233,7 @@ pub fn measure(problem: &DenseQp, cap: u32) -> Result<LpOutcome, String> {
     let mut x = vector(vec![0.0; problem.n]).map_err(|e| format!("start rejected: {e:?}"))?;
     let record = solve_constrained_projected_first_order_dyn(
         &program,
-        STEP_SCALE,
+        step_scale,
         &mut x,
         &mut workspace,
         &config,
@@ -253,9 +258,11 @@ pub fn measure(problem: &DenseQp, cap: u32) -> Result<LpOutcome, String> {
     Ok(LpOutcome {
         status: render_status(record.report.status()),
         termination: format!("{:?}", record.report.termination()),
+        outer_iterations: record.report.iterations_executed(),
         cap_hits: record.projection_cap_hits,
         violation: record.max_constraint_violation,
         deviation_from_exact,
+        iterate,
     })
 }
 
@@ -272,18 +279,22 @@ pub struct CapRow {
 
 /// `cap_sensitivity` needs every outcome, not only the summary, so a caller can report the
 /// non-converging instances' detail (RFC 039 handoff §0.3).
-pub fn cap_sensitivity_detail(instances: &[DenseQp], cap: u32) -> Vec<Result<LpOutcome, String>> {
+pub fn cap_sensitivity_detail(
+    instances: &[DenseQp],
+    step_scale: f64,
+    cap: u32,
+) -> Vec<Result<LpOutcome, String>> {
     instances
         .iter()
-        .map(|problem| measure(problem, cap))
+        .map(|problem| measure(problem, step_scale, cap))
         .collect()
 }
 
-/// The cap-sensitivity table over `caps`, each measured independently.
-pub fn cap_sensitivity(instances: &[DenseQp], caps: &[u32]) -> Vec<CapRow> {
+/// The cap-sensitivity table over `caps`, each measured independently, at `step_scale`.
+pub fn cap_sensitivity(instances: &[DenseQp], step_scale: f64, caps: &[u32]) -> Vec<CapRow> {
     caps.iter()
         .map(|&cap| {
-            let outcomes: Vec<LpOutcome> = cap_sensitivity_detail(instances, cap)
+            let outcomes: Vec<LpOutcome> = cap_sensitivity_detail(instances, step_scale, cap)
                 .into_iter()
                 .filter_map(Result::ok)
                 .collect();
@@ -308,6 +319,35 @@ pub fn cap_sensitivity(instances: &[DenseQp], caps: &[u32]) -> Vec<CapRow> {
         .collect()
 }
 
+/// One row of the step-scale sensitivity table (RFC 039 Amendment 1 §3, the b-ruling
+/// handoff §0): for a linear objective there is no curvature to overshoot, so `α` has
+/// no stability upper bound — it only sets the distance travelled per outer iteration.
+/// A fixed step must therefore traverse the whole distance to the optimum, and the
+/// iteration count is approximately `extent / (step_scale · |c|)` rather than governed
+/// by a contraction factor the way a strongly-convex `Q` would be.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StepScaleRow {
+    pub step_scale: f64,
+    pub outcome: LpOutcome,
+}
+
+/// Measures `problem` at `cap` across every `step_scale` in `step_scales`, in order.
+pub fn step_scale_sensitivity(
+    problem: &DenseQp,
+    step_scales: &[f64],
+    cap: u32,
+) -> Vec<Result<StepScaleRow, String>> {
+    step_scales
+        .iter()
+        .map(|&step_scale| {
+            measure(problem, step_scale, cap).map(|outcome| StepScaleRow {
+                step_scale,
+                outcome,
+            })
+        })
+        .collect()
+}
+
 pub fn run() -> bool {
     println!("[lp] RFC 039: what the kernel does with a linear objective (reported, not enforced)");
     let mut ok = true;
@@ -318,7 +358,7 @@ pub fn run() -> bool {
         "random LP corpus: n=4, m=3, c in [-1,1]^4, box [0,1]^4, A in [0,1]^(3x4), b in [0.5,1.5]^3, 300 instances"
     );
     println!("cap sensitivity (exact reference, not the randomized oracle):");
-    for row in cap_sensitivity(&corpus, CAPS) {
+    for row in cap_sensitivity(&corpus, STEP_SCALE, CAPS) {
         println!(
             "  projection_max_sweeps={:>6}: converged {}/{}  converged-but-not-optimal {}  [measured]",
             row.cap, row.converged, row.total, row.converged_but_not_optimal
@@ -326,7 +366,10 @@ pub fn run() -> bool {
     }
     let mut worst_deviation = 0.0_f64;
     let mut non_converging = 0usize;
-    for (i, outcome) in cap_sensitivity_detail(&corpus, 500).into_iter().enumerate() {
+    for (i, outcome) in cap_sensitivity_detail(&corpus, STEP_SCALE, 500)
+        .into_iter()
+        .enumerate()
+    {
         match outcome {
             Ok(o) => {
                 if o.status == "converged" {
@@ -364,7 +407,7 @@ pub fn run() -> bool {
             degenerate_vertex_case(),
         ),
     ] {
-        match measure(&problem, 500) {
+        match measure(&problem, STEP_SCALE, 500) {
             Ok(o) => println!(
                 "  {name}: status={} termination={} cap_hits={} violation={:e} deviation={:?}  [measured/derived]",
                 o.status, o.termination, o.cap_hits, o.violation, o.deviation_from_exact
@@ -378,7 +421,41 @@ pub fn run() -> bool {
     println!("  note: the unopposed-direction case hits the plain outer-iteration cap with zero");
     println!("        projection cap hits — a different non-convergence cause than the random");
     println!("        corpus's, where the Dykstra projection's sweep cap binds.");
-    match measure(&tie_case(), 500) {
+
+    println!();
+    println!("step-scale sensitivity on the unopposed-direction case (RFC 039 Amendment 1 §3):");
+    match step_scale_sensitivity(
+        &unopposed_direction_case(),
+        &[0.3, 10.0, 100.0, 1_000.0, 100_000.0],
+        500,
+    )
+    .into_iter()
+    .collect::<Result<Vec<_>, _>>()
+    {
+        Ok(rows) => {
+            for row in &rows {
+                println!(
+                    "  alpha={:>10}: {:>6} iteration(s), {}, x0={:e}, cap_hits={}  [measured]",
+                    row.step_scale,
+                    row.outcome.outer_iterations,
+                    row.outcome.status,
+                    row.outcome.iterate[0],
+                    row.outcome.cap_hits
+                );
+            }
+        }
+        Err(error) => {
+            ok = false;
+            println!("  FAILED: {error}");
+        }
+    }
+    println!(
+        "  the iteration count is about extent / (alpha * |c|): no curvature means no stability"
+    );
+    println!("  upper bound on alpha, only a distance-per-iteration one — so the remedy for a");
+    println!("  wide box with a small alpha is to scale alpha to the problem's extent.");
+
+    match measure(&tie_case(), STEP_SCALE, 500) {
         Ok(o) => println!(
             "  tie along an optimal face: status={} termination={} cap_hits={} violation={:e}  [measured] (no single exact point; see the module's tests for face membership)",
             o.status, o.termination, o.cap_hits, o.violation
@@ -397,8 +474,8 @@ pub fn run() -> bool {
 #[cfg(test)]
 mod tests {
     use super::{
-        CapRow, cap_sensitivity, degenerate_vertex_case, measure, random_corpus, tie_case,
-        unopposed_direction_case,
+        CapRow, STEP_SCALE, cap_sensitivity, degenerate_vertex_case, measure, random_corpus,
+        step_scale_sensitivity, tie_case, unopposed_direction_case,
     };
 
     #[test]
@@ -438,7 +515,7 @@ mod tests {
         // `alpha = 0.3`, that is far beyond `MAX_ITERATIONS`, so this case hits the
         // plain outer-iteration cap with **zero** projection cap hits — a different
         // failure mode than the random corpus's projection-cap-bound non-convergence.
-        let outcome = measure(&unopposed_direction_case(), 500).expect("solve");
+        let outcome = measure(&unopposed_direction_case(), STEP_SCALE, 500).expect("solve");
         assert_eq!(outcome.status, "not converged");
         assert_eq!(outcome.termination, "IterationCap");
         assert_eq!(outcome.cap_hits, 0);
@@ -448,7 +525,7 @@ mod tests {
 
     #[test]
     fn the_degenerate_vertex_case_converges_to_the_pinned_vertex() {
-        let outcome = measure(&degenerate_vertex_case(), 500).expect("solve");
+        let outcome = measure(&degenerate_vertex_case(), STEP_SCALE, 500).expect("solve");
         assert_eq!(outcome.status, "converged");
         let deviation = outcome.deviation_from_exact.expect("n <= MAX_N");
         assert!(deviation < 1e-6, "{deviation:e}");
@@ -459,18 +536,66 @@ mod tests {
         // `exact_lp_optimum` returns one point on the face; the kernel's own returned
         // point need not equal it, so this test only checks the solve itself runs and
         // leaves face membership to `exact.rs`'s own test for the tie fixture's shape.
-        let outcome = measure(&tie_case(), 500).expect("solve");
+        let outcome = measure(&tie_case(), STEP_SCALE, 500).expect("solve");
         assert_eq!(outcome.status, "converged");
     }
 
     #[test]
     fn cap_sensitivity_reports_more_convergence_at_a_higher_cap() {
         let corpus = random_corpus(40, 7);
-        let rows: Vec<CapRow> = cap_sensitivity(&corpus, &[50, 50_000]);
+        let rows: Vec<CapRow> = cap_sensitivity(&corpus, STEP_SCALE, &[50, 50_000]);
         assert_eq!(rows.len(), 2);
         assert!(
             rows[1].converged >= rows[0].converged,
             "a higher cap must not converge less often: {rows:?}"
         );
+    }
+
+    #[test]
+    fn step_scale_sensitivity_converges_faster_as_the_step_matches_the_extent() {
+        // RFC 039 Amendment 1 §3: not a limitation of the method, a step too small
+        // for the geometry. At a tiny step the case hits the plain iteration cap
+        // with zero projection cap hits; at a step scaled to the box's extent it
+        // converges in a handful of iterations, with cap hits still zero throughout
+        // (ruling out the projection cap as a confound).
+        let rows: Vec<_> = step_scale_sensitivity(
+            &unopposed_direction_case(),
+            &[0.3, 10.0, 100.0, 1_000.0, 100_000.0],
+            500,
+        )
+        .into_iter()
+        .collect::<Result<Vec<_>, _>>()
+        .expect("every step scale solves");
+        assert_eq!(rows.len(), 5);
+
+        let smallest = &rows[0];
+        assert_eq!(smallest.outcome.status, "not converged");
+        assert_eq!(smallest.outcome.termination, "IterationCap");
+        assert_eq!(smallest.outcome.cap_hits, 0);
+
+        let largest = rows.last().unwrap();
+        assert_eq!(largest.outcome.status, "converged");
+        assert_eq!(largest.outcome.cap_hits, 0);
+        assert!(
+            largest.outcome.outer_iterations < 100,
+            "{:?}",
+            largest.outcome
+        );
+        assert!(
+            (largest.outcome.iterate[0] - 1e6).abs() < 1.0,
+            "{:?}",
+            largest.outcome
+        );
+
+        assert!(
+            rows.iter().all(|row| row.outcome.cap_hits == 0),
+            "the projection cap must never bind in this case, at any step scale: {rows:?}"
+        );
+        for pair in rows.windows(2) {
+            assert!(
+                pair[1].outcome.outer_iterations <= pair[0].outcome.outer_iterations,
+                "a larger step must not need more iterations: {rows:?}"
+            );
+        }
     }
 }
