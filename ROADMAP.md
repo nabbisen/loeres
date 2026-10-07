@@ -49,7 +49,26 @@ RFC 036 made the **published artifact** a reviewed deliverable; both shipped in
 `0.22.1`, which on 2026-10-07 became the first release **published to crates.io**
 since `0.20.2`.
 
-**Next theme — T4, a benchmark harness.** The owner's fourth visitor question, "how
+**Next: T7 as `0.23.0`, then T6.** T7 — a fixed-point scalar baseline — is the most
+embedded-aligned remaining item and the one most likely to matter to the device audience
+(architect review 065 §8); `fixed-point-hooks` has been a declared-but-inert feature since
+RFC 001. Its risk is numerical rather than structural: saturation, rounding and overflow are
+where fixed-point goes wrong, and `FiniteScalar`'s contract was written with floats in mind.
+
+**T6 does not need a consumer as a whole — it needs splitting**, which review 065 already
+said: its four items "are not one theme: they differ in risk and in audience". Of the four,
+**the batch seam (L10) is ready now**: the owner settled its shape as option (a) in review
+056, a constrained job already batches (`ClusterConstrainedJob` implements `ClusterJob`), and
+the batch path computes `max_constraint_violation` and `infeasibility_evidence` and then
+**discards both at the seam** — so the same problem solved directly tells a caller more than
+solved in a batch, which `examples/cluster-qp-constrained` already documents as "status only".
+Carrying them is source-breaking: `BatchItemOutcome` is not `#[non_exhaustive]`, so adding
+fields to `Solved` breaks patterns without `..` (`E0027`) and literal construction (`E0063`) —
+a minor bump, which `0.23.0` is. The other three — metadata-only observability, the
+mock-only `ffi-gateway` seam, and the process-local validation cache — stay closed until a
+real consumer exists; the gateway especially, being external surface with security weight.
+
+**Earlier: T4, a benchmark harness.** The owner's fourth visitor question, "how
 effective or powerful", is the one RFC 035 §4 deferred, and it is still unanswered.
 Architect review 086 scopes it: effectiveness and counted-work cost are deterministic
 and reproducible — RFC 031's difficulty reporting already measures deviation from the
