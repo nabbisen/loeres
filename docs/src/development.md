@@ -282,7 +282,7 @@ finalization revision, which is what gets tagged; it is never edited into an
 already-tagged commit. See RFC 024 for the apex-currency mechanics this
 convention keeps green.
 
-Every version bump takes **six** lockfile updates, not one:
+Every version bump takes **seven** lockfile updates, not one:
 
 ```sh
 cargo update --workspace --offline
@@ -291,11 +291,12 @@ cargo update --offline --manifest-path examples/cluster-qp-constrained/Cargo.tom
 cargo update --offline --manifest-path examples/cluster-capacity-dispatch/Cargo.toml
 cargo update --offline --manifest-path examples/device-box-pfo/Cargo.toml
 cargo update --offline --manifest-path examples/device-mpc-step/Cargo.toml
+cargo update --offline --manifest-path examples/cluster-counted-work/Cargo.toml
 ```
 
 The examples are excluded from the workspace (RFC 023 §11.1), so `--workspace`
 cannot reach them, and the `examples` gate builds them `--locked`. Forget any of
-the last five and that gate fails with `EXAMPLE BUILD` plus `EXAMPLE RESOLVE` findings — the
+the last six and that gate fails with `EXAMPLE BUILD` plus `EXAMPLE RESOLVE` findings — the
 failure is loud rather than silent, which is what `--locked` is for, but the cause
 is the bump, not the examples.
 

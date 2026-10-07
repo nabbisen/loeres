@@ -9,6 +9,7 @@
 - [Cluster User Guide](cluster-user-guide.md)
 - [Device User Guide](device-user-guide.md)
 - [Verification & Evidence](verification.md)
+- [How Effective and How Powerful](effectiveness.md)
 
 # Maintainers & Contributors
 

@@ -74,6 +74,11 @@ const EXAMPLES: &[Example] = &[
         forbidden: &[],
     },
     Example {
+        name: "cluster-counted-work",
+        dir: "examples/cluster-counted-work",
+        forbidden: &[],
+    },
+    Example {
         name: "device-mpc-step",
         dir: "examples/device-mpc-step",
         forbidden: &[
@@ -195,6 +200,7 @@ fn captured_output_check(outputs: &[(&str, Option<String>)]) -> Vec<String> {
 /// The output blocks the book quotes. Each must be marked once in the book, so a
 /// quoted example cannot silently lose its check.
 const CAPTURED_EXAMPLES: &[&str] = &[
+    "cluster-counted-work",
     "device-mpc-step",
     "device-box-pfo",
     "cluster-batch-solve",
@@ -601,7 +607,8 @@ mod tests {
 
         let changed = covering_blocks(&["bounds active: converged in 29"]);
         let findings = super::captured_output_findings(&changed, &all_required(output));
-        assert_eq!(findings.len(), 4, "{findings:?}");
+        // One mismatch per required example: the list is the authority, not a literal.
+        assert_eq!(findings.len(), super::CAPTURED_EXAMPLES.len(), "{findings:?}");
         assert!(
             findings.iter().all(|f| f.starts_with("CAPTURED MISMATCH")),
             "{findings:?}"

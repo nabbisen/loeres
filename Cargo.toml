@@ -21,6 +21,7 @@ exclude = [
     "examples/device-box-pfo",
     "examples/device-mpc-step",
     "examples/cluster-capacity-dispatch",
+    "examples/cluster-counted-work",
 ]
 
 # Shared metadata inherited by every member via `field.workspace = true`.

@@ -1,0 +1,22 @@
+# RFC 023 §11.1: excluded from the root workspace on purpose, with its own
+# lockfile, so this crate's resolved dependency graph is its own evidence. See
+# the root `[workspace] exclude` comment.
+# RFC 023 §0.2 (Amendment 2): an empty `[workspace]` table makes this crate its
+# own workspace root, so cargo's upward search for a manifest stops here.
+[workspace]
+
+[package]
+name = "cluster-counted-work"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "Counted work of a constrained solve, against size and conditioning (RFC 037 example)"
+
+# Server-side feature set, minus `parallel-rayon`: the counts are sequential by
+# nature, and a parallel batch would add nothing to them.
+[dependencies]
+loeres = { path = "../../crates/loeres", default-features = false }
+loeres-cluster = { path = "../../crates/loeres-cluster", default-features = false }
+loeres-backend-std = { path = "../../crates/loeres-backend-std", default-features = false, features = ["dense"] }
