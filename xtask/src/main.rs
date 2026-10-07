@@ -32,6 +32,8 @@ const IMPLEMENTED: &[&str] = &[
     "differential",
     "published-metadata",
     "doc-build",
+    "bench",
+    "bench-baseline",
 ];
 
 fn main() -> ExitCode {
@@ -58,6 +60,8 @@ fn main() -> ExitCode {
         Some("differential") => checks::differential::run(),
         Some("published-metadata") => checks::published_metadata::run(),
         Some("doc-build") => checks::doc_build::run(),
+        Some("bench") => checks::bench::run(),
+        Some("bench-baseline") => checks::bench_baseline::run(),
         Some(other) => {
             eprintln!("xtask: unknown command `{other}`");
             usage();

@@ -5,8 +5,8 @@ use std::path::{Component, Path};
 use std::process::Command;
 
 use super::{
-    basic, check_rfcs, conformance, differential, doc_build, doc_currency, examples,
-    feature_matrix, link_audit, no_std, panic_audit, public_api, published_metadata,
+    basic, bench_baseline, check_rfcs, conformance, differential, doc_build, doc_currency,
+    examples, feature_matrix, link_audit, no_std, panic_audit, public_api, published_metadata,
     review_evidence, size_budget, supply_chain, target_profiles, unsafe_audit, zero_bleed,
 };
 
@@ -202,6 +202,7 @@ fn run_developer_named(name: &str) -> bool {
             published_metadata::run(),
         ),
         ("doc-build", GateKind::Enforced, doc_build::run()),
+        ("bench-baseline", GateKind::Enforced, bench_baseline::run()),
     ];
     let ok = results.iter().all(|(_, _, result)| *result);
     eprintln!("[{name}] summary:");

@@ -1,6 +1,8 @@
 //! Verification gates, one module per gate (file-separation per dev guidelines).
 
 pub mod basic;
+pub mod bench;
+pub mod bench_baseline;
 pub mod check_rfcs;
 pub mod conformance;
 pub mod differential;
