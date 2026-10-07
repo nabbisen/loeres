@@ -75,7 +75,7 @@ Then `docs/src/specifications.md`: add the row and make it the newest published 
 ## 6. Open, not in this release
 
 - **`size-budget`'s device threshold.** Still unset, and the earlier framing of it was
-  wrong on two counts — architect scoping 091 §0 records both. It is **not the owner's
+  wrong on two counts — architect review 091 §0 records both. It is **not the owner's
   number**: RFC 010 §3.7 says "the exact byte budgets are owned by RFC 003, RFC 006,
   RFC 008, and RFC 011", so `size_budget.rs:46`'s "pending owner RFC" means a
   budget-owning RFC, and freezing it is ordinary RFC work. And the 32 000-byte proposal was
