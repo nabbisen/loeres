@@ -92,6 +92,13 @@ This is the first publication of these crates since `0.20.2` on 2026-07-30.
      `cargo update --manifest-path examples/<name>/Cargo.toml --offline` for each.
      Only the version strings should change; any external dependency churn means
      something else moved and must be explained.
+   - **Open the next version's `CHANGELOG.md` section** in the same commit, as
+     `## [x.y.z] — unreleased — <title>` with `**Release status:** unreleased`.
+     `release-gate`'s preflight calls `require_single_changelog_heading` and refuses
+     when the count is not exactly one, so between the bump and the first entry
+     `cargo xtask release-gate --intended-tag <next>` cannot run at all. The
+     `0.22.1` post-release commit omitted this and the dev team hit it on their next
+     slice (architect review 085 §3).
 4. `docs/src/specifications.md`'s "What is on crates.io" paragraph must be updated:
    `0.22.1` becomes the newest published version, and the sentence directing users
    to `0.20.2` is removed.

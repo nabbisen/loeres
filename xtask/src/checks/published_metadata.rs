@@ -157,8 +157,7 @@ pub fn run() -> bool {
             eprintln!("  packaged source set: not applicable here: {reason}");
         }
         Applicability::GitUnusable(reason) => {
-            eprintln!("  reason: {reason}");
-            findings.push(GIT_UNUSABLE.to_owned());
+            findings.push(format!("{GIT_UNUSABLE}: {reason}"));
         }
     }
     for finding in &findings {
@@ -492,8 +491,10 @@ enum Applicability {
     GitUnusable(String),
 }
 
-/// The finding for an unusable git. The reason is printed on its own line before it.
-const GIT_UNUSABLE: &str = "PACKAGED SOURCE: git is not usable here, so the tracked set cannot be read; git is required to compare a package with what is tracked";
+/// Prefix of the finding for an unusable git. The reason is appended, so the finding
+/// is self-contained like every other one this gate emits; a separate context line
+/// would be separated from it once another check also reports.
+const GIT_UNUSABLE: &str = "PACKAGED SOURCE: git is not usable here, so the tracked set cannot be read, and git is required to compare a package with what it tracks";
 
 /// C8, C9: the packaged-source assertion compares a package with git's history, so it
 /// applies only when git's repository is the working tree under test.
