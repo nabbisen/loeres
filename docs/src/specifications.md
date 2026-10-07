@@ -33,7 +33,7 @@ but not published. To install Loeres today from the registry, depend on `0.20.2`
 predates the constrained quadratic-program contract (RFC 027). To use the current tree, depend
 on the repository by git revision or by path, and pin the revision you reviewed.
 
-The apex specifications' currency blocks are the normative record; see the
+The apex specifications' currency blocks are the normative record; see
 the RFC index (`rfcs/README.md`) for the RFC states.
 
 ### Historical release notes

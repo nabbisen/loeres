@@ -23,6 +23,21 @@ Dynamic dense/sparse storage and optional third-party numerical adapters for the
   `native-linalg` are off by default and inert pending later RFCs; `view` /
   `batch` / `adapter` are placeholders.
 
+## Features
+
+Off unless marked *on*. A feature marked *reserved; no effect yet* is declared but
+gates no code today: enabling it changes nothing.
+
+| Feature | Default | What it does |
+|---|---|---|
+| `dense` | on | heap-backed dense storage (`DenseVector`, `DenseMatrix`) |
+| `sparse` | off | heap-backed CSR sparse storage (`SparseMatrix`) |
+| `serde` | off | reserved; no effect yet |
+| `parallel-rayon` | off | reserved; no effect yet |
+| `adapter-ndarray` | off | reserved; no effect yet |
+| `adapter-nalgebra` | off | reserved; no effect yet |
+| `native-linalg` | off | reserved; no effect yet |
+
 See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
 chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 

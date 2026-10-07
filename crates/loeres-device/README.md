@@ -69,6 +69,18 @@ and the returned point may be only feasible-approximate.
   verified.
 - Device and cluster agree within tolerance, not bitwise (RFC 013).
 
+## Features
+
+Off unless marked *on*. A feature marked *reserved; no effect yet* is declared but
+gates no code today: enabling it changes nothing.
+
+| Feature | Default | What it does |
+|---|---|---|
+| `owned-arrays` | off | the concrete projected first-order kernel (`problem`, `solve`) over fixed-size workspaces; forwards `loeres-backend-static/owned-arrays` |
+| `constant-iteration` | off | a timing-stabilized mode, `TimingMode::ConstantIteration`, that runs a fixed iteration count; not constant-time in the cryptographic sense |
+| `diagnostic-snapshot` | off | reserved; no effect yet |
+| `panic-gate` | off | reserved; no effect yet (panic paths are checked by `cargo xtask panic-audit`) |
+
 See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
 chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 

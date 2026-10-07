@@ -19,6 +19,17 @@ Advanced strided/row/column/sub-matrix `static-views` and richer
 `diagnostic-snapshot` behavior remain deferred. No feature enables `std`,
 `alloc`, server storage, async, logging, or FFI.
 
+## Features
+
+Off unless marked *on*. A feature marked *reserved; no effect yet* is declared but
+gates no code today: enabling it changes nothing.
+
+| Feature | Default | What it does |
+|---|---|---|
+| `owned-arrays` | off | owned fixed-size wrappers around arrays; no heap allocation |
+| `static-views` | off | reserved; no effect yet |
+| `diagnostic-snapshot` | off | reserved; no effect yet |
+
 See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
 chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 

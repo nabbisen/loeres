@@ -240,23 +240,35 @@ development team does not publish.
 - **Order.** Publish `loeres`, then `loeres-backend-static`, `loeres-backend-std`,
   `loeres-device` and `loeres-cluster`. A dependent needs its siblings in the registry at
   the same version first.
-- **`cargo publish --dry-run` cannot verify a dependent before its siblings are
-  published.** On `0.22.1` it refuses, as it should:
+- **`cargo publish --dry-run` cannot verify a dependent before its siblings are published.**
+  On `0.22.1` it refuses, as it should:
 
   ```text
   error: failed to select a version for the requirement `loeres = "^0.22.1"`
     candidate versions found which didn't match: 0.20.2, 0.20.1, 0.20.0, ...
   ```
 
-  `cargo package` of a dependent refuses in the same way, before any upload. This was
-  observed on cargo 1.99.0, including with a `[patch.crates-io]` table in the root manifest.
-  A dry-run of a root crate with no internal dependencies succeeds.
-- **What verifies the set before publication.** `cargo check --workspace --all-features` in
-  the tagged tree compiles the five crates together by path. The file set of each package is
-  shown by `cargo package -p <crate> --list`, which must include `LICENSE`.
-- **Publication is irreversible.** A version can be yanked but never replaced, so its
-  metadata ships permanently. Check `cargo xtask published-metadata` and the package listings
-  before the first `cargo publish`.
+  `[patch.crates-io]` does not change this: cargo resolves a publishable manifest against the
+  real registry and ignores patches. `cargo package` of a dependent refuses in the same way,
+  so no tarball of a dependent can be built before its siblings are published. A dry-run of a
+  root crate with no internal dependencies succeeds.
+- **What establishes the packaged set compiles, before publication.** `cargo package -p <crate>
+  --list --offline` needs no registry resolution. For all five crates together it takes about
+  0.14 seconds. It shows that the packaged `src/` set is identical to the tracked `src/` set
+  (18, 9, 9, 13 and 25 files), that no crate has a `build.rs`, and that no source uses
+  `include_str!` or `include_bytes!`. So the published crates' compilable content is
+  byte-identical to the workspace members', and the published set compiles if
+  `cargo check --workspace --all-features` passes. `cargo xtask published-metadata` asserts the
+  file-set equality per commit, and asserts that the package carries `LICENSE` and `README.md`.
+- **The real whole-set verification happens during publication.** Each crate's own
+  `cargo publish` verify build resolves its siblings from the real registry, so publish in
+  dependency order and let each step verify against what is already published.
+- **The residual risk, plainly.** If crate *N* fails verification, crates *1* to *N-1* are
+  already published, and a published version can be yanked but never replaced. The per-commit
+  file-set assertion is what makes that outcome unlikely, because the only thing that could
+  differ between the workspace build and the published build is a missing file.
+- **Publication is irreversible.** Check `cargo xtask published-metadata` and the package
+  listings before the first `cargo publish`.
 
 ## Release version convention
 

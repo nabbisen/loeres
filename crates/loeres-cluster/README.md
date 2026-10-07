@@ -114,15 +114,20 @@ or multi-tenant stress claim is made.
 
 ## Features
 
-The baseline synchronous batch path is unconditional and runtime-agnostic — no Tokio or
-Rayon type appears in the baseline public surface. Optional, default-off:
+Off unless marked *on*. A feature marked *reserved; no effect yet* is declared but
+gates no code today: enabling it changes nothing.
 
-- `parallel-rayon` — a bounded Rayon worker pool for parallel batch execution.
-- `async-tokio` — a Tokio blocking-pool offload exposing `solve_batch_async`.
-- `observability-tracing` / `observability-metrics` — reserved default-off integration
-  gates; the baseline observability types need no external telemetry dependency.
-- `ffi-gateway` — reserved default-off gate for audited concrete native/legacy solver
-  adapters. RFC 009 ships only the safe boundary and mock gateway.
+| Feature | Default | What it does |
+|---|---|---|
+| `parallel-rayon` | off | parallel batch execution on a Rayon pool; no Rayon type in the public surface |
+| `async-tokio` | off | `solve_batch_async`, a Tokio blocking-pool offload; no Tokio type in the public surface |
+| `observability-tracing` | off | reserved; no effect yet |
+| `observability-metrics` | off | reserved; no effect yet |
+| `serde` | off | reserved; no effect yet |
+| `ffi-gateway` | off | reserved; no effect yet (the safe mock gateway ships; no native adapter) |
+
+The baseline synchronous batch path is unconditional and runtime-agnostic: no Tokio or
+Rayon type appears in the baseline public surface.
 
 See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
 chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).

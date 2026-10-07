@@ -24,6 +24,20 @@
 //!   would compile these labels needs nightly, and `doc-build` deliberately omits
 //!   that flag, so this lexical check is the only guard against a typo or a
 //!   removed feature.
+//! - **Packaged source set** (RFC 036 C1.1): `cargo package -p <crate> --list
+//!   --offline` lists the same `src/` files as git tracks under `crates/<crate>/src`,
+//!   and the package contains `LICENSE` and `README.md`. This is the hermetic proof
+//!   that the published crate's compilable content is the workspace member's. The
+//!   tarball check is not used: `cargo package` of a dependent cannot resolve its
+//!   unpublished siblings, with or without `[patch.crates-io]`. Cargo refuses to list
+//!   a package whose tracked files have uncommitted changes, so this assertion
+//!   requires a clean tree for the five crates. It does not need one for the rest of
+//!   the workspace. `--allow-dirty` is deliberately not passed: the proof is about
+//!   the committed package.
+//! - **Reserved features** (RFC 036 C2.1): every declared feature with no
+//!   `cfg(feature = …)` site in `src/` is listed in `RESERVED_INERT_FEATURES`, and
+//!   every listed feature is still inert. A new feature cannot be silently inert,
+//!   and a reserved one that goes live fails until it is de-registered.
 //! - **Packaged READMEs** (§2.5): no `crates/<name>/README.md` carries a relative
 //!   link target, because a relative target 404s on crates.io when the file it
 //!   names is not in the tarball. The **root** `README.md` is deliberately exempt:
@@ -46,6 +60,28 @@ const VALID_CATEGORIES: &[&str] = &[
 /// Keyword limits on crates.io.
 const MAX_KEYWORDS: usize = 5;
 const MAX_KEYWORD_LENGTH: usize = 20;
+
+/// Features declared in `[features]` that gate no code, by RFC 009's reservation
+/// posture (see `docs/specs/loeres-external-design-v1.md`). Exactly these pairs must
+/// be inert: a registered feature that acquires a `cfg` site fails the gate, and an
+/// unregistered inert feature fails it too.
+const RESERVED_INERT_FEATURES: &[(&str, &str)] = &[
+    ("loeres", "libm"),
+    ("loeres", "fixed-point-hooks"),
+    ("loeres-backend-static", "static-views"),
+    ("loeres-backend-static", "diagnostic-snapshot"),
+    ("loeres-backend-std", "serde"),
+    ("loeres-backend-std", "parallel-rayon"),
+    ("loeres-backend-std", "adapter-ndarray"),
+    ("loeres-backend-std", "adapter-nalgebra"),
+    ("loeres-backend-std", "native-linalg"),
+    ("loeres-device", "diagnostic-snapshot"),
+    ("loeres-device", "panic-gate"),
+    ("loeres-cluster", "observability-tracing"),
+    ("loeres-cluster", "observability-metrics"),
+    ("loeres-cluster", "serde"),
+    ("loeres-cluster", "ffi-gateway"),
+];
 
 /// The five crates that are published, in dependency order (RFC 036 §4.3).
 const PUBLISHED_CRATES: &[&str] = &[
@@ -79,6 +115,8 @@ pub fn run() -> bool {
                 .cloned(),
         ));
         findings.extend(doc_cfg_symmetry_findings(name, &dir));
+        findings.extend(inert_feature_findings(name, &dir));
+        findings.extend(packaged_source_findings(name));
         match fs::read_to_string(format!("{dir}/README.md")) {
             Ok(source) => findings.extend(readme_link_findings(name, &source)),
             Err(error) => findings.push(format!("README: cannot read {dir}/README.md: {error}")),
@@ -89,7 +127,7 @@ pub fn run() -> bool {
     }
     let ok = findings.is_empty();
     eprintln!(
-        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links",
+        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links, feature labels, reserved features, packaged source",
         PUBLISHED_CRATES.len()
     );
     eprintln!("[published-metadata] {}", if ok { "PASS" } else { "FAIL" });
@@ -224,6 +262,179 @@ fn doc_cfg_features(source: &str) -> Vec<String> {
         rest = after;
     }
     features
+}
+
+/// Both directions of the reserved-feature symmetry for one crate (C2.1).
+fn inert_feature_findings(name: &str, dir: &str) -> Vec<String> {
+    let manifest = match fs::read_to_string(format!("{dir}/Cargo.toml")) {
+        Ok(source) => source,
+        Err(error) => {
+            return vec![format!(
+                "FEATURES: `{name}`: cannot read its manifest: {error}"
+            )];
+        }
+    };
+    let declared = match declared_features(&manifest) {
+        Ok(features) => features,
+        Err(error) => return vec![format!("FEATURES: `{name}`: {error}")],
+    };
+    let sources = match read_rust_sources(&format!("{dir}/src")) {
+        Ok(sources) => sources,
+        Err(error) => return vec![format!("FEATURES: `{name}`: {error}")],
+    };
+    inert_feature_check(name, &declared, &sources, RESERVED_INERT_FEATURES)
+}
+
+/// Pure core of `inert_feature_findings`, so the tests can feed it text.
+fn inert_feature_check(
+    name: &str,
+    declared: &[String],
+    sources: &[String],
+    registry: &[(&str, &str)],
+) -> Vec<String> {
+    let mut findings = Vec::new();
+    let registered = |feature: &str| registry.iter().any(|(c, f)| *c == name && *f == feature);
+    let mut declared_real: Vec<&String> = declared
+        .iter()
+        .filter(|f| f.as_str() != "default")
+        .collect();
+    declared_real.sort();
+    for feature in &declared_real {
+        let sites: usize = sources
+            .iter()
+            .map(|source| feature_sites(source, feature))
+            .sum();
+        match (sites == 0, registered(feature)) {
+            (true, false) => findings.push(format!(
+                "INERT FEATURE: `{name}` declares `{feature}` with no cfg site and it is not in RESERVED_INERT_FEATURES; gate code on it or register it as reserved"
+            )),
+            (false, true) => findings.push(format!(
+                "RESERVED FEATURE IS LIVE: `{name}`'s `{feature}` now has {sites} cfg site(s); remove it from RESERVED_INERT_FEATURES"
+            )),
+            _ => {}
+        }
+    }
+    for (crate_name, feature) in registry {
+        if *crate_name == name && !declared_real.iter().any(|f| f.as_str() == *feature) {
+            findings.push(format!(
+                "RESERVED FEATURE: RESERVED_INERT_FEATURES names `{name}`'s `{feature}`, which [features] does not declare"
+            ));
+        }
+    }
+    findings
+}
+
+/// The `cfg(feature = "X")` and `cfg!(feature = "X")` sites for `feature` in one
+/// source file. A `doc(cfg(…))` attribute is a rustdoc label, not a gate, and is
+/// excluded.
+fn feature_sites(source: &str, feature: &str) -> usize {
+    let mut count = 0;
+    for needle in [
+        format!("cfg(feature = \"{feature}\")"),
+        format!("cfg!(feature = \"{feature}\")"),
+    ] {
+        let mut from = 0;
+        while let Some(index) = source[from..].find(&needle) {
+            let at = from + index;
+            if !source[..at].ends_with("doc(") {
+                count += 1;
+            }
+            from = at + needle.len();
+        }
+    }
+    count
+}
+
+fn read_rust_sources(src_dir: &str) -> Result<Vec<String>, String> {
+    let mut files = Vec::new();
+    super::util::collect_ext(std::path::Path::new(src_dir), "rs", &mut files);
+    files
+        .iter()
+        .map(|path| {
+            fs::read_to_string(path)
+                .map_err(|error| format!("cannot read {}: {error}", path.display()))
+        })
+        .collect()
+}
+
+/// C1.1: the packaged `src/` set equals the tracked `src/` set, and the package
+/// carries `LICENSE` and `README.md`. Hermetic: `--offline`, no `--allow-dirty`.
+fn packaged_source_findings(name: &str) -> Vec<String> {
+    let output = std::process::Command::new(env!("CARGO"))
+        .args(["package", "-p", name, "--list", "--offline"])
+        .output();
+    let listing = match output {
+        Ok(output) if output.status.success() => {
+            String::from_utf8_lossy(&output.stdout).into_owned()
+        }
+        Ok(output) => {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let reason = first_error_line(&stderr).unwrap_or("no error line reported");
+            return vec![format!(
+                "PACKAGED SOURCE: `cargo package -p {name} --list --offline` refused: {reason}"
+            )];
+        }
+        Err(error) => {
+            return vec![format!(
+                "PACKAGED SOURCE: cannot run `cargo package -p {name} --list`: {error}"
+            )];
+        }
+    };
+    let Some(tracked) =
+        super::util::command_stdout("git", &["ls-files", &format!("crates/{name}/src")])
+    else {
+        return vec![format!(
+            "PACKAGED SOURCE: `git ls-files` failed for `{name}`"
+        )];
+    };
+    let listed: Vec<&str> = listing.lines().map(str::trim).collect();
+    let tracked: Vec<&str> = tracked
+        .lines()
+        .filter_map(|line| line.strip_prefix(&format!("crates/{name}/")))
+        .collect();
+    packaged_source_check(name, &listed, &tracked)
+}
+
+/// The first line cargo reports as an error, without its `error: ` prefix.
+fn first_error_line(stderr: &str) -> Option<&str> {
+    stderr
+        .lines()
+        .find_map(|line| line.strip_prefix("error: "))
+        .map(str::trim)
+}
+
+/// Pure core of `packaged_source_findings`.
+fn packaged_source_check(name: &str, listed: &[&str], tracked: &[&str]) -> Vec<String> {
+    use std::collections::BTreeSet;
+    let mut findings = Vec::new();
+    let packaged_src: BTreeSet<&str> = listed
+        .iter()
+        .copied()
+        .filter(|path| path.starts_with("src/"))
+        .collect();
+    let tracked_src: BTreeSet<&str> = tracked
+        .iter()
+        .copied()
+        .filter(|path| path.starts_with("src/"))
+        .collect();
+    for path in packaged_src.difference(&tracked_src) {
+        findings.push(format!(
+            "PACKAGED SOURCE: `{name}` packages `{path}`, which git does not track under src/"
+        ));
+    }
+    for path in tracked_src.difference(&packaged_src) {
+        findings.push(format!(
+            "PACKAGED SOURCE: `{name}` tracks `{path}` under src/, but the package omits it"
+        ));
+    }
+    for required in ["LICENSE", "README.md"] {
+        if !listed.contains(&required) {
+            findings.push(format!(
+                "PACKAGED SOURCE: `{name}`'s package omits `{required}`"
+            ));
+        }
+    }
+    findings
 }
 
 /// The `[package]` discovery metadata of one crate.
@@ -585,5 +796,123 @@ mod tests {
                 super::doc_cfg_symmetry_findings(name, &dir)
             );
         }
+    }
+
+    #[test]
+    fn a_feature_gating_code_is_not_inert_and_doc_labels_do_not_count() {
+        let source = "#[cfg(feature = \"dense\")]\nfn a() {}\n\
+                      #[cfg_attr(docsrs, doc(cfg(feature = \"sparse\")))]\n\
+                      if cfg!(feature = \"serde\") {}\n";
+        assert_eq!(super::feature_sites(source, "dense"), 1);
+        assert_eq!(super::feature_sites(source, "sparse"), 0);
+        assert_eq!(super::feature_sites(source, "serde"), 1);
+        assert_eq!(super::feature_sites(source, "libm"), 0);
+    }
+
+    fn feature_list(names: &[&str]) -> Vec<String> {
+        names.iter().map(|n| (*n).to_owned()).collect()
+    }
+
+    #[test]
+    fn an_unregistered_inert_feature_fails_and_a_registered_one_passes() {
+        let registry = [("x", "reserved-one")];
+        let declared = feature_list(&["default", "reserved-one", "live"]);
+        let sources = vec!["#[cfg(feature = \"live\")] fn a() {}".to_owned()];
+        assert!(super::inert_feature_check("x", &declared, &sources, &registry).is_empty());
+
+        let unregistered = feature_list(&["default", "reserved-one", "live", "new-inert"]);
+        let findings = super::inert_feature_check("x", &unregistered, &sources, &registry);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("`new-inert`") && findings[0].contains("INERT FEATURE"),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_registered_feature_that_gains_a_gate_fails_until_deregistered() {
+        let registry = [("x", "went-live")];
+        let declared = feature_list(&["went-live"]);
+        let sources = vec!["#[cfg(feature = \"went-live\")] fn a() {}".to_owned()];
+        let findings = super::inert_feature_check("x", &declared, &sources, &registry);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("RESERVED FEATURE IS LIVE"),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_registry_entry_for_an_undeclared_feature_fails() {
+        let registry = [("x", "gone")];
+        let findings = super::inert_feature_check("x", &feature_list(&[]), &[], &registry);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("`gone`"), "{findings:?}");
+    }
+
+    #[test]
+    fn the_registry_matches_the_real_tree_in_both_directions() {
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+        for name in PUBLISHED_CRATES {
+            let dir = format!("{root}/crates/{name}");
+            let manifest = std::fs::read_to_string(format!("{dir}/Cargo.toml")).expect("manifest");
+            let declared = super::declared_features(&manifest).expect("features");
+            let sources = super::read_rust_sources(&format!("{dir}/src")).expect("sources");
+            assert!(
+                super::inert_feature_check(
+                    name,
+                    &declared,
+                    &sources,
+                    super::RESERVED_INERT_FEATURES
+                )
+                .is_empty(),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_packaged_file_the_tree_does_not_track_is_named() {
+        let listed = ["src/lib.rs", "src/extra.rs", "LICENSE", "README.md"];
+        let tracked = ["src/lib.rs"];
+        let findings = super::packaged_source_check("x", &listed, &tracked);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("`src/extra.rs`"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_tracked_file_the_package_omits_is_named() {
+        let listed = ["src/lib.rs", "LICENSE", "README.md"];
+        let tracked = ["src/lib.rs", "src/missing.rs"];
+        let findings = super::packaged_source_check("x", &listed, &tracked);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("`src/missing.rs`"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_package_without_license_or_readme_is_refused() {
+        let listed = ["src/lib.rs"];
+        let tracked = ["src/lib.rs"];
+        let findings = super::packaged_source_check("x", &listed, &tracked);
+        assert_eq!(findings.len(), 2, "{findings:?}");
+    }
+
+    #[test]
+    fn matching_sets_pass() {
+        let listed = ["src/lib.rs", "LICENSE", "README.md", "Cargo.toml"];
+        let tracked = ["src/lib.rs"];
+        assert!(super::packaged_source_check("x", &listed, &tracked).is_empty());
+    }
+
+    #[test]
+    fn cargo_refusal_reason_is_carried_into_the_finding() {
+        let stderr = "error: 1 files in the working directory contain changes that were not yet committed into git:\n\nCargo.toml\n";
+        assert_eq!(
+            super::first_error_line(stderr),
+            Some(
+                "1 files in the working directory contain changes that were not yet committed into git:"
+            )
+        );
+        assert_eq!(super::first_error_line("warning: nothing\n"), None);
     }
 }

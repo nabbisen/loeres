@@ -9,7 +9,7 @@ sign-off (see RFC 000 and the requirements specification).
 authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7). It is
 **published** when its version is in the crates.io index for every publishable crate. The
 two are independent: a release can be distributed and not published. Release-status lines
-from `0.21.0` onward say which of the two hold.
+from `0.20.2` onward say which of the two hold.
 
 ## [0.22.1] — 2026-10-07 — Visitor-facing documentation and examples
 
@@ -52,6 +52,28 @@ now uses an explicit compare-exchange loop. It returns the value before the incr
 before, and fails only at saturation; identities are issued in the same sequence. The
 replacement `try_update` is not available on MSRV 1.85, so it was not used, and no
 `#[allow]` was added. The MSRV and the toolchain pin are unchanged.
+
+**RFC 036, the published artifact.** What a user can observe in the packages and the reference:
+
+- Internal dependency requirements state the exact workspace version, `"0.22.1"`, instead
+  of `"0"`. A published crate no longer advertises compatibility with siblings it cannot
+  compile against.
+- The Apache-2.0 text ships inside every crate.
+- Each crate declares `keywords` and `categories`, so crates.io search can find it.
+- `[package.metadata.docs.rs]` builds with all features, and each gated public item carries
+  a feature banner, so the published reference shows the whole API.
+- The packaged READMEs link the repository by absolute URL, so the links work away from
+  GitHub. Their feature lists mark each feature as on or off, and mark the reserved ones
+  as having no effect yet.
+- `distributed` and `published` are separate words, and each release-status line says which
+  hold. `0.20.2` is the newest published version.
+- Two gates: `published-metadata` checks the packaged artifact, including that each crate's
+  packaged `src/` matches what git tracks; `doc-build` builds the API reference under
+  `-D warnings`. `cargo xtask check` now runs nineteen gates.
+- The five rustdoc diagnostics are fixed.
+
+**No public API changed.** `check-public-api` passes. The changes are manifests, package
+contents, documentation and gates.
 
 ## [0.22.0] — 2026-09-24 — An honest infeasibility hint
 
@@ -701,7 +723,7 @@ dependency boundary, solver behavior, or release workflow changed.
 
 ## [0.20.2] — 2026-07-22 — RFC 021 conditional finalization
 
-**Release status:** released (tagged 2026-07-22, distributed 2026-07-30)
+**Release status:** released (tagged 2026-07-22, distributed 2026-07-30); published to crates.io
 
 Version 0.20.2 uses RFC 021's exact conditional-finalization state.
 Repository release `0.20.2` is released and carries RFCs 001-021. The

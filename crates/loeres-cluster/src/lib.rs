@@ -18,14 +18,14 @@
 //! `runtime`, and `solve`: the per-item batch contract, a runtime-agnostic
 //! configuration / cancellation / executor layer (with `parallel-rayon` and
 //! `async-tokio` backends behind feature gates), and the hybrid dispatch
-//! barrier ([`solve::ClusterJob`]). It consumes the RFC 012
-//! validation vocabulary at the orchestration boundary.
+//! barrier ([`ClusterJob`]). It consumes the RFC 012 validation vocabulary at
+//! the orchestration boundary.
 //!
 //! RFC 016 (v0.14.0) adds the first std-side numerical kernel: a dynamic
 //! box/bound-constrained projected first-order solver over `DenseVector`
-//! ([`model`] types plus [`solve::solve_projected_first_order_dyn`]
-//! and its [`solve::ClusterProjectedFirstOrderJob`]
-//! adapter), plugged into the `ClusterJob` seam. RFC 009 adds cluster-only
+//! ([`model`] types plus [`solve_projected_first_order_dyn`] and its
+//! [`ClusterProjectedFirstOrderJob`] adapter), plugged into the `ClusterJob`
+//! seam. RFC 009 adds cluster-only
 //! metadata observability and the safe gateway boundary. RFC 015 adds the
 //! cluster-only validation evidence cache for model-owned scans. RFC 027 adds
 //! [`solve_constrained_projected_first_order_dyn`], the same kernel over a box

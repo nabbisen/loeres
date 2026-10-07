@@ -27,6 +27,17 @@ precondition. The kernels that consume it (`loeres-device`, `loeres-cluster`) re
 heuristic `infeasibility_evidence` hint, wrong in both directions, RFC 034); the projection is inexact by design
 and no numeric convergence rate is claimed (RFC 027 §11.6, RFC 032).
 
+## Features
+
+Off unless marked *on*. A feature marked *reserved; no effect yet* is declared but
+gates no code today: enabling it changes nothing.
+
+| Feature | Default | What it does |
+|---|---|---|
+| (none) | on | the `no_std` baseline contract surface |
+| `libm` | off | reserved; no effect yet |
+| `fixed-point-hooks` | off | reserved; no effect yet |
+
 See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
 chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).
 
