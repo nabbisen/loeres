@@ -74,10 +74,18 @@ Then `docs/src/specifications.md`: add the row and make it the newest published 
 
 ## 6. Open, not in this release
 
-- **`size-budget`'s device threshold.** Still unset. Interim proposal 32 000 bytes on the
-  **release** rlib (25 512 measured), with review 087 §4's caveat that an rlib is a library
-  archive, not a linked image, so nothing has been dead-code-eliminated. The owner's number
-  to set; a linked-image measure needs a binary target this repository lacks.
+- **`size-budget`'s device threshold.** Still unset, and the earlier framing of it was
+  wrong on two counts — architect scoping 091 §0 records both. It is **not the owner's
+  number**: RFC 010 §3.7 says "the exact byte budgets are owned by RFC 003, RFC 006,
+  RFC 008, and RFC 011", so `size_budget.rs:46`'s "pending owner RFC" means a
+  budget-owning RFC, and freezing it is ordinary RFC work. And the 32 000-byte proposal was
+  on the wrong measure: of the release rlib's 25 512 bytes, **23 845 are `.rmeta`** and
+  **193** are all other sections summed, because the device entry points are generic over
+  `const N`/`const M` and a standalone build emits almost no instantiated code. The
+  recommendation is a slice implementing RFC 010 §3.7's unbuilt `.text`/`.rodata`
+  measurement on a reference instantiation, with a pinned baseline and a bounded delta in
+  the `bench-baseline` pattern, rather than an absolute ceiling on a file that is 93%
+  metadata.
 - **Themes T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars)**, unscheduled. T5
   is the natural next: LP is already expressible as `Q = 0` and documented as not solved.
 - Kernel instrumentation to expose the projection sweep count, which would turn RFC 037's
