@@ -608,7 +608,11 @@ mod tests {
         let changed = covering_blocks(&["bounds active: converged in 29"]);
         let findings = super::captured_output_findings(&changed, &all_required(output));
         // One mismatch per required example: the list is the authority, not a literal.
-        assert_eq!(findings.len(), super::CAPTURED_EXAMPLES.len(), "{findings:?}");
+        assert_eq!(
+            findings.len(),
+            super::CAPTURED_EXAMPLES.len(),
+            "{findings:?}"
+        );
         assert!(
             findings.iter().all(|f| f.starts_with("CAPTURED MISMATCH")),
             "{findings:?}"
