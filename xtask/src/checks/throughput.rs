@@ -260,12 +260,12 @@ pub fn run() -> bool {
                     "  observed {lo:.1}× to {hi:.1}×  [derived: ratio of paired wall-time runs; never quoted as a single number; {env}]"
                 );
                 println!(
-                    "  ideal speedup at {threads} threads is about {ideal:.0}×. The observed range is roughly {:.0}% to {:.0}% of that,",
+                    "  ideal speedup at {threads} threads is about {ideal:.0}×. The observed range is roughly {:.0}% to {:.0}% of that.",
                     lo / ideal * 100.0,
                     hi / ideal * 100.0
                 );
                 println!(
-                    "  that gap is consistent with scheduling and work granularity at this batch size"
+                    "  That gap is consistent with scheduling and work granularity at this batch size"
                 );
                 println!(
                     "  ({BATCH_ITEMS} items over {threads} threads is {:.0} apiece) — this measurement did not isolate the cause.",
