@@ -11,9 +11,42 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.22.2] — unreleased — The packaged-source check fails when git is unusable
+## [0.22.2] — 2026-10-07 — Measured effectiveness and cost
 
 **Release status:** unreleased
+
+**RFC 037, measuring effectiveness and cost.** The project's own question — *how effective
+or powerful is this?* — now has an answer with its evidence attached, and the claim that
+stood in for one is gone.
+
+- **A new chapter, *How Effective and How Powerful*** (`docs/src/effectiveness.md`). It
+  separates three things a single benchmark number would blur, and marks each: counted work
+  is reproducible and checked against a real run; the truthfulness of `Converged` is
+  checked against the solve records; wall-clock throughput is **not** reproducible and is
+  labelled unchecked wherever it appears.
+- **What the figures say.** Outer iterations are flat in problem size — 30 at four
+  variables, 48 at sixty-four — and grow with how tightly the objective couples its
+  variables: 25, 48, 232, 578, 989 as the off-diagonal goes 0.10 to 0.99 at a fixed size.
+  So dimension drives memory and per-iteration work, while conditioning drives the
+  iteration count. Device workspace size is exact: `(3N + 2M)·8 + 16` bytes.
+- **How close to optimal.** For the four- and eight-variable cases the solver's answer is
+  within `1.4e-10` and `1.6e-10` of the exact optimum, measured against an independent
+  reference built for this purpose. Past eight variables no exact reference exists, and the
+  chapter says so rather than leaving the absence to be read as a result.
+- **The README no longer claims "high-throughput server solving."** That line is removed,
+  not reworded: the throughput figure behind it moved by a third between runs on one host,
+  and the line below it already summarised the project accurately. No performance claim now
+  appears in the README or in any published crate.
+
+**No crate changed.** No public API, no behaviour, no dependency: every line of RFC 037 is
+in `xtask`, the book, an example and the README.
+
+**Gates.** `cargo xtask check` now runs **twenty**. `bench-baseline` pins eleven
+counted-work points on the host target, so a change that moves an iteration count fails
+until someone re-measures and says why. `published-metadata` gained the two RFC 036
+corrections this release carries: the packaged-source check is skipped as not-applicable
+inside the release gate's own extracted copy, and an unusable `git` now fails it instead of
+silently passing. Wall-clock time gates nothing, by design.
 
 A patch release with no change to any crate, public API or feature. It changes the
 `published-metadata` gate, which checks the package a crates.io user receives against
