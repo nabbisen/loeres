@@ -36,6 +36,15 @@
 //!   that file would be published permanently. The tarball check is not used:
 //!   `cargo package` of a dependent cannot resolve its unpublished siblings, with or
 //!   without `[patch.crates-io]`.
+//!
+//!   The assertion requires the git working tree to be the tree under test. It is
+//!   reported as not applicable, in one line, when git's toplevel is not the current
+//!   directory: inside `release-gate`'s clean extraction, which lives in this
+//!   repository. The guard deliberately uses `git rev-parse --show-toplevel` and not
+//!   `--is-inside-work-tree`. The latter is `true` inside that in-repository extraction,
+//!   where git silently answers from the outer repository and `ls-files` returns an
+//!   empty, plausible listing. A failing `ls-files`, or an empty tracked `src/` set,
+//!   at a matching toplevel is still a failure.
 //! - **Reserved features** (RFC 036 C2.1): every declared feature with no
 //!   `cfg(feature = …)` site in `src/` is listed in `RESERVED_INERT_FEATURES`, and
 //!   every listed feature is still inert. A new feature cannot be silently inert,
@@ -108,6 +117,7 @@ const PUBLISHED_CRATES: &[&str] = &[
 pub fn run() -> bool {
     eprintln!("[published-metadata] RFC 036 published artifact metadata");
     let mut findings = Vec::new();
+    let packaged = tree_under_test();
     match fs::read_to_string("Cargo.toml") {
         Ok(source) => findings.extend(manifest_findings(&source)),
         Err(error) => findings.push(format!("CARGO: cannot read Cargo.toml: {error}")),
@@ -129,20 +139,30 @@ pub fn run() -> bool {
         ));
         findings.extend(doc_cfg_symmetry_findings(name, &dir));
         findings.extend(inert_feature_findings(name, &dir));
-        findings.extend(packaged_source_findings(name));
+        if packaged.is_ok() {
+            findings.extend(packaged_source_findings(name));
+        }
         findings.extend(features_section_findings(name, &dir));
         match fs::read_to_string(format!("{dir}/README.md")) {
             Ok(source) => findings.extend(readme_link_findings(name, &source)),
             Err(error) => findings.push(format!("README: cannot read {dir}/README.md: {error}")),
         }
     }
+    if let Err(reason) = &packaged {
+        eprintln!("  packaged source set: not applicable here: {reason}");
+    }
     for finding in &findings {
         eprintln!("  {finding}");
     }
     let ok = findings.is_empty();
     eprintln!(
-        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links, feature labels, reserved features, README feature tables, packaged source",
-        PUBLISHED_CRATES.len()
+        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links, feature labels, reserved features, README feature tables{}",
+        PUBLISHED_CRATES.len(),
+        if packaged.is_ok() {
+            ", packaged source"
+        } else {
+            ""
+        }
     );
     eprintln!("[published-metadata] {}", if ok { "PASS" } else { "FAIL" });
     ok
@@ -448,6 +468,44 @@ fn features_section(readme: &str) -> Option<String> {
     Some(section)
 }
 
+/// C8: the packaged-source assertion compares a package with git's history, so it
+/// applies only when git's repository is the working tree under test. It does not
+/// apply inside an extracted archive, which `release-gate` creates under
+/// `.git-exclude/tmp/`, inside this repository: git commands there resolve against
+/// the outer repository and answer with a plausible, empty listing. That archive has
+/// no history to be consistent with. The check runs at the repository root in the
+/// source-tree suite of the same `release-gate` run, where it applies.
+///
+/// The guard is the toplevel, not `git rev-parse --is-inside-work-tree`, which is
+/// `true` inside the in-repository extraction and so would not skip it.
+fn tree_under_test() -> Result<(), String> {
+    let cwd = std::env::current_dir()
+        .and_then(|dir| dir.canonicalize())
+        .map_err(|error| format!("the working directory cannot be resolved: {error}"))?;
+    let Some(toplevel) = super::util::command_stdout("git", &["rev-parse", "--show-toplevel"])
+    else {
+        return Err("this is not a git working tree".to_owned());
+    };
+    applicability(&cwd, toplevel.trim())
+}
+
+/// Pure core of `tree_under_test`: applicable only when git's toplevel is `cwd`.
+fn applicability(cwd: &std::path::Path, toplevel: &str) -> Result<(), String> {
+    let top = std::path::Path::new(toplevel)
+        .canonicalize()
+        .map_err(|error| {
+            format!("git reported toplevel `{toplevel}`, which cannot be resolved: {error}")
+        })?;
+    if top == cwd {
+        Ok(())
+    } else {
+        Err(format!(
+            "git's repository is `{}`, not this working tree, so the checkout sits inside another repository",
+            top.display()
+        ))
+    }
+}
+
 /// C1.1: the packaged `src/` set equals the tracked `src/` set, and the package
 /// carries `LICENSE` and `README.md`. Hermetic: `--offline`. `--allow-dirty` is passed
 /// so the listing does not depend on the working tree being clean; the comparison
@@ -517,6 +575,11 @@ fn packaged_source_check(name: &str, listed: &[&str], tracked: &[&str]) -> Vec<S
         .copied()
         .filter(|path| path.starts_with("src/"))
         .collect();
+    if tracked_src.is_empty() {
+        findings.push(format!(
+            "PACKAGED SOURCE: git tracks no `src/` file for `{name}`, so there is nothing to compare the package with"
+        ));
+    }
     for path in packaged_src.difference(&tracked_src) {
         findings.push(format!(
             "PACKAGED SOURCE: `{name}` packages `{path}`, which git does not track under src/"
@@ -1100,5 +1163,55 @@ mod tests {
                 )
             );
         }
+    }
+
+    #[test]
+    fn a_toplevel_equal_to_the_working_directory_is_applicable() {
+        let dir = std::env::temp_dir();
+        let cwd = dir.canonicalize().expect("temp dir resolves");
+        assert!(super::applicability(&cwd, cwd.to_str().expect("utf-8")).is_ok());
+    }
+
+    #[test]
+    fn a_toplevel_elsewhere_is_not_applicable_and_names_the_repository() {
+        let cwd = std::env::temp_dir()
+            .canonicalize()
+            .expect("temp dir resolves");
+        let elsewhere = std::env::current_dir()
+            .expect("cwd")
+            .canonicalize()
+            .expect("cwd resolves");
+        let reason = super::applicability(&cwd, elsewhere.to_str().expect("utf-8"))
+            .expect_err("not applicable");
+        assert!(reason.contains("another repository"), "{reason}");
+    }
+
+    #[test]
+    fn an_unresolvable_toplevel_is_not_applicable_rather_than_applicable() {
+        let cwd = std::env::temp_dir()
+            .canonicalize()
+            .expect("temp dir resolves");
+        let reason =
+            super::applicability(&cwd, "/no/such/toplevel/for/c8").expect_err("not applicable");
+        assert!(reason.contains("cannot be resolved"), "{reason}");
+    }
+
+    #[test]
+    fn an_empty_tracked_src_set_for_a_crate_with_sources_is_a_failure() {
+        let listed = ["src/lib.rs", "LICENSE", "README.md"];
+        let tracked: [&str; 0] = [];
+        let findings = super::packaged_source_check("x", &listed, &tracked);
+        assert!(
+            findings.iter().any(|f| f.contains("tracks no `src/` file")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn the_real_checkout_is_the_tree_under_test_when_run_from_the_root() {
+        let cwd = std::env::current_dir().expect("cwd");
+        // cargo runs tests from the crate directory; the repository root is its parent.
+        let root = cwd.parent().expect("parent").canonicalize().expect("root");
+        assert!(super::applicability(&root, root.to_str().expect("utf-8")).is_ok());
     }
 }
