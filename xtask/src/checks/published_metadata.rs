@@ -37,10 +37,13 @@
 //!   `cargo package` of a dependent cannot resolve its unpublished siblings, with or
 //!   without `[patch.crates-io]`.
 //!
-//!   The assertion requires the git working tree to be the tree under test. It is
-//!   reported as not applicable, in one line, when git's toplevel is not the current
-//!   directory: inside `release-gate`'s clean extraction, which lives in this
-//!   repository. The guard deliberately uses `git rev-parse --show-toplevel` and not
+//!   The assertion requires the git working tree to be the tree under test. When git's
+//!   toplevel is a different repository, the assertion is reported as not applicable,
+//!   in one line: that is the clean extraction, which lives inside this repository. When
+//!   git itself is unusable (absent, broken, or not a repository), the assertion is a
+//!   **failure**. The two are kept apart because they look alike: both leave the
+//!   packaged-source check unrun, and only the first is a legitimate state. Collapsing
+//!   them lets a broken git silently remove the check. The guard deliberately uses `git rev-parse --show-toplevel` and not
 //!   `--is-inside-work-tree`. The latter is `true` inside that in-repository extraction,
 //!   where git silently answers from the outer repository and `ls-files` returns an
 //!   empty, plausible listing. A failing `ls-files`, or an empty tracked `src/` set,
@@ -117,7 +120,7 @@ const PUBLISHED_CRATES: &[&str] = &[
 pub fn run() -> bool {
     eprintln!("[published-metadata] RFC 036 published artifact metadata");
     let mut findings = Vec::new();
-    let packaged = tree_under_test();
+    let applicability = tree_under_test();
     match fs::read_to_string("Cargo.toml") {
         Ok(source) => findings.extend(manifest_findings(&source)),
         Err(error) => findings.push(format!("CARGO: cannot read Cargo.toml: {error}")),
@@ -139,7 +142,7 @@ pub fn run() -> bool {
         ));
         findings.extend(doc_cfg_symmetry_findings(name, &dir));
         findings.extend(inert_feature_findings(name, &dir));
-        if packaged.is_ok() {
+        if matches!(applicability, Applicability::Applicable) {
             findings.extend(packaged_source_findings(name));
         }
         findings.extend(features_section_findings(name, &dir));
@@ -148,8 +151,15 @@ pub fn run() -> bool {
             Err(error) => findings.push(format!("README: cannot read {dir}/README.md: {error}")),
         }
     }
-    if let Err(reason) = &packaged {
-        eprintln!("  packaged source set: not applicable here: {reason}");
+    match &applicability {
+        Applicability::Applicable => {}
+        Applicability::OtherRepository(reason) => {
+            eprintln!("  packaged source set: not applicable here: {reason}");
+        }
+        Applicability::GitUnusable(reason) => {
+            eprintln!("  reason: {reason}");
+            findings.push(GIT_UNUSABLE.to_owned());
+        }
     }
     for finding in &findings {
         eprintln!("  {finding}");
@@ -158,7 +168,7 @@ pub fn run() -> bool {
     eprintln!(
         "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links, feature labels, reserved features, README feature tables{}",
         PUBLISHED_CRATES.len(),
-        if packaged.is_ok() {
+        if matches!(applicability, Applicability::Applicable) {
             ", packaged source"
         } else {
             ""
@@ -468,38 +478,64 @@ fn features_section(readme: &str) -> Option<String> {
     Some(section)
 }
 
-/// C8: the packaged-source assertion compares a package with git's history, so it
-/// applies only when git's repository is the working tree under test. It does not
-/// apply inside an extracted archive, which `release-gate` creates under
-/// `.git-exclude/tmp/`, inside this repository: git commands there resolve against
-/// the outer repository and answer with a plausible, empty listing. That archive has
-/// no history to be consistent with. The check runs at the repository root in the
-/// source-tree suite of the same `release-gate` run, where it applies.
-///
-/// The guard is the toplevel, not `git rev-parse --is-inside-work-tree`, which is
-/// `true` inside the in-repository extraction and so would not skip it.
-fn tree_under_test() -> Result<(), String> {
-    let cwd = std::env::current_dir()
-        .and_then(|dir| dir.canonicalize())
-        .map_err(|error| format!("the working directory cannot be resolved: {error}"))?;
-    let Some(toplevel) = super::util::command_stdout("git", &["rev-parse", "--show-toplevel"])
-    else {
-        return Err("this is not a git working tree".to_owned());
-    };
-    applicability(&cwd, toplevel.trim())
+/// Why the packaged-source assertion does or does not run (C8, C9).
+#[derive(Debug, PartialEq, Eq)]
+enum Applicability {
+    /// git's repository is the working tree under test: the assertion runs.
+    Applicable,
+    /// git works and names a different repository: the checkout sits inside another
+    /// repository. Not applicable; reported in one line, with no finding.
+    OtherRepository(String),
+    /// git cannot say what the working tree is: git is absent, broken, or the
+    /// directory is not a repository, or git named a toplevel that does not resolve.
+    /// A failure, because the assertion cannot be made and must not silently vanish.
+    GitUnusable(String),
 }
 
-/// Pure core of `tree_under_test`: applicable only when git's toplevel is `cwd`.
-fn applicability(cwd: &std::path::Path, toplevel: &str) -> Result<(), String> {
-    let top = std::path::Path::new(toplevel)
-        .canonicalize()
-        .map_err(|error| {
-            format!("git reported toplevel `{toplevel}`, which cannot be resolved: {error}")
-        })?;
+/// The finding for an unusable git. The reason is printed on its own line before it.
+const GIT_UNUSABLE: &str = "PACKAGED SOURCE: git is not usable here, so the tracked set cannot be read; git is required to compare a package with what is tracked";
+
+/// C8, C9: the packaged-source assertion compares a package with git's history, so it
+/// applies only when git's repository is the working tree under test.
+///
+/// Two situations are kept apart, because they look alike from outside.
+///
+/// - **Another repository** is a legitimate state, and is not applicable. `release-gate`
+///   extracts the archive under `.git-exclude/tmp/`, inside this repository. git there
+///   resolves against the outer repository and answers with a plausible, empty listing.
+///   That archive has no history to be consistent with, and the check runs at the
+///   repository root in the source-tree suite of the same run.
+/// - **An unusable git** is a failure. No legitimate environment here has no git:
+///   `release-gate` needs git to build its archive, and `xtask` is not published, so no
+///   consumer runs this gate from unpacked sources. If git is absent or broken, this
+///   assertion has nothing to compare with, so it must say so rather than pass.
+///
+/// The guard is the toplevel, not `git rev-parse --is-inside-work-tree`, which is `true`
+/// inside the in-repository extraction and so would not tell the two apart.
+fn tree_under_test() -> Applicability {
+    let Ok(cwd) = std::env::current_dir().and_then(|dir| dir.canonicalize()) else {
+        return Applicability::GitUnusable("the working directory cannot be resolved".to_owned());
+    };
+    let toplevel = super::util::command_stdout("git", &["rev-parse", "--show-toplevel"]);
+    applicability(&cwd, toplevel.as_deref().map(str::trim))
+}
+
+/// Pure core of `tree_under_test`. `toplevel` is git's answer, or `None` if git failed.
+fn applicability(cwd: &std::path::Path, toplevel: Option<&str>) -> Applicability {
+    let Some(toplevel) = toplevel else {
+        return Applicability::GitUnusable(
+            "git did not report a repository for this directory (git is absent, broken, or this is not a repository)".to_owned(),
+        );
+    };
+    let Ok(top) = std::path::Path::new(toplevel).canonicalize() else {
+        return Applicability::GitUnusable(format!(
+            "git reported the toplevel `{toplevel}`, which does not resolve"
+        ));
+    };
     if top == cwd {
-        Ok(())
+        Applicability::Applicable
     } else {
-        Err(format!(
+        Applicability::OtherRepository(format!(
             "git's repository is `{}`, not this working tree, so the checkout sits inside another repository",
             top.display()
         ))
@@ -1167,9 +1203,13 @@ mod tests {
 
     #[test]
     fn a_toplevel_equal_to_the_working_directory_is_applicable() {
-        let dir = std::env::temp_dir();
-        let cwd = dir.canonicalize().expect("temp dir resolves");
-        assert!(super::applicability(&cwd, cwd.to_str().expect("utf-8")).is_ok());
+        let cwd = std::env::temp_dir()
+            .canonicalize()
+            .expect("temp dir resolves");
+        assert_eq!(
+            super::applicability(&cwd, cwd.to_str()),
+            super::Applicability::Applicable
+        );
     }
 
     #[test]
@@ -1181,19 +1221,34 @@ mod tests {
             .expect("cwd")
             .canonicalize()
             .expect("cwd resolves");
-        let reason = super::applicability(&cwd, elsewhere.to_str().expect("utf-8"))
-            .expect_err("not applicable");
-        assert!(reason.contains("another repository"), "{reason}");
+        match super::applicability(&cwd, elsewhere.to_str()) {
+            super::Applicability::OtherRepository(reason) => {
+                assert!(reason.contains("another repository"), "{reason}")
+            }
+            other => panic!("expected OtherRepository, got {other:?}"),
+        }
     }
 
     #[test]
-    fn an_unresolvable_toplevel_is_not_applicable_rather_than_applicable() {
+    fn an_unresolvable_toplevel_is_a_failure_not_a_skip() {
         let cwd = std::env::temp_dir()
             .canonicalize()
             .expect("temp dir resolves");
-        let reason =
-            super::applicability(&cwd, "/no/such/toplevel/for/c8").expect_err("not applicable");
-        assert!(reason.contains("cannot be resolved"), "{reason}");
+        assert!(matches!(
+            super::applicability(&cwd, Some("/no/such/toplevel/for/c9")),
+            super::Applicability::GitUnusable(_)
+        ));
+    }
+
+    #[test]
+    fn a_git_that_reports_nothing_is_a_failure_not_a_skip() {
+        let cwd = std::env::temp_dir()
+            .canonicalize()
+            .expect("temp dir resolves");
+        assert!(matches!(
+            super::applicability(&cwd, None),
+            super::Applicability::GitUnusable(_)
+        ));
     }
 
     #[test]
@@ -1212,6 +1267,9 @@ mod tests {
         let cwd = std::env::current_dir().expect("cwd");
         // cargo runs tests from the crate directory; the repository root is its parent.
         let root = cwd.parent().expect("parent").canonicalize().expect("root");
-        assert!(super::applicability(&root, root.to_str().expect("utf-8")).is_ok());
+        assert_eq!(
+            super::applicability(&root, root.to_str()),
+            super::Applicability::Applicable
+        );
     }
 }
