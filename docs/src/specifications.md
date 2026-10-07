@@ -13,10 +13,10 @@ contributors edit those documents directly; readers can browse them here.
 
 This is the one home for release currency. The README links here (RFC 035 §3.3).
 
-> **Publication and recovery status.** Repository state does not establish
-> that every workspace crate or its hosted documentation is published or
-> current, so external registry/documentation badges are intentionally
-> omitted.
+> **Publication status.** A repository release is *distributed* when its tag is
+> accepted by the authoritative remote and the tagged CI `release-gate` job
+> succeeds, and *published* when its version is in the crates.io index for every
+> publishable crate. The two are independent, and the table below records both.
 
 | Repository release | Shipped | Carries RFCs |
 |---|---|---|
@@ -26,12 +26,18 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 | `0.21.2` | 2026-09-24 | 001-030 |
 | `0.21.3` | 2026-09-24 | 001-033 |
 | `0.22.0` | 2026-09-24 | 001-034 |
+| `0.22.1` | 2026-10-07 | 001-036 |
 
-**What is on crates.io.** The newest published version of every Loeres crate is `0.20.2`.
-The releases after it (`0.21.0` to `0.22.0` in the table above) are tagged and distributed,
-but not published. To install Loeres today from the registry, depend on `0.20.2`, which
-predates the constrained quadratic-program contract (RFC 027). To use the current tree, depend
-on the repository by git revision or by path, and pin the revision you reviewed.
+**What is on crates.io.** The newest published version of every Loeres crate is `0.22.1`,
+published on 2026-10-07. It carries RFCs 001-036, including the constrained
+quadratic-program contract (RFC 027), so the registry and this tree now describe the same
+library.
+
+`0.21.0` through `0.22.0` were tagged and distributed but never published, and they stay
+that way: crates.io does not require contiguous versions, and `0.22.1` supersedes all of
+them. Before `0.22.1` the newest published version was `0.20.2`, which predates RFC 027
+entirely — anyone who installed Loeres from the registry between 2026-07-30 and
+2026-10-07 has a release without a quadratic-program contract and should upgrade.
 
 The apex specifications' currency blocks are the normative record; see
 the RFC index (`rfcs/README.md`) for the RFC states.

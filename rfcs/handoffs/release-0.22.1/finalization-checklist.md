@@ -1,6 +1,6 @@
 # Release `0.22.1` — finalization checklist
 
-**Status:** cut in progress; publication awaiting owner authorization.
+**Status:** complete. Tagged, distributed and **published** on 2026-10-07.
 **Authorized by.** Architect review 082 §6 recommends GO and lists these steps;
 architect review 081 accepted RFC 036 C1-C6; architect review 080 accepted RFC 036
 S1-S4; architect review 078 accepted C2 and first recommended GO for `0.22.1`;
@@ -81,10 +81,17 @@ This is the first publication of these crates since `0.20.2` on 2026-07-30.
 1. `**Release status:**` → `released (tagged 2026-10-07, distributed <date>); published to crates.io`.
 2. Apex `Last reconciled repository release` → `0.22.1`.
 3. Bump the workspace version to the next patch so `This tree` > `Last reconciled`
-   holds strictly again, and set apex `This tree` to match. **The internal
-   dependency requirements in `[workspace.dependencies]` must be bumped with it** —
-   `published-metadata` asserts they equal the workspace version and will fail
-   closed otherwise. This is the first release where that coupling exists.
+   holds strictly again, and set apex `This tree` to match. **Two things are coupled
+   to that bump, both found the hard way on 2026-10-07:**
+   - The internal dependency requirements in `[workspace.dependencies]` must be
+     bumped with it. `published-metadata` asserts they equal the workspace version
+     and fails closed otherwise.
+   - **Every example's own `Cargo.lock` records the workspace crates' version**, so
+     all five go stale and the `examples` gate fails with `cannot update the lock
+     file … because --locked was passed`. Regenerate them with
+     `cargo update --manifest-path examples/<name>/Cargo.toml --offline` for each.
+     Only the version strings should change; any external dependency churn means
+     something else moved and must be explained.
 4. `docs/src/specifications.md`'s "What is on crates.io" paragraph must be updated:
    `0.22.1` becomes the newest published version, and the sentence directing users
    to `0.20.2` is removed.

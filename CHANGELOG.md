@@ -13,7 +13,7 @@ from `0.20.2` onward say which of the two hold.
 
 ## [0.22.1] — 2026-10-07 — Visitor-facing documentation, and a package worth publishing
 
-**Release status:** unreleased
+**Release status:** released (tagged 2026-10-07, distributed 2026-10-07); published to crates.io
 
 Repository release `0.22.1` makes the landing page and the example set legible to a
 visitor, and makes the examples maintained documents. RFC 035 is implemented and
