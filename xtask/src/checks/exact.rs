@@ -183,7 +183,7 @@ fn subsets(pool: usize, k: usize) -> Vec<Vec<usize>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DenseQp, MAX_N, exact_optimum};
+    use super::{DenseQp, MAX_N, dot, exact_optimum};
 
     /// `minimise x² + y² - 2x - 4y` over `[0,10]²`: unconstrained optimum `(1, 2)`, inside
     /// the box.
@@ -293,5 +293,240 @@ mod tests {
             b: vec![],
         };
         assert!(exact_optimum(&problem).is_none());
+    }
+
+    /// RFC 037 C4.1.1: the `n = 4, m = 2, off = 0.50` corpus point, with its exact optimum
+    /// derived independently of `exact_optimum` — by KKT enumeration in **exact rational
+    /// arithmetic** (architect review 088 §2), not by this routine or by `f64`:
+    ///
+    /// `x* = (7/17, 5/17, 5/17, 7/17)`, both rows of `A` exactly active:
+    /// `7/17 + 5/17 + 5/17 = 1`.
+    ///
+    /// The architect's independent check against the rationals agreed to `5.6e-17` per
+    /// component; `1e-9` here leaves ample margin for `f64` Gaussian elimination.
+    #[test]
+    fn a_coupled_corpus_point_matches_an_independently_derived_exact_vector() {
+        // The corpus family (RFC 037 §0.1): tridiagonal Q with off = 0.50, c = -1, box
+        // [0, 10], and the two sliding-window rows of A for n = 4.
+        let problem = DenseQp {
+            n: 4,
+            q: vec![
+                2.0, 0.5, 0.0, 0.0, //
+                0.5, 2.0, 0.5, 0.0, //
+                0.0, 0.5, 2.0, 0.5, //
+                0.0, 0.0, 0.5, 2.0,
+            ],
+            c: vec![-1.0; 4],
+            lower: vec![0.0; 4],
+            upper: vec![10.0; 4],
+            a: vec![
+                1.0, 1.0, 1.0, 0.0, //
+                0.0, 1.0, 1.0, 1.0,
+            ],
+            b: vec![1.0, 1.0],
+        };
+        let x = exact_optimum(&problem).expect("feasible");
+        // 7/17, 5/17, 5/17, 7/17, written as fractions so a later reader can re-derive them.
+        let expected = [7.0 / 17.0, 5.0 / 17.0, 5.0 / 17.0, 7.0 / 17.0];
+        for (i, (got, want)) in x.iter().zip(&expected).enumerate() {
+            assert!(
+                (got - want).abs() < 1e-9,
+                "coordinate {i}: got {got}, expected {want} (exact: {})",
+                ["7/17", "5/17", "5/17", "7/17"][i]
+            );
+        }
+    }
+
+    /// RFC 037 C4.1.2: a randomized optimality oracle. For a convex QP, `x*` is optimal
+    /// iff `∇f(x*)ᵀ(y − x*) ≥ 0` for every feasible `y` — no second solver needed, so this
+    /// validates `exact_optimum` on a genuinely coupled `Q` without another implementation
+    /// to trust. Seeded deterministically (the same 64-bit LCG the kernel tests use), so a
+    /// failure is reproducible.
+    fn lcg(seed: u64) -> impl FnMut() -> f64 {
+        let mut state = seed;
+        move || {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            ((state >> 11) as f64) / ((1u64 << 53) as f64)
+        }
+    }
+
+    fn gradient(q: &[f64], c: &[f64], n: usize, x: &[f64]) -> Vec<f64> {
+        (0..n)
+            .map(|i| c[i] + (0..n).map(|j| q[i * n + j] * x[j]).sum::<f64>())
+            .collect()
+    }
+
+    fn feasible(problem: &DenseQp, y: &[f64]) -> bool {
+        let n = problem.n;
+        if (0..n).any(|i| y[i] < problem.lower[i] - 1e-12 || y[i] > problem.upper[i] + 1e-12) {
+            return false;
+        }
+        let m = problem.b.len();
+        (0..m).all(|r| dot(&problem.a[r * n..(r + 1) * n], y) <= problem.b[r] + 1e-9)
+    }
+
+    /// A box each coordinate can be sampled from without missing any feasible point: the
+    /// box bound tightened by every row whose coefficients are non-negative and whose
+    /// other variables' lower bounds are zero — true of every row in these test problems.
+    /// Not a general LP bound; a cheap one that holds for this family.
+    fn sampling_upper_bound(problem: &DenseQp) -> Vec<f64> {
+        let n = problem.n;
+        let m = problem.b.len();
+        let mut bound = problem.upper.clone();
+        for r in 0..m {
+            let row = &problem.a[r * n..(r + 1) * n];
+            for (i, &coeff) in row.iter().enumerate() {
+                if coeff > 0.0 {
+                    bound[i] = bound[i].min(problem.b[r] / coeff);
+                }
+            }
+        }
+        bound
+    }
+
+    #[test]
+    fn a_deliberately_wrong_point_is_rejected_by_the_optimality_oracle_while_the_true_optimum_passes()
+     {
+        let problem = DenseQp {
+            n: 4,
+            q: vec![
+                2.0, 0.5, 0.0, 0.0, //
+                0.5, 2.0, 0.5, 0.0, //
+                0.0, 0.5, 2.0, 0.5, //
+                0.0, 0.0, 0.5, 2.0,
+            ],
+            c: vec![-1.0; 4],
+            lower: vec![0.0; 4],
+            upper: vec![10.0; 4],
+            a: vec![
+                1.0, 1.0, 1.0, 0.0, //
+                0.0, 1.0, 1.0, 1.0,
+            ],
+            b: vec![1.0, 1.0],
+        };
+        let true_x = exact_optimum(&problem).expect("feasible");
+        let wrong_x = [0.40, 0.30, 0.30, 0.40];
+
+        let grad_true = gradient(&problem.q, &problem.c, problem.n, &true_x);
+        let grad_wrong = gradient(&problem.q, &problem.c, problem.n, &wrong_x);
+        let bound = sampling_upper_bound(&problem);
+
+        let mut next = lcg(0x0ddc0de_10add1e5);
+        let (mut worst_true, mut worst_wrong) = (f64::INFINITY, f64::INFINITY);
+        let mut feasible_count = 0usize;
+        let target = 10_000;
+        for _ in 0..2_000_000 {
+            if feasible_count >= target {
+                break;
+            }
+            let y: Vec<f64> = (0..problem.n).map(|i| next() * bound[i]).collect();
+            if !feasible(&problem, &y) {
+                continue;
+            }
+            feasible_count += 1;
+            let value_true: f64 = grad_true
+                .iter()
+                .zip(&y)
+                .zip(&true_x)
+                .map(|((g, yi), xi)| g * (yi - xi))
+                .sum();
+            let value_wrong: f64 = grad_wrong
+                .iter()
+                .zip(&y)
+                .zip(&wrong_x)
+                .map(|((g, yi), xi)| g * (yi - xi))
+                .sum();
+            worst_true = worst_true.min(value_true);
+            worst_wrong = worst_wrong.min(value_wrong);
+        }
+        assert!(
+            feasible_count >= target,
+            "only {feasible_count} feasible samples"
+        );
+        eprintln!(
+            "optimality oracle: {feasible_count} feasible samples; true optimum worst {worst_true:e}; wrong point worst {worst_wrong:e}"
+        );
+        assert!(
+            worst_true > -1e-9,
+            "the true optimum failed the oracle: {worst_true:e}"
+        );
+        assert!(
+            worst_wrong < -1e-3,
+            "the wrong point was not caught by the oracle: {worst_wrong:e}"
+        );
+    }
+
+    #[test]
+    fn the_optimality_oracle_holds_for_every_coupled_instance_within_scope() {
+        // Several tridiagonal, window-constrained instances across the scoped n, mirroring
+        // the corpus family's shape but not importing it, since `exact` does not depend on
+        // `bench`.
+        for (n, m, off) in [
+            (2usize, 1, 0.3),
+            (4, 2, 0.1),
+            (4, 2, 0.9),
+            (6, 3, 0.5),
+            (8, 4, 0.7),
+        ] {
+            let mut q = vec![0.0; n * n];
+            for i in 0..n {
+                q[i * n + i] = 2.0;
+                if i + 1 < n {
+                    q[i * n + i + 1] = off;
+                    q[(i + 1) * n + i] = off;
+                }
+            }
+            let mut a = vec![0.0; m * n];
+            for r in 0..m {
+                for k in 0..3.min(n) {
+                    a[r * n + (r + k) % n] = 1.0;
+                }
+            }
+            let problem = DenseQp {
+                n,
+                q,
+                c: vec![-1.0; n],
+                lower: vec![0.0; n],
+                upper: vec![10.0; n],
+                a,
+                b: vec![1.0; m],
+            };
+            let x = exact_optimum(&problem)
+                .unwrap_or_else(|| panic!("n={n}, m={m}, off={off}: no KKT point found"));
+            let grad = gradient(&problem.q, &problem.c, n, &x);
+            let bound = sampling_upper_bound(&problem);
+            let mut next = lcg(0x5EED_u64
+                .wrapping_add(n as u64)
+                .wrapping_add((m as u64) << 8));
+            let mut worst = f64::INFINITY;
+            let mut feasible_count = 0usize;
+            for _ in 0..500_000 {
+                if feasible_count >= 2_000 {
+                    break;
+                }
+                let y: Vec<f64> = (0..n).map(|i| next() * bound[i]).collect();
+                if !feasible(&problem, &y) {
+                    continue;
+                }
+                feasible_count += 1;
+                let value: f64 = grad
+                    .iter()
+                    .zip(&y)
+                    .zip(&x)
+                    .map(|((g, yi), xi)| g * (yi - xi))
+                    .sum();
+                worst = worst.min(value);
+            }
+            assert!(
+                feasible_count >= 2_000,
+                "n={n}, m={m}, off={off}: only {feasible_count} feasible samples"
+            );
+            assert!(
+                worst > -1e-9,
+                "n={n}, m={m}, off={off}: the optimality oracle failed: {worst:e}"
+            );
+        }
     }
 }

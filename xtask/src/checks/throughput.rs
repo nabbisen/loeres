@@ -265,7 +265,11 @@ pub fn run() -> bool {
                     hi / ideal * 100.0
                 );
                 println!(
-                    "  and the gap is scheduling and work granularity at this batch size, not a defect."
+                    "  that gap is consistent with scheduling and work granularity at this batch size"
+                );
+                println!(
+                    "  ({BATCH_ITEMS} items over {threads} threads is {:.0} apiece) — this measurement did not isolate the cause.",
+                    BATCH_ITEMS as f64 / threads as f64
                 );
             }
             Err(error) => {

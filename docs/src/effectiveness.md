@@ -73,8 +73,15 @@ original exact reference solves only a separable objective, and this family is n
 a second, independent reference was built: a dense active-set enumeration, scoped to `n ≤ 8`
 because its search space grows too large past that. It is cross-validated against the original
 reference on every fixture where both apply (43 fixtures, largest disagreement `1.8e-15`, which is
-floating-point noise), so the two agreeing is evidence the new one is correct, not merely an
-assertion that it is.
+floating-point noise). A diagonal `Q` is a special case of a dense one, so that agreement is
+evidence the generalisation did not break the separable case it already handled; it says nothing
+about a genuinely coupled `Q` on its own, because none of those 43 fixtures has one.
+
+The coupled case is covered separately: a pinned exact vector derived independently in exact
+rational arithmetic (`x* = (7/17, 5/17, 5/17, 7/17)` for the `n = 4` corpus point), and a
+randomized optimality oracle that needs no second solver — for a convex QP, a point is optimal iff
+its gradient makes a non-negative inner product with every feasible direction, which can be
+checked directly without trusting another implementation.
 
 | `n` | `m` | `off` | largest `|solver iterate − exact optimum|` |
 |---:|---:|---:|---:|
@@ -105,9 +112,10 @@ Measured 2026-10-07 on: x86_64 Linux, 32 logical threads, rustc 1.99.0. The prob
 **Parallel speedup is never one number.** It is reported as the range across 5 paired
 sequential/parallel runs of the same batch: **13.1× to 15.2×**, on this run. The batch is 64 items
 on 32 logical threads, so an *ideal* speedup is near 32×; the observed range is roughly 41% to 48%
-of that. The gap is scheduling and work granularity at this batch size, not a defect — a batch
-this small does not give 32 threads enough to divide evenly. The batch figures use the host's
-logical thread count as the worker count.
+of that. That gap is **consistent with** scheduling and work granularity at this batch size — a
+batch this small does not give 32 threads enough to divide evenly — but this measurement did not
+isolate the cause, so that is a plausible explanation, not a measured one. The batch figures use
+the host's logical thread count as the worker count.
 
 Reproduce the table with `cargo xtask throughput`, which prints the host and the toolchain
 beside every figure.
