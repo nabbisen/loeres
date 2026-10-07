@@ -310,6 +310,7 @@ fn validate_repository() -> Vec<String> {
     check_stale_ledger(&mut errors);
     check_conditional_current_prose(&mut errors);
     check_readme_landing(&mut errors);
+    check_example_guides(&mut errors);
     errors
 }
 
@@ -899,6 +900,310 @@ fn bounded_value(source: &str, prefix: &str, suffix: &str) -> Option<String> {
     }
 }
 
+/// RFC 038 §2.3: every example under `examples/` carries a `README.md`, is
+/// named in both the root `README.md` table and `examples/README.md`, and —
+/// for a worked problem — that README's problem paragraph is the second
+/// paragraph structurally extracted from its `src/main.rs`.
+///
+/// Amendment 1 drops the `README-EXAMPLE-BEGIN`/`END` marker mechanism
+/// originally specified for this: inside a `//!` block a bare marker-comment
+/// line contributes nothing to rustdoc, so the paragraphs either side of it
+/// would silently merge in the rendered documentation, and `doc-build`'s
+/// `-D warnings` would not necessarily catch the merge. Structural extraction
+/// needs no source edit at all.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum ExampleCategory {
+    WorkedProblem,
+    ApiArtifact,
+}
+
+const EXAMPLE_REGISTRY: &[(&str, ExampleCategory)] = &[
+    ("device-mpc-step", ExampleCategory::WorkedProblem),
+    ("device-box-pfo", ExampleCategory::ApiArtifact),
+    ("cluster-capacity-dispatch", ExampleCategory::WorkedProblem),
+    ("cluster-qp-constrained", ExampleCategory::ApiArtifact),
+    ("cluster-batch-solve", ExampleCategory::ApiArtifact),
+    ("cluster-counted-work", ExampleCategory::WorkedProblem),
+];
+
+const EXAMPLES_INDEX_PATH: &str = "examples/README.md";
+
+fn check_example_guides(errors: &mut Vec<String>) {
+    check_example_guides_at(Path::new("."), errors);
+}
+
+fn check_example_guides_at(root: &Path, errors: &mut Vec<String>) {
+    let Some(directories) = example_directories_at(root, errors) else {
+        return;
+    };
+    errors.extend(registry_symmetry_findings(&directories));
+    errors.extend(readme_presence_findings(root, &directories));
+    for &(name, category) in EXAMPLE_REGISTRY {
+        if category == ExampleCategory::WorkedProblem && directories.iter().any(|d| d == name) {
+            errors.extend(extraction_findings(root, name));
+        }
+    }
+    // The two tables are read and checked independently, each against the
+    // real directory set: a missing or unreadable `examples/README.md` must
+    // not suppress the root `README.md` table's own symmetry findings (or
+    // vice versa).
+    if let Some(root_readme) = read_example_file(root, README_PATH, errors) {
+        errors.extend(table_symmetry_findings(
+            &directories,
+            README_PATH,
+            section_after_heading(&root_readme, "## Examples").unwrap_or_default(),
+        ));
+    }
+    if let Some(examples_index) = read_example_file(root, EXAMPLES_INDEX_PATH, errors) {
+        errors.extend(table_symmetry_findings(
+            &directories,
+            EXAMPLES_INDEX_PATH,
+            &examples_index,
+        ));
+    }
+}
+
+fn read_example_file(root: &Path, relative: &str, errors: &mut Vec<String>) -> Option<String> {
+    let path = root.join(relative);
+    match fs::read_to_string(&path) {
+        Ok(source) => Some(source),
+        Err(error) => {
+            errors.push(format!("MISSING/UNREADABLE: {}: {error}", path.display()));
+            None
+        }
+    }
+}
+
+fn example_directories_at(root: &Path, errors: &mut Vec<String>) -> Option<Vec<String>> {
+    let examples_dir = root.join("examples");
+    let entries = match fs::read_dir(&examples_dir) {
+        Ok(entries) => entries,
+        Err(error) => {
+            errors.push(format!(
+                "EXAMPLE REGISTRY: cannot read {}: {error}",
+                examples_dir.display()
+            ));
+            return None;
+        }
+    };
+    let mut directories = Vec::new();
+    for entry in entries.flatten() {
+        if !entry.path().is_dir() {
+            continue;
+        }
+        match entry.file_name().to_str() {
+            Some(name) => directories.push(name.to_owned()),
+            None => errors.push(format!(
+                "EXAMPLE REGISTRY: {} contains a non-UTF-8 directory name",
+                examples_dir.display()
+            )),
+        }
+    }
+    directories.sort();
+    Some(directories)
+}
+
+/// RFC 038 §2.3 item 1: every registered name is a directory that exists, and
+/// every directory is registered, in both directions.
+fn registry_symmetry_findings(directories: &[String]) -> Vec<String> {
+    let mut findings = Vec::new();
+    for &(name, _) in EXAMPLE_REGISTRY {
+        if !directories.iter().any(|directory| directory == name) {
+            findings.push(format!(
+                "EXAMPLE REGISTRY: `{name}` is registered but examples/{name} does not exist"
+            ));
+        }
+    }
+    for directory in directories {
+        if !EXAMPLE_REGISTRY.iter().any(|&(name, _)| name == directory) {
+            findings.push(format!(
+                "EXAMPLE REGISTRY: examples/{directory} exists but is not registered"
+            ));
+        }
+    }
+    findings
+}
+
+/// RFC 038 §2.3 item 2: every example directory has a `README.md`.
+fn readme_presence_findings(root: &Path, directories: &[String]) -> Vec<String> {
+    directories
+        .iter()
+        .filter(|name| !root.join("examples").join(name).join("README.md").is_file())
+        .map(|name| format!("EXAMPLE README: examples/{name} has no README.md"))
+        .collect()
+}
+
+/// Paragraphs of a `//!` module doc block, read from the top: strip `//!` and
+/// one following space from each leading `//!` line, then split into
+/// paragraphs on blank stripped lines. RFC 038 §0.1's extraction rule.
+///
+/// A bare `//!` line (no trailing space) strips to an empty `rest`, which
+/// must still count as a blank separator line — the fallback on a missing
+/// space must stay on `rest`, not revert to the original `//!`-prefixed
+/// `line`, or a bare marker line would be swallowed into the paragraph text
+/// instead of splitting it.
+fn module_doc_paragraphs(source: &str) -> Vec<String> {
+    let mut paragraphs = Vec::new();
+    let mut current: Vec<&str> = Vec::new();
+    for line in source.lines() {
+        let Some(rest) = line.strip_prefix("//!") else {
+            break;
+        };
+        let rest = rest.strip_prefix(' ').unwrap_or(rest);
+        if rest.is_empty() {
+            if !current.is_empty() {
+                paragraphs.push(current.join(" "));
+                current.clear();
+            }
+        } else {
+            current.push(rest);
+        }
+    }
+    if !current.is_empty() {
+        paragraphs.push(current.join(" "));
+    }
+    paragraphs
+}
+
+/// The problem statement (worked problems) or the fixed API-artifact line
+/// (RFC 038 §0.1), or `None` if the block has no second paragraph.
+fn module_doc_second_paragraph(source: &str) -> Option<String> {
+    module_doc_paragraphs(source).into_iter().nth(1)
+}
+
+/// Markdown paragraphs: runs of non-blank lines separated by one or more
+/// blank lines, each paragraph's lines joined with a space.
+fn markdown_paragraphs(source: &str) -> Vec<String> {
+    let mut paragraphs = Vec::new();
+    let mut current: Vec<&str> = Vec::new();
+    for line in source.lines() {
+        if line.trim().is_empty() {
+            if !current.is_empty() {
+                paragraphs.push(current.join(" "));
+                current.clear();
+            }
+        } else {
+            current.push(line.trim());
+        }
+    }
+    if !current.is_empty() {
+        paragraphs.push(current.join(" "));
+    }
+    paragraphs
+}
+
+/// The first paragraph in a per-example `README.md` that is not itself a
+/// heading — the problem paragraph, by the convention §1 of the handoff
+/// requires every worked-problem README to follow (title heading, then the
+/// problem paragraph, then the run command and the links).
+fn readme_problem_paragraph(readme: &str) -> Option<String> {
+    markdown_paragraphs(readme)
+        .into_iter()
+        .find(|paragraph| !paragraph.starts_with('#'))
+}
+
+/// RFC 038 §2.3 item 3, worked problems only.
+fn extraction_findings(root: &Path, name: &str) -> Vec<String> {
+    let main_rs_path = root.join("examples").join(name).join("src").join("main.rs");
+    let readme_path = root.join("examples").join(name).join("README.md");
+    let main_rs = match fs::read_to_string(&main_rs_path) {
+        Ok(source) => source,
+        Err(error) => {
+            return vec![format!(
+                "EXAMPLE EXTRACTION: cannot read {}: {error}",
+                main_rs_path.display()
+            )];
+        }
+    };
+    let readme = match fs::read_to_string(&readme_path) {
+        Ok(source) => source,
+        Err(error) => {
+            return vec![format!(
+                "EXAMPLE EXTRACTION: cannot read {}: {error}",
+                readme_path.display()
+            )];
+        }
+    };
+    extraction_findings_from(name, &main_rs, &readme)
+}
+
+fn extraction_findings_from(name: &str, main_rs: &str, readme: &str) -> Vec<String> {
+    let Some(expected) = module_doc_second_paragraph(main_rs) else {
+        return vec![format!(
+            "EXAMPLE EXTRACTION: `{name}`'s src/main.rs has no second `//!` paragraph to extract"
+        )];
+    };
+    let Some(actual) = readme_problem_paragraph(readme) else {
+        return vec![format!(
+            "EXAMPLE EXTRACTION: `{name}`'s README.md has no problem paragraph to compare"
+        )];
+    };
+    if normalize_whitespace(&expected) == normalize_whitespace(&actual) {
+        Vec::new()
+    } else {
+        vec![format!(
+            "EXAMPLE EXTRACTION: `{name}`'s README problem paragraph does not match the module doc's second paragraph — extracted: \"{expected}\" — readme: \"{actual}\""
+        )]
+    }
+}
+
+/// The directory names linked as `` [`name`] `` in the table rows of
+/// `markdown` — lines starting with `|`, so a prose "see also" link using the
+/// same backtick-code style elsewhere in the document is not mistaken for a
+/// table entry.
+fn linked_directory_names(markdown: &str) -> BTreeSet<String> {
+    let mut names = BTreeSet::new();
+    for line in markdown.lines() {
+        if !line.trim_start().starts_with('|') {
+            continue;
+        }
+        let mut rest = line;
+        while let Some(start) = rest.find("[`") {
+            let after = &rest[start + 2..];
+            let Some(end) = after.find("`]") else {
+                break;
+            };
+            names.insert(after[..end].to_owned());
+            rest = &after[end..];
+        }
+    }
+    names
+}
+
+/// The body of the first section under `heading`: the text up to the next
+/// `#` line, or the end of the document if there is none.
+fn section_after_heading<'a>(markdown: &'a str, heading: &str) -> Option<&'a str> {
+    let marker = format!("\n{heading}\n");
+    let (_, after) = markdown.split_once(&marker)?;
+    Some(match after.find("\n#") {
+        Some(end) => &after[..end],
+        None => after,
+    })
+}
+
+/// RFC 038 §2.3 item 4: every example directory has a row in both tables,
+/// and every row in either table names a directory that exists.
+fn table_symmetry_findings(directories: &[String], label: &str, table: &str) -> Vec<String> {
+    let actual: BTreeSet<String> = directories.iter().cloned().collect();
+    let linked = linked_directory_names(table);
+    let mut findings = Vec::new();
+    for name in &actual {
+        if !linked.contains(name) {
+            findings.push(format!(
+                "EXAMPLE TABLE: examples/{name} has no row in {label}"
+            ));
+        }
+    }
+    for name in &linked {
+        if !actual.contains(name) {
+            findings.push(format!(
+                "EXAMPLE TABLE: {label} links examples/{name}, which does not exist"
+            ));
+        }
+    }
+    findings
+}
+
 #[cfg(test)]
 mod tests {
     use super::{
@@ -1352,5 +1657,228 @@ mod tests {
             Some("fn real() {}\n")
         );
         assert!(super::quick_start_rust_block("# no quick start\n```rust\nx\n```\n").is_none());
+    }
+
+    // RFC 038: the per-example README guide and its doc-currency assertions.
+
+    struct ExampleFixture {
+        root: PathBuf,
+    }
+
+    impl ExampleFixture {
+        fn new(directories: &[&str]) -> Self {
+            static NEXT_FIXTURE: AtomicUsize = AtomicUsize::new(0);
+            let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(format!(
+                "../target/xtask-tests/doc-currency-examples-{}-{}",
+                std::process::id(),
+                NEXT_FIXTURE.fetch_add(1, Ordering::Relaxed)
+            ));
+            for name in directories {
+                fs::create_dir_all(root.join("examples").join(name)).unwrap();
+            }
+            Self { root }
+        }
+
+        fn write_readme(&self, name: &str, body: &str) {
+            fs::write(
+                self.root.join("examples").join(name).join("README.md"),
+                body,
+            )
+            .unwrap();
+        }
+    }
+
+    impl Drop for ExampleFixture {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.root);
+        }
+    }
+
+    #[test]
+    fn module_doc_second_paragraph_extracts_a_multi_line_paragraph() {
+        let source = "//! Title.\n//!\n//! Line one.\n//! Line two.\n//!\n//! Third paragraph.\n";
+        assert_eq!(
+            super::module_doc_second_paragraph(source).as_deref(),
+            Some("Line one. Line two.")
+        );
+    }
+
+    #[test]
+    fn module_doc_second_paragraph_is_none_when_the_block_has_only_a_title() {
+        assert!(super::module_doc_second_paragraph("//! Title only.\n").is_none());
+        assert!(super::module_doc_second_paragraph("//! Title only.\n\nfn main() {}\n").is_none());
+    }
+
+    #[test]
+    fn module_doc_paragraphs_treats_a_bare_marker_line_as_a_blank_separator() {
+        // A bare `//!` line (no trailing space) must split paragraphs rather
+        // than being swallowed into the surrounding text: `rest` is already
+        // `//!`-stripped, and the fallback on a missing space must stay on
+        // `rest`, not revert to the original `//!`-prefixed line.
+        let source = "//! Title.\n//!\n//! Body.\n";
+        assert_eq!(
+            super::module_doc_paragraphs(source),
+            vec!["Title.".to_owned(), "Body.".to_owned()]
+        );
+    }
+
+    #[test]
+    fn readme_problem_paragraph_skips_the_title_heading() {
+        let readme = "# Title\n\nThe problem, reflowed\nto one paragraph.\n\nRun:\n";
+        assert_eq!(
+            super::readme_problem_paragraph(readme).as_deref(),
+            Some("The problem, reflowed to one paragraph.")
+        );
+        assert!(super::readme_problem_paragraph("# Title only\n").is_none());
+    }
+
+    #[test]
+    fn extraction_matches_a_reflowed_paragraph_regardless_of_line_wrap() {
+        let main_rs = "//! Title.\n//!\n//! Line one.\n//! Line two.\n";
+        let readme = "# Title\n\nLine one.\nLine two.\n\nRun it.\n";
+        assert!(super::extraction_findings_from("x", main_rs, readme).is_empty());
+    }
+
+    #[test]
+    fn extraction_reports_a_mismatch_naming_the_example_and_both_texts() {
+        let main_rs = "//! Title.\n//!\n//! The real problem statement.\n";
+        let readme = "# Title\n\nA different sentence entirely.\n";
+        let findings = super::extraction_findings_from("cluster-counted-work", main_rs, readme);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("cluster-counted-work"), "{findings:?}");
+        assert!(
+            findings[0].contains("The real problem statement."),
+            "{findings:?}"
+        );
+        assert!(
+            findings[0].contains("A different sentence entirely."),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn extraction_reports_a_missing_second_paragraph_as_a_finding_not_a_panic() {
+        let main_rs = "//! Title only, no second paragraph.\n";
+        let readme = "# Title\n\nSome problem text.\n";
+        let findings = super::extraction_findings_from("x", main_rs, readme);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("no second"), "{findings:?}");
+    }
+
+    #[test]
+    fn extraction_reports_a_missing_readme_paragraph() {
+        let main_rs = "//! Title.\n//!\n//! A problem statement.\n";
+        let readme = "# Title only\n";
+        let findings = super::extraction_findings_from("x", main_rs, readme);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("no problem paragraph"), "{findings:?}");
+    }
+
+    #[test]
+    fn registry_symmetry_accepts_the_real_six_registered_directories() {
+        let directories: Vec<String> = super::EXAMPLE_REGISTRY
+            .iter()
+            .map(|&(name, _)| name.to_owned())
+            .collect();
+        assert!(super::registry_symmetry_findings(&directories).is_empty());
+    }
+
+    #[test]
+    fn registry_symmetry_reports_a_registered_name_with_no_directory() {
+        let directories: Vec<String> = super::EXAMPLE_REGISTRY
+            .iter()
+            .skip(1)
+            .map(|&(name, _)| name.to_owned())
+            .collect();
+        let findings = super::registry_symmetry_findings(&directories);
+        let missing = super::EXAMPLE_REGISTRY[0].0;
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains(missing) && f.contains("is registered but")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn registry_symmetry_reports_an_unregistered_directory() {
+        let mut directories: Vec<String> = super::EXAMPLE_REGISTRY
+            .iter()
+            .map(|&(name, _)| name.to_owned())
+            .collect();
+        directories.push("not-registered".to_owned());
+        let findings = super::registry_symmetry_findings(&directories);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("not-registered"), "{findings:?}");
+        assert!(findings[0].contains("not registered"), "{findings:?}");
+    }
+
+    #[test]
+    fn readme_presence_reports_each_directory_missing_a_readme() {
+        let fixture = ExampleFixture::new(&["a", "b"]);
+        fixture.write_readme("a", "# A\n\nProblem.\n");
+        let findings =
+            super::readme_presence_findings(&fixture.root, &["a".to_owned(), "b".to_owned()]);
+        assert_eq!(
+            findings,
+            vec!["EXAMPLE README: examples/b has no README.md".to_owned()]
+        );
+    }
+
+    #[test]
+    fn section_after_heading_stops_at_the_next_heading() {
+        let markdown = "# Top\n\n## Examples\n\nrow one\nrow two\n\n## Design Notes\n\nother\n";
+        assert_eq!(
+            super::section_after_heading(markdown, "## Examples"),
+            Some("\nrow one\nrow two\n")
+        );
+        assert!(super::section_after_heading(markdown, "## Missing").is_none());
+    }
+
+    #[test]
+    fn table_symmetry_reports_both_directions_in_both_tables() {
+        let directories = vec!["a".to_owned(), "b".to_owned()];
+        let root_readme =
+            "# Loeres\n\n## Examples\n\n| [`a`](examples/a/) | p | device |\n\n## Design Notes\n";
+        let root_table = super::section_after_heading(root_readme, "## Examples").unwrap();
+        let examples_index =
+            "# Examples\n\n| [`a`](a/) | p | device |\n| [`c`](c/) | p | device |\n";
+        let mut findings = super::table_symmetry_findings(&directories, "README.md", root_table);
+        findings.extend(super::table_symmetry_findings(
+            &directories,
+            "examples/README.md",
+            examples_index,
+        ));
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("examples/b has no row in README.md")),
+            "{findings:?}"
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("examples/b has no row in examples/README.md")),
+            "{findings:?}"
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("examples/README.md links examples/c, which does not exist")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn table_symmetry_ignores_a_backtick_code_link_outside_a_table_row() {
+        // A prose "see also" link in the same backtick-code style as a table
+        // cell (e.g. `[`README`](../README.md)`) must not be read as a table
+        // row naming a directory `README`.
+        let directories = vec!["a".to_owned()];
+        let index = "# Examples\n\n\
+                      | [`a`](a/) | p | device |\n\n\
+                      See also: the root [`README`](../README.md).\n";
+        let findings = super::table_symmetry_findings(&directories, "examples/README.md", index);
+        assert!(findings.is_empty(), "{findings:?}");
     }
 }

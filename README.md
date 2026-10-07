@@ -78,6 +78,7 @@ Each example names the problem it solves in its first paragraph.
 | [`cluster-capacity-dispatch`](examples/cluster-capacity-dispatch/) | production units dispatched against a demand floor | cluster |
 | [`cluster-qp-constrained`](examples/cluster-qp-constrained/) | constrained QP, status beside the constraint violation | cluster |
 | [`cluster-batch-solve`](examples/cluster-batch-solve/) | batch of dynamic box problems with per-item outcomes | cluster |
+| [`cluster-counted-work`](examples/cluster-counted-work/) | counted work of a constrained solve, against size and conditioning | cluster |
 
 ## Design Notes
 
