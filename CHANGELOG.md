@@ -15,7 +15,27 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
-No changes recorded yet.
+**RFC 043 S1 — the constrained kernel over `Q32`, measured.** RFC 041 S3 found that
+`has_infeasibility_evidence`'s cross-multiplied comparisons can saturate under a bounded
+scalar and manufacture a false infeasibility diagnosis; this slice measures whether a real
+constrained solve reaches that case before S2 fixes the predicate's form.
+
+- A tracked `#[cfg(test)]` harness (`xtask/src/checks/fixed_point_constrained.rs`, no gate,
+  no reported command, no pinned threshold) confirms the constrained kernel compiles and
+  runs over `Q32<20>` in both the device and the cluster path.
+- On 300 random correlated-trajectory solves, and on a further 32 deliberately adversarial
+  near-parallel and genuinely infeasible instances chosen to stress multiplier growth, the
+  false positive **did not fire** — zero `infeasibility_evidence` disagreements between
+  `Q32` and `f64` in either batch, zero converged-but-wrong instances relative to the exact
+  optimum (`checks::exact::exact_optimum`), zero converged-status mismatches.
+- The predicate's defect in isolation, independently reproduced on 200 000 independently
+  drawn snapshot quadruples per scale: the false-negative column is empty at every scale
+  (saturation only ever manufactures evidence, never hides it), matching architect review
+  096 §0.1's finding.
+- No crate changed; no public API change. S2 proceeds as **hardening against an unreached
+  defect** on this evidence, not as a fix for a diagnosis reachable on this corpus — per
+  `rfcs/handoffs/release-0.24.0/scope-and-decision-points.md` §3 decision 1, this needs no
+  separate authorization and the architect rules on the characterisation.
 
 ## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
 
