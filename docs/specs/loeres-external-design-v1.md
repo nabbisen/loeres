@@ -775,7 +775,9 @@ the `loeres::problem` contract: any type implementing `QuadraticObjective`,
 `BoxBounds` and `LinearInequalities` over dynamic storage — `DenseMatrix`,
 `DenseVector`, or a CSR `SparseMatrix` for `A` — is a `QuadraticProgram`, and
 `loeres-cluster` solves it with `solve_constrained_projected_first_order_dyn`
-(and the `ClusterConstrainedJob` batch adapter, which carries the status only).
+(and the `ClusterConstrainedJob` batch adapter, which carries the status together with the
+terminal violation, the projection cap-hit count and the heuristic infeasibility hint —
+RFC 042).
 A `ModelBuilder`-style construction API for it is **deferred**; the shipped
 example, `examples/cluster-qp-constrained/`, implements the traits directly. LP
 is expressible (`Q = 0`) but not solved, infeasibility is not detected as a status

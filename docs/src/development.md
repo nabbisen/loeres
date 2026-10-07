@@ -306,6 +306,22 @@ that is correct; read as "a minor bump signifies breakage" it is wrong, and it h
 caused that error once. Those are historical records and are not edited; this section
 is the current statement.
 
+### A breaking slice bumps the minor before the cut
+
+The released version is normally set in the release's own finalization revision. **A slice that
+introduces a breaking change is the exception**, because `cargo xtask release-gate
+--intended-tag <v>` validates the intended tag against the workspace version, so the gate that
+is required of every slice cannot run until the version matches the release the break forces.
+
+So a slice that breaks a caller bumps the minor itself — the workspace version, the five
+internal `[workspace.dependencies]` pins, all eight lockfiles, and the apex `This tree` field,
+which `doc-currency` will demand with three `APEX RELEASE` findings otherwise. `Last reconciled
+repository release` does **not** move: the release has not happened, and RFC 024's inequality is
+strict.
+
+RFC 042 was the first slice to hit this, and the architect's handoff had required the gate
+without accounting for it.
+
 ### Bumping after a release
 
 After a release ships, `main`'s workspace version is bumped to the next patch
