@@ -25,19 +25,26 @@
 //!   that flag, so this lexical check is the only guard against a typo or a
 //!   removed feature.
 //! - **Packaged source set** (RFC 036 C1.1): `cargo package -p <crate> --list
-//!   --offline` lists the same `src/` files as git tracks under `crates/<crate>/src`,
-//!   and the package contains `LICENSE` and `README.md`. This is the hermetic proof
-//!   that the published crate's compilable content is the workspace member's. The
-//!   tarball check is not used: `cargo package` of a dependent cannot resolve its
-//!   unpublished siblings, with or without `[patch.crates-io]`. Cargo refuses to list
-//!   a package whose tracked files have uncommitted changes, so this assertion
-//!   requires a clean tree for the five crates. It does not need one for the rest of
-//!   the workspace. `--allow-dirty` is deliberately not passed: the proof is about
-//!   the committed package.
+//!   --offline --allow-dirty` lists the package's files, and the gate compares its
+//!   `src/` files with the `src/` files git tracks under `crates/<crate>/src`, in both
+//!   directions. The package must also contain `LICENSE` and `README.md`. The proof
+//!   rests on that comparison, not on cargo's cleanliness check. `--allow-dirty` is
+//!   passed so the listing is available whatever the working tree state is. It is also
+//!   what makes the packaged-but-untracked direction reachable: without it, cargo
+//!   refuses to list a tree with uncommitted changes, and an untracked file never
+//!   appears. A package that lists a file git does not track fails the gate, because
+//!   that file would be published permanently. The tarball check is not used:
+//!   `cargo package` of a dependent cannot resolve its unpublished siblings, with or
+//!   without `[patch.crates-io]`.
 //! - **Reserved features** (RFC 036 C2.1): every declared feature with no
 //!   `cfg(feature = …)` site in `src/` is listed in `RESERVED_INERT_FEATURES`, and
 //!   every listed feature is still inert. A new feature cannot be silently inert,
 //!   and a reserved one that goes live fails until it is de-registered.
+//! - **README feature tables** (RFC 036 C7.2): each packaged README has a
+//!   `## Features` section that mentions every declared feature except `default` as
+//!   inline code, and gives each reserved feature's line the phrase
+//!   `reserved; no effect yet`. The gate does not parse the table or check the wording
+//!   of live features: that would be brittle and would fail on ordinary editing.
 //! - **Packaged READMEs** (§2.5): no `crates/<name>/README.md` carries a relative
 //!   link target, because a relative target 404s on crates.io when the file it
 //!   names is not in the tarball. The **root** `README.md` is deliberately exempt:
@@ -117,6 +124,7 @@ pub fn run() -> bool {
         findings.extend(doc_cfg_symmetry_findings(name, &dir));
         findings.extend(inert_feature_findings(name, &dir));
         findings.extend(packaged_source_findings(name));
+        findings.extend(features_section_findings(name, &dir));
         match fs::read_to_string(format!("{dir}/README.md")) {
             Ok(source) => findings.extend(readme_link_findings(name, &source)),
             Err(error) => findings.push(format!("README: cannot read {dir}/README.md: {error}")),
@@ -127,7 +135,7 @@ pub fn run() -> bool {
     }
     let ok = findings.is_empty();
     eprintln!(
-        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links, feature labels, reserved features, packaged source",
+        "  checked {} published crate(s): requirements, LICENSE, keywords/categories, README links, feature labels, reserved features, README feature tables, packaged source",
         PUBLISHED_CRATES.len()
     );
     eprintln!("[published-metadata] {}", if ok { "PASS" } else { "FAIL" });
@@ -357,11 +365,97 @@ fn read_rust_sources(src_dir: &str) -> Result<Vec<String>, String> {
         .collect()
 }
 
+/// C7.2: the packaged README's `## Features` section names every declared feature,
+/// and marks each reserved feature with the phrase `reserved; no effect yet`.
+fn features_section_findings(name: &str, dir: &str) -> Vec<String> {
+    let manifest = match fs::read_to_string(format!("{dir}/Cargo.toml")) {
+        Ok(source) => source,
+        Err(error) => {
+            return vec![format!(
+                "FEATURES SECTION: `{name}`: cannot read its manifest: {error}"
+            )];
+        }
+    };
+    let declared = match declared_features(&manifest) {
+        Ok(features) => features,
+        Err(error) => return vec![format!("FEATURES SECTION: `{name}`: {error}")],
+    };
+    let readme = match fs::read_to_string(format!("{dir}/README.md")) {
+        Ok(source) => source,
+        Err(error) => {
+            return vec![format!(
+                "FEATURES SECTION: `{name}`: cannot read its README: {error}"
+            )];
+        }
+    };
+    features_section_check(name, &readme, &declared, RESERVED_INERT_FEATURES)
+}
+
+/// Pure core of `features_section_findings`.
+fn features_section_check(
+    name: &str,
+    readme: &str,
+    declared: &[String],
+    registry: &[(&str, &str)],
+) -> Vec<String> {
+    let Some(section) = features_section(readme) else {
+        return vec![format!(
+            "FEATURES SECTION: `{name}`'s README has no `## Features` section"
+        )];
+    };
+    let mut findings = Vec::new();
+    for feature in declared.iter().filter(|f| f.as_str() != "default") {
+        if !section.contains(&format!("`{feature}`")) {
+            findings.push(format!(
+                "FEATURES SECTION: `{name}`'s `## Features` does not mention `{feature}` as inline code"
+            ));
+        }
+    }
+    for (crate_name, feature) in registry {
+        if *crate_name != name {
+            continue;
+        }
+        let needle = format!("`{feature}`");
+        for line in section.lines().filter(|line| line.contains(&needle)) {
+            if !line.contains("reserved; no effect yet") {
+                findings.push(format!(
+                    "FEATURES SECTION: `{name}`'s `{feature}` is reserved, but its line in `## Features` lacks `reserved; no effect yet`"
+                ));
+            }
+        }
+    }
+    findings
+}
+
+/// The lines under `## Features`, up to the next level-two heading.
+fn features_section(readme: &str) -> Option<String> {
+    let mut lines = readme.lines();
+    lines.find(|line| line.trim() == "## Features")?;
+    let mut section = String::new();
+    for line in lines {
+        if line.starts_with("## ") {
+            break;
+        }
+        section.push_str(line);
+        section.push('\n');
+    }
+    Some(section)
+}
+
 /// C1.1: the packaged `src/` set equals the tracked `src/` set, and the package
-/// carries `LICENSE` and `README.md`. Hermetic: `--offline`, no `--allow-dirty`.
+/// carries `LICENSE` and `README.md`. Hermetic: `--offline`. `--allow-dirty` is passed
+/// so the listing does not depend on the working tree being clean; the comparison
+/// against `git ls-files` is what carries the proof.
 fn packaged_source_findings(name: &str) -> Vec<String> {
     let output = std::process::Command::new(env!("CARGO"))
-        .args(["package", "-p", name, "--list", "--offline"])
+        .args([
+            "package",
+            "-p",
+            name,
+            "--list",
+            "--offline",
+            "--allow-dirty",
+        ])
         .output();
     let listing = match output {
         Ok(output) if output.status.success() => {
@@ -371,7 +465,7 @@ fn packaged_source_findings(name: &str) -> Vec<String> {
             let stderr = String::from_utf8_lossy(&output.stderr);
             let reason = first_error_line(&stderr).unwrap_or("no error line reported");
             return vec![format!(
-                "PACKAGED SOURCE: `cargo package -p {name} --list --offline` refused: {reason}"
+                "PACKAGED SOURCE: `cargo package -p {name} --list --offline --allow-dirty` refused: {reason}"
             )];
         }
         Err(error) => {
@@ -914,5 +1008,91 @@ mod tests {
             )
         );
         assert_eq!(super::first_error_line("warning: nothing\n"), None);
+    }
+
+    fn features_readme(rows: &str) -> String {
+        format!(
+            "# x\n\n## Features\n\nOff unless marked *on*.\n\n| Feature | Default | What it does |\n|---|---|---|\n{rows}\nSee the workspace.\n"
+        )
+    }
+
+    #[test]
+    fn a_features_section_naming_every_feature_with_the_reserved_phrase_passes() {
+        let readme = features_readme(
+            "| `live` | off | does a thing |\n| `dormant` | off | reserved; no effect yet |\n",
+        );
+        let declared = vec![
+            "default".to_owned(),
+            "live".to_owned(),
+            "dormant".to_owned(),
+        ];
+        let registry = [("x", "dormant")];
+        assert!(super::features_section_check("x", &readme, &declared, &registry).is_empty());
+    }
+
+    #[test]
+    fn a_missing_section_is_reported() {
+        let findings = super::features_section_check("x", "# x\n\nno section\n", &[], &[]);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("no `## Features` section"),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_declared_feature_missing_from_the_section_is_named() {
+        let readme = features_readme("| `live` | off | does a thing |\n");
+        let declared = vec!["live".to_owned(), "forgotten".to_owned()];
+        let findings = super::features_section_check("x", &readme, &declared, &[]);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("`forgotten`"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_reserved_feature_that_drops_the_phrase_is_named() {
+        let readme = features_readme("| `dormant` | off | does a thing now |\n");
+        let declared = vec!["dormant".to_owned()];
+        let registry = [("x", "dormant")];
+        let findings = super::features_section_check("x", &readme, &declared, &registry);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("lacks `reserved; no effect yet`"),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn a_default_feature_needs_no_row() {
+        let readme = features_readme("| `live` | off | does a thing |\n");
+        let declared = vec!["default".to_owned(), "live".to_owned()];
+        assert!(super::features_section_check("x", &readme, &declared, &[]).is_empty());
+    }
+
+    #[test]
+    fn the_real_readmes_pass_the_features_section_rules() {
+        let root = concat!(env!("CARGO_MANIFEST_DIR"), "/..");
+        for name in super::PUBLISHED_CRATES {
+            let dir = format!("{root}/crates/{name}");
+            let manifest = std::fs::read_to_string(format!("{dir}/Cargo.toml")).expect("manifest");
+            let declared = super::declared_features(&manifest).expect("features");
+            let readme = std::fs::read_to_string(format!("{dir}/README.md")).expect("readme");
+            assert!(
+                super::features_section_check(
+                    name,
+                    &readme,
+                    &declared,
+                    super::RESERVED_INERT_FEATURES
+                )
+                .is_empty(),
+                "{name}: {:?}",
+                super::features_section_check(
+                    name,
+                    &readme,
+                    &declared,
+                    super::RESERVED_INERT_FEATURES
+                )
+            );
+        }
     }
 }

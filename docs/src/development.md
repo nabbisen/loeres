@@ -254,12 +254,14 @@ development team does not publish.
   root crate with no internal dependencies succeeds.
 - **What establishes the packaged set compiles, before publication.** `cargo package -p <crate>
   --list --offline` needs no registry resolution. For all five crates together it takes about
-  0.14 seconds. It shows that the packaged `src/` set is identical to the tracked `src/` set
-  (18, 9, 9, 13 and 25 files), that no crate has a `build.rs`, and that no source uses
-  `include_str!` or `include_bytes!`. So the published crates' compilable content is
-  byte-identical to the workspace members', and the published set compiles if
-  `cargo check --workspace --all-features` passes. `cargo xtask published-metadata` asserts the
-  file-set equality per commit, and asserts that the package carries `LICENSE` and `README.md`.
+  0.14 seconds. The listing shows that the packaged `src/` set is identical to the tracked `src/`
+  set (18, 9, 9, 13 and 25 files), and that no crate has a `build.rs`. So the published crates'
+  compilable content is byte-identical to the workspace members', and the published set compiles
+  if `cargo check --workspace --all-features` passes. A separate source check, made by reading the
+  sources and not by the listing, found that no source uses `include_str!` or `include_bytes!`.
+  `cargo xtask published-metadata` asserts the file-set equality per commit. It also fails if a
+  package lists a file git does not track, and asserts that the package carries `LICENSE` and
+  `README.md`.
 - **The real whole-set verification happens during publication.** Each crate's own
   `cargo publish` verify build resolves its siblings from the real registry, so publish in
   dependency order and let each step verify against what is already published.
