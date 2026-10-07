@@ -1,6 +1,6 @@
 # RFC 042 - The Batch Seam Carries What the Solve Found
 
-**Status.** Accepted (design frozen 2026-10-07)
+**Status.** Implemented (v0.23.0). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 

@@ -11,7 +11,7 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.23.0] — unreleased
+## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
 
 **Release status:** unreleased
 
@@ -50,6 +50,41 @@ imply.
   pattern (RFC 014 §311): Rust gives enum-variant fields no per-field visibility, so that
   pattern cannot be reapplied to the variant's own field list — only to a plain struct
   nested inside it, which `SolveReport` already is.
+
+### RFC 041 — a fixed-point scalar baseline
+
+RFC 001 reserved hooks for a non-float scalar family and none shipped. `fixed-point-hooks`, one
+of the features RFC 036 registered as declared-but-inert, now gates something.
+
+- **`Q32<const FRAC_BITS: u32>`** — a signed fixed-point scalar over an `i32` representation,
+  with the fractional bit count a const parameter rather than baked in. Arithmetic is
+  **saturating**, which RFC 001 §100 requires a bounded family to state: wrapping would silently
+  return a wrong answer, and a type whose arithmetic may panic must not implement `BaseScalar`
+  device-facing at all.
+- **What it does not get, stated at the type.** `FiniteScalar` is satisfied *vacuously* — a
+  fixed-point type has no NaN and no infinity, so all three predicates are constant. That means
+  the solve kernels' **43 `is_finite()` guards across 12 files do not protect this family**:
+  for floats they catch an overflow that became `±inf`, and `Q32` has no `inf` to become.
+  `Q32`'s own documentation says so, because a reader who sees those guards would otherwise
+  reasonably assume they apply.
+- **`checked_div` keeps a failure channel.** Its documented trigger — a non-finite quotient from
+  finite operands — cannot arise here, so `Q32` reports `Overflow` when the true quotient's
+  magnitude does not fit instead, computed in `i64` and range-checked rather than saturated and
+  reported as success.
+- **`AdvancedNumericalScalar` is not implemented**, and that is deliberate: it would need a real
+  fixed-point `sqrt`/`ln`/`exp`, which no shipped kernel requires.
+- **Measured, not asserted.** The box kernel over `Q32<20>` on 300 random separable problems,
+  including bounds-active geometries: 300 converged, **zero converged-but-wrong**, and `Q32`'s
+  worst deviation from the exact optimum (`4.52e-5`) matched the `f64` solve's own deviation to
+  five significant figures — so the error is `Q32`'s quantization step, not drift introduced by
+  the saturating arithmetic.
+- **No checked-arithmetic tier was added.** RFC 001 §100 sanctions one as the route for anything
+  beyond saturating `BaseScalar`; the decision is recorded as "not yet", and explicitly as an
+  absence of demonstrated need rather than a proof of safety — unlike RFC 039's decision, which
+  rested on a structural guarantee. The constrained kernel over `Q32`, where the projection does
+  far more arithmetic per iteration, is the named trigger to revisit it.
+
+**The constrained kernel over `Q32` is not supported.** Only the box kernel is demonstrated.
 
 ## [0.22.3] — 2026-10-07 — A linear objective, answered honestly
 

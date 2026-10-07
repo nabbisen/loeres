@@ -12,7 +12,7 @@
 > **Release currency metadata.**
 > This tree: **0.23.0**.
 > Last reconciled repository release: **0.22.3**.
-> Implemented scope: **RFCs 001-040**.
+> Implemented scope: **RFCs 001-042**.
 >
 > The implemented baseline includes the core contracts, static storage and the
 > bounded device projected-first-order kernel, dynamic dense/CSR storage,
