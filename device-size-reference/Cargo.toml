@@ -1,0 +1,40 @@
+# RFC 040's measurement fixture: one concrete instantiation of the device-constrained
+# kernel, so `size-budget` can measure the `.text`/`.rodata` a device actually reaches
+# (RFC 010 §3.7's unimplemented device-size item). It is deliberately a sibling of
+# `examples/`, not a member of it, so RFC 038's per-example README/registry rules do
+# not reach it — it is a measurement fixture, not a worked problem or an API artifact.
+#
+# Excluded from the root workspace with its own lockfile, as `examples/` are, for the
+# same reason RFC 023 §11.1 gives them one: as a workspace member it would share a
+# lockfile and participate in feature unification, so its compiled object would no
+# longer be evidence of only its own declared dependencies.
+#
+# RFC 023 §0.2 (Amendment 2): an empty `[workspace]` table makes this crate its own
+# workspace root, so cargo's upward search for a manifest stops here regardless of
+# where the tree sits.
+[workspace]
+
+[package]
+name = "device-size-reference"
+version = "0.0.0"
+edition = "2024"
+rust-version = "1.85"
+license = "Apache-2.0"
+publish = false
+description = "RFC 040 measurement fixture: one device-kernel instantiation, for a .text/.rodata size budget"
+
+[lib]
+crate-type = ["lib"]
+
+# Edge crates only, `owned-arrays` for the fixed-size constrained solve path (external
+# design §1.4), matching the device examples' dependency shape.
+[dependencies]
+loeres = { path = "../crates/loeres", default-features = false }
+loeres-device = { path = "../crates/loeres-device", default-features = false, features = ["owned-arrays"] }
+loeres-backend-static = { path = "../crates/loeres-backend-static", default-features = false, features = ["owned-arrays"] }
+
+# A declared constant of the measurement (RFC 040 §2.1, §5): this crate is its own
+# workspace root, so this profile applies to exactly this build, not to the outer
+# workspace's `--release` builds.
+[profile.release]
+panic = "abort"

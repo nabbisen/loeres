@@ -22,6 +22,9 @@ exclude = [
     "examples/device-mpc-step",
     "examples/cluster-capacity-dispatch",
     "examples/cluster-counted-work",
+    # RFC 040: a measurement fixture, not an example, excluded for the same reason —
+    # see `device-size-reference/Cargo.toml`.
+    "device-size-reference",
 ]
 
 # Shared metadata inherited by every member via `field.workspace = true`.
