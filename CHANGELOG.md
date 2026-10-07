@@ -11,9 +11,15 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
+## [0.23.1] — unreleased
 
 **Release status:** unreleased
+
+No changes recorded yet.
+
+## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
+
+**Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io
 
 Repository release `0.23.0` carries the batch seam's constrained-solve detail (RFC 042),
 and is a minor because that is a source break (see below). RFC 041 (a fixed-point scalar
