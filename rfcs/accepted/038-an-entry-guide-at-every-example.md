@@ -1,12 +1,42 @@
 # RFC 038 - An Entry Guide at Every Example
 
-**Status.** Proposed (2026-10-07).
+**Status.** Accepted (design frozen 2026-10-07)
 
 **Author tier.** `architect`.
 
 **Governing question.** The owner asked, on 2026-10-07, why no example project has a
 `README.md` or an entry guide. The answer was partly "by design" and partly "nobody
 noticed", and the second half is the reason for this RFC.
+
+## 0.1 Amendment 1 (2026-10-07)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only
+the design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires
+that exact form there; **the amendment must be named in the Status line when this RFC moves
+to `rfcs/done/`**, which `check-rfcs` enforces for `done/` only.
+
+**§2.1's marker comments are withdrawn in favour of structural extraction.** The architect
+measured the tree before writing the handoff and found the marker mechanism to be the wrong
+borrowing.
+
+The existing `README-EXAMPLE-BEGIN` / `README-EXAMPLE-END` pair delimits **code**, and
+`marked_region` compares raw lines byte-for-byte (`doc_currency.rs:871-880`). A problem
+statement lives inside a `//!` module comment, so it would need prefix stripping, and worse,
+a plain `// MARKER` line placed between two `//!` lines contributes nothing to rustdoc —
+which means the paragraphs either side would **join into one** in the rendered output. The
+`doc-build` gate runs rustdoc under `-D warnings` and would not necessarily catch a silent
+paragraph merge.
+
+Structural extraction needs no markers and no source edit at all. Measured across all six
+examples: each has a one-line first paragraph (its title), and the **second** paragraph is
+either the problem statement or, for the three API artifacts, the single line "What this
+example demonstrates (RFC …):". So the parts this RFC needs are identifiable from the
+document's own shape, and the shape is the one
+`docs/src/documentation-convention.md` §3.1 already requires.
+
+The two categories are distinguished by an explicit **registry**, not by a heuristic on
+prose, in the idiom RFC 022, RFC 030 and RFC 036 already use, with symmetry asserted in both
+directions.
 
 ## 1. Summary
 
@@ -41,14 +71,14 @@ drift.
 ### 2.1 A `README.md` in every example, extracted, not written
 
 Each `examples/<name>/README.md` carries the example's problem statement, how to run it,
-and what it prints. **Its problem statement is a verbatim region of the module comment**,
-delimited in the source by marker comments, exactly as the root README's Quick Start
-snippet is a marked region of `examples/device-mpc-step/src/main.rs`
-(`doc_currency.rs:806-807`, `README-EXAMPLE-BEGIN` / `README-EXAMPLE-END`).
+and what it prints. **Its problem statement is the second paragraph of the module
+comment**, taken structurally rather than by marker comments (Amendment 1): the `//!` block
+is read from the top, its prefixes stripped, and its paragraphs split on blank doc lines.
+The first paragraph is the title; the second is the problem.
 
-`doc-currency` gains the corresponding assertion, per example: the README's problem
-paragraph matches the marked region of its own source, byte for byte after comment-marker
-stripping. A second copy that cannot drift is not the thing RFC 035 was avoiding.
+`doc-currency` gains the corresponding assertion, per example in the worked-problem
+category: the README's problem paragraph equals that extracted paragraph. A second copy
+that cannot drift is not the thing RFC 035 was avoiding.
 
 What a per-example README adds beyond the module comment, and so must be written rather
 than extracted: the run command, and a pointer back to the root README and the relevant
