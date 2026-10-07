@@ -15,7 +15,25 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
-No changes recorded yet.
+**RFC 038, an entry guide at every example.** Every example directory now has a
+`README.md`, and `examples/` has an index.
+
+- **A guide where the link lands.** The root README's example table links to each
+  example's directory; GitHub shows a directory's `README.md`, and there was none, so a
+  visitor following a link saw `Cargo.lock`, `Cargo.toml`, `src` and had to know to open
+  the source. Each directory now carries a short guide: the problem it solves, how to run
+  it, and where to read next. The three conformance examples say plainly that they are API
+  artifacts rather than worked problems.
+- **The problem statement cannot drift from the code.** A worked example's README problem
+  paragraph is the second paragraph of its own module comment, and `doc-currency` compares
+  them.
+- **The example tables are checked in both directions.** Every directory under `examples/`
+  must appear in the root README's table and in `examples/README.md`, and every row in
+  either must name a directory that exists. `cluster-counted-work`, added in `0.22.2`, was
+  listed in neither; the gate was built to fail on that and does.
+
+No crate changed: no public API, no behaviour, no dependency, and no example's code or
+printed output. `cargo xtask check` stays at twenty gates.
 
 ## [0.22.2] — 2026-10-07 — Measured effectiveness and cost
 

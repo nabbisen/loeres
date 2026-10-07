@@ -1151,6 +1151,12 @@ fn extraction_findings_from(name: &str, main_rs: &str, readme: &str) -> Vec<Stri
 /// `markdown` — lines starting with `|`, so a prose "see also" link using the
 /// same backtick-code style elsewhere in the document is not mistaken for a
 /// table entry.
+///
+/// GitHub-flavoured Markdown also permits a table whose rows carry no leading
+/// pipe, and this scanner would find no rows in one. That cannot pass silently:
+/// the two directions interlock. With no rows found, the directory-to-table
+/// direction reports *every* example as unlisted and fails loudly, long before
+/// the table-to-directory direction could miss a row naming something absent.
 fn linked_directory_names(markdown: &str) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     for line in markdown.lines() {
