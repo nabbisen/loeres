@@ -7,25 +7,52 @@ content. The owner authorizes the release and its timing.
 **Who runs this.** The architect and the owner. The cut and the publication may not be
 delegated.
 
-## 1. Scope so far
+## 1. Scope
 
 **RFC 038** — an entry guide at every example: six per-example `README.md` files, an
 `examples/README.md` index, a problem statement bound to its own module comment, and
-two-directional symmetry between the example tables and the directories on disk. No crate
-changed; `cargo xtask check` stays at twenty gates.
+two-directional symmetry between the example tables and the directories on disk.
 
-## 2. Is it worth cutting yet?
+**RFC 039** — what the kernel does with a linear objective. The claim that LP "is not solved"
+is corrected in thirteen places, three of them published crate READMEs and three crate doc
+comments, with the measurement behind it and both non-convergence mechanisms named. `cargo
+xtask lp` characterises it; `exact_lp_optimum` is the new exact reference the old one could not
+supply, since it inverts `Q`.
 
-Not on its own, on the reasoning the owner applied to `0.22.2` on 2026-10-07: a release
-whose whole content is documentation and a gate gives a registry user a version whose crates
-are byte-identical to the one before it. `git diff 0.22.2..HEAD -- crates` is empty.
+**RFC 040** — the first enforced device size budget since RFC 010 asked for one:
+`.text + .rodata` of a reference instantiation that calls the kernel, **10 736 bytes** at
+`(N, M) = (8, 4)`, pinned with a bounded delta.
 
-RFC 038's value reaches a visitor through the **repository**, which is already updated, not
-through the registry. So `0.22.3` should accumulate something a user installs — a kernel
-change, an API addition, or one of themes T5-T7 — before being cut.
+No crate *behaviour* changed in any of the three, and no public API; `cargo xtask check` runs
+twenty gates.
 
-If the owner prefers to publish documentation promptly, that is a legitimate different
-answer, and the cut below is ready to run.
+## 2. Is it worth cutting yet? — yes, now
+
+**This section's earlier answer is withdrawn.** It argued no, on the reasoning the owner applied
+to `0.22.2`: `git diff 0.22.2..HEAD -- crates` was empty, so a registry user would receive
+byte-identical crates. **That is no longer true** (architect review 093 §7). RFC 039 changed what
+a published crate contains:
+
+```text
+crates/loeres/README.md                        |  4 +++-
+crates/loeres/src/problem.rs                   | 22 ++++++++++++++++++----
+crates/loeres-cluster/README.md, …/constrained.rs
+crates/loeres-device/README.md,  …/constrained.rs
+```
+
+Three published crate READMEs and three crate doc comments now state that LP **is** solved
+soundly, with the measurement, the two non-convergence mechanisms and the remedy — where they
+previously told an LP user the kernel could not help them. A crates.io or docs.rs visitor
+receives different and materially better information after this release, which is exactly the
+test `0.22.2` failed.
+
+So `0.22.3` is worth cutting on its own. It carries:
+
+- **RFC 038** — an entry guide at every example, with two-directional table symmetry gated.
+- **RFC 039** — the LP characterisation and correction, and the step guidance.
+- **RFC 040** — the first enforced device size budget since RFC 010 asked for one.
+
+The timing remains the owner's.
 
 ## 3. The cut
 
@@ -74,18 +101,19 @@ Then `docs/src/specifications.md`: add the row and make it the newest published 
 
 ## 6. Open, not in this release
 
-- **`size-budget`'s device threshold.** Still unset, and the earlier framing of it was
-  wrong on two counts — architect review 091 §0 records both. It is **not the owner's
-  number**: RFC 010 §3.7 says "the exact byte budgets are owned by RFC 003, RFC 006,
-  RFC 008, and RFC 011", so `size_budget.rs:46`'s "pending owner RFC" means a
-  budget-owning RFC, and freezing it is ordinary RFC work. And the 32 000-byte proposal was
-  on the wrong measure: of the release rlib's 25 512 bytes, **23 845 are `.rmeta`** and
-  **193** are all other sections summed, because the device entry points are generic over
-  `const N`/`const M` and a standalone build emits almost no instantiated code. The
-  recommendation is a slice implementing RFC 010 §3.7's unbuilt `.text`/`.rodata`
-  measurement on a reference instantiation, with a pinned baseline and a bounded delta in
-  the `bench-baseline` pattern, rather than an absolute ceiling on a file that is 93%
-  metadata.
+- **`size-budget`'s device threshold — closed by RFC 040.** Kept here as the record of what
+  it cost to get right. The earlier framing was wrong on two counts (architect review 091
+  §0): it was never the owner's number — RFC 010 §3.7 assigns byte budgets to RFCs 003, 006,
+  008 and 011, so `size_budget.rs`'s "pending owner RFC" means a *budget-owning RFC* — and the
+  32 000-byte proposal was on the wrong measure, since of the release rlib's 25 512 bytes
+  **23 845 are `.rmeta`** and **193** are every other section summed. RFC 040 measures
+  `.text + .rodata` of a reference instantiation that calls the kernel instead: **10 736
+  bytes** at `(N, M) = (8, 4)`, release, `panic = "abort"`, pinned with a **10%** bounded
+  delta rather than an absolute ceiling. The fraction is interim — no toolchain-driven drift
+  has been observed for a code-size figure in this project, and review 092 §1.4 records that
+  the architect checked and could not supply a better basis. RFC 010 §3.7's two remaining
+  items, stack sensitivity beyond the existing type assertions and cluster monomorphization
+  growth, are still unimplemented.
 - **Themes T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars)**, unscheduled. RFC
   039 (S1-S4) measured and documented LP's actual behaviour instead: a converged result is
   sound regardless of curvature, and both non-convergence causes are configuration matters
