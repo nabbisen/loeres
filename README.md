@@ -1,7 +1,5 @@
 # Loeres
 
-[License: Apache-2.0](LICENSE)
-
 Loeres is a Rust workspace of optimization kernels for constrained quadratic programs (`min ½xᵀQx + cᵀx`), with a hard compile-time boundary between two execution environments.
 
 - **Two paths, one contract.** A cluster path with dynamic sizes, heap, threads and batching; a device path that is `no_std`, has no `alloc`, bounds its iteration and takes caller-owned workspaces.
