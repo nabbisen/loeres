@@ -274,6 +274,39 @@ development team does not publish.
 
 ## Release version convention
 
+### What each position means
+
+Semantic Versioning 2.0.0: **major** for incompatible API changes, **minor** for
+functionality added in a backward-compatible way, **patch** for backward-compatible
+fixes. Semver §4 also says `0.y.z` is initial development, where anything may change.
+
+Cargo treats `0.x` differently from `1.x`: `^0.22.3` resolves to `>=0.22.3, <0.23.0`,
+so while this project is pre-`1.0` the **minor** is the compatibility unit. One
+consequence follows, and one does **not**.
+
+**It follows that a breaking change cannot ship as a patch.** A `0.21.4` would be
+picked up automatically by a `loeres = "0.21"` requirement, so a change that breaks a
+caller has to bump the minor. That is why `0.22.0` is `0.22.0` and not `0.21.4`:
+`ConstrainedSolveRecord` gained a field and became `#[non_exhaustive]`, so a caller
+constructing it by struct literal stopped compiling.
+
+**It does not follow that a minor bump means something broke.** A minor is also where
+additive functionality goes — that is its meaning in semver — and this project has
+shipped exactly that: **`0.20.0`** was "a verification-only conformance hardening
+release. Runtime crate APIs are unchanged."
+
+So never read `0.22.x → 0.23.0` as a signal that a caller must change code. Read the
+release's own `CHANGELOG.md` entry, which states what changed and whether anything
+broke.
+
+Earlier documents compress this to "under Cargo's `0.x` rules the minor is the breaking
+position" — in `rfcs/done/034`, `rfcs/done/036`, the `0.22.0` prep handoff and the
+`0.22.0` changelog entry. Read as "a breaking change must be expressed in the minor"
+that is correct; read as "a minor bump signifies breakage" it is wrong, and it has
+caused that error once. Those are historical records and are not edited; this section
+is the current statement.
+
+
 After a release ships, `main`'s workspace version is bumped to the next patch
 immediately, in the first ordinary post-release commit — never left at the
 released value, which would let a later commit claim to be that release. The
