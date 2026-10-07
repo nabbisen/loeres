@@ -306,6 +306,7 @@ that is correct; read as "a minor bump signifies breakage" it is wrong, and it h
 caused that error once. Those are historical records and are not edited; this section
 is the current statement.
 
+### Bumping after a release
 
 After a release ships, `main`'s workspace version is bumped to the next patch
 immediately, in the first ordinary post-release commit — never left at the
