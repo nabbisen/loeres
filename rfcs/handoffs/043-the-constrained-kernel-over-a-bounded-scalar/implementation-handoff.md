@@ -105,12 +105,83 @@ Its preconditions constrain your corpus:
 This was the architect's fourth error about this project's exact references. It was caught
 before you got it; §0.4's other two premises were not, so check them.
 
+## 1.1 A1 — sweep `FRAC_BITS` (added by architect review 097; do this before B)
+
+**A is accepted as a measurement. Its conclusion is not, and this is why.** The corpus
+holds `FRAC_BITS = 20` fixed (`xtask/src/checks/fixed_point_constrained.rs:57`) and every
+quantity in it is `O(1)`. Review 096 §0.1 had already measured **zero** disagreement below
+magnitude `20.48` at that precision, so the null result is what the scoping predicted — it
+confirms the safe regime is safe rather than testing reachability.
+
+Re-run unchanged except for that one constant and it fires: `Q32`-only evidence at
+`FRAC_BITS` 24, 26 and 28, and **seven `f64`-only** cases at 24 where the `Q32` solve fails
+to report infeasibility the `f64` solve reports. Your own predicate-level assertion at
+`:703` also fails at 26 and 28, refusing a claim of the architect's that was wrong.
+
+So: re-run the existing corpus **and** the existing adversarial batch at
+`FRAC_BITS ∈ {12, 16, 20, 24, 26, 28, 30}`, reporting per precision:
+
+1. evidence disagreements, **both directions**;
+2. the two effective factors — `scalar_from(19)/scalar_from(10)` and
+   `scalar_from(99)/scalar_from(100)`. RFC 043 Amendment 2 tabulates what they become; your
+   run should reproduce it independently rather than copy it;
+3. the **terminal violation distribution**. `report.max_constraint_violation()` is public and
+   this harness already calls it at `:353`; the cluster `Outcome` drops it at `:206-211`. Be
+   precise that it is a scale **proxy** — the predicate's operands are the inner sweeps'
+   snapshots, not the outer terminal violation — and say so where you report it;
+4. `Err(SolverError::Overflow)` as an **outcome class**, not a panic. At `FRAC_BITS` 26 and
+   28 `instance 27` returns `Overflow` and the harness aborts at `:384`. That is the type's
+   honest failure channel working; a measurement harness records it.
+
+**No new kernel API, no accessor, no deduplication.** This is the same harness with one
+constant swept, which is why it is an obligation on A and not a new slice.
+
+**If the sweep shows the `FRAC_BITS = 24` disagreements are trajectory artifacts** of the
+step-scaled tolerance (`Q::from_raw(4)` moves with `FRAC_BITS`) rather than operand
+saturation, **say so plainly**. The architect has not established the mechanism and you
+should not inherit that framing. Amendment 2's ruling survives either way on the structural
+ground alone.
+
+### Two reporting corrections
+
+- **A figure in request A is not reproducible from the committed code.** §2 reports cap hits
+  as "`27/32` and `11/16` in the two sub-batches". There is no per-sub-batch counter —
+  `q32_capped`/`f64_capped` are single accumulators incremented in both loops (`:495-496`,
+  `:526`, `:529`, `:575`, `:578`) and printed once against `{tried}` (`:598`). The run prints
+  `Q32 27/32, f64 27/32`. Drop `11/16` or add the counter that produces it.
+- **"No pinned threshold" is not quite true.** `:474-477` asserts
+  `converged_but_wrong.is_empty()` with the classifier `relative > 50.0 && q_deviation > 1e-4`
+  at `:425`. That is a threshold and a pass criterion. **Keep it** — relative with an
+  absolute guard is better than RFC 041 S2's absolute `1e-3`, which is why S4 exists — but
+  name it as a threshold rather than claiming none.
+
 ## 2. S2 — the predicate, by division (review request B, blocked on A)
 
 Only after A is accepted, because **what S2 is depends on what A found**: a correctness fix
 if the false positive is reachable, hardening if it is not. The owner is told which.
 
-Reformulate conditions 3 and 4 through `DivisibleScalar::checked_div`, in both kernels:
+**Division is necessary and not sufficient** (RFC 043 Amendment 2). It fixes the *operands*
+and does nothing for the *constants*: `scalar_from(99)` has already clamped before any
+division happens, and within `Q32`'s documented range the factors degrade to `1.0`/`1.0` —
+and at `FRAC_BITS = 27` to **1.6**, inside the band RFC 034 proved unsound. So B carries
+three things, not one:
+
+1. **Build each fractional constant by dividing `one()` down, never by multiplying up.**
+   `1.9 = one + (one − one/10)`, `0.99 = one − (one/10)/10`. Every intermediate stays below
+   `2`, and both land within one quantization step for every `FRAC_BITS` from 12 to 27.
+2. **Detect the one upward build that remains** — `10` — by monotonicity: an accumulation of
+   `one()` strictly increases in exact arithmetic, so a step that fails to increase the
+   accumulator is a clamp. `if !(next > acc) { return None; }`, needing only `PartialOrd`,
+   which `OrderedScalar` already carries. **Not a new tier and not a new trait method.**
+3. **When the constants cannot be built, the predicate yields `false`** — no evidence — the
+   same rule as a `checked_div` error below. For `Q32` that is `FRAC_BITS >= 28`, where `10`
+   is not representable and no construction recovers the factors.
+
+The architect verified (1)–(3) across nine precisions before writing them here: factors build
+correctly at 12–27 and are correctly refused at 28, 29 and 30. **Reproduce that yourself**;
+do not take the table on trust.
+
+Then reformulate conditions 3 and 4 through `DivisibleScalar::checked_div`, in both kernels:
 
 - widen the private helper's bound from `MetricScalar` to include `DivisibleScalar` — it is
   already present at every call site, so this is a one-line change, not an API change;
@@ -139,9 +210,12 @@ decides, not you**.
 No code. Write the answer into `crates/loeres/src/scalar.rs`'s tier documentation:
 
 - **no tier from `BaseScalar` to `AdvancedNumericalScalar` can report whether a result was
-  clamped**, and `BaseScalar`'s arithmetic has no failure channel by construction
-  (RFC 001). So "detect saturation and withhold the flag" is not an alternative to a
-  checked-arithmetic tier — it *is* that tier, in disguise;
+  clamped** in general, and `BaseScalar`'s arithmetic has no failure channel by construction
+  (RFC 001);
+- **but that is false for a construction known to be monotonic**, which is the only case the
+  kernel needs: ordering detects the clamp (§2 item 2), using a bound already present. So
+  "detect saturation and withhold the flag" is not necessarily a tier in disguise, and S3
+  should say so with the mechanism rather than only the argument;
 - S2 removes the need **at this site** and does **not** settle the question;
 - what evidence would settle it: a kernel whose correctness needs an overflow signal that
   no reformulation can avoid.

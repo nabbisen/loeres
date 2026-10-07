@@ -38,6 +38,86 @@ The architect wrote §3.1 against a remembered premise — "`exact_optimum` is a
 reference" — without re-reading the file. That is the fourth error about this project's
 exact references, and the reason RFC 043's handoff §0.4 exists.
 
+## 0.2 Amendment 2 (2026-10-08)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, on architect review 097
+(S1's result). Same Status-line rule as Amendment 1.
+
+**§2's one-directionality claim is wrong outside `FRAC_BITS = 20`, and §2 framed the defect
+as a property of the data when it is also a property of the precision.** S1 measured the
+corpus at the committed `FRAC_BITS = 20` only, which review 096 §0.1 had already shown to be
+inside the regime where no disagreement can occur. Re-run at finer precisions, S1's own
+corpus and adversarial batch disagree in **both** directions on real solves — `Q32`-only
+evidence (§2's false positive reaching a caller) at `FRAC_BITS` 24, 26 and 28, and seven
+**`f64`-only** cases at 24, where the `Q32` solve fails to report infeasibility the `f64`
+solve reports. §6's "never certifies a diverging problem as converged" is retracted at those
+precisions. The mechanism per direction is **not** established and A1 below owes it.
+
+### The structural finding
+
+`scalar_from(n)` builds `n` by repeated addition of `one()` and saturates like everything
+else, so **within `Q32`'s own documented range `1 <= FRAC_BITS <= 30`
+(`crates/loeres/src/scalar/fixed_point.rs:7-12`) RFC 034 Amendment 1's factors are not
+representable**:
+
+| `FRAC_BITS` | max representable | effective condition-3 factor | effective condition-4 factor |
+| ---: | ---: | ---: | ---: |
+| ≤ 24 | ≥ 128 | 1.9 — as chosen | 0.99 — as chosen |
+| 25, 26 | 64, 32 | 1.9 | **1.0** |
+| 27 | 16 | **1.6** | **1.0** |
+| 28, 29, 30 | 8, 4, 2 | **1.0** | **1.0** |
+
+The `FRAC_BITS = 27` row matters most: `crates/loeres-device/src/solve/constrained.rs:480-486`
+records that the factor *"was 1.5 in the original RFC 034 and that was unsound; do not
+'tidy' it either way"*. At `FRAC_BITS = 27` the predicate applies **1.6**, inside the band
+RFC 034 proved unsound, with that comment sitting directly above the code that does it. No
+precondition is violated and no adversarial data is needed.
+
+### What this does to §3.2's remedy
+
+**Reformulating by `checked_div` is necessary and not sufficient.** Division fixes the
+*operands*; it does nothing for the *constants*, because `scalar_from(99)` has already
+clamped before any division happens. §3.2 is therefore amended with a construction
+discipline, verified across nine precisions before being written here:
+
+1. **Build a fractional constant by dividing `one()` down, never by multiplying `one()`
+   up.** `1.9 = one + (one − one/10)` and `0.99 = one − (one/10)/10` keep every intermediate
+   below `2`, and both land within **one quantization step** of their exact value for every
+   `FRAC_BITS` from 12 to 27 — where the cross-multiplied form has already lost the factor
+   entirely by 25.
+2. **Detect the one upward build that remains.** An accumulation of `one()` is strictly
+   increasing in exact arithmetic, so *a step that fails to increase the accumulator is a
+   clamp*. That test needs only `PartialOrd`, which every `OrderedScalar` already carries:
+
+   ```rust
+   let next = acc.add(S::one());
+   if !(next > acc) { return None; }   // `n` is not representable in `S`
+   ```
+
+   This is not a new tier and not a new trait method. §2's option (c) said no tier can ask
+   whether a result was clamped; that is true in general, and **false for a construction
+   known to be monotonic**, which is the only case the kernel needs.
+3. **When the constants cannot be built, the predicate yields `false`** — no evidence — the
+   same rule §3.2 already sets for a `checked_div` error. For `Q32` that is `FRAC_BITS >= 28`,
+   where `10` itself is not representable and no construction can recover the factors.
+
+Verified: with (1) and (2), factors build correctly at `FRAC_BITS` 12–27 and are correctly
+**refused** at 28, 29 and 30.
+
+### §3.1 gains obligation A1
+
+Review 097 §5: re-run the existing corpus and adversarial batch at
+`FRAC_BITS ∈ {12, 16, 20, 24, 26, 28, 30}`, reporting per precision the evidence
+disagreements in both directions, the two effective factors, the terminal violation
+distribution, and `Overflow` returns as an outcome class rather than a panic. No new kernel
+API, no accessor, no deduplication — the same harness with one constant swept. **A is
+accepted as a measurement; its "unreached" conclusion is not, and A1 is what replaces it.**
+
+### Release position unchanged
+
+A1 is `#[cfg(test)]`-only and §5's table is unaffected. S2 remains a patch; S5 still carries
+the bump.
+
 ## 1. Summary
 
 RFC 041 shipped `Q32`, demonstrated the **box** kernel over it, and deferred one question:
