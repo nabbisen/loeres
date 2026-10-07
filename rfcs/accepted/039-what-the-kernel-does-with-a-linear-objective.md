@@ -7,6 +7,47 @@
 **Governing scoping.** Architect review 091 §1, authorised by the owner on 2026-10-07.
 Every figure below was measured by the architect on `36ed7b1`.
 
+## 0.1 Amendment 1 (2026-10-07)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only
+the design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires that
+form there; **the amendment must be named in the Status line when this RFC moves to
+`rfcs/done/`**, which `check-rfcs` enforces for `done/` only. Architect review 092 holds the
+evidence.
+
+**1. §2.1's premise was false: the existing exact reference cannot solve an LP at all.**
+It said RFC 037 §5.6's dense enumeration "already handles `Q = 0`, since a zero Hessian is a
+dense Hessian — so no new numerical code is needed". `exact_optimum` computes `Q⁻¹` to find
+the unconstrained centre (`exact.rs:83-90`, `solve(q_rows.clone(), e)?`), and `Q = 0` is
+singular, so the `?` propagates `None` for **every** LP, feasible or not. New numerical code
+was needed and the implementer wrote it — `exact_lp_optimum`, enumerating `k = n` active sets
+with `Gₛᵀλ = −c` and no `Qx` term, which is complete because a linear objective over a
+bounded polytope attains its optimum at a vertex and a vertex needs `n` independent active
+constraints.
+
+**2. §2.2's "both caveats" are three, and the third has a remedy, not just a warning.**
+A second non-convergence mechanism exists, found by the implementer's unopposed-direction
+case: the plain outer-iteration cap, with **zero** projection cap hits, when a fixed step must
+traverse a wide box. The architect then measured what §2.2 did not anticipate — that it is a
+step-scale matter, not a limitation:
+
+| `α` | iterations | outcome | `x₀` (optimum `1e6`) |
+|---:|---:|---|---:|
+| 0.3 | 50 000 | NotConverged | 15 000 |
+| 10 | 50 000 | NotConverged | 500 000 |
+| 100 | 10 001 | **Converged** | 1 000 000 |
+| 1 000 | 1 001 | **Converged** | 1 000 000 |
+| 100 000 | **11** | **Converged** | 1 000 000 |
+
+Zero projection cap hits throughout, and the answer exact. The iteration count is
+`≈ extent / (α·‖c‖)`.
+
+So §2.2 requires a **third** element, and §2.3 is reframed: for a linear objective there is no
+curvature to overshoot, so `α` has **no stability upper bound** — it governs distance
+travelled per iteration and should be scaled to the problem's extent.
+`suggested_step_scale`'s refusal at `U = 0` remains correct, because no *curvature-derived*
+step exists, but the actionable advice is the opposite of caution.
+
 ## 1. Summary
 
 The library tells an LP user to go away, and the measurement says it should not.
@@ -49,9 +90,12 @@ that would serve them.
 ### 2.1 S1 — characterise, against exact references
 
 An LP corpus, and the kernel measured on it. Not the oracle this scoping used — **exact
-references**: RFC 037 §5.6's dense active-set enumeration already handles `Q = 0`, since a
-zero Hessian is a dense Hessian, so the exact optimum is available for `n ≤ 8` with no new
-numerical code.
+references**. RFC 037 §5.6's dense enumeration **cannot** be reused: it computes `Q⁻¹` to
+locate the unconstrained centre, and `Q = 0` is singular, so it returns `None` for every LP
+(Amendment 1). A linear-objective reference is therefore new numerical code, and gets
+RFC 030's standard — cross-validated, not merely written. At a vertex of a bounded polytope
+stationarity is `Gₛᵀλ = −c` with no `Qx` term, and the optimum of a linear objective over a
+bounded polytope is attained at a vertex, so enumerating the `k = n` active sets is complete.
 
 The corpus must cover what §1's sample did not:
 
