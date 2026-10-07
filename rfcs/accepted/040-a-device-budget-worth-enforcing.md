@@ -1,6 +1,6 @@
 # RFC 040 - A Device Budget Worth Enforcing
 
-**Status.** Proposed (2026-10-07).
+**Status.** Accepted (design frozen 2026-10-07)
 
 **Author tier.** `architect`.
 
