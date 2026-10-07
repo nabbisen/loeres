@@ -17,6 +17,15 @@
 //! No kernel is read here. Strict convexity (`Q` symmetric positive definite) means any
 //! candidate with a feasible `x` and `λ ≥ 0` at a KKT point is the unique optimum, exactly
 //! as `conformance/reference.rs`'s module doc explains for the diagonal case.
+//!
+//! **`exact_optimum` does not handle `Q = 0`, despite RFC 039 §2.1's claim that it
+//! "already handles `Q = 0`, since a zero Hessian is a dense Hessian".** It inverts `Q` to
+//! find the unconstrained centre and the active-set coupling matrix (`apply_q_inv`), and a
+//! zero matrix is singular, not merely coupled: `solve` finds no pivot and `exact_optimum`
+//! returns `None` for every `Q = 0` problem, feasible or not. `exact_lp_optimum` below is
+//! the new numerical code RFC 039 said was not needed (RFC 039 implementation review
+//! request A §6 records the finding). It is cross-validated the same way: hand-solved
+//! fixtures with an independently-known answer, and the randomized optimality oracle.
 
 /// Absolute slack for feasibility and multiplier signs, matching
 /// `conformance/reference.rs`'s own tolerance for the same reasoning.
@@ -132,6 +141,77 @@ pub fn exact_optimum(problem: &DenseQp) -> Option<Vec<f64>> {
     None
 }
 
+/// The exact optimum of a dense **LP** (`Q = 0`): minimise `cᵀx` subject to
+/// `lower ≤ x ≤ upper`, `Ax ≤ b`. See the module doc for why `exact_optimum` cannot serve
+/// this case.
+///
+/// At a vertex of a bounded polytope, a linear objective's minimiser sits where exactly
+/// `n` linearly independent constraints are active (a degenerate vertex has more active
+/// constraints than `n`, but any `n` of them that are linearly independent still pin it,
+/// and this enumeration tries every `n`-subset of the row pool). For such a set `S`
+/// (`|S| = n`), stationarity of the Lagrangian `cᵀx + Σ λᵢ(Gᵢx − hᵢ)` requires
+/// `Gₛᵀλ = −c` — no `Qx` term, unlike `exact_optimum` — and the active constraints pin `x`
+/// directly: `Gₛx = hₛ`. A candidate is the global optimum when `λ ≥ 0` (dual feasibility)
+/// and `x` satisfies every row (primal feasibility): KKT is sufficient here because the
+/// feasible region is a polytope (convex) and the objective is affine (trivially convex).
+///
+/// Scope, row pool, feasibility slack and sign convention for `λ` match `exact_optimum`
+/// exactly; `n ≤ MAX_N`. Unlike `exact_optimum`, only `k = n` subsets are tried: with no
+/// `Q` to supply the missing degrees of freedom, a `k < n` active set does not pin a
+/// point, so trying one would be meaningless rather than merely redundant.
+pub fn exact_lp_optimum(problem: &DenseQp) -> Option<Vec<f64>> {
+    let n = problem.n;
+    if n == 0 || n > MAX_N {
+        return None;
+    }
+    let m = problem.b.len();
+
+    let mut g: Vec<Vec<f64>> = Vec::with_capacity(m + 2 * n);
+    let mut h: Vec<f64> = Vec::with_capacity(m + 2 * n);
+    for i in 0..m {
+        g.push(problem.a[i * n..(i + 1) * n].to_vec());
+        h.push(problem.b[i]);
+    }
+    for j in 0..n {
+        let mut up = vec![0.0; n];
+        up[j] = 1.0;
+        g.push(up);
+        h.push(problem.upper[j]);
+        let mut down = vec![0.0; n];
+        down[j] = -1.0;
+        g.push(down);
+        h.push(-problem.lower[j]);
+    }
+    let feasible = |x: &[f64]| {
+        g.iter()
+            .zip(&h)
+            .all(|(row, limit)| dot(row, x) <= limit + SLACK)
+    };
+    let neg_c: Vec<f64> = problem.c.iter().map(|v| -v).collect();
+
+    for set in subsets(g.len(), n) {
+        // Gₛᵀ: row `r`, column `col` is active row `set[col]`'s `r`-th coefficient.
+        let gt: Vec<Vec<f64>> = (0..n)
+            .map(|r| set.iter().map(|&i| g[i][r]).collect())
+            .collect();
+        let Some(lambda) = solve(gt, neg_c.clone()) else {
+            continue;
+        };
+        if lambda.iter().any(|&l| l < -SLACK) {
+            continue;
+        }
+        let gs: Vec<Vec<f64>> = set.iter().map(|&i| g[i].clone()).collect();
+        let hs: Vec<f64> = set.iter().map(|&i| h[i]).collect();
+        let Some(x) = solve(gs, hs) else {
+            continue;
+        };
+        if feasible(&x) {
+            return Some(x);
+        }
+    }
+    None
+}
+
 fn dot(a: &[f64], b: &[f64]) -> f64 {
     a.iter().zip(b).map(|(x, y)| x * y).sum()
 }
@@ -183,7 +263,7 @@ fn subsets(pool: usize, k: usize) -> Vec<Vec<usize>> {
 
 #[cfg(test)]
 mod tests {
-    use super::{DenseQp, MAX_N, dot, exact_optimum};
+    use super::{DenseQp, MAX_N, dot, exact_lp_optimum, exact_optimum};
 
     /// `minimise x² + y² - 2x - 4y` over `[0,10]²`: unconstrained optimum `(1, 2)`, inside
     /// the box.
@@ -526,6 +606,161 @@ mod tests {
             assert!(
                 worst > -1e-9,
                 "n={n}, m={m}, off={off}: the optimality oracle failed: {worst:e}"
+            );
+        }
+    }
+
+    // RFC 039: `exact_lp_optimum` (`Q = 0`).
+
+    fn lp(
+        n: usize,
+        c: Vec<f64>,
+        lower: Vec<f64>,
+        upper: Vec<f64>,
+        a: Vec<f64>,
+        b: Vec<f64>,
+    ) -> DenseQp {
+        DenseQp {
+            n,
+            q: vec![0.0; n * n],
+            c,
+            lower,
+            upper,
+            a,
+            b,
+        }
+    }
+
+    #[test]
+    fn a_single_vertex_lp_matches_the_hand_solved_answer() {
+        // minimise -(x0 + 0.5 x1) over x0 + x1 <= 1, box [0,1]^2: the unique vertex (1, 0).
+        let problem = lp(
+            2,
+            vec![-1.0, -0.5],
+            vec![0.0, 0.0],
+            vec![1.0, 1.0],
+            vec![1.0, 1.0],
+            vec![1.0],
+        );
+        let x = exact_lp_optimum(&problem).expect("feasible");
+        assert!(
+            (x[0] - 1.0).abs() < 1e-9 && (x[1] - 0.0).abs() < 1e-9,
+            "{x:?}"
+        );
+    }
+
+    #[test]
+    fn a_degenerate_vertex_with_more_active_rows_than_n_is_found() {
+        // minimise -(x0 + x1) over x0 + x1 <= 2, box [0,1]^2: at (1, 1) three rows are
+        // active (both box faces and the general row), one more than n = 2.
+        let problem = lp(
+            2,
+            vec![-1.0, -1.0],
+            vec![0.0, 0.0],
+            vec![1.0, 1.0],
+            vec![1.0, 1.0],
+            vec![2.0],
+        );
+        let x = exact_lp_optimum(&problem).expect("feasible");
+        assert!(
+            (x[0] - 1.0).abs() < 1e-9 && (x[1] - 1.0).abs() < 1e-9,
+            "{x:?}"
+        );
+    }
+
+    #[test]
+    fn a_tie_along_an_optimal_face_returns_a_point_on_the_face_not_a_fixed_vertex() {
+        // minimise -(x0 + x1) over x0 + x1 <= 1, box [0,1]^2: every point with
+        // x0 + x1 = 1, 0 <= x0, x1 <= 1 is optimal. The answer is non-unique, so the
+        // check is face membership, not equality to one vertex.
+        let problem = lp(
+            2,
+            vec![-1.0, -1.0],
+            vec![0.0, 0.0],
+            vec![1.0, 1.0],
+            vec![1.0, 1.0],
+            vec![1.0],
+        );
+        let x = exact_lp_optimum(&problem).expect("feasible");
+        assert!((x[0] + x[1] - 1.0).abs() < 1e-9, "{x:?}");
+        assert!(
+            (0.0..=1.0).contains(&x[0]) && (0.0..=1.0).contains(&x[1]),
+            "{x:?}"
+        );
+    }
+
+    #[test]
+    fn an_unopposed_direction_is_bounded_only_by_a_distant_box_face() {
+        // minimise -(x0 + x1) over x1 <= 0.5 (x0 unconstrained by any general row), box
+        // x0 in [0, 1e6], x1 in [0, 1]: the general row never opposes x0, so x0 only stops
+        // at its distant box face.
+        let problem = lp(
+            2,
+            vec![-1.0, -1.0],
+            vec![0.0, 0.0],
+            vec![1e6, 1.0],
+            vec![0.0, 1.0],
+            vec![0.5],
+        );
+        let x = exact_lp_optimum(&problem).expect("feasible");
+        assert!(
+            (x[0] - 1e6).abs() < 1e-6 && (x[1] - 0.5).abs() < 1e-9,
+            "{x:?}"
+        );
+    }
+
+    #[test]
+    fn an_infeasible_lp_returns_none_not_a_wrong_answer() {
+        // x0 <= 0 and x0 >= 1 simultaneously: no feasible point exists.
+        let problem = lp(1, vec![-1.0], vec![1.0], vec![0.0], vec![], vec![]);
+        assert!(exact_lp_optimum(&problem).is_none());
+    }
+
+    #[test]
+    fn exact_lp_optimum_passes_the_randomized_optimality_oracle_on_random_instances() {
+        // Independent-ish cross-check: `gradient` and `feasible` are shared with
+        // `exact_optimum`'s own oracle tests above, but the candidate under test comes
+        // from a different code path (no `Q` inversion at all).
+        let mut seed = lcg(0xA17E5_u64);
+        for instance in 0..20 {
+            let n = 4;
+            let m = 3;
+            let c: Vec<f64> = (0..n).map(|_| seed() * 2.0 - 1.0).collect();
+            let a: Vec<f64> = (0..m * n).map(|_| seed()).collect();
+            let b: Vec<f64> = (0..m).map(|_| seed() + 0.5).collect();
+            let problem = lp(n, c, vec![0.0; n], vec![1.0; n], a, b);
+            let Some(x) = exact_lp_optimum(&problem) else {
+                continue;
+            };
+            let grad = gradient(&problem.q, &problem.c, n, &x);
+            let bound = sampling_upper_bound(&problem);
+            let mut next = lcg(0xFEED_u64.wrapping_add(instance));
+            let mut worst = f64::INFINITY;
+            let mut feasible_count = 0usize;
+            for _ in 0..200_000 {
+                if feasible_count >= 2_000 {
+                    break;
+                }
+                let y: Vec<f64> = (0..n).map(|i| next() * bound[i]).collect();
+                if !feasible(&problem, &y) {
+                    continue;
+                }
+                feasible_count += 1;
+                let value: f64 = grad
+                    .iter()
+                    .zip(&y)
+                    .zip(&x)
+                    .map(|((g, yi), xi)| g * (yi - xi))
+                    .sum();
+                worst = worst.min(value);
+            }
+            assert!(
+                feasible_count >= 2_000,
+                "instance {instance}: only {feasible_count} feasible samples"
+            );
+            assert!(
+                worst > -1e-9,
+                "instance {instance}: the optimality oracle failed: {worst:e}"
             );
         }
     }

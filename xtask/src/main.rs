@@ -35,6 +35,7 @@ const IMPLEMENTED: &[&str] = &[
     "bench",
     "bench-baseline",
     "throughput",
+    "lp",
 ];
 
 fn main() -> ExitCode {
@@ -64,6 +65,7 @@ fn main() -> ExitCode {
         Some("bench") => checks::bench::run(),
         Some("bench-baseline") => checks::bench_baseline::run(),
         Some("throughput") => checks::throughput::run(),
+        Some("lp") => checks::lp::run(),
         Some(other) => {
             eprintln!("xtask: unknown command `{other}`");
             usage();

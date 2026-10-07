@@ -12,6 +12,7 @@ pub mod exact;
 pub mod examples;
 pub mod feature_matrix;
 pub mod link_audit;
+pub mod lp;
 pub mod no_std;
 pub mod panic_audit;
 pub mod public_api;
