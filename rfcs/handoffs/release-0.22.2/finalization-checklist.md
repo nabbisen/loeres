@@ -1,7 +1,7 @@
 # Release `0.22.2` — finalization checklist
 
-**Status:** blocked on one owner decision — the `README.md` headline form. Everything
-else is ready.
+**Status:** ready to cut. The headline question is settled; awaiting the owner's release
+authorization.
 **Authorized by.** Architect review 089 §7 recommends GO; architect review 088 accepted
 S6 and C1-C3; architect review 087 accepted S1-S5 and carries the headline forms;
 architect scoping 086 scoped the theme. The owner authorizes the release and chooses the
@@ -30,7 +30,29 @@ corrections from RFC 036 that `0.22.1` could not carry.
 **No public API changed.** No kernel change: `git diff` over `crates/` is empty for every
 RFC 037 slice.
 
-## 2. The one blocking decision
+## 2. The headline — settled 2026-10-07
+
+**Resolved by deletion.** The owner accepted the architect's final recommendation: the
+one-line claim at `README.md:5` is **removed**, not reworded.
+
+Three wordings were considered and all three failed. Form A asserted "high-throughput" on
+a figure that moved from `9.8×` to `15.2×` across runs, so it failed the first principle.
+Forms B and C both failed the second, by a test the architect applied to B and then missed
+in its own proposal: every clause of Form B already appeared on the first screen (lines 7,
+9 and 12), and two thirds of Form C did (line 7). The structural cause is that RFC 035
+§3.2 asks for *one* one-line summary, and line 7 already was one — so a second summary
+above it could only repeat or overclaim.
+
+Removing it leaves line 7 as the summary, which is accurate, specific and already written.
+Verified after the change: **no performance claim remains in `README.md` or in any of the
+five packaged crate READMEs**, so all four disclaimers are true exactly as written
+(`docs/src/architecture.md:20`, `docs/src/cluster-user-guide.md:248`,
+`crates/loeres-cluster/README.md:112`, `docs/src/threat-model.md:75` and `:161`) with no
+edit to any of them. The README is 103 lines, inside the gate's 100–200 band.
+
+RFC 037 exit criterion 7 is met.
+
+## 2.1 The forms that were rejected
 
 RFC 037 exit criterion 7 requires `README.md:5` either to stop asserting a performance
 claim the tree cannot support, or to support it with a stated environment. Forms A and B are
