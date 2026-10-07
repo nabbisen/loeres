@@ -92,7 +92,6 @@ const MAX_KEYWORD_LENGTH: usize = 20;
 /// unregistered inert feature fails it too.
 const RESERVED_INERT_FEATURES: &[(&str, &str)] = &[
     ("loeres", "libm"),
-    ("loeres", "fixed-point-hooks"),
     ("loeres-backend-static", "static-views"),
     ("loeres-backend-static", "diagnostic-snapshot"),
     ("loeres-backend-std", "serde"),

@@ -38,7 +38,7 @@ gates no code today: enabling it changes nothing.
 |---|---|---|
 | (none) | on | the `no_std` baseline contract surface |
 | `libm` | off | reserved; no effect yet |
-| `fixed-point-hooks` | off | reserved; no effect yet |
+| `fixed-point-hooks` | off | a saturating `Q`-format fixed-point scalar (`Q32`), with `FiniteScalar` satisfied vacuously (RFC 041) |
 
 See the workspace [README](https://github.com/nabbisen/loeres), the [architecture](https://github.com/nabbisen/loeres/blob/main/docs/src/architecture.md)
 chapter, and the [RFC index](https://github.com/nabbisen/loeres/blob/main/rfcs/README.md).

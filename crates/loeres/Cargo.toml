@@ -11,11 +11,12 @@ keywords   = ["optimization", "quadratic-program", "solver", "no-std", "math"]
 categories = ["science", "mathematics", "no-std"]
 
 [features]
-# Baseline is the implemented no_std / no-alloc contract surface. Optional
-# `libm` and fixed-point integration hooks remain reserved/inert.
+# Baseline is the implemented no_std / no-alloc contract surface. `libm`
+# remains reserved/inert; `fixed-point-hooks` gates the Q32 fixed-point
+# scalar baseline (RFC 041).
 default = []
 libm = []               # optional no_std math adapters for AdvancedNumericalScalar (RFC 001)
-fixed-point-hooks = []  # integration hooks for fixed-point scalars (RFC 001)
+fixed-point-hooks = []  # Q32: a saturating Q-format fixed-point BaseScalar (RFC 041)
 
 [dependencies]
 

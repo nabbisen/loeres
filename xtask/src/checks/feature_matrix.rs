@@ -12,6 +12,20 @@ pub fn run() -> bool {
             &["check", "-p", "loeres", "--no-default-features"],
         ),
         (
+            // RFC 041: fixed-point-hooks went live, so this crate must build
+            // under it in isolation, not only alongside every other feature
+            // under `--all-features`.
+            "core-fixed-point",
+            &[
+                "check",
+                "-p",
+                "loeres",
+                "--no-default-features",
+                "--features",
+                "fixed-point-hooks",
+            ],
+        ),
+        (
             "static-min",
             &[
                 "check",

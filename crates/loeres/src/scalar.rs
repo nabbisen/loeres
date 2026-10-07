@@ -21,7 +21,12 @@
 
 use crate::error::SolverError;
 
+#[cfg(feature = "fixed-point-hooks")]
+mod fixed_point;
 mod primitive;
+
+#[cfg(feature = "fixed-point-hooks")]
+pub use fixed_point::Q32;
 
 #[cfg(test)]
 mod tests;
