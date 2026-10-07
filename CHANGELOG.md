@@ -11,7 +11,7 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.22.1] — 2026-10-07 — Visitor-facing documentation and examples
+## [0.22.1] — 2026-10-07 — Visitor-facing documentation, and a package worth publishing
 
 **Release status:** unreleased
 
