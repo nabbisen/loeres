@@ -1,6 +1,6 @@
 # RFC 042 - The Batch Seam Carries What the Solve Found
 
-**Status.** Proposed (2026-10-07).
+**Status.** Accepted (design frozen 2026-10-07)
 
 **Author tier.** `architect`.
 
@@ -8,6 +8,39 @@
 option (a). Review 065 listed it as L10 under theme T6 and noted it is "a small API-shape
 question the owner already settled". Architect review 093 §7 and the ROADMAP record it as the
 one T6 item needing no consumer.
+
+## 0.1 Amendment 1 (2026-10-07)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only the
+design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires that form
+there; **the amendment must be named in the Status line when this RFC moves to `rfcs/done/`**,
+which `check-rfcs` enforces for `done/` only.
+
+**It is three fields, not two.** This RFC said "the two honest fields", inheriting the phrase
+from architect review 056, which settled the shape **before RFC 039 existed**. Reading the
+construction site shows what is actually discarded:
+
+```rust
+// crates/loeres-cluster/src/solve/constrained.rs:830
+Ok(record) => BatchItemOutcome::Solved {
+    solution: …,
+    report: record.report,
+},
+```
+
+The job holds the whole `ConstrainedSolveRecord` and takes only `.report`. Dropped:
+`max_constraint_violation`, `infeasibility_evidence`, **and `projection_cap_hits`**.
+
+The third is not optional. RFC 039 established that an LP — and a constrained solve generally —
+fails to converge for two distinct reasons, and that they are **"distinguishable by
+`projection_cap_hits`: nonzero for the former, zero for the latter"**. That sentence now ships
+in `TERMS_OF_USE.md`, both user guides and three published crate READMEs. A batch caller given
+the violation and the hint but not the cap-hit count **cannot apply the project's own published
+guidance**, which is a worse outcome than the gap this RFC set out to close.
+
+So §2.1 and the exit criteria carry all three, and review 056's settled option (a) is extended
+rather than contradicted: it chose to carry the honest fields across the seam, and RFC 039
+added one to the set of fields that are honest.
 
 ## 1. Summary
 
@@ -40,8 +73,13 @@ LP claim RFC 039 corrected.
 
 ### 2.1 The two honest fields cross the seam
 
-`BatchItemOutcome::Solved` carries the terminal constraint violation and the infeasibility
-evidence alongside the report, for items whose job produced them.
+`BatchItemOutcome::Solved` carries the terminal constraint violation, the infeasibility
+evidence, **and `projection_cap_hits`** alongside the report, for items whose job produced them
+(three fields, not two — Amendment 1).
+
+No trait change is needed. `ClusterJob::run_boxed` returns the `BatchItemOutcome` itself, so the
+job constructs it with the record in hand; `crates/loeres-cluster/src/solve/constrained.rs:830`
+is the one construction site that discards them.
 
 Shape per review 056's settled option (a). The fields must keep the character they have in
 `ConstrainedSolveRecord`, which RFC 034 Amendment 2 was explicit about:
@@ -103,8 +141,10 @@ incidental.
 
 ## 5. Exit criteria
 
-1. `BatchItemOutcome::Solved` carries the terminal violation and the infeasibility evidence
-   for items whose job produced them.
+1. `BatchItemOutcome::Solved` carries the terminal violation, the infeasibility evidence and
+   `projection_cap_hits` for items whose job produced them.
+1a. A batch caller can distinguish RFC 039's two non-convergence mechanisms from the outcome
+   alone, which requires the cap-hit count.
 2. An item with no linear inequalities is distinguishable from one whose constraints were
    satisfied.
 3. `infeasibility_evidence` carries RFC 034 Amendment 2's warning at the seam, unweakened.

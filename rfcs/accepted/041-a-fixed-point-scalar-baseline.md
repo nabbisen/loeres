@@ -1,11 +1,39 @@
 # RFC 041 - A Fixed-Point Scalar Baseline
 
-**Status.** Proposed (2026-10-07).
+**Status.** Accepted (design frozen 2026-10-07)
 
 **Author tier.** `architect`.
 
 **Governing scoping.** Architect review 094, authorised by the owner on 2026-10-07. Every
 figure below was measured by the architect on the `0.22.4` development tree.
+
+## 0.1 Amendment 1 (2026-10-07)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only the
+design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires that form
+there; **the amendment must be named in the Status line when this RFC moves to `rfcs/done/`**,
+which `check-rfcs` enforces for `done/` only.
+
+**The vacuity of `FiniteScalar` is not a new finding, and this RFC overstated it.**
+`FiniteScalar`'s own doc comment already says so:
+
+> Tier 3 — boundary validation for non-finite values. Implemented for any scalar used by public
+> solve entrypoints that reject non-finite inputs. **For fixed-point / bounded integer-like
+> scalars these may be trivial constants (`true`, `false`, `false`).**
+
+RFC 001 wrote that deliberately. §1 below presented it as "the hard problem", which
+misdescribes what is new.
+
+**What is genuinely undocumented is the consequence.** The trait says the predicates are
+trivial; nothing says what that costs at the call sites. Measured: **43 `is_finite()` call sites
+across 12 files** — 13 in the cluster constrained kernel, 11 in the device one — each of which
+is a no-op for this family, leaving `BaseScalar`'s failure-channel-free arithmetic with no
+overflow detection at all.
+
+So the theme's shape is unchanged and the obligation in §3.1 stands, but its justification is
+the *consequence*, not the vacuity. State it that way in the type's documentation: not "these
+predicates are trivial", which RFC 001 already says, but "the kernels' finiteness guards do not
+protect this family, and here is what that means".
 
 ## 1. Summary
 
