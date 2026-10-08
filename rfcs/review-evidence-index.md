@@ -180,6 +180,7 @@ separate, reviewed pass.
 | `096` | 2026-10-08 | theme the constrained kernel over q32 scoping | `52e6f9084f6fdf3135c3b606ef0a8527593c2b02f8db4687770b34253c3307c9` | `architect` | ✓ |
 | `097` | 2026-10-08 | rfc043 a architect review | `6102842758c6684c564aa46f4ee054acdf65fad712929a3e9cb42ca652cc1ad6` | `architect` | ✓ |
 | `098` | 2026-10-08 | rfc043 a1 architect review | `63e29aa4845e922f0d74d59899783177ddb9b7bf07f86961d0ed279043d692f4` | `architect` | ✓ |
+| `099` | 2026-10-08 | rfc043 b and a2 architect review | `aaa7f1ac06aa446586e9ab14be071cd285ba446c94f6927ca766932fb096f2fb` | `architect` | ✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |

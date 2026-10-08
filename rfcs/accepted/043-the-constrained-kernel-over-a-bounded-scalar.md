@@ -168,6 +168,75 @@ parameters, express the threshold in steps, report the figures A1's prose omitte
 the tolerance window. **A2 runs alongside B, not before it:** decision 1 is settled and the
 correctness fix does not wait on harness hygiene.
 
+## 0.4 Amendment 4 (2026-10-08)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, on architect review 099 (B's
+and A2's result). Same Status-line rule as Amendments 1-3.
+
+**§3.2's named risk — the `f64` last bit — did not materialise, and the reason is exact.**
+The divide-down construction reproduces both literals **bit-for-bit** in `f64`:
+`one + (one − one/10)` is `0x1.e666666666666p+0`, which *is* `1.9`, and
+`one − (one/10)/10` is `0x1.fae147ae147aep-1`, which *is* `0.99`. So the `f64` path compares
+the same values against the same constants, and the pinned conformance corpus being identical
+line for line (`infeasibility_evidence` set on the same 2 of 17 paths) is explained rather
+than merely observed.
+
+**Amendment 2's illustrative snippet is wrong.** `if !(next > acc) { return None; }` trips
+`clippy::neg_cmp_op_on_partial_ord` under `-D warnings`, because for a partially ordered type
+`!(a > b)` and `a <= b` differ on incomparable operands. The correct form is
+`if next <= acc { return None; }`. Read Amendment 2 item 2 with that substitution.
+
+### What S2 traded, with the numbers
+
+Measured on the genuinely-infeasible adversarial batch (16 instances), all 30 precisions:
+
+| | fabricated evidence | missed evidence |
+| --- | --- | --- |
+| before S2 | 1/16 at `FRAC_BITS` 24, 26, 28, 30 | 7/16 at `FRAC_BITS` 24 only |
+| after S2 | 1/16 at `FRAC_BITS` 4, 5 | 4 → **15 of 16** across `FRAC_BITS` **21–30** |
+
+S2 removed the fabricated diagnosis from every precision a caller would plausibly choose, and
+**widened the loss of true positives from one precision to ten, and from 7/16 to 15/16**.
+**This RFC accepts that trade and records it as one:** a fabricated "there is evidence this
+problem is infeasible" misleads a caller about their problem, while a missing hint
+under-informs them about the solver, and `infeasibility_evidence` is a hint and not a status.
+The onset is `FRAC_BITS = 21`, **not 27**, and the reverse direction is **not** absent — 4 and
+5 fabricate one instance each.
+
+### The usable band
+
+`FRAC_BITS 7..=20` is the only part of the documented `1..=30` range where the constrained
+kernel over `Q32` disagrees with an `f64` solve in **neither** direction on this corpus.
+Outside it: `1..=6` fails in both directions and hits `InvalidInput` from constraint rows
+quantizing to all-zero; `21..=30` misses evidence; `25..=30` loses the factors themselves;
+`29..=30` adds converged-but-wrong and 99 of 300 overflows.
+
+**A caller who picks `FRAC_BITS = 24`, well inside the documented range and a reasonable
+choice for data in `[-1,1]`, silently loses infeasibility detection on 15 of 16 genuinely
+infeasible problems, and nothing tells them.** Closing that is §3.6 below.
+
+### The onset brackets `max|λ|`
+
+Missed evidence begins exactly where the representable magnitude halves from `2048` to
+`1024`, which locates the saturating operand in **`(1024, 2048]`** — the `max|λ|` figure S1
+reported as unobtainable through the public API. The onset precision is an indirect
+measurement of it, free and already in the committed output. **The mechanism is not
+established**: a step from `0/16` to `4/16` between adjacent precisions is sharper than
+simple two-operand saturation predicts, so something about the `max|λ|` distribution across
+the four sweep caps is also in play. §3.6 item 2 is the cheap test.
+
+## 3.6 S6 — document the usable band (added, this release)
+
+1. State the measured band in `Q32`'s module doc, with the directions and counts above, and
+   say plainly that it is one corpus at `n = 4` with `O(1)` data, not a theorem.
+2. Group the existing figures by the four sweep caps at `FRAC_BITS 19..=22`. If the onset
+   tracks the cap, `max|λ|` scales with sweeps and the step is the cap distribution rather
+   than a single operand crossing the bound. One line of grouping, no new measurement.
+3. No new kernel API, no accessor, no deduplication.
+
+S6 is documentation and a regrouping of collected figures: it does not move the release's
+position, and §5's table is unaffected.
+
 ## 1. Summary
 
 RFC 041 shipped `Q32`, demonstrated the **box** kernel over it, and deferred one question:

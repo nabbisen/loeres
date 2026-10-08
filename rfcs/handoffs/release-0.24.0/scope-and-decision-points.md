@@ -14,6 +14,8 @@
 | C | RFC 043 S3 | the checked-arithmetic-tier question answered in writing | no |
 | D | RFC 043 S4 | the coarser-precision `Q32` measurement, threshold in **steps** | no |
 | E | RFC 043 S5 | inherent `checked_add`/`checked_sub`/`checked_mul` on `Q32` | **yes** |
+| F | RFC 043 S6 | the measured usable `FRAC_BITS` band documented (review 099 §7) | no |
+| G | RFC 044 | a const assert closing `FRAC_BITS` 31–63, where `one()` is negative or zero | no — **awaits the owner's acceptance** |
 
 Contract: `rfcs/accepted/043-the-constrained-kernel-over-a-bounded-scalar.md`, **including
 Amendment 1**. Handoff:
@@ -36,7 +38,8 @@ RFC 043 absorbs three of the five items
 semver — that and nothing more. `docs/src/development.md`'s "What each position means"
 records why: a minor bump is **not** a signal that a caller must change code, and this
 project shipped `0.20.0` as a minor whose changelog says "Runtime crate APIs are
-unchanged". A–D break nothing and add nothing callable.
+unchanged". A–D, F and G break nothing and add nothing callable; F is documentation and
+G is a compile-time assert, so both ride the release E sets.
 
 **E's slice performs the bump**, as the first slice to move the release's position, under
 `docs/src/development.md`'s "A slice that moves the release's position bumps the version

@@ -205,7 +205,7 @@ No new kernel API, no accessor, no deduplication — unchanged from §1.1.
   item 4's figures. Three nonzero, precision-dependent counts were in the printed output and
   not in the prose.
 
-## 2. S2 — the predicate, by division (review request B — **released**, architect review 098)
+## 2. S2 — the predicate, by division (review request B — **accepted**, architect review 099)
 
 Only after A is accepted, because **what S2 is depends on what A found**: a correctness fix
 if the false positive is reachable, hardening if it is not. The owner is told which.
@@ -254,6 +254,51 @@ a finding, not a merge conflict to resolve.
 Report the device-profile effect through RFC 037's harness. If the division is not
 negligible, the fallback is the multiplicand form plus documentation, and **the architect
 decides, not you**.
+
+## 2.1 Before the cut: correct the CHANGELOG entry (architect review 099 §1)
+
+`[0.23.1]`'s S2 entry says missed evidence occurs *"at `FRAC_BITS >= 27` … on up to 15 of 16
+instances, **never the reverse**"*. The committed harness's own output says otherwise:
+
+| `FRAC_BITS` | fabricated | missed |
+| ---: | ---: | ---: |
+| 1–3 | 0 | 15 |
+| **4, 5** | **1** | 0 |
+| 6 | 0 | 2 |
+| **7–20** | **0** | **0** |
+| 21 | 0 | 4 |
+| 22, 23 | 0 | 7 |
+| **24–30** | 0 | **15** |
+
+Two corrections: the onset is **21**, not 27, and `15/16` is reached at **24**; and
+**"never the reverse" is false** — 4 and 5 fabricate one instance each. Replace the sentence
+with the band (`7..=20` clean) and the two onsets. **The CHANGELOG is never edited once
+released**, which is exactly why this is fixed now, while `[0.23.1]` is still unreleased.
+
+State the shape as the trade it is, per Amendment 4: S2 removed the fabricated diagnosis from
+every precision a caller would plausibly choose **and** widened the missed-evidence loss from
+one precision to ten, 7/16 to 15/16. That trade is accepted; it is not a footnote.
+
+## 2.2 S6 — document the usable band (new, this release)
+
+RFC 043 §3.6. Two items, both documentation or regrouping:
+
+1. **State the measured band in `Q32`'s module doc** — the type documents
+   `1 <= FRAC_BITS <= 30`, and the constrained kernel over it agrees with an `f64` solve in
+   neither direction outside `7..=20` on this corpus. Give the directions and counts from the
+   table above. **Say plainly that it is one corpus** at `n = 4`, `m ∈ {1,2,3}`, `O(1)` data —
+   not a theorem. A caller picking `FRAC_BITS = 24` inside the documented range currently
+   loses infeasibility detection on 15 of 16 genuinely infeasible problems with no warning;
+   that sentence is the deliverable.
+2. **Group the figures you already collect by the four sweep caps, at `FRAC_BITS 19..=22`.**
+   The onset is a sharp step (`0, 4, 7, 7, 15`), which is sharper than two-operand saturation
+   alone predicts. If the onset tracks the cap, `max|λ|` scales with sweeps and the step is
+   the cap distribution rather than one operand crossing the bound. **No new measurement and
+   no accessor** — a grouping of what the harness already prints.
+
+Note for the record: the onset at `FRAC_BITS = 21` is where the representable magnitude halves
+from `2048` to `1024`, which brackets `max|λ|` to `(1024, 2048]` — the figure S1 reported as
+unobtainable. The sweep measured it indirectly, for free.
 
 ## 3. S3 — the tier question, written (review request C)
 

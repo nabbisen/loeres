@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [044](proposed/044-a-frac-bits-a-caller-cannot-get-wrong.md) | A `FRAC_BITS` A Caller Cannot Get Wrong | Proposed | `Q32<const FRAC_BITS: u32>` carries no bound. Its module doc states `1 <= FRAC_BITS <= 30` and says outright that nothing enforces it, so `Q32<31>` has `one() == -1.0` and `one() > zero() == false`, and `Q32<32>` has `one() == zero() == 0` — no multiplicative identity, `build_monotonic` failing at the first step, every tolerance comparison degenerate, and every `is_finite()` guard still `true`. `Q32<64>` is **already** a compile error by accident of `1i64 << FRAC_BITS`, so the boundary is inconsistent: 64 and above caught, **31 to 63 silent**. Closes it with a const assert forced at all four constructors — `panic-audit` already exempts `assert!` for exactly this, so it is consistency rather than a new mechanism. Explicitly does **not** assert RFC 043 S6's measured `7..=20` usable band: that is a property of one corpus, not a type invariant. Architect reviews 097 §6 and 099 §4 scope it. |
 
 ## Accepted RFCs
 
