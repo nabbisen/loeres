@@ -787,48 +787,94 @@ fn a2_tolerance_coupling_is_isolated_from_frac_bits() {
 /// evidence `max|λ|` scales with sweep count and the step is the cap
 /// distribution, not a single operand crossing a fixed bound (Amendment 4's
 /// own open question).
+/// `i32::MAX / 2^FRAC_BITS`'s order of magnitude: the largest real value
+/// `Q32<FRAC_BITS>` represents, rounded to the enclosing power of two
+/// (`i32::MAX ≈ 2^31`, so this is `2^(31 - FRAC_BITS)`).
+fn representable(frac_bits: u32) -> i64 {
+    1i64 << (31 - frac_bits)
+}
+
 #[test]
 fn s6_missed_evidence_onset_grouped_by_sweep_cap() {
     let cases = adversarial_infeasible_cases();
     let step_scale = 0.4;
+    const RANGE: [u32; 7] = [18, 19, 20, 21, 22, 23, 24];
 
     eprintln!(
-        "RFC 043 S6 item 2 — missed evidence (f64-only count), grouped by sweep cap, FRAC_BITS 19..=22:"
+        "RFC 043 S6 item 2 / G1 item 3 — missed evidence (f64-only count), grouped by sweep cap, FRAC_BITS 18..=24:"
     );
     eprintln!(
         "  FRAC_BITS | cap 65 | cap 100 | cap 300 | cap 1000  (each out of 4, one per angle)"
     );
 
+    let mut counts = [[0usize; 4]; RANGE.len()];
+
     macro_rules! group_one {
-        ($frac_bits:literal) => {{
+        ($frac_bits:literal, $row:expr) => {{
             let tolerance = Q32::<$frac_bits>::from_raw(4);
-            let counts: Vec<usize> = ADVERSARIAL_CAPS
-                .iter()
-                .map(|&cap| {
-                    let group: Vec<Case> = cases
-                        .iter()
-                        .filter(|case| case.cap == cap)
-                        .map(|case| Case {
-                            instance: case.instance.clone(),
-                            cap: case.cap,
-                        })
-                        .collect();
+            for (cap_idx, &cap) in ADVERSARIAL_CAPS.iter().enumerate() {
+                let group: Vec<Case> = cases
+                    .iter()
+                    .filter(|case| case.cap == cap)
+                    .map(|case| Case {
+                        instance: case.instance.clone(),
+                        cap: case.cap,
+                    })
+                    .collect();
+                counts[$row][cap_idx] =
                     measure_cases_at::<$frac_bits>(&group, step_scale, tolerance)
                         .evidence_f64_only
-                        .len()
-                })
-                .collect();
+                        .len();
+            }
             eprintln!(
                 "  {:>9} | {:>6} | {:>7} | {:>7} | {:>8}  [measured]",
-                $frac_bits, counts[0], counts[1], counts[2], counts[3]
+                $frac_bits, counts[$row][0], counts[$row][1], counts[$row][2], counts[$row][3]
             );
         }};
     }
 
-    group_one!(19);
-    group_one!(20);
-    group_one!(21);
-    group_one!(22);
+    group_one!(18, 0);
+    group_one!(19, 1);
+    group_one!(20, 2);
+    group_one!(21, 3);
+    group_one!(22, 4);
+    group_one!(23, 5);
+    group_one!(24, 6);
+
+    eprintln!(
+        "RFC 043 S6 item 2 / G1 item 3 — per-cap bracket, IF (named assumption, not established) the \
+         onset is max|lambda| crossing Q32's representable bound at a fixed FRAC_BITS:"
+    );
+    for (cap_idx, &cap) in ADVERSARIAL_CAPS.iter().enumerate() {
+        match (0..RANGE.len()).find(|&row| counts[row][cap_idx] > 0) {
+            Some(0) => {
+                eprintln!(
+                    "  cap {cap:>4}: already misses at FRAC_BITS={} (max {}) — no clean precision \
+                     in 18..=24 to bracket against  [measured]",
+                    RANGE[0],
+                    representable(RANGE[0])
+                );
+            }
+            Some(row) => {
+                let clean_frac_bits = RANGE[row - 1];
+                let miss_frac_bits = RANGE[row];
+                let clean_bound = representable(clean_frac_bits);
+                let miss_bound = representable(miss_frac_bits);
+                eprintln!(
+                    "  cap {cap:>4}: clean at FRAC_BITS={clean_frac_bits} (max {clean_bound}), first \
+                     misses at FRAC_BITS={miss_frac_bits} (max {miss_bound}) => IF the assumption \
+                     holds, max|lambda| for this cap is in ({miss_bound}, {clean_bound}]  [measured]"
+                );
+            }
+            None => {
+                eprintln!(
+                    "  cap {cap:>4}: clean throughout FRAC_BITS 18..=24 (max >= {}) — one-sided \
+                     bound only, no bracket in this range  [measured]",
+                    representable(*RANGE.last().expect("RANGE is non-empty"))
+                );
+            }
+        }
+    }
 }
 
 /// Handoff §0.2: confirm the **device** kernel actually compiles and runs

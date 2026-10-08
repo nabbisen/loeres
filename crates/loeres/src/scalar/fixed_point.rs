@@ -98,11 +98,15 @@
 //!
 //! | `FRAC_BITS` | what disagrees |
 //! |---|---|
-//! | `1..=6` | both directions — constraint rows quantize to all-zero and the solve fails `InvalidInput` outright |
+//! | `1..=3` | missed evidence only — for some instances at the coarse end, constraint rows quantize to all-zero and the solve reports `InvalidInput` instead of a comparison at all |
+//! | `4, 5` | fabricated evidence only — one instance each |
+//! | `6` | missed evidence only |
 //! | `7..=20` | **neither direction (the usable band)** |
-//! | `21..=23` | missed evidence only, rising `0 → 4 → 7` of `16` |
+//! | `21..=23` | missed evidence only, `4 → 7 → 7` of `16` |
 //! | `24..=30` | missed evidence, `15` of `16` |
-//! | `4, 5` (inside the clean-looking low end) | one fabricated instance each — the onset is not a clean step |
+//!
+//! No single precision in `1..=6` disagrees in both directions — the region as a whole
+//! touches both, but `1..=3` and `6` only ever miss, and `4, 5` only ever fabricate.
 //!
 //! A caller who picks `FRAC_BITS = 24` — well inside the type's documented
 //! range, and a reasonable choice for data in `[-1, 1]` — silently loses
@@ -140,7 +144,7 @@ impl<const FRAC_BITS: u32> Q32<FRAC_BITS> {
     /// closes the silent window this project found between `31` and `63`,
     /// where `one()` is negative or zero and every arithmetic invariant
     /// quietly fails without it.
-    pub const VALID_FRAC_BITS: () = assert!(
+    const VALID_FRAC_BITS: () = assert!(
         FRAC_BITS >= 1 && FRAC_BITS <= 30,
         "Q32's FRAC_BITS must satisfy 1 <= FRAC_BITS <= 30"
     );
