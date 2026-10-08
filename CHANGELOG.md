@@ -55,6 +55,58 @@ fixes the predicate's form.
   §3, architect review 097 ruled against "hardening" on exactly this evidence, now reproduced
   directly rather than taken on the architect's word.
 
+**RFC 043 S2 (+ A2) — the predicate, reformulated by division.** `has_infeasibility_evidence`
+(duplicated character-for-character in `crates/loeres-device/src/solve/constrained.rs` and
+`crates/loeres-cluster/src/solve/constrained.rs`) no longer cross-multiplies. Both copies change
+in step, per RFC 043 Amendment 2's three-part construction discipline:
+
+- The two factors (`1.9`, `0.99`) are built by dividing `one()` down
+  (`1.9 = one + (one − one/10)`, `0.99 = one − (one/10)/10`, new `infeasibility_factors`),
+  never by multiplying a large integer up — the former `scalar_from(19)`/`scalar_from(99)`
+  clamped before any arithmetic involving them ran, within `Q32`'s own documented range.
+- The one upward build that remains — `10`, needed as a divisor — is checked for the clamp a
+  monotonic accumulation of `one()` would never produce (`build_monotonic`, widened from the
+  removed `scalar_from`): a step that fails to increase the accumulator means `n` is not
+  representable, and the predicate returns `false` rather than building on a wrong value.
+- The ratio itself goes through `DivisibleScalar::checked_div`, already present in the private
+  helper's call sites; an `Err` — `midpoint == 0` or an unrepresentable quotient — yields
+  `false`, the same "cannot tell, so no evidence" rule a failed constant build uses. The
+  private helper's bound widens from `MetricScalar` to `MetricScalar + DivisibleScalar`
+  (already present at every call site), a one-line change, not an API change.
+
+Measured, not assumed: the full `conformance` corpus (both kernels, every pinned fixture) and
+the RFC 037 `bench-baseline` device-profile harness both report figures **identical** to the
+pre-change tree (`infeasibility_evidence` set on the same `2` of `17` constrained conformance
+paths; the same `11` pinned counted-work points) — no `f64` verdict moved on any pinned case,
+and the division's device-profile cost is within the existing baseline's tolerance, so no
+fallback to the multiplicand form is needed.
+
+**The fix changes which direction the predicate can be wrong in, and A2's full `1..=30` sweep
+(re-run against this fixed predicate) measures the new shape.** The specific disagreement A1
+found at `FRAC_BITS = 24` — evidence in both directions on the genuinely-infeasible adversarial
+batch — does not reproduce under the division form, at any swept precision: the predicate never
+manufactures evidence from a saturated comparison any more. What remains, by design, is a
+one-directional loss of recall at the coarse end: `Q32`'s *inner* multiplier and violation
+snapshots themselves saturate at the same precisions the factors degrade in, so the ratio the
+predicate computes reads `≈ 1.0` (saturated/saturated) rather than the true, larger value, and a
+true positive the predicate cannot represent as such is reported as no evidence rather than a
+fabricated yes — at `FRAC_BITS ≥ 27` on the genuinely-infeasible batch, `f64` finds evidence
+`Q32` now misses on up to `15` of `16` instances, never the reverse. No new kernel API, no
+accessor — closing this gap further is out of scope here, same as A1.
+
+A2's four other measurement-hygiene items on the same harness: the sweep now covers every
+`FRAC_BITS` from `1` to `30`, not seven chosen points (`25` and `27` — the row where the
+condition-3 factor was `1.6` under the old form — were the ones the seven-point sweep skipped);
+`Q32`'s tolerance and `FRAC_BITS` are no longer coupled as one swept parameter — reproduced
+independently under a fixed `1e-3` tolerance, the feasible-sliver batch's converged-status
+mismatches flatten to a constant `8` across `FRAC_BITS 16`–`28` (not at `30`, an honest
+addendum to the architect's claim rather than a restatement of it); the `converged_but_wrong`
+classifier's absolute guard is now expressed in quantization steps (`> 1000` steps, chosen with
+six orders of magnitude of headroom on both sides of the measured data) rather than a
+precision-independent constant; per-instance lists are capped at the worst ten, sorted by
+deviation; and the module doc now records that no single absolute tolerance is representable
+across the documented range (`2.44e-4` per step at `FRAC_BITS = 12` to `2` at `30`).
+
 ## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

@@ -49,6 +49,21 @@
 //! not treat it as a bug in itself. Any *other* error is still a hard
 //! failure of this harness, since nothing else is expected.
 //!
+//! **A2 (review 098 / RFC 043 Amendment 3): five measurement-hygiene
+//! corrections to A1, alongside S2, not blocking it.** The sweep now covers
+//! every `FRAC_BITS` from `1` to `30`, not seven chosen points; `Q32`'s
+//! tolerance and `FRAC_BITS` are no longer swept as one coupled parameter
+//! (`a2_tolerance_coupling_is_isolated_from_frac_bits` reruns a subset with
+//! tolerance fixed in absolute terms); the `converged_but_wrong` classifier's
+//! absolute guard is expressed in quantization steps, not a precision-
+//! independent constant; per-instance lists are capped at the worst ten,
+//! sorted by deviation; and no single absolute tolerance is representable
+//! across the documented range — nothing finer than `Q32<12>`'s
+//! `2.44e-4`-per-step floor, nothing coarser than `Q32<30>`'s `2`-per-step
+//! ceiling. A tolerance that rounds to zero at a given `FRAC_BITS` is
+//! correctly rejected by the kernel as `InvalidInput`, not silently treated
+//! as exact.
+//!
 //! **Primary kernel: cluster (dynamic).** The predicate and its helpers are
 //! duplicated character-for-character between the device and cluster
 //! kernels; this module measures the cluster copy on the full corpus and
@@ -373,29 +388,66 @@ fn min_max_mean(values: &[f64]) -> (f64, f64, f64) {
     (min, max, mean)
 }
 
+/// `2^-F`, the magnitude of one `Q32<F>` quantization step.
+fn quantization_step<const F: u32>() -> f64 {
+    2f64.powi(-(F as i32))
+}
+
+/// How far past ordinary quantization noise a converged-but-wrong deviation
+/// must sit before this harness calls it wrong rather than coarse (RFC 043
+/// Amendment 3 / handoff §1.2 item 3). Chosen empirically, not fitted: across
+/// every precision and batch this harness measures, the largest deviation
+/// that is ordinary quantization is `274` steps (the adversarial feasible
+/// sliver's instance `7` at `FRAC_BITS = 20`), and the smallest deviation this
+/// harness considers genuinely wrong is `~1.5e9` steps (`FRAC_BITS = 30`'s
+/// random corpus) — six orders of magnitude of headroom either side of
+/// `1000`, so this is a conservative cut point, not a tight fit to the data.
+const CONVERGED_BUT_WRONG_STEP_THRESHOLD: f64 = 1_000.0;
+
 /// Per-batch, per-precision measurement. One of these is produced per
-/// `(batch, FRAC_BITS)` pair.
+/// `(batch, FRAC_BITS, tolerance regime)` triple.
 #[derive(Default)]
 struct BatchStats {
     total: usize,
     q32_overflow: usize,
     f64_overflow: usize,
+    /// A quantized row or bound collapsed into one the kernel's own input
+    /// validation rejects (e.g. an all-zero constraint row after rounding) —
+    /// reachable only at the coarse end of the sweep, on this `f64` corpus's
+    /// un-quantized data. A legitimate, expected outcome of extreme
+    /// quantization, not a harness bug, so it is counted rather than
+    /// panicked on, the same policy §1.1 item 4 sets for `Overflow`.
+    q32_invalid_input: usize,
+    /// A quantized row's norm rounded to zero, or similarly hit the
+    /// `SolverError::NumericalDomain` case — the same coarse-quantization
+    /// reasoning as `q32_invalid_input`.
+    q32_numerical_domain: usize,
     q32_cap_hits: usize,
     f64_cap_hits: usize,
     converged_mismatches: usize,
     evidence_q32_only: Vec<usize>,
     evidence_f64_only: Vec<usize>,
-    converged_but_wrong: Vec<(usize, f64, f64)>,
+    /// `(case index, Q32's deviation from exact, f64's deviation from exact,
+    /// Q32's deviation in quantization steps)`.
+    converged_but_wrong: Vec<(usize, f64, f64, f64)>,
     no_exact_reference: usize,
     q32_violations: Vec<f64>,
     f64_violations: Vec<f64>,
 }
 
-/// Runs `cases` through both `Q32<F>` and `f64`, at the declared step scale.
+/// Runs `cases` through both `Q32<F>` and `f64`, at the declared step scale,
+/// with `Q32`'s outer and projection tolerance both set to `tolerance` —
+/// an explicit parameter rather than a constant derived from `F`, per RFC 043
+/// Amendment 3 / handoff §1.2 item 2: the caller decides whether `tolerance`
+/// moves with `FRAC_BITS` or stays fixed, and this function sweeps only `F`.
 /// `Err(SolverError::Overflow)` is counted as an outcome class (module doc);
 /// any other error is a hard failure of this harness, since nothing else is
 /// expected of these well-formed instances.
-fn measure_cases_at<const F: u32>(cases: &[Case], step_scale: f64) -> BatchStats {
+fn measure_cases_at<const F: u32>(
+    cases: &[Case],
+    step_scale: f64,
+    tolerance: Q32<F>,
+) -> BatchStats {
     let mut s = BatchStats {
         total: cases.len(),
         ..Default::default()
@@ -406,8 +458,8 @@ fn measure_cases_at<const F: u32>(cases: &[Case], step_scale: f64) -> BatchStats
             Q32::<F>::from_f64,
             Q32::<F>::to_f64,
             step_scale,
-            Q32::<F>::from_raw(4),
-            Q32::<F>::from_raw(4),
+            tolerance,
+            tolerance,
             case.cap,
         );
         let f_result = solve_cluster(
@@ -424,6 +476,14 @@ fn measure_cases_at<const F: u32>(cases: &[Case], step_scale: f64) -> BatchStats
             Ok(o) => o,
             Err(SolverError::Overflow) => {
                 s.q32_overflow += 1;
+                continue;
+            }
+            Err(SolverError::InvalidInput) => {
+                s.q32_invalid_input += 1;
+                continue;
+            }
+            Err(SolverError::NumericalDomain) => {
+                s.q32_numerical_domain += 1;
                 continue;
             }
             Err(e) => panic!("case {i} at FRAC_BITS={F}: Q32 solve failed unexpectedly: {e:?}"),
@@ -465,14 +525,21 @@ fn measure_cases_at<const F: u32>(cases: &[Case], step_scale: f64) -> BatchStats
             if let Some(exact) = exact_optimum(&dense_qp(&case.instance)) {
                 let q_deviation = max_abs_diff(&q_outcome.iterate, &exact);
                 let f_deviation = max_abs_diff(&f_outcome.iterate, &exact);
+                let deviation_steps = q_deviation / quantization_step::<F>();
                 // Relative to the f64 solve's own deviation from the same
                 // exact optimum (RFC 041 S2's measure), not an absolute
                 // constant; a 1e-9 floor keeps the ratio defined when f64
-                // is itself (near-)exact. This *is* a threshold (module
-                // doc), not an absence of one.
+                // is itself (near-)exact. The absolute guard is expressed in
+                // quantization steps, not an absolute constant (RFC 043
+                // Amendment 3 / handoff §1.2 item 3) — a precision-independent
+                // constant like the former `1e-4` misreads a coarser `Q32` as
+                // wrong when it is merely coarser: at `FRAC_BITS = 12` a step
+                // is `2.44e-4`, already above that constant. This *is* a
+                // threshold (module doc), not an absence of one.
                 let relative = q_deviation / f_deviation.max(1e-9);
-                if relative > 50.0 && q_deviation > 1e-4 {
-                    s.converged_but_wrong.push((i, q_deviation, f_deviation));
+                if relative > 50.0 && deviation_steps > CONVERGED_BUT_WRONG_STEP_THRESHOLD {
+                    s.converged_but_wrong
+                        .push((i, q_deviation, f_deviation, deviation_steps));
                 }
             } else {
                 s.no_exact_reference += 1;
@@ -497,6 +564,13 @@ fn report_batch(label: &str, frac_bits: u32, stats: &BatchStats) {
         "    overflow (outcome class, not a panic): Q32 {}, f64 {}  [measured]",
         stats.q32_overflow, stats.f64_overflow
     );
+    if stats.q32_invalid_input > 0 || stats.q32_numerical_domain > 0 {
+        eprintln!(
+            "    Q32 input validation outcome classes (coarse-quantization artifacts, not panics): \
+             InvalidInput {}, NumericalDomain {}  [measured]",
+            stats.q32_invalid_input, stats.q32_numerical_domain
+        );
+    }
     eprintln!(
         "    projection_cap_hits > 0: Q32 {}, f64 {}  [measured]",
         stats.q32_cap_hits, stats.f64_cap_hits
@@ -521,13 +595,20 @@ fn report_batch(label: &str, frac_bits: u32, stats: &BatchStats) {
     );
     if stats.converged_but_wrong.is_empty() {
         eprintln!(
-            "    converged-but-wrong (threshold: relative>50x and absolute>1e-4): none  [measured]"
+            "    converged-but-wrong (threshold: relative>50x and >{CONVERGED_BUT_WRONG_STEP_THRESHOLD:.0} \
+             quantization steps): none  [measured]"
         );
     } else {
+        let mut worst = stats.converged_but_wrong.clone();
+        worst.sort_by(|a, b| b.1.partial_cmp(&a.1).expect("no NaN deviation"));
+        worst.truncate(10);
         eprintln!(
-            "    converged-but-wrong (threshold: relative>50x and absolute>1e-4): {} {:?}  [measured]",
+            "    converged-but-wrong (threshold: relative>50x and >{CONVERGED_BUT_WRONG_STEP_THRESHOLD:.0} \
+             quantization steps): {} total, worst {} shown as \
+             (index, Q32 deviation, f64 deviation, Q32 deviation in steps): {:?}  [measured]",
             stats.converged_but_wrong.len(),
-            stats.converged_but_wrong
+            worst.len(),
+            worst
         );
     }
     if stats.no_exact_reference > 0 {
@@ -538,10 +619,17 @@ fn report_batch(label: &str, frac_bits: u32, stats: &BatchStats) {
     }
 }
 
-/// RFC 043 A1 (architect review 097 §5 / Amendment 2): the existing corpus
-/// and the existing adversarial batch, swept across `Q32`'s documented
-/// `1 <= FRAC_BITS <= 30` range. No new instances, no new seeds, no changed
-/// solve configuration beyond the swept constant itself.
+/// RFC 043 A1 (architect review 097 §5 / Amendment 2) + A2 item 1 (review 098
+/// / Amendment 3): the existing corpus and the existing adversarial batch,
+/// swept across **every** `FRAC_BITS` in `Q32`'s documented `1..=30` range,
+/// not seven chosen points — the seven-point sweep omitted `25` and `27`,
+/// and `27` is the row where the condition-3 factor is `1.6`, inside the
+/// band RFC 034 proved unsound. No new instances, no new seeds, no changed
+/// solve configuration beyond the swept constant itself. `Q32`'s tolerance
+/// is held coupled to `FRAC_BITS` here (`from_raw(4)`, four quantization
+/// steps) — the regime A1 used; `a2_tolerance_coupling_is_isolated_from_frac_bits`
+/// below reruns a subset with tolerance fixed in absolute terms instead, per
+/// handoff §1.2 item 2.
 #[test]
 fn a1_frac_bits_sweep_over_the_existing_corpus_and_adversarial_batch() {
     let random = random_cases();
@@ -549,45 +637,145 @@ fn a1_frac_bits_sweep_over_the_existing_corpus_and_adversarial_batch() {
     let adversarial_infeasible = adversarial_infeasible_cases();
     let step_scale = 0.4; // 2/lambda_max <= 2/(2+2*0.9)=0.526; 0.4 is safely inside.
 
-    eprintln!("RFC 043 A1 — FRAC_BITS sweep over the random corpus and the adversarial batch:");
+    eprintln!(
+        "RFC 043 A1+A2 — FRAC_BITS swept 1..=30 over the random corpus and the adversarial batch:"
+    );
     eprintln!(
         "  FRAC_BITS | effective factor (19/10, want 1.9) | effective factor (99/100, want 0.99)"
     );
 
     // Each arm below is one FRAC_BITS value. Rust const generics need the
-    // value at compile time, so this is seven explicit calls rather than a
+    // value at compile time, so this is thirty explicit calls rather than a
     // runtime loop — the same shape bench.rs's device_instances! macro
-    // exists to avoid for a *table* of sizes; seven fixed values once is
-    // plainer written out than macro-generated.
+    // exists to avoid for a *table* of sizes; thirty fixed values once is
+    // plainer written out than macro-generated, and costs a few seconds.
     macro_rules! sweep_one {
         ($frac_bits:literal) => {{
             let (factor_3, factor_4) = effective_factors::<$frac_bits>();
             eprintln!("  {:>9} | {factor_3:.4} | {factor_4:.4}", $frac_bits);
+            let tolerance = Q32::<$frac_bits>::from_raw(4);
             report_batch(
                 "random corpus",
                 $frac_bits,
-                &measure_cases_at::<$frac_bits>(&random, step_scale),
+                &measure_cases_at::<$frac_bits>(&random, step_scale, tolerance),
             );
             report_batch(
                 "adversarial (feasible thin sliver)",
                 $frac_bits,
-                &measure_cases_at::<$frac_bits>(&adversarial_feasible, step_scale),
+                &measure_cases_at::<$frac_bits>(&adversarial_feasible, step_scale, tolerance),
             );
             report_batch(
                 "adversarial (genuinely infeasible)",
                 $frac_bits,
-                &measure_cases_at::<$frac_bits>(&adversarial_infeasible, step_scale),
+                &measure_cases_at::<$frac_bits>(&adversarial_infeasible, step_scale, tolerance),
             );
         }};
     }
 
+    sweep_one!(1);
+    sweep_one!(2);
+    sweep_one!(3);
+    sweep_one!(4);
+    sweep_one!(5);
+    sweep_one!(6);
+    sweep_one!(7);
+    sweep_one!(8);
+    sweep_one!(9);
+    sweep_one!(10);
+    sweep_one!(11);
     sweep_one!(12);
+    sweep_one!(13);
+    sweep_one!(14);
+    sweep_one!(15);
     sweep_one!(16);
+    sweep_one!(17);
+    sweep_one!(18);
+    sweep_one!(19);
     sweep_one!(20);
+    sweep_one!(21);
+    sweep_one!(22);
+    sweep_one!(23);
     sweep_one!(24);
+    sweep_one!(25);
     sweep_one!(26);
+    sweep_one!(27);
     sweep_one!(28);
+    sweep_one!(29);
     sweep_one!(30);
+}
+
+/// RFC 043 Amendment 3 / handoff §1.2 item 2: A1 swept `FRAC_BITS` and
+/// `Q32`'s tolerance together (`from_raw(4)` moves with `FRAC_BITS`), so a
+/// figure that changed across the sweep might be precision-driven or
+/// tolerance-driven, and the sweep alone cannot say which.
+///
+/// **This item's original target no longer exists to reproduce.** Amendment
+/// 3's claim — "the `FRAC_BITS = 24` evidence disagreement persists
+/// index-for-index" under a fixed tolerance — was about the pre-S2,
+/// cross-multiplied predicate. S2 (this same revision) replaces that
+/// predicate, and on the genuinely-infeasible batch the disagreement A1
+/// found is gone under *either* tolerance regime (both `evidence_q32_only`
+/// columns are empty at every precision below). Asserting "persists
+/// index-for-index" on two empty sets would be vacuous, not a reproduction,
+/// so this does not assert that. What the fixed-vs-coupled comparison still
+/// isolates, unaffected by S2 (which touches only `has_infeasibility_evidence`,
+/// not the convergence/cap-hit logic), is the **feasible thin-sliver**
+/// batch's converged-status mismatches, which A1 reported as varying with
+/// `FRAC_BITS` under the coupled regime (`11/16` below 12, `8/16` at
+/// 12–14, `4/16` at 15–17, `0/16` at 18–28, `16/16`-adjacent again at 29–30
+/// — see the full sweep above). Reproduced here under a **fixed** `1e-3`
+/// tolerance instead.
+#[test]
+fn a2_tolerance_coupling_is_isolated_from_frac_bits() {
+    let adversarial_feasible = adversarial_feasible_cases();
+    let adversarial_infeasible = adversarial_infeasible_cases();
+    let step_scale = 0.4;
+
+    eprintln!("RFC 043 A2 item 2 — isolating FRAC_BITS from Q32's tolerance:");
+    eprintln!(
+        "  FRAC_BITS | feasible-sliver converged-status mismatches: coupled (from_raw(4)) vs fixed (1e-3) | infeasible-batch evidence Q32-only: coupled vs fixed"
+    );
+
+    macro_rules! compare_one {
+        ($frac_bits:literal) => {{
+            let coupled_feasible = measure_cases_at::<$frac_bits>(
+                &adversarial_feasible,
+                step_scale,
+                Q32::<$frac_bits>::from_raw(4),
+            );
+            let fixed_feasible = measure_cases_at::<$frac_bits>(
+                &adversarial_feasible,
+                step_scale,
+                Q32::<$frac_bits>::from_f64(1e-3),
+            );
+            let coupled_infeasible = measure_cases_at::<$frac_bits>(
+                &adversarial_infeasible,
+                step_scale,
+                Q32::<$frac_bits>::from_raw(4),
+            );
+            let fixed_infeasible = measure_cases_at::<$frac_bits>(
+                &adversarial_infeasible,
+                step_scale,
+                Q32::<$frac_bits>::from_f64(1e-3),
+            );
+            eprintln!(
+                "  {:>9} | {} vs {} | {:?} vs {:?}  [measured]",
+                $frac_bits,
+                coupled_feasible.converged_mismatches,
+                fixed_feasible.converged_mismatches,
+                coupled_infeasible.evidence_q32_only,
+                fixed_infeasible.evidence_q32_only,
+            );
+        }};
+    }
+
+    compare_one!(12);
+    compare_one!(16);
+    compare_one!(20);
+    compare_one!(24);
+    compare_one!(26);
+    compare_one!(28);
+    compare_one!(30);
 }
 
 /// Handoff §0.2: confirm the **device** kernel actually compiles and runs

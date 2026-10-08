@@ -1091,21 +1091,18 @@ mod amendment_1 {
         assert!(has_infeasibility_evidence(100, snap(10.0, 20.0, 1.0, 1.5)));
     }
 
-    /// Multipliers identically zero (no row ever active): `0 ≥ 1.9 × 0` holds, so
-    /// the multiplier and shrink conditions alone would say "evidence". It is the
-    /// fifth condition — the violation exceeds the tolerance — that keeps such a
-    /// feasible problem from setting the field.
+    /// Multipliers identically zero (no row ever active): under the old
+    /// cross-multiplied form `0 ≥ 1.9 × 0` held, so this read as "evidence" at
+    /// the condition level and relied on the outer `!feasible` gate (tested
+    /// generically in `the_field_needs_every_condition`, elsewhere in this
+    /// module) to rescue a feasible problem from the field. The division form
+    /// (RFC 043 Amendment 2) needs no rescue for this case: `final/midpoint` is `0/0`, a
+    /// `NumericalDomain` error from `checked_div`, and an `Err` yields `false`
+    /// directly — no multipliers means no divergence evidence, not "evidence
+    /// pending a feasibility check".
     #[test]
-    fn zero_multipliers_read_as_evidence_and_only_the_violation_condition_stops_them() {
-        assert!(has_infeasibility_evidence(100, snap(0.0, 0.0, 0.0, 0.0)));
-        let capped = Projection {
-            capped: true,
-            infeasibility_evidence: true,
-        };
-        // Feasible (violation within tolerance), capped, "evidence": no field.
-        assert!(!infeasibility_evidence_of(true, capped));
-        // Infeasible (violation over tolerance): the same evidence now counts.
-        assert!(infeasibility_evidence_of(false, capped));
+    fn zero_multipliers_report_no_evidence_via_the_zero_denominator_guard() {
+        assert!(!has_infeasibility_evidence(100, snap(0.0, 0.0, 0.0, 0.0)));
     }
 
     #[test]

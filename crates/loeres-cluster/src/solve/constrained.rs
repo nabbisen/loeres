@@ -451,9 +451,42 @@ fn largest_multiplier<S: MetricScalar>(multipliers: &[S]) -> S {
         .fold(S::zero(), |largest, &value| largest.max(value.abs()))
 }
 
-/// The scalar `n`, by repeated addition (no float conversion, no division).
-fn scalar_from<S: MetricScalar>(n: u32) -> S {
-    (0..n).fold(S::zero(), |sum, _| sum.add(S::one()))
+/// The scalar `n`, by repeated addition — `None` if a step fails to increase
+/// the accumulator. An accumulation of `one()` is strictly increasing in
+/// exact arithmetic, so a step that does not increase it is a clamp: `n` is
+/// not representable in `S` (RFC 043 Amendment 2 item 2). Needs only the
+/// `PartialOrd` every [`MetricScalar`] already carries through
+/// [`OrderedScalar`](loeres::OrderedScalar).
+fn build_monotonic<S: MetricScalar>(n: u32) -> Option<S> {
+    let mut acc = S::zero();
+    for _ in 0..n {
+        let next = acc.add(S::one());
+        if next <= acc {
+            return None;
+        }
+        acc = next;
+    }
+    Some(acc)
+}
+
+/// RFC 034 Amendment 1's two factors, `1.9` and `0.99`, built by dividing
+/// `one()` down rather than by multiplying a large integer up (RFC 043
+/// Amendment 2 item 1): `1.9 = one + (one − one/10)`,
+/// `0.99 = one − (one/10)/10`. Every intermediate stays within `[0, 2]`,
+/// well inside what every documented `FRAC_BITS` represents, unlike the
+/// former `scalar_from(19)`/`scalar_from(99)`, which clamped before any
+/// arithmetic involving them ran. `None` when `10` itself does not survive
+/// [`build_monotonic`] (`Q32<F>` for `F >= 28`) or either division fails —
+/// the same "cannot build, so no evidence" outcome an unrepresentable ratio
+/// produces in [`has_infeasibility_evidence`] itself.
+fn infeasibility_factors<S: MetricScalar + DivisibleScalar>() -> Option<(S, S)> {
+    let ten = build_monotonic::<S>(10)?;
+    let one = S::one();
+    let one_tenth = one.checked_div(ten).ok()?;
+    let nineteen_tenths = one.add(one.sub(one_tenth));
+    let one_hundredth = one_tenth.checked_div(ten).ok()?;
+    let ninety_nine_hundredths = one.sub(one_hundredth);
+    Some((nineteen_tenths, ninety_nine_hundredths))
 }
 
 /// The snapshots one capped projection takes: `max|λ|` and the terminal violation
@@ -473,16 +506,38 @@ struct Snapshots<S> {
 /// ratio approaching 2 from below (`1.96` to `1.999` at caps 100 to 3000), so 2
 /// misses real cases; but a *feasible* projection capped below its convergence time
 /// still has multipliers rising, with ratios measured up to `1.89`, so `1.5` fired
-/// on feasible problems. Written `10·final ≥ 19·midpoint` and, for condition 4,
-/// `100·final ≥ 99·midpoint`, so nothing needs a division or a float.
-fn has_infeasibility_evidence<S: MetricScalar>(sweeps: u32, snap: Snapshots<S>) -> bool {
+/// on feasible problems.
+///
+/// **The form is division, not cross-multiplication — also not optional (RFC 043
+/// Amendment 2).** `10·final ≥ 19·midpoint` is sound over `f64`; over any bounded
+/// scalar a saturating `mul` turns `MAX >= MAX` into `true`, the direction that
+/// asserts divergence, and the constants `scalar_from(19)`/`scalar_from(99)` used
+/// to clamp before any multiplication involving them ran, within `Q32`'s own
+/// documented range. Division shrinks where multiplication grows, so
+/// [`infeasibility_factors`] builds both factors that way, and the ratio here goes
+/// through [`DivisibleScalar::checked_div`] rather than a cross-multiply. An `Err`
+/// — `midpoint == 0` (`NumericalDomain`) or an unrepresentable quotient
+/// (`Overflow`) — and a factor build that returns `None` both yield `false`: the
+/// predicate's contract is to *assert* divergence, and "cannot tell" is not an
+/// assertion.
+fn has_infeasibility_evidence<S: MetricScalar + DivisibleScalar>(
+    sweeps: u32,
+    snap: Snapshots<S>,
+) -> bool {
     if sweeps < MIN_SWEEPS_FOR_DIVERGENCE {
         return false;
     }
-    let multipliers_diverging = scalar_from::<S>(10).mul(snap.final_multiplier)
-        >= scalar_from::<S>(19).mul(snap.midpoint_multiplier);
-    let violation_not_shrinking = scalar_from::<S>(100).mul(snap.final_violation)
-        >= scalar_from::<S>(99).mul(snap.midpoint_violation);
+    let Some((factor_3, factor_4)) = infeasibility_factors::<S>() else {
+        return false;
+    };
+    let multipliers_diverging = match snap.final_multiplier.checked_div(snap.midpoint_multiplier) {
+        Ok(ratio) => ratio >= factor_3,
+        Err(_) => false,
+    };
+    let violation_not_shrinking = match snap.final_violation.checked_div(snap.midpoint_violation) {
+        Ok(ratio) => ratio >= factor_4,
+        Err(_) => false,
+    };
     multipliers_diverging && violation_not_shrinking
 }
 
