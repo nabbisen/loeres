@@ -15,6 +15,14 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
+**If you use `Q32` with the constrained kernel, this release carries a correctness fix and
+you must raise your requirement to get it.** The infeasibility-evidence predicate could
+manufacture a false "this problem is infeasible" diagnosis under a bounded scalar; RFC 043 S2
+fixes it. Because this is a minor, a dependency pinned at `loeres = "0.23"` resolves to
+`>=0.23.1, <0.24.0` and **will not pick the fix up from `cargo update` alone** — move the
+requirement to `0.24`. Nothing in this release breaks a caller: the `f64` path's comparisons
+are bit-identical and the whole pinned conformance corpus is unchanged.
+
 **RFC 043 S1 (+ A1) — the constrained kernel over `Q32`, measured across its documented
 `FRAC_BITS` range.** RFC 041 S3 found that `has_infeasibility_evidence`'s cross-multiplied
 comparisons can saturate under a bounded scalar and manufacture a false infeasibility
