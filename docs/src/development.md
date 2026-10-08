@@ -357,14 +357,46 @@ Every version bump takes **eight** lockfile updates, not one:
 
 ```sh
 cargo update --workspace --offline
-cargo update --offline --manifest-path examples/cluster-batch-solve/Cargo.toml
-cargo update --offline --manifest-path examples/cluster-qp-constrained/Cargo.toml
-cargo update --offline --manifest-path examples/cluster-capacity-dispatch/Cargo.toml
-cargo update --offline --manifest-path examples/device-box-pfo/Cargo.toml
-cargo update --offline --manifest-path examples/device-mpc-step/Cargo.toml
-cargo update --offline --manifest-path examples/cluster-counted-work/Cargo.toml
-cargo update --offline --manifest-path device-size-reference/Cargo.toml
+cargo update --workspace --offline --manifest-path examples/cluster-batch-solve/Cargo.toml
+cargo update --workspace --offline --manifest-path examples/cluster-qp-constrained/Cargo.toml
+cargo update --workspace --offline --manifest-path examples/cluster-capacity-dispatch/Cargo.toml
+cargo update --workspace --offline --manifest-path examples/device-box-pfo/Cargo.toml
+cargo update --workspace --offline --manifest-path examples/device-mpc-step/Cargo.toml
+cargo update --workspace --offline --manifest-path examples/cluster-counted-work/Cargo.toml
+cargo update --workspace --offline --manifest-path device-size-reference/Cargo.toml
 ```
+
+### `--workspace` is not optional, and `--offline` is not the safeguard
+
+Found by the implementer during the `0.24.0` bump and recorded in architect review 102: the
+procedure below was wrong, and the gates could not see it.
+
+**`--workspace` restricts the update to this project's own packages. Without it,
+`cargo update` relocks every dependency in that file.** The seven non-root commands above
+carried no `--workspace` until 2026-10-08, and `cargo update --offline --dry-run` on the
+root at that revision moved **thirteen** packages — `syn 2.0.118 → 3.0.6` among them, a
+major version — none of which any version bump calls for. The example lockfiles are not
+exempt: `examples/cluster-batch-solve/Cargo.lock` carries seven third-party packages, so the
+same thing happens there.
+
+**`--offline` does not protect you.** It restricts cargo to the local registry cache, so
+whether an unscoped update moves anything depends on what that cache happens to hold —
+which is a property of the machine, not of this repository. Every bump before
+2026-10-08 came out clean (`4849faf` and earlier show 27 insertions / 27 deletions across
+the eight files, every line a workspace-crate version string) because the cache did not yet
+hold the newer versions. That was luck, and it ran out.
+
+So **verify the diff rather than trusting the command**. Every changed line in every
+lockfile must be a version string on one of this workspace's own crates:
+
+```sh
+git diff --unified=0 -- '*Cargo.lock' \
+  | grep -E '^[+-]' | grep -vE '^(\+\+\+|---)' \
+  | grep -vE '^[+-]version = "(<old>|<new>)"$'
+```
+
+Empty output is the pass. Anything printed is a third-party package moving in a commit that
+was only supposed to change a version number.
 
 The examples, and the RFC 040 size-budget fixture `device-size-reference`, are excluded
 from the workspace (RFC 023 §11.1; RFC 040 §1.1 for the fixture), so `--workspace` cannot

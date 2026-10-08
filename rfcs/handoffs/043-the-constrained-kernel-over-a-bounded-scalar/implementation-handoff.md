@@ -369,8 +369,11 @@ touches four gated places:
 
 1. the workspace version **and** the five internal `[workspace.dependencies]` pins, or
    `published-metadata` fails closed;
-2. all eight lockfiles —
-   `for d in examples/*/ device-size-reference/; do cargo update --manifest-path "$d/Cargo.toml" --offline; done`;
+2. all eight lockfiles — **each with `--workspace`**, or `cargo update` relocks every
+   third-party dependency in that file (`docs/src/development.md`, "`--workspace` is not
+   optional, and `--offline` is not the safeguard": unscoped, it moved **thirteen** packages
+   including `syn 2.0.118 → 3.0.6`). Then **verify the diff**: every changed line in every
+   lockfile must be a version string on one of this workspace's own five crates;
 3. the apex `This tree` field, or `doc-currency` reports three `APEX RELEASE` findings;
 4. the `## [0.23.1] — unreleased` `CHANGELOG.md` heading, renamed to `0.24.0`.
    `release-gate` requires **exactly one** `## [<workspace version>]` heading and checks it
