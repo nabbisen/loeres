@@ -15,7 +15,12 @@
 | D | RFC 043 S4 | the coarser-precision `Q32` measurement, threshold in **steps** | no |
 | E | RFC 043 S5 | inherent `checked_add`/`checked_sub`/`checked_mul` on `Q32` | **yes** |
 | F | RFC 043 S6 | the measured usable `FRAC_BITS` band documented (review 099 §7) | no |
-| G | RFC 044 | a const assert closing `FRAC_BITS` 31–63, where `one()` is negative or zero | no — **awaits the owner's acceptance** |
+| G | RFC 044 | a const assert closing `FRAC_BITS` 31–63, where `one()` is negative or zero | no |
+
+RFC 044 is its own contract: `rfcs/accepted/044-a-frac-bits-a-caller-cannot-get-wrong.md`,
+accepted 2026-10-08, handoff
+`rfcs/handoffs/044-a-frac-bits-a-caller-cannot-get-wrong/implementation-handoff.md`. It bumps
+nothing and rides whichever release E sets.
 
 Contract: `rfcs/accepted/043-the-constrained-kernel-over-a-bounded-scalar.md`, **including
 Amendment 1**. Handoff:

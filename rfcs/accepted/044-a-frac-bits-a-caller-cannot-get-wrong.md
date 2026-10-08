@@ -1,6 +1,6 @@
 # RFC 044 - A `FRAC_BITS` A Caller Cannot Get Wrong
 
-**Status.** Proposed.
+**Status.** Accepted (design frozen 2026-10-08)
 
 **Author tier.** `architect`.
 
