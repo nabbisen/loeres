@@ -1,4 +1,4 @@
-use super::{BoxQuadratic, FRAC_BITS, N, Q};
+use super::{BoxQuadratic, N};
 use loeres::scalar::Q32;
 use loeres::{BaseScalar, SolveStatus, VectorAccess};
 use loeres_backend_static::array::FixedVector;
@@ -100,8 +100,13 @@ impl core::fmt::Debug for Instance {
     }
 }
 
-fn solve_q(instance: &Instance) -> (SolveStatus, [f64; N]) {
-    let build = |v: f64| Q32::<FRAC_BITS>::from_f64(v);
+/// `2^-F`, the magnitude of one `Q32<F>` quantization step.
+fn quantization_step<const F: u32>() -> f64 {
+    2f64.powi(-(F as i32))
+}
+
+fn solve_q<const F: u32>(instance: &Instance) -> (SolveStatus, [f64; N]) {
+    let build = |v: f64| Q32::<F>::from_f64(v);
     let problem = BoxQuadratic {
         lower: FixedVector::from_array(instance.lower.map(build)),
         upper: FixedVector::from_array(instance.upper.map(build)),
@@ -109,13 +114,14 @@ fn solve_q(instance: &Instance) -> (SolveStatus, [f64; N]) {
         center: instance.center.map(build),
         step_scale: build(0.5 / max_diag(instance)),
     };
-    let mut workspace = ProjectedFirstOrderWorkspace::new(FixedVector::from_array([Q::zero(); N]));
+    let mut workspace =
+        ProjectedFirstOrderWorkspace::new(FixedVector::from_array([Q32::<F>::zero(); N]));
     let config = DeviceSolveConfig {
         max_iterations: 5_000,
-        tolerance: Q::from_raw(4),
+        tolerance: Q32::<F>::from_raw(4),
         timing_mode: TimingMode::EarlyExitAllowed,
     };
-    let mut x = FixedVector::from_array([Q::zero(); N]);
+    let mut x = FixedVector::from_array([Q32::<F>::zero(); N]);
     let report =
         solve_projected_first_order(&problem, &mut x, &mut workspace, &config).expect("solve");
     let iterate = core::array::from_fn(|i| x.get(i).unwrap().to_f64());
@@ -150,75 +156,128 @@ fn max_abs_diff(a: &[f64; N], b: &[f64]) -> f64 {
         .fold(0.0, f64::max)
 }
 
-/// RFC 041 S2: the measurement the handoff asks for. Reports, and does not
-/// merely assert, whether any `Q32` solve that reports `Converged` deviates
-/// from the exact optimum beyond the configured tolerance — "a wrong answer
-/// that converges", the failure mode named in RFC 041 §3.2 and the handoff.
-#[test]
-fn q32_box_solves_measured_against_the_exact_reference_and_the_f64_solve() {
-    let corpus = random_corpus(300, 0x600D_F1ED_u64);
-    let mut converged = 0usize;
-    let mut not_converged = 0usize;
-    let mut worst_deviation_from_exact_when_converged = 0.0_f64;
-    let mut worst_deviation_from_f64_solve = 0.0_f64;
-    let mut converged_but_wrong: Vec<usize> = Vec::new();
-    // Loose enough to absorb Q32's own quantization step (2^-20 ≈ 9.5e-7) over
-    // a handful of coordinates, tight enough that a genuinely wrong answer —
-    // off by a representable fraction of the box width — would still trip it.
-    const WRONG_ANSWER_THRESHOLD: f64 = 1e-3;
+/// How far past ordinary quantization noise a converged-but-wrong deviation
+/// must sit, in quantization steps, before this module calls it wrong rather
+/// than coarse (RFC 043 S4 / Amendment 3). This module's own worst measured
+/// deviation, at either swept precision, is `≈47` steps (RFC 041 S2's
+/// original finding, reproduced below); `1000` is a conservative cut point
+/// with more than an order of magnitude of headroom above that, not a tight
+/// fit to the data.
+const WRONG_ANSWER_STEP_THRESHOLD: f64 = 1_000.0;
+
+struct BoxStats {
+    converged: usize,
+    not_converged: usize,
+    worst_deviation_from_exact_when_converged: f64,
+    worst_deviation_from_f64_solve: f64,
+    /// `(instance index, deviation from exact, deviation in quantization steps)`.
+    converged_but_wrong: Vec<(usize, f64, f64)>,
+}
+
+fn measure_box_kernel_at<const F: u32>(corpus: &[Instance]) -> BoxStats {
+    let mut stats = BoxStats {
+        converged: 0,
+        not_converged: 0,
+        worst_deviation_from_exact_when_converged: 0.0,
+        worst_deviation_from_f64_solve: 0.0,
+        converged_but_wrong: Vec::new(),
+    };
 
     for (i, instance) in corpus.iter().enumerate() {
         let exact = exact_reference(instance);
-        let (q_status, q_iterate) = solve_q(instance);
+        let (q_status, q_iterate) = solve_q::<F>(instance);
         let (f64_status, f64_iterate) = solve_f64(instance);
 
         let deviation_from_exact = max_abs_diff(&q_iterate, &exact);
         let deviation_from_f64 = max_abs_diff(&q_iterate, &f64_iterate);
-        worst_deviation_from_f64_solve = worst_deviation_from_f64_solve.max(deviation_from_f64);
+        stats.worst_deviation_from_f64_solve =
+            stats.worst_deviation_from_f64_solve.max(deviation_from_f64);
 
         match q_status {
             SolveStatus::Converged => {
-                converged += 1;
-                worst_deviation_from_exact_when_converged =
-                    worst_deviation_from_exact_when_converged.max(deviation_from_exact);
-                if deviation_from_exact > WRONG_ANSWER_THRESHOLD {
-                    converged_but_wrong.push(i);
+                stats.converged += 1;
+                stats.worst_deviation_from_exact_when_converged = stats
+                    .worst_deviation_from_exact_when_converged
+                    .max(deviation_from_exact);
+                let deviation_steps = deviation_from_exact / quantization_step::<F>();
+                if deviation_steps > WRONG_ANSWER_STEP_THRESHOLD {
+                    stats
+                        .converged_but_wrong
+                        .push((i, deviation_from_exact, deviation_steps));
                 }
             }
-            _ => not_converged += 1,
+            _ => stats.not_converged += 1,
         }
         let _ = f64_status;
     }
 
+    stats
+}
+
+fn report_box_stats(frac_bits: u32, corpus_len: usize, stats: &BoxStats) {
+    let step_at_this_precision = 2f64.powi(-(frac_bits as i32));
     eprintln!(
-        "Q32 box kernel over {} instances: converged {converged}, not converged {not_converged}",
-        corpus.len()
+        "Q32<{frac_bits}> box kernel over {corpus_len} instances: converged {}, not converged {}",
+        stats.converged, stats.not_converged
     );
     eprintln!(
-        "  worst deviation from the exact optimum, converged instances only: {worst_deviation_from_exact_when_converged:e}  [measured]"
+        "  worst deviation from the exact optimum, converged instances only: {:e} ({:.1} steps)  [measured]",
+        stats.worst_deviation_from_exact_when_converged,
+        stats.worst_deviation_from_exact_when_converged / step_at_this_precision
     );
     eprintln!(
-        "  worst deviation from the f64 solve of the same problem (precision cost, not correctness): {worst_deviation_from_f64_solve:e}  [measured]"
+        "  worst deviation from the f64 solve of the same problem (precision cost, not correctness): {:e}  [measured]",
+        stats.worst_deviation_from_f64_solve
     );
-    if converged_but_wrong.is_empty() {
+    if stats.converged_but_wrong.is_empty() {
         eprintln!(
-            "  converged-but-wrong instances (deviation > {WRONG_ANSWER_THRESHOLD:e}): none  [measured]"
+            "  converged-but-wrong instances (threshold: >{WRONG_ANSWER_STEP_THRESHOLD:.0} quantization steps): none  [measured]"
         );
     } else {
         eprintln!(
-            "  converged-but-wrong instances (deviation > {WRONG_ANSWER_THRESHOLD:e}): {} — {converged_but_wrong:?}  [measured]",
-            converged_but_wrong.len()
+            "  converged-but-wrong instances (threshold: >{WRONG_ANSWER_STEP_THRESHOLD:.0} quantization steps): {} — {:?}  [measured]",
+            stats.converged_but_wrong.len(),
+            stats.converged_but_wrong
         );
     }
+}
 
+/// RFC 041 S2 (+ RFC 043 S4): the measurement the handoff asks for, at two
+/// precisions. Reports, and does not merely assert, whether any `Q32` solve
+/// that reports `Converged` deviates from the exact optimum beyond a
+/// quantization-step-relative threshold — "a wrong answer that converges",
+/// the failure mode named in RFC 041 §3.2 and the handoff — at `FRAC_BITS =
+/// 20` (RFC 041 S2's own choice) and a second, coarser `FRAC_BITS = 12`
+/// (RFC 043 S4), the same corpus and seed at both.
+#[test]
+fn q32_box_solves_measured_against_the_exact_reference_and_the_f64_solve() {
+    let corpus = random_corpus(300, 0x600D_F1ED_u64);
+
+    let at_20 = measure_box_kernel_at::<20>(&corpus);
+    report_box_stats(20, corpus.len(), &at_20);
     assert!(
-        converged_but_wrong.is_empty(),
-        "Q32 reported Converged but was wrong on instances {converged_but_wrong:?} \
-         (worst deviation {worst_deviation_from_exact_when_converged:e}); saturation at the \
-         bounds is not benign here — see the corpus seed for reproduction"
+        at_20.converged_but_wrong.is_empty(),
+        "Q32<20> reported Converged but was wrong on instances {:?}; saturation at the bounds \
+         is not benign here — see the corpus seed for reproduction",
+        at_20.converged_but_wrong
     );
+    assert_eq!(
+        at_20.converged + at_20.not_converged,
+        corpus.len(),
+        "every instance must be accounted for"
+    );
+
+    let at_12 = measure_box_kernel_at::<12>(&corpus);
+    report_box_stats(12, corpus.len(), &at_12);
     assert!(
-        converged + not_converged == corpus.len(),
+        at_12.converged_but_wrong.is_empty(),
+        "Q32<12> reported Converged but was wrong on instances {:?}; saturation at the bounds \
+         is not benign here — see the corpus seed for reproduction",
+        at_12.converged_but_wrong
+    );
+    assert_eq!(
+        at_12.converged + at_12.not_converged,
+        corpus.len(),
         "every instance must be accounted for"
     );
 }

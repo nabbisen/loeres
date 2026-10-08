@@ -1,7 +1,8 @@
-//! RFC 041 S2: the device box kernel demonstrated over `Q32`, measured against
-//! both the exact separable reference (`checks::exact::exact_optimum`, reused
-//! as-is — no new numerical code, per the handoff) and the `f64` solve of the
-//! same problem.
+//! RFC 041 S2 (+ S4): the device box kernel demonstrated over `Q32`, measured
+//! against both the exact separable reference (`checks::exact::exact_optimum`,
+//! reused as-is — no new numerical code, per the handoff) and the `f64` solve
+//! of the same problem, at two precisions — `FRAC_BITS = 20` (RFC 041 S2's
+//! own choice) and a second, coarser `FRAC_BITS = 12` (RFC 043 S4).
 //!
 //! **Not a gate, and not a reported command.** This is `#[cfg(test)]`-only,
 //! exactly as the handoff says is the right home for the comparison: there is
@@ -13,10 +14,18 @@
 //! kernel clamps to its bounds every iteration, so saturation at the bounds
 //! may be benign — that is a hypothesis, and this module measures it rather
 //! than asserting it, on a random corpus of separable box QPs.
+//!
+//! **The converged-but-wrong threshold is expressed in quantization steps,
+//! not an absolute constant (RFC 043 S4, Amendment 3).** An absolute `1e-3`
+//! was RFC 041 S2's original choice; at `FRAC_BITS = 20` that is comfortably
+//! above the `≈47`-step worst deviation this module measures, but the *same*
+//! `47` steps at `FRAC_BITS = 12` is `≈1.1e-2` — eleven times past `1e-3` —
+//! which would misread a coarser, equally-good answer as wrong. `fn
+//! quantization_step` and `WRONG_ANSWER_STEP_THRESHOLD` below replace the old
+//! absolute guard with one stated relative to each precision's own step.
 
 #![cfg(test)]
 
-use loeres::scalar::Q32;
 use loeres::{
     BaseScalar, DivisibleScalar, FiniteScalar, OrderedScalar, SolverError, VectorAccess,
     VectorAccessMut,
@@ -26,12 +35,6 @@ use loeres_device::problem::ProjectedFirstOrderProblem;
 
 use super::exact::{DenseQp, exact_optimum};
 
-/// Fractional bits for every `Q32` instance in this module: representable
-/// magnitude up to `~2_048` with a step of `2^-20 ≈ 9.5e-7`, comfortably
-/// covering this corpus's value range (coefficients and centers within
-/// `[-4, 4]`) with headroom for the intermediate products `mul` computes.
-const FRAC_BITS: u32 = 20;
-type Q = Q32<FRAC_BITS>;
 const N: usize = 3;
 
 /// A separable box QP: `f(x) = ½ Σ qᵢ(xᵢ − cᵢ)²`, gradient `qᵢ(xᵢ − cᵢ)`,
