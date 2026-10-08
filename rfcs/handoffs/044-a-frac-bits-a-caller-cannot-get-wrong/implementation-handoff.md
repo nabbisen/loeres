@@ -187,3 +187,21 @@ against `e0843c3`, the revision this work is based on, all five are **exact** (`
 doc block and the assert shifted everything down — the same wrong-baseline error you correctly
 caught in your own `E0080` line number and fixed in `b59237a`. Caught once in your own work,
 missed once in the architect's: re-read, and re-read **the right revision**.
+
+## 8. G1 closed (architect review 101)
+
+All four items verified: `VALID_FRAC_BITS` is private (`fixed_point.rs:147`), the module doc
+table is six ascending regions each internally uniform with the both-directions note, the cap
+grouping spans `18..=24` with all four caps two-sided bracketed and the assumption named in the
+output itself, and nothing outside scope was touched.
+
+Two consistency checks the request did not claim, both of which it passes: the per-cap counts
+**sum exactly** to the aggregate missed-evidence figures at every precision (`4`, `7`, `7`, `15`
+at `21`–`24`), so the grouping is a true partition rather than a re-measurement; and the
+brackets are **monotone in sweep count**, which is the hypothesis's own prediction and would
+have killed it had they not been. End to end the fit is sub-linear — `15.4×` the sweeps against
+roughly `8×` the bracket — which factor-two brackets cannot resolve and which is **not** being
+treated as a finding. Keep the assumption an assumption.
+
+**RFC 043 S6 and RFC 044 are closed. The cut is not clear:** C (S3), D (S4) and E (S5) remain,
+and **E carries the version bump** — the workspace is still at `0.23.1`.
