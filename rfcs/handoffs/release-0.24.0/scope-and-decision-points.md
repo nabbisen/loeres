@@ -92,3 +92,20 @@ carry that are already known:
 The RFC 028 uncompressed-tar anchor has held **eleven consecutive releases**. It is
 recomputed by hand and verified three ways at every cut, and `distributed` is claimed only
 after `gh run watch` confirms the tagged `release-gate` job — not after the push.
+
+## 6. Open after 0.24.0
+
+Carried from the cut (architect reviews 099 §3, 100 §8, 101 §2) and from
+`rfcs/handoffs/release-0.23.0/finalization-checklist.md` §6:
+
+- **The `f64`-only disagreement direction at `FRAC_BITS = 24`.** S2 removed the fabricated
+  diagnosis and widened the missed-evidence loss from one precision to ten. The mechanism for
+  the missing direction is **not established** and needs the inner Dykstra snapshots, which no
+  public accessor exposes. Reviews 099 and 101 bracket `max|λ|` per sweep cap from the onset
+  precision instead — an inference with its assumption named, not a measurement.
+- **Whether `check-public-api` should carry an API-shape baseline.** It is a forbidden-token
+  sweep, so RFC 044's (briefly) `pub` associated const and S5's three new methods both cleared
+  every gate with nothing to say. Raised, not decided; its own RFC if taken up.
+- **T6's three remaining items** — metadata-only observability, the mock-only `ffi-gateway`
+  seam, the process-local validation cache. Closed until a consumer exists.
+- **A distance-aware default step for the curvature-free case** (RFC 039's open item).

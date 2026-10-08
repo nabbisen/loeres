@@ -1,29 +1,28 @@
 # Release 0.24.0 — finalization checklist
 
 **Author tier.** `architect`. **Date:** 2026-10-08.
-**Authorized by.** The owner authorized the cut on 2026-10-08. Scope and the decision record:
-`rfcs/handoffs/release-0.24.0/scope-and-decision-points.md`.
+**Authorized by.** The owner authorized the cut on 2026-10-08.
+
+**Whose file this is: the architect's.** It is a pre-flight for the cut — a multi-step,
+irreversible procedure whose couplings were each found by a gate failing, which is why the
+steps are written down before being executed rather than recalled. The owner's record of this
+release is `rfcs/handoffs/release-0.24.0/scope-and-decision-points.md`: what was in scope, what
+was decided and at what cost. The dev team's instructions were the two RFC handoffs, and
+`rfcs/handoffs/043-the-constrained-kernel-over-a-bounded-scalar/implementation-handoff.md` §6.1
+says where their work stops — at this file.
+
+**One decision here is the owner's: §4, publication.** RFC 021 §7 makes it separately
+authorized, and it is irreversible.
 
 ## 1. Scope
 
-**RFC 043 — the constrained kernel over a bounded scalar.** RFC 034 Amendment 1's
-infeasibility-evidence predicate cross-multiplied by integers to avoid a division; over a
-saturating scalar both operands clamp and the comparison reads `MAX >= MAX`, which is **`true`**
-— the direction that asserts divergence. S1 measured the kernel at one precision and found
-nothing; A1 swept the type's documented range and found it in **both** directions. S2
-reformulated the predicate by division, with the factors built by dividing `one()` down rather
-than multiplying a large integer up — because `scalar_from(99)` had already clamped within the
-type's own documented range, silently replacing RFC 034's `0.99` with `1.0` and, at
-`FRAC_BITS = 27`, its `1.9` with **`1.6`**, inside the band RFC 034 proved unsound. S3 answered
-RFC 041's deferred tier question; S4 expressed the converged-but-wrong threshold in quantization
-steps in both harnesses; S5 added inherent `checked_*`; S6 documented the measured usable band.
+**RFC 043** (the constrained kernel over a bounded scalar, Amendments 1–4) and **RFC 044** (a
+`FRAC_BITS` a caller cannot get wrong, Amendment 1), with six architect reviews, `097`–`102`,
+registered in `rfcs/review-evidence-index.md`.
 
-**RFC 044 — a `FRAC_BITS` a caller cannot get wrong.** `Q32<31>` had `one() == -1.0` and
-`Q32<32>` had `one() == zero()`, silently, while `Q32<64>` was already a compile error. A
-private associated const closes `31..=63` at compile time, forced in all four constructors.
-
-**Five architect reviews**: 097 (S1), 098 (A1), 099 (S2 + A2), 100 (S6 + RFC 044), 101 (G1),
-102 (C/D/E + the bump). Registered in `rfcs/review-evidence-index.md` rows `097`–`102`.
+Stated once, not twice: the scope narrative and the decision record live in
+`rfcs/handoffs/release-0.24.0/scope-and-decision-points.md`. If the two ever disagree, that
+file is the intent.
 
 ## 2. The version is already bumped
 
@@ -90,14 +89,5 @@ Then `docs/src/specifications.md`: add the row and make it the newest published 
 
 ## 6. Open, not in this release
 
-- **The `f64`-only disagreement direction at `FRAC_BITS = 24`.** S2's fix removed the fabricated
-  diagnosis and widened the missed-evidence loss from one precision to ten. The mechanism for
-  the missing direction is **not established** and needs the inner Dykstra snapshots, which no
-  public accessor exposes. Reviews 099 §3 and 101 §2 bracket `max|λ|` per sweep cap instead,
-  from the onset precision — an inference with its assumption named, not a measurement.
-- **Whether `check-public-api` should carry an API-shape baseline.** It is a forbidden-token
-  sweep, so RFC 044's `pub` associated const and S5's three new methods both cleared every
-  gate with nothing to say (review 100 §8). Raised, not decided; its own RFC if taken up.
-- **T6's three remaining items** — metadata-only observability, the mock-only `ffi-gateway`
-  seam, the process-local validation cache. Closed until a consumer exists.
-- **A distance-aware default step for the curvature-free case** (RFC 039's open item).
+In `rfcs/handoffs/release-0.24.0/scope-and-decision-points.md` §6, where the next release's
+planning reads them — not here, where only the cut does.
