@@ -18,6 +18,31 @@
 //! These traits are for monomorphized, static-dispatch use; they must not be
 //! used behind `dyn` in core or device kernels. No tier references `f32`/`f64`,
 //! `std`, `alloc`, formatting, or any backend type.
+//!
+//! **Whether a checked-arithmetic tier is warranted, deferred by RFC 041 S3 and answered here
+//! by RFC 043 S3.** No tier between [`BaseScalar`] and [`AdvancedNumericalScalar`] can report
+//! whether a result was clamped, in general: `BaseScalar`'s arithmetic is defined to have no
+//! failure channel at all (RFC 001), so adding one would mean every existing implementor —
+//! including both primitive floats — suddenly owes an answer to a question its own contract
+//! never asked.
+//!
+//! **That is false, though, for a construction known to be monotonic**, which is the only case
+//! a bounded-scalar kernel has actually needed so far. The constrained kernel over `Q32`
+//! (RFC 043 §3.2) builds a constant by repeated addition of `one()` and detects whether that
+//! accumulation clamped by checking `next <= acc` after each step — ordering alone, via the
+//! `PartialOrd` every [`OrderedScalar`] already carries, with no new trait method and no new
+//! tier. "Detect saturation and withhold a claim" is therefore not necessarily a tier in
+//! disguise: it can be a property of the *specific construction* a caller already controls and
+//! can prove once, rather than a capability the scalar type itself must expose to everyone.
+//!
+//! RFC 043 S2 removes the need for an overflow signal **at that one site** — the predicate's
+//! own upward-built constant is checked by monotonicity instead of asking `Q32` to report a
+//! clamp directly — and it does **not** settle the general question either way. What would
+//! settle it: a kernel whose correctness needs an overflow signal for a construction that is
+//! **not** monotonic, so the ordering trick above cannot apply, and no reformulation through an
+//! existing tier ([`DivisibleScalar`], [`MetricScalar`]) avoids the need either. Until a kernel
+//! like that exists, the next bounded-scalar kernel inherits this decision rather than
+//! rediscovering it.
 
 use crate::error::SolverError;
 
