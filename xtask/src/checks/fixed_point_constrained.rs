@@ -778,6 +778,59 @@ fn a2_tolerance_coupling_is_isolated_from_frac_bits() {
     compare_one!(30);
 }
 
+/// RFC 043 S6 item 2: group the missed-evidence figures A1/A2 already
+/// collect by the four sweep caps, at the `FRAC_BITS` band where the onset
+/// happens (`19..=22`, Amendment 4). **No new measurement** — the same
+/// 16-case genuinely-infeasible batch, split by its own `cap` field (one of
+/// 4 angles × 4 caps) instead of pooled across all 16. If the onset tracks
+/// the cap rather than firing uniformly across every cap at once, that is
+/// evidence `max|λ|` scales with sweep count and the step is the cap
+/// distribution, not a single operand crossing a fixed bound (Amendment 4's
+/// own open question).
+#[test]
+fn s6_missed_evidence_onset_grouped_by_sweep_cap() {
+    let cases = adversarial_infeasible_cases();
+    let step_scale = 0.4;
+
+    eprintln!(
+        "RFC 043 S6 item 2 — missed evidence (f64-only count), grouped by sweep cap, FRAC_BITS 19..=22:"
+    );
+    eprintln!(
+        "  FRAC_BITS | cap 65 | cap 100 | cap 300 | cap 1000  (each out of 4, one per angle)"
+    );
+
+    macro_rules! group_one {
+        ($frac_bits:literal) => {{
+            let tolerance = Q32::<$frac_bits>::from_raw(4);
+            let counts: Vec<usize> = ADVERSARIAL_CAPS
+                .iter()
+                .map(|&cap| {
+                    let group: Vec<Case> = cases
+                        .iter()
+                        .filter(|case| case.cap == cap)
+                        .map(|case| Case {
+                            instance: case.instance.clone(),
+                            cap: case.cap,
+                        })
+                        .collect();
+                    measure_cases_at::<$frac_bits>(&group, step_scale, tolerance)
+                        .evidence_f64_only
+                        .len()
+                })
+                .collect();
+            eprintln!(
+                "  {:>9} | {:>6} | {:>7} | {:>7} | {:>8}  [measured]",
+                $frac_bits, counts[0], counts[1], counts[2], counts[3]
+            );
+        }};
+    }
+
+    group_one!(19);
+    group_one!(20);
+    group_one!(21);
+    group_one!(22);
+}
+
 /// Handoff §0.2: confirm the **device** kernel actually compiles and runs
 /// over `Q32`, on one fixed instance — not the full corpus, which is the
 /// cluster kernel's job in this module.

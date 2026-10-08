@@ -82,17 +82,33 @@ and the division's device-profile cost is within the existing baseline's toleran
 fallback to the multiplicand form is needed.
 
 **The fix changes which direction the predicate can be wrong in, and A2's full `1..=30` sweep
-(re-run against this fixed predicate) measures the new shape.** The specific disagreement A1
-found at `FRAC_BITS = 24` — evidence in both directions on the genuinely-infeasible adversarial
-batch — does not reproduce under the division form, at any swept precision: the predicate never
-manufactures evidence from a saturated comparison any more. What remains, by design, is a
-one-directional loss of recall at the coarse end: `Q32`'s *inner* multiplier and violation
-snapshots themselves saturate at the same precisions the factors degrade in, so the ratio the
-predicate computes reads `≈ 1.0` (saturated/saturated) rather than the true, larger value, and a
-true positive the predicate cannot represent as such is reported as no evidence rather than a
-fabricated yes — at `FRAC_BITS ≥ 27` on the genuinely-infeasible batch, `f64` finds evidence
-`Q32` now misses on up to `15` of `16` instances, never the reverse. No new kernel API, no
-accessor — closing this gap further is out of scope here, same as A1.
+(re-run against this fixed predicate) measures the new shape — corrected below from an earlier
+revision of this entry, which misstated both the onset and the direction (architect review 099
+§1; the CHANGELOG is never edited once released, which is why this is fixed while `[0.23.1]` is
+still unreleased).** Measured on the 16-instance genuinely-infeasible adversarial batch, across
+all 30 precisions:
+
+| | fabricated evidence | missed evidence |
+| --- | --- | --- |
+| before S2 | `1/16` at `FRAC_BITS` 24, 26, 28, 30 | `7/16` at `FRAC_BITS` 24 only |
+| after S2 | `1/16` at `FRAC_BITS` 4, 5 | `4/16` at 21 rising to **`15/16`** across `FRAC_BITS` **21–30** |
+
+The specific disagreement A1 found at `FRAC_BITS = 24` — evidence in both directions on this
+batch — does not reproduce under the division form at that precision or any other: the
+predicate never manufactures evidence from a saturated *comparison* any more. What it trades
+instead is wider: `Q32`'s *inner* multiplier and violation snapshots themselves saturate, so the
+ratio the predicate computes can read `≈ 1.0` (saturated/saturated) rather than the true, larger
+value, and a true positive the predicate cannot represent as such is reported as no evidence —
+missed evidence rises from `0/16` to `15/16` between `FRAC_BITS 20` and `24`, with onset at
+**21**, not 27. **The reverse is not absent**: at `FRAC_BITS` 4 and 5 the division form still
+fabricates one instance each, so "never the reverse" is false. S2 removed the fabricated
+diagnosis from every precision a caller would plausibly choose (`7..=20`) and widened the loss
+of true positives from one precision to ten, `7/16` to `15/16` — a trade this RFC accepts and
+records as one, not a footnote: a fabricated "there is evidence this problem is infeasible"
+misleads a caller about their problem, while missing the hint under-informs them about the
+solver, and `infeasibility_evidence` is a hint, not a status. No new kernel API, no accessor —
+closing this gap further is out of scope here, same as A1; RFC 043 S6 documents the usable band
+this trade leaves (`7..=20`) in `Q32`'s own module doc.
 
 A2's four other measurement-hygiene items on the same harness: the sweep now covers every
 `FRAC_BITS` from `1` to `30`, not seven chosen points (`25` and `27` — the row where the
@@ -106,6 +122,45 @@ six orders of magnitude of headroom on both sides of the measured data) rather t
 precision-independent constant; per-instance lists are capped at the worst ten, sorted by
 deviation; and the module doc now records that no single absolute tolerance is representable
 across the documented range (`2.44e-4` per step at `FRAC_BITS = 12` to `2` at `30`).
+
+**RFC 043 S6 — document the usable band.** `Q32`'s module doc (`crates/loeres/src/scalar/fixed_point.rs`)
+now states the constrained kernel's measured `FRAC_BITS = 7..=20` band directly, with the full
+disagreement table by region (`1..=6` fails both directions via `InvalidInput`; `7..=20` clean;
+`21..=23` rising missed evidence; `24..=30` at `15/16`; `4, 5` fabricate one instance each
+despite sitting inside the otherwise-clean low end) — named plainly as a measurement of one
+corpus against this one kernel, not a type invariant, since the box kernel is sound at
+precisions this one is not. A new `#[cfg(test)]` harness test
+(`s6_missed_evidence_onset_grouped_by_sweep_cap`) groups the existing missed-evidence figures
+by the adversarial batch's four sweep caps at `FRAC_BITS 19..=22` — no new measurement. The
+onset tracks the cap, not a uniform threshold: at `FRAC_BITS = 21` only the `1000`-sweep cap
+shows missed evidence (`4/4`); at `22` the `300`-sweep cap joins it (`3/4`) while `65` and `100`
+stay clean. This is evidence for Amendment 4's open hypothesis — `max|λ|` scales with sweep
+count, so the step is the cap distribution rather than a single operand crossing one fixed
+bound — not a settled mechanism; no new measurement or accessor was added to settle it further.
+
+**RFC 044 — a `FRAC_BITS` a caller cannot get wrong.** `Q32<const FRAC_BITS: u32>` had no bound
+on `FRAC_BITS` beyond its module doc's stated precondition; outside the documented `1..=30`,
+`Q32<31>` has a negative `one()` and `Q32<32>` has `one() == zero()`, both silently, with every
+tolerance comparison and `is_finite()` guard still passing. A new associated const,
+`Q32::<F>::VALID_FRAC_BITS`, asserts the range at compile time and is forced in all four
+constructors that can produce a `Self` (`zero`, `one`, `from_raw`, `from_f64` — `to_raw` and
+`to_f64` consume one instead, so no fifth route exists). An out-of-range instantiation now fails
+to compile rather than silently misbehaving:
+
+```text
+error[E0080]: evaluation panicked: Q32's FRAC_BITS must satisfy 1 <= FRAC_BITS <= 30
+   --> crates/loeres/src/scalar/fixed_point.rs:115:37
+    | evaluation of `scalar::fixed_point::Q32::<32>::VALID_FRAC_BITS` failed here
+```
+
+`Q32<64>` and above was already a compile error (the scale shift itself overflows); this closes
+the previously-silent `31..=63` window. The module doc's "nothing here enforces that at compile
+time" is corrected, keeping the contrast with `OrderedScalar::clamp`'s `lo <= hi` (a genuine
+runtime value, which this mechanism cannot and does not touch) rather than erasing it. **This is
+deliberately not RFC 043 S6's `7..=20` usable band** — that is a measured property of one
+kernel's behaviour on one corpus, this is an algebraic invariant of the type itself, and
+asserting the narrower band would forbid box-kernel instantiations that are perfectly sound at
+those same precisions.
 
 ## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
 

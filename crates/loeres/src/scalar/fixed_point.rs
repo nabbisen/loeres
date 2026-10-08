@@ -5,11 +5,21 @@
 //! fractional bit count a const parameter (`FRAC_BITS`) so the type is not
 //! wired to one precision. The raw integer `r` represents the real value
 //! `r / 2^FRAC_BITS`. `FRAC_BITS` must leave room for the sign bit and for
-//! [`BaseScalar::one`] to be representable: `1 <= FRAC_BITS <= 30`. Nothing
-//! here enforces that at compile time — this is a baseline demonstration, not a
-//! general fixed-point library (RFC 041 §4) — so an out-of-range `FRAC_BITS` is
-//! a caller precondition, the same shape as [`OrderedScalar::clamp`]'s `lo <=
-//! hi`.
+//! [`BaseScalar::one`] to be representable: `1 <= FRAC_BITS <= 30`.
+//!
+//! **This range is enforced at compile time** (RFC 044), unlike
+//! [`OrderedScalar::clamp`]'s `lo <= hi` — that distinction is worth keeping,
+//! not erasing: `clamp`'s bounds are ordinary runtime values with no way to
+//! check them before the call exists, while `FRAC_BITS` is a const generic
+//! the compiler already has in hand at every instantiation. `Q32::<F>`'s
+//! `VALID_FRAC_BITS` associated const asserts the range and is forced by
+//! every constructor (`zero`, `one`, `from_raw`, `from_f64`); an
+//! out-of-range `FRAC_BITS` fails to compile with
+//! `evaluation panicked: Q32's FRAC_BITS must satisfy 1 <= FRAC_BITS <= 30`,
+//! not a silent wrong answer at runtime. `Q32<64>` and above already failed
+//! this way regardless (the scale shift itself overflows); this closes the
+//! `31..=63` window that previously compiled and silently had no
+//! multiplicative identity.
 //!
 //! **Arithmetic discipline: saturating.** RFC 001 §100 permits exactly one
 //! device-facing discipline for a type whose ordinary arithmetic cannot be
@@ -71,6 +81,34 @@
 //! this baseline (RFC 041 §4), and S2's box kernel demonstration needs none of
 //! them. S3 decides whether a future checked-arithmetic tier is warranted;
 //! this baseline commits to nothing beyond what is implemented here.
+//!
+//! **A narrower, measured claim: the constrained kernel's usable band is
+//! `7..=20`, not the type's full `1..=30` (RFC 043 S6).** This is a
+//! *different kind of claim* from the compile-time-enforced range above —
+//! `1..=30` is an algebraic invariant of `Q32` itself, true for every
+//! instantiation and every kernel; `7..=20` is a **measurement of one
+//! corpus against the constrained kernel specifically** (`n = 4`,
+//! `m ∈ {1, 2, 3}`, `O(1)` data; `xtask/src/checks/fixed_point_constrained.rs`),
+//! not a theorem, and RFC 044 deliberately declines to assert it for exactly
+//! that reason — a box-kernel solve at `FRAC_BITS = 24` is sound (RFC 041
+//! S2), so the narrower band is a property of this one kernel's
+//! Dykstra-projection arithmetic over this one corpus, not of `Q32`. Outside
+//! `7..=20` on that corpus, the constrained kernel's `infeasibility_evidence`
+//! disagrees with an `f64` solve of the same problem:
+//!
+//! | `FRAC_BITS` | what disagrees |
+//! |---|---|
+//! | `1..=6` | both directions — constraint rows quantize to all-zero and the solve fails `InvalidInput` outright |
+//! | `7..=20` | **neither direction (the usable band)** |
+//! | `21..=23` | missed evidence only, rising `0 → 4 → 7` of `16` |
+//! | `24..=30` | missed evidence, `15` of `16` |
+//! | `4, 5` (inside the clean-looking low end) | one fabricated instance each — the onset is not a clean step |
+//!
+//! A caller who picks `FRAC_BITS = 24` — well inside the type's documented
+//! range, and a reasonable choice for data in `[-1, 1]` — silently loses
+//! infeasibility detection on 15 of 16 genuinely infeasible problems on this
+//! corpus, and nothing in the public API tells them. The `[0.23.1]`
+//! `CHANGELOG.md` entry for RFC 043 S2 carries the full before/after table.
 
 use core::cmp::Ordering;
 
@@ -88,11 +126,31 @@ impl<const FRAC_BITS: u32> Q32<FRAC_BITS> {
     /// the real value it denotes.
     const SCALE: i64 = 1i64 << FRAC_BITS;
 
+    /// Compile-time proof that `FRAC_BITS` is in the documented range
+    /// (module doc): `1 <= FRAC_BITS <= 30`. **Declaring this enforces
+    /// nothing by itself — only evaluating it does**, which is why every
+    /// constructor below forces it with `let () = Self::VALID_FRAC_BITS;`.
+    /// `zero`, `one`, `from_raw` and `from_f64` are the only four `pub`
+    /// routes that produce a `Self` (`to_raw`/`to_f64` consume one instead),
+    /// so forcing it at all four closes the set (RFC 044).
+    ///
+    /// `Q32<64>` and above already fails earlier and unconditionally, at
+    /// `SCALE`'s own shift (`1i64 << FRAC_BITS` overflows the shift amount,
+    /// `E0080`, regardless of whether anything reads `SCALE`). This assert
+    /// closes the silent window this project found between `31` and `63`,
+    /// where `one()` is negative or zero and every arithmetic invariant
+    /// quietly fails without it.
+    pub const VALID_FRAC_BITS: () = assert!(
+        FRAC_BITS >= 1 && FRAC_BITS <= 30,
+        "Q32's FRAC_BITS must satisfy 1 <= FRAC_BITS <= 30"
+    );
+
     /// Builds a value from its raw underlying representation (an integer
     /// count of `2^-FRAC_BITS` units), with no scaling applied.
     #[inline]
     #[must_use]
     pub const fn from_raw(raw: i32) -> Self {
+        let () = Self::VALID_FRAC_BITS;
         Self(raw)
     }
 
@@ -110,6 +168,7 @@ impl<const FRAC_BITS: u32> Q32<FRAC_BITS> {
     /// what S2's comparison against an `f64` solve of the same problem needs.
     #[must_use]
     pub fn from_f64(value: f64) -> Self {
+        let () = Self::VALID_FRAC_BITS;
         let scaled = value * (Self::SCALE as f64);
         if scaled >= i32::MAX as f64 {
             Self(i32::MAX)
@@ -138,11 +197,13 @@ impl<const FRAC_BITS: u32> Q32<FRAC_BITS> {
 impl<const FRAC_BITS: u32> BaseScalar for Q32<FRAC_BITS> {
     #[inline]
     fn zero() -> Self {
+        let () = Self::VALID_FRAC_BITS;
         Self(0)
     }
 
     #[inline]
     fn one() -> Self {
+        let () = Self::VALID_FRAC_BITS;
         Self(Self::SCALE as i32)
     }
 

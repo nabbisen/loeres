@@ -144,3 +144,33 @@ fn a_different_frac_bits_is_a_genuinely_different_type_and_scale() {
     assert_eq!(one.to_raw(), 16);
     assert_eq!(one.to_f64(), 1.0);
 }
+
+/// `FRAC_BITS` at both documented boundaries compiles and behaves ordinarily
+/// — `VALID_FRAC_BITS` is forced on every construction path and does not
+/// disturb a valid instantiation (RFC 044).
+///
+/// **`31` and above is a compile error by construction, not something an
+/// ordinary `#[test]` can exercise here** — a failing const assert is
+/// `E0080` at compile time, not a runtime panic, so `#[should_panic]` cannot
+/// catch it and this project takes no new dependency (`trybuild` or
+/// similar, RFC 026) to assert on compile failures. Verified once, directly
+/// against this tree rather than taken from RFC 044's own scratch
+/// reproduction: `Q32::<32>::VALID_FRAC_BITS` fails with
+///
+/// ```text
+/// error[E0080]: evaluation panicked: Q32's FRAC_BITS must satisfy 1 <= FRAC_BITS <= 30
+///    --> crates/loeres/src/scalar/fixed_point.rs:115:37
+///     | evaluation of `scalar::fixed_point::Q32::<32>::VALID_FRAC_BITS` failed here
+/// ```
+#[test]
+fn both_documented_boundaries_compile_and_behave() {
+    type Lowest = Q32<1>;
+    assert_eq!(Lowest::one().to_raw(), 2);
+    assert_eq!(Lowest::one().to_f64(), 1.0);
+    assert!(Lowest::one() > Lowest::zero());
+
+    type Highest = Q32<30>;
+    assert_eq!(Highest::one().to_raw(), 1 << 30);
+    assert_eq!(Highest::one().to_f64(), 1.0);
+    assert!(Highest::one() > Highest::zero());
+}
