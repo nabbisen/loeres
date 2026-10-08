@@ -11,9 +11,15 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
+## [0.24.1] — unreleased
 
 **Release status:** unreleased
+
+No changes recorded yet.
+
+## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
+
+**Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io
 
 **If you use `Q32` with the constrained kernel, this release carries a correctness fix and
 you must raise your requirement to get it.** The infeasibility-evidence predicate could
