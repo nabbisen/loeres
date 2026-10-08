@@ -155,7 +155,57 @@ ground alone.
   absolute guard is better than RFC 041 S2's absolute `1e-3`, which is why S4 exists — but
   name it as a threshold rather than claiming none.
 
-## 2. S2 — the predicate, by division (review request B, blocked on A)
+## 1.2 A2 — the remaining measurement items (architect review 098); runs **alongside B**
+
+A1 is accepted and **B is released to start**. These five are measurement hygiene, not
+blockers: decision 1 is settled, so the correctness fix does not wait on them. Do them in
+parallel, in either order.
+
+1. **Sweep `1..=30`, not seven chosen points.** The set in §1.1 is the architect's and it
+   **omits 25 and 27** — and 27 is the row Amendment 2 singles out, where the condition-3
+   factor becomes **1.6**, inside the band RFC 034 proved unsound. Seven more macro arms
+   costs about four seconds. Stop choosing points.
+2. **Stop sweeping two parameters.** The `Q32` tolerance is `Q32::<F>::from_raw(4)`
+   (`xtask/src/checks/fixed_point_constrained.rs:409-410`) — four *quantization steps*, so
+   it moves with `FRAC_BITS` (`9.8e-4` at 12 to `3.7e-9` at 30) while the `f64` arm holds
+   `1e-10`. §1.1 asked for one swept constant and the harness sweeps two. Report each
+   precision both ways, or once with the tolerance fixed in absolute terms and `from_raw(4)`
+   as its own row, and **say which figures move with which parameter**. The architect already
+   ran this at a fixed `1e-3`: the `FRAC_BITS = 24` evidence disagreement persists
+   index-for-index, and the converged-status mismatches flatten to a constant 8. Reproduce
+   that rather than taking it.
+3. **Express the converged-but-wrong threshold in steps** — S4's obligation, which
+   Amendment 3 extends to this harness. The `300/300` count at `FRAC_BITS = 12` measures the
+   threshold, not the solver: the absolute guard `1e-4` (`:425`) is **below one quantization
+   step** (`2.44e-4`), and the deviations it flags are one to sixteen steps. Re-report
+   `12`, `16` and `30` against a step-relative threshold; `30` will stay nonzero at about
+   `1.5 × 10⁹` steps, which is the point.
+4. **Report the figures A1's prose omitted**, all of them already in the committed output:
+   converged-status mismatches on the feasible sliver (`8/16` at 12, `4/16` at 16, **`11/16`
+   at 30** — the largest disagreement count in the sweep); converged-but-wrong on that batch
+   (`9`, `5`, **`1/16` at 20**, `16/16` at 30); and that the `FRAC_BITS = 20` instance `[7]`
+   deviates **274 steps** against RFC 041 S2's measured worst of ≈47 steps at the same
+   precision. **Cap the per-instance list at the worst ten** — the `FRAC_BITS = 12` line
+   currently prints 300 tuples on one line and buries exactly these figures.
+5. **Record the tolerance window in the module doc.** No single absolute tolerance is
+   representable across `1 <= FRAC_BITS <= 30`: nothing finer than `2.44e-4` at 12, nothing
+   larger than `2` at 30. `from_f64(1e-5)` at `FRAC_BITS = 12` rounds to zero and the kernel
+   correctly rejects it with `InvalidInput`.
+
+No new kernel API, no accessor, no deduplication — unchanged from §1.1.
+
+### Two things to carry forward about how A1 was reported
+
+- **A premise about a tracked file was recalled, not re-read.** §2.1 of request A1 says the
+  factor asymmetry is something Amendment 2's table *"(as I recall it) did not distinguish"*.
+  It distinguishes it, and includes the 25 and 27 rows the sweep skipped. The measurement was
+  independently derived, which is what mattered; the claim about the document was wrong.
+  §0.4 of this handoff exists because the architect broke the same rule four times.
+- **"Reporting what was found, not a summary with the figures held back"** has to include
+  item 4's figures. Three nonzero, precision-dependent counts were in the printed output and
+  not in the prose.
+
+## 2. S2 — the predicate, by division (review request B — **released**, architect review 098)
 
 Only after A is accepted, because **what S2 is depends on what A found**: a correctness fix
 if the false positive is reachable, hardening if it is not. The owner is told which.
@@ -226,7 +276,10 @@ rediscovering it. Three or four paragraphs, not an essay.
 ## 4. S4 — the coarser-precision measurement (review request D)
 
 Repeat RFC 041 S2's box-kernel demonstration at a second, coarser `FRAC_BITS`, with the
-converged-but-wrong threshold **expressed in quantization steps**. The arithmetic that
+converged-but-wrong threshold **expressed in quantization steps**. **RFC 043 Amendment 3
+extends this to the constrained harness too** (§1.2 item 3): A1 rediscovered the same
+absolute-threshold defect there, so S4 fixes it in both places or it will be found a third
+time. The arithmetic that
 makes this necessary: `4.5e-5` at `FRAC_BITS = 20` is ≈ 47 steps; at `FRAC_BITS = 12` the
 step is `≈2.4e-4`, so the same 47 steps is `≈1.1e-2` — eleven times past S2's absolute
 `1e-3`, reading as a wrong answer when it is merely a coarser one. **State the threshold in

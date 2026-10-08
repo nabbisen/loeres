@@ -118,6 +118,56 @@ accepted as a measurement; its "unreached" conclusion is not, and A1 is what rep
 A1 is `#[cfg(test)]`-only and §5's table is unaffected. S2 remains a patch; S5 still carries
 the bump.
 
+## 0.3 Amendment 3 (2026-10-08)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, on architect review 098
+(A1's result). Same Status-line rule as Amendments 1 and 2.
+
+**A1 is complete and Amendment 2's table is confirmed by independent measurement.** The
+effective factors were re-derived from `scalar_from`'s own formula rather than copied, and
+the `99/100` factor is measured degrading one precision before `19/10`, as Amendment 2's
+table states.
+
+**The mechanism for the `Q32`-only direction is now established.** The genuinely-infeasible
+batch's terminal violation is `≈1.986`, so condition 4's left operand `100 · v ≈ 198.6`
+fits inside `FRAC_BITS = 20`'s representable `2048` and **saturates** against `FRAC_BITS = 24`'s
+`128` — exactly where the disagreement appears, and exactly at review 096 §0.1's `max/100`
+threshold (`20.48` versus `1.28`). **The `f64`-only direction remains unexplained**: both
+multiplier snapshots saturating yields `MAX >= MAX`, which is `true`, so condition 2 going
+false at `FRAC_BITS = 24` is accounted for by nothing yet on the table. It needs the inner
+snapshots, which no public accessor exposes, and **adding one stays out of scope**.
+
+**Tolerance co-variation is eliminated.** The harness set the `Q32` tolerance to four
+quantization steps, so A1's sweep varied precision *and* tolerance together. Held fixed in
+absolute terms, the `FRAC_BITS = 24` disagreement persists index-for-index, while the
+converged-status mismatches flatten to a constant — so the evidence disagreements are
+precision-driven and the status mismatches were the second parameter.
+
+### §3.4 (S4) gains scope
+
+S4's step-relative threshold was written for RFC 041 S2's box demonstration. **It now also
+governs the constrained harness**, because A1's `300/300` converged-but-wrong count at
+`FRAC_BITS = 12` is the same absolute-threshold defect review 095 §7 found: the guard
+`1e-4` is **below one quantization step** at that precision, and the deviations it flags are
+one to sixteen steps — ordinary quantization, not wrongness. At `FRAC_BITS = 30` the
+deviations are about `1.5 × 10⁹` steps and are genuinely wrong; the two ends of the range
+are different phenomena and the threshold must be able to say so.
+
+### A representability window, to be documented
+
+No single absolute tolerance is representable across the documented `1 <= FRAC_BITS <= 30`:
+nothing finer than `2.44e-4` exists at 12, nothing larger than `2` exists at 30. A tolerance
+that rounds to zero is correctly rejected as `InvalidInput`, but nothing tells a caller the
+window `[2.44e-4, 2)` exists. S4 records it.
+
+### A2, alongside B
+
+Review 098 §8 carries five measurement items — sweep `1..=30` (the architect's own
+instruction omitted 25 and 27, where the condition-3 factor is **1.6**), stop sweeping two
+parameters, express the threshold in steps, report the figures A1's prose omitted, record
+the tolerance window. **A2 runs alongside B, not before it:** decision 1 is settled and the
+correctness fix does not wait on harness hygiene.
+
 ## 1. Summary
 
 RFC 041 shipped `Q32`, demonstrated the **box** kernel over it, and deferred one question:
