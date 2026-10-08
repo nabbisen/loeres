@@ -1,6 +1,6 @@
 # RFC 043 - The Constrained Kernel Over a Bounded Scalar
 
-**Status.** Accepted (design frozen 2026-10-08)
+**Status.** Implemented (v0.24.0). Amendments 1-4 were made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 

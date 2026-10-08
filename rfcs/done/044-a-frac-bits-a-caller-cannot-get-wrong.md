@@ -1,6 +1,6 @@
 # RFC 044 - A `FRAC_BITS` A Caller Cannot Get Wrong
 
-**Status.** Accepted (design frozen 2026-10-08)
+**Status.** Implemented (v0.24.0). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 

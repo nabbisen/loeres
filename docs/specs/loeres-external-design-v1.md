@@ -8,7 +8,7 @@ Audience: Rust library users, crate maintainers, RFC authors, integration engine
 > **Release currency metadata.**
 > This tree: **0.24.0**.
 > Last reconciled repository release: **0.23.0**.
-> Implemented scope: **RFCs 001-042**.
+> Implemented scope: **RFCs 001-044**.
 >
 > The current cluster surface includes dynamic dense/CSR storage, bounded
 > orchestration, one dynamic box/bound-constrained projected-first-order kernel,

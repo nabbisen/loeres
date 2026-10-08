@@ -7,7 +7,7 @@ Calendar policy: No calendar dates or duration estimates. All progress is gated 
 > **Release currency metadata.**
 > This tree: **0.24.0**.
 > Last reconciled repository release: **0.23.0**.
-> Implemented scope: **RFCs 001-042**.
+> Implemented scope: **RFCs 001-044**.
 >
 > Milestones 1 and 2 are complete. Milestone 3 has implemented dynamic
 > dense/CSR storage, orchestration, one dynamic projected-first-order kernel,
