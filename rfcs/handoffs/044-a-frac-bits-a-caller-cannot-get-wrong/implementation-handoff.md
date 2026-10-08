@@ -130,3 +130,60 @@ State in the request:
 6. The `E0080` message your tree actually produces for `Q32<32>`, pasted. Not the one in §0:
    the architect's came from a scratch reproduction, not from this type.
 7. Anything in this handoff that does not match the tree — the line numbers in §1 especially.
+
+## 7. G1 — the fix-up (architect review 100), before the cut
+
+Both obligations are **accepted**. Four items remain, none touching a kernel. Review 100 holds
+the detail; this is the list.
+
+1. **Drop the `pub` from `VALID_FRAC_BITS`** (`crates/loeres/src/scalar/fixed_point.rs:143`).
+   RFC 044 §3.1 said "an associated `const`" and never said `pub`; Amendment 1 now says
+   private explicitly. The architect verified all three of these and you should reproduce them
+   rather than take them: with the `pub` removed, `loeres` builds clean and its 105 tests pass;
+   a **downstream** crate calling `Q32::<32>::one()` still fails with the same `E0080`; and
+   `Q32::<20>::one()` still builds and runs. Privacy costs nothing and keeps a public item of
+   type `()` off a published type's surface.
+
+   **No gate will tell you this was wrong.** `check-public-api` is a forbidden-token sweep, not
+   an API-shape diff, so `pub const … : ()` clears everything. Your §4 item 4 reading of
+   `public_api.rs` is what surfaced that, and it was the right answer to the question.
+
+2. **Fix three errors in the module doc's table** (`fixed_point.rs:99-105`). This is a public
+   doc comment and it is the text a user reads to choose a `FRAC_BITS`, so precision here is
+   the deliverable:
+   - `1..=6` is given as "both directions", but **no single precision in that region fails
+     both ways**: `1..=3` miss only, `4, 5` fabricate only, `6` misses only. Split it into
+     three rows in numeric order; the `4, 5` row then no longer needs to sit after `24..=30`
+     contradicting the first row.
+   - `21..=23` says "rising `0 → 4 → 7`". Measured it is **`4 → 7 → 7`** — the `0` belongs to
+     `20`, which is in the clean band.
+   - `1..=6` says the solve "fails `InvalidInput` outright". It occurred for *some* instances
+     at the coarse end; the same row reports `15/16` missed, which could not be measured if
+     the region failed outright. Say "for some instances at the coarse end".
+
+3. **Extend the cap grouping to `FRAC_BITS 18..=24`** and state the per-cap brackets, with the
+   assumption named. The four numbers you already have support a stronger claim than
+   "consistent with" — the onset precision brackets `max|λ|` per cap:
+
+   | sweep cap | clean at | first misses at | ⇒ `max|λ|` |
+   | ---: | ---: | ---: | --- |
+   | 1000 | `20` (max 2048) | `21` (max 1024) | **`(1024, 2048]`** |
+   | 300 | `21` (max 1024) | `22` (max 512) | **`(512, 1024]`** |
+   | 100, 65 | `22` (max 512) | not yet | `<= 512` |
+
+   Write it as "**if** the onset is an operand crossing the representable bound, then `max|λ|`
+   for cap `c` lies in …" — the assumption is what the bracket is being used to argue, so it
+   has to be stated, not buried. Extending to `18..=24` gives caps 65 and 100 a real bracket
+   instead of a one-sided bound. This is a measurement of the figure S1 reported as
+   unobtainable; it deserves to be claimed, carefully.
+
+4. **No new kernel API, no accessor, and do not assert the `7..=20` band.** Unchanged.
+
+### One note on the report, not the work
+
+§4 item 7 says the handoff's line numbers were "off by single digits in each case". Checked
+against `e0843c3`, the revision this work is based on, all five are **exact** (`86`, `95`,
+`112`, `140`, `145`). The likely cause is measuring against the post-change file, after S6's
+doc block and the assert shifted everything down — the same wrong-baseline error you correctly
+caught in your own `E0080` line number and fixed in `b59237a`. Caught once in your own work,
+missed once in the architect's: re-read, and re-read **the right revision**.

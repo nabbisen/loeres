@@ -7,6 +7,26 @@
 **Governing scoping.** Architect reviews 097 §6 and 099 §4. Every figure below was verified
 by the architect on the `0.23.1` development tree.
 
+## 0.1 Amendment 1 (2026-10-08)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, on architect review 100. The
+Status line carries only the design-freeze date while this RFC is in `accepted/`, because
+`doc-currency` requires that form there; **the amendment must be named in the Status line when
+this RFC moves to `rfcs/done/`**, which `check-rfcs` enforces for `done/` only.
+
+**The associated const is private.** §3.1 said "an associated `const VALID_FRAC_BITS`" without
+saying so, and the first implementation made it `pub`. It must not be: verified, with the `pub`
+removed and nothing else changed, `loeres` builds clean, all 105 of its tests pass, a downstream
+crate instantiating `Q32<32>` through `one()` **still** fails to compile with the same `E0080`,
+and `Q32<20>` still works. Privacy costs nothing in protection and keeps a public item whose
+type is `()`, and whose only purpose is an internal forcing mechanism, off a **published**
+type's surface.
+
+This matters beyond tidiness because the gates cannot see it: `check-public-api` is a
+forbidden-token sweep over public API source text, not a diff of API shape, so a
+`pub const … : ()` clears every gate with nothing to say. Review 100 §8 raises whether that
+gap deserves its own RFC; this amendment just fixes the item.
+
 ## 1. Summary
 
 `Q32<const FRAC_BITS: u32>` carries no bound on `FRAC_BITS`. Its module doc states
