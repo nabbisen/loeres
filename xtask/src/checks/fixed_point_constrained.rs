@@ -1,42 +1,59 @@
-//! RFC 043 S1: the constrained kernel over `Q32`, measured — not assumed —
-//! against the exact optimum and the `f64` solve of the same problem, on a
-//! random corpus of inequality-constrained QPs.
+//! RFC 043 S1 (+ A1): the constrained kernel over `Q32`, measured — not
+//! assumed — against the exact optimum and the `f64` solve of the same
+//! problem, on a random corpus of inequality-constrained QPs and a
+//! deliberately adversarial batch, **swept across `Q32`'s documented
+//! `FRAC_BITS` range** (architect review 097 / RFC 043 Amendment 2).
 //!
 //! **Not a gate, and not a reported command.** `#[cfg(test)]`-only, the same
-//! shape as `fixed_point.rs`: nothing here is a threshold, and no figure is
-//! pinned.
+//! shape as `fixed_point.rs`.
 //!
-//! **The reference is `checks::exact::exact_optimum`, used exactly as written
-//! — no new numerical code.** RFC 043 Amendment 1 corrects the RFC's own §3.1:
-//! `exact_optimum` is not a box-only or separable-only reference. It solves
+//! **A is accepted as a measurement; its original conclusion is not.** The
+//! first committed version of this harness held `FRAC_BITS = 20` fixed, which
+//! review 096 §0.1 had already shown is inside the regime where the
+//! cross-multiplied predicate's defect provably cannot fire (zero
+//! disagreement below snapshot magnitude `20.48`). A null result there
+//! confirms the safe regime is safe; it does not test reachability. A1 is
+//! this module re-run with that one constant swept — nothing else changes.
+//!
+//! **The `converged_but_wrong` classifier below is a threshold, not an
+//! absence of one.** `relative > 50.0 && q_deviation > 1e-4` is a pass
+//! criterion this module enforces. Calling it "no pinned threshold" (as an
+//! earlier revision of this module's own doc did) was imprecise: what is
+//! true is that no *gate* pins it and no CI-enforced regression baseline
+//! exists, not that the measurement carries no criterion at all.
+//!
+//! **The reference is `checks::exact::exact_optimum`, used exactly as
+//! written — no new numerical code.** RFC 043 Amendment 1: `exact_optimum`
+//! is not a box-only or separable-only reference; it solves
 //! `minimise ½xᵀQx + cᵀx` subject to `lower ≤ x ≤ upper` **and** `Ax ≤ b`
 //! (`exact.rs:37`), for `n ≤ 8`, with `Q` a caller-guaranteed symmetric
-//! positive definite matrix (`Q = 0` returns `None` for every instance,
-//! because the routine inverts `Q`). This corpus keeps `Q` tridiagonal and
-//! diagonally dominant, which is always SPD, so that precondition is never at
-//! risk.
+//! positive definite matrix. This corpus keeps `Q` tridiagonal and
+//! diagonally dominant, which is always SPD.
 //!
 //! **What is measured here, and what is not.** Neither `ConstrainedSolveReport`
 //! (device) nor `ConstrainedSolveRecord` (cluster) exposes the Dykstra
-//! multipliers or their magnitude — the workspace field is private, and
-//! nothing public reads it after a solve. RFC 043's handoff §1 item 3 asks for
-//! "the distribution of `max|λ|` reached, and how many saturated"; that figure
-//! is **not obtainable through the public API**, and reproducing the
-//! multiplier recurrence independently would be new, unvalidated numerical
-//! code standing in for the kernel's own internal state — the wrong trade for
-//! a measurement slice. The proxy actually reported is `projection_cap_hits`:
-//! a necessary precondition for `infeasibility_evidence` to ever be
-//! considered, and the only cap-related signal the public API carries.
+//! multipliers or `max|λ|` directly — the workspace field is private.
+//! `report.max_constraint_violation()` **is** public, and is reported below
+//! as a **scale proxy**: the predicate's condition-4 operands are the
+//! *inner* Dykstra sweeps' midpoint and final violations, not this *outer*
+//! terminal value, but the terminal violation bounds the scale the inner
+//! snapshots live at, and condition 4's tighter threshold (`100×`, i.e.
+//! `max/100`) makes that bound informative. It is not the operand itself,
+//! and this module does not claim it is.
+//!
+//! **`Err(SolverError::Overflow)` is an outcome class, not a panic.** At the
+//! coarser precisions this harness deliberately sweeps into, `checked_div`
+//! inside the kernel's own Dykstra step can legitimately overflow — that is
+//! the type's documented failure channel working, exactly the thing RFC 043
+//! §3.2 depends on. A measurement harness records it and moves on; it does
+//! not treat it as a bug in itself. Any *other* error is still a hard
+//! failure of this harness, since nothing else is expected.
 //!
 //! **Primary kernel: cluster (dynamic).** The predicate and its helpers are
-//! duplicated character-for-character between
-//! `loeres-device/src/solve/constrained.rs` and
-//! `loeres-cluster/src/solve/constrained.rs`; this module measures the
-//! cluster copy on a randomized corpus (dynamic sizing makes a varied corpus
-//! far simpler to build than the device path's const-generic one) and
+//! duplicated character-for-character between the device and cluster
+//! kernels; this module measures the cluster copy on the full corpus and
 //! separately confirms the **device** kernel compiles and runs over `Q32` at
-//! all (handoff §0.2's "should compile is not does compile"), on a handful of
-//! fixed instances rather than the full corpus.
+//! all (handoff §0.2), on one fixed instance rather than the full corpus.
 
 #![cfg(test)]
 
@@ -54,9 +71,6 @@ use loeres_cluster::{
 
 use super::exact::{DenseQp, exact_optimum};
 
-const FRAC_BITS: u32 = 20;
-type Q = Q32<FRAC_BITS>;
-
 fn lcg(seed: u64) -> impl FnMut() -> f64 {
     let mut state = seed;
     move || {
@@ -71,6 +85,7 @@ fn lcg(seed: u64) -> impl FnMut() -> f64 {
 /// `Q` tridiagonal with `off` on the off-diagonal — diagonally dominant
 /// (`2 > 2·off` for `off < 1`), hence always symmetric positive definite, so
 /// `exact_optimum`'s precondition is never at risk.
+#[derive(Clone)]
 struct Instance {
     m: usize,
     q: Vec<f64>,
@@ -124,6 +139,81 @@ fn random_corpus(count: usize, seed: u64) -> Vec<Instance> {
         .collect()
 }
 
+/// A nearly-parallel pair of rows at `angle`, pushed hard against a tight
+/// box, forming a feasible thin sliver (this project's own
+/// `qp-adv-parallel-angle-*` mechanism).
+fn adversarial_feasible_instance(angle: f64) -> Instance {
+    Instance {
+        m: 2,
+        q: q_tridiagonal(0.5),
+        c: vec![-6.0, -6.0, -6.0, -6.0],
+        lower: vec![-10.0; N],
+        upper: vec![10.0; N],
+        a: vec![1.0, 0.0, 0.0, 0.0, angle.cos(), angle.sin(), 0.0, 0.0],
+        b: vec![1.0, 1.0],
+    }
+}
+
+/// A genuinely infeasible, nearly-parallel pair of contradictory rows at
+/// `angle`, so the predicate's intended case gets a chance to fire at all.
+fn adversarial_infeasible_instance(angle: f64) -> Instance {
+    Instance {
+        m: 2,
+        q: q_tridiagonal(0.5),
+        c: vec![0.0; N],
+        lower: vec![-10.0; N],
+        upper: vec![10.0; N],
+        a: vec![1.0, 0.0, 0.0, 0.0, -angle.cos(), -angle.sin(), 0.0, 0.0],
+        b: vec![-1.0, -1.0],
+    }
+}
+
+const ADVERSARIAL_ANGLES: [f64; 4] = [1e-2, 1e-3, 1e-4, 1e-5];
+const ADVERSARIAL_CAPS: [u32; 4] = [65, 100, 300, 1_000];
+
+/// One case: a problem and the sweep cap to solve it with. Cap is a solve
+/// parameter, not problem data, so it travels with the instance rather than
+/// being a single value shared by a whole batch — the adversarial batches
+/// vary it per case.
+struct Case {
+    instance: Instance,
+    cap: u32,
+}
+
+fn random_cases() -> Vec<Case> {
+    random_corpus(300, 0x600D_C0DE_u64)
+        .into_iter()
+        .map(|instance| Case {
+            instance,
+            cap: 2_000,
+        })
+        .collect()
+}
+
+fn adversarial_feasible_cases() -> Vec<Case> {
+    ADVERSARIAL_ANGLES
+        .iter()
+        .flat_map(|&angle| {
+            ADVERSARIAL_CAPS.iter().map(move |&cap| Case {
+                instance: adversarial_feasible_instance(angle),
+                cap,
+            })
+        })
+        .collect()
+}
+
+fn adversarial_infeasible_cases() -> Vec<Case> {
+    ADVERSARIAL_ANGLES
+        .iter()
+        .flat_map(|&angle| {
+            ADVERSARIAL_CAPS.iter().map(move |&cap| Case {
+                instance: adversarial_infeasible_instance(angle),
+                cap,
+            })
+        })
+        .collect()
+}
+
 fn dense_qp(instance: &Instance) -> DenseQp {
     DenseQp {
         n: N,
@@ -137,7 +227,7 @@ fn dense_qp(instance: &Instance) -> DenseQp {
 }
 
 /// The dynamic constrained QP adapter, generic over the scalar so the
-/// identical problem is solved in `Q` and in `f64`.
+/// identical problem is solved in `Q32<F>` and in `f64`.
 struct ClusterProgram<S> {
     q: DenseMatrix<S>,
     c: DenseVector<S>,
@@ -201,12 +291,14 @@ fn build_cluster_program<S: BaseScalar>(
     }
 }
 
-/// One solve's outcome: status, `infeasibility_evidence`, `projection_cap_hits`
-/// and the returned iterate (as `f64`, via `to_f64`).
+/// One solve's outcome: status, `infeasibility_evidence`, `projection_cap_hits`,
+/// the terminal violation (a scale proxy — see the module doc), and the
+/// returned iterate (as `f64`, via `to_f64`).
 struct Outcome {
     status: SolveStatus,
     infeasibility_evidence: bool,
     projection_cap_hits: u32,
+    max_constraint_violation: f64,
     iterate: Vec<f64>,
 }
 
@@ -251,6 +343,7 @@ where
         status: record.report.status(),
         infeasibility_evidence: record.infeasibility_evidence,
         projection_cap_hits: record.projection_cap_hits,
+        max_constraint_violation: to_f64(record.max_constraint_violation),
         iterate,
     })
 }
@@ -262,8 +355,243 @@ fn max_abs_diff(a: &[f64], b: &[f64]) -> f64 {
         .fold(0.0, f64::max)
 }
 
+/// The scalar `n`, by repeated addition — byte-for-byte the same formula the
+/// kernel's own private `scalar_from` documents and uses
+/// (`constrained.rs`'s own doc comment on that helper), reproduced here
+/// because it is private to the kernel crates.
+fn scalar_from<S: MetricScalar>(n: u32) -> S {
+    (0..n).fold(S::zero(), |sum, _| sum.add(S::one()))
+}
+
+fn min_max_mean(values: &[f64]) -> (f64, f64, f64) {
+    if values.is_empty() {
+        return (0.0, 0.0, 0.0);
+    }
+    let min = values.iter().cloned().fold(f64::INFINITY, f64::min);
+    let max = values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    let mean = values.iter().sum::<f64>() / values.len() as f64;
+    (min, max, mean)
+}
+
+/// Per-batch, per-precision measurement. One of these is produced per
+/// `(batch, FRAC_BITS)` pair.
+#[derive(Default)]
+struct BatchStats {
+    total: usize,
+    q32_overflow: usize,
+    f64_overflow: usize,
+    q32_cap_hits: usize,
+    f64_cap_hits: usize,
+    converged_mismatches: usize,
+    evidence_q32_only: Vec<usize>,
+    evidence_f64_only: Vec<usize>,
+    converged_but_wrong: Vec<(usize, f64, f64)>,
+    no_exact_reference: usize,
+    q32_violations: Vec<f64>,
+    f64_violations: Vec<f64>,
+}
+
+/// Runs `cases` through both `Q32<F>` and `f64`, at the declared step scale.
+/// `Err(SolverError::Overflow)` is counted as an outcome class (module doc);
+/// any other error is a hard failure of this harness, since nothing else is
+/// expected of these well-formed instances.
+fn measure_cases_at<const F: u32>(cases: &[Case], step_scale: f64) -> BatchStats {
+    let mut s = BatchStats {
+        total: cases.len(),
+        ..Default::default()
+    };
+    for (i, case) in cases.iter().enumerate() {
+        let q_result = solve_cluster(
+            &case.instance,
+            Q32::<F>::from_f64,
+            Q32::<F>::to_f64,
+            step_scale,
+            Q32::<F>::from_raw(4),
+            Q32::<F>::from_raw(4),
+            case.cap,
+        );
+        let f_result = solve_cluster(
+            &case.instance,
+            |v| v,
+            |v| v,
+            step_scale,
+            1e-10,
+            1e-10,
+            case.cap,
+        );
+
+        let q_outcome = match q_result {
+            Ok(o) => o,
+            Err(SolverError::Overflow) => {
+                s.q32_overflow += 1;
+                continue;
+            }
+            Err(e) => panic!("case {i} at FRAC_BITS={F}: Q32 solve failed unexpectedly: {e:?}"),
+        };
+        let f_outcome = match f_result {
+            Ok(o) => o,
+            Err(SolverError::Overflow) => {
+                s.f64_overflow += 1;
+                continue;
+            }
+            Err(e) => panic!("case {i} at FRAC_BITS={F}: f64 solve failed unexpectedly: {e:?}"),
+        };
+
+        if q_outcome.projection_cap_hits > 0 {
+            s.q32_cap_hits += 1;
+        }
+        if f_outcome.projection_cap_hits > 0 {
+            s.f64_cap_hits += 1;
+        }
+        s.q32_violations.push(q_outcome.max_constraint_violation);
+        s.f64_violations.push(f_outcome.max_constraint_violation);
+
+        let q_conv = matches!(q_outcome.status, SolveStatus::Converged);
+        let f_conv = matches!(f_outcome.status, SolveStatus::Converged);
+        if q_conv != f_conv {
+            s.converged_mismatches += 1;
+        }
+
+        match (
+            q_outcome.infeasibility_evidence,
+            f_outcome.infeasibility_evidence,
+        ) {
+            (true, false) => s.evidence_q32_only.push(i),
+            (false, true) => s.evidence_f64_only.push(i),
+            _ => {}
+        }
+
+        if q_conv {
+            if let Some(exact) = exact_optimum(&dense_qp(&case.instance)) {
+                let q_deviation = max_abs_diff(&q_outcome.iterate, &exact);
+                let f_deviation = max_abs_diff(&f_outcome.iterate, &exact);
+                // Relative to the f64 solve's own deviation from the same
+                // exact optimum (RFC 041 S2's measure), not an absolute
+                // constant; a 1e-9 floor keeps the ratio defined when f64
+                // is itself (near-)exact. This *is* a threshold (module
+                // doc), not an absence of one.
+                let relative = q_deviation / f_deviation.max(1e-9);
+                if relative > 50.0 && q_deviation > 1e-4 {
+                    s.converged_but_wrong.push((i, q_deviation, f_deviation));
+                }
+            } else {
+                s.no_exact_reference += 1;
+            }
+        }
+    }
+    s
+}
+
+/// `(scalar_from(19)/scalar_from(10), scalar_from(99)/scalar_from(100))` at
+/// `Q32<F>`, reproducing RFC 043 Amendment 2's structural finding
+/// independently rather than copying its table.
+fn effective_factors<const F: u32>() -> (f64, f64) {
+    let factor_3 = scalar_from::<Q32<F>>(19).to_f64() / scalar_from::<Q32<F>>(10).to_f64();
+    let factor_4 = scalar_from::<Q32<F>>(99).to_f64() / scalar_from::<Q32<F>>(100).to_f64();
+    (factor_3, factor_4)
+}
+
+fn report_batch(label: &str, frac_bits: u32, stats: &BatchStats) {
+    eprintln!("  [{label}] FRAC_BITS={frac_bits}: {} cases", stats.total);
+    eprintln!(
+        "    overflow (outcome class, not a panic): Q32 {}, f64 {}  [measured]",
+        stats.q32_overflow, stats.f64_overflow
+    );
+    eprintln!(
+        "    projection_cap_hits > 0: Q32 {}, f64 {}  [measured]",
+        stats.q32_cap_hits, stats.f64_cap_hits
+    );
+    eprintln!(
+        "    converged-status mismatches: {}  [measured]",
+        stats.converged_mismatches
+    );
+    eprintln!(
+        "    infeasibility_evidence: Q32-only {} {:?}, f64-only {} {:?}  [measured]",
+        stats.evidence_q32_only.len(),
+        stats.evidence_q32_only,
+        stats.evidence_f64_only.len(),
+        stats.evidence_f64_only
+    );
+    let (q_min, q_max, q_mean) = min_max_mean(&stats.q32_violations);
+    let (f_min, f_max, f_mean) = min_max_mean(&stats.f64_violations);
+    eprintln!(
+        "    terminal violation (scale proxy, not the predicate's own operand): \
+         Q32 min={q_min:.3e} max={q_max:.3e} mean={q_mean:.3e}; \
+         f64 min={f_min:.3e} max={f_max:.3e} mean={f_mean:.3e}  [measured]"
+    );
+    if stats.converged_but_wrong.is_empty() {
+        eprintln!(
+            "    converged-but-wrong (threshold: relative>50x and absolute>1e-4): none  [measured]"
+        );
+    } else {
+        eprintln!(
+            "    converged-but-wrong (threshold: relative>50x and absolute>1e-4): {} {:?}  [measured]",
+            stats.converged_but_wrong.len(),
+            stats.converged_but_wrong
+        );
+    }
+    if stats.no_exact_reference > 0 {
+        eprintln!(
+            "    converged with no exact reference available: {}  [measured]",
+            stats.no_exact_reference
+        );
+    }
+}
+
+/// RFC 043 A1 (architect review 097 §5 / Amendment 2): the existing corpus
+/// and the existing adversarial batch, swept across `Q32`'s documented
+/// `1 <= FRAC_BITS <= 30` range. No new instances, no new seeds, no changed
+/// solve configuration beyond the swept constant itself.
+#[test]
+fn a1_frac_bits_sweep_over_the_existing_corpus_and_adversarial_batch() {
+    let random = random_cases();
+    let adversarial_feasible = adversarial_feasible_cases();
+    let adversarial_infeasible = adversarial_infeasible_cases();
+    let step_scale = 0.4; // 2/lambda_max <= 2/(2+2*0.9)=0.526; 0.4 is safely inside.
+
+    eprintln!("RFC 043 A1 — FRAC_BITS sweep over the random corpus and the adversarial batch:");
+    eprintln!(
+        "  FRAC_BITS | effective factor (19/10, want 1.9) | effective factor (99/100, want 0.99)"
+    );
+
+    // Each arm below is one FRAC_BITS value. Rust const generics need the
+    // value at compile time, so this is seven explicit calls rather than a
+    // runtime loop — the same shape bench.rs's device_instances! macro
+    // exists to avoid for a *table* of sizes; seven fixed values once is
+    // plainer written out than macro-generated.
+    macro_rules! sweep_one {
+        ($frac_bits:literal) => {{
+            let (factor_3, factor_4) = effective_factors::<$frac_bits>();
+            eprintln!("  {:>9} | {factor_3:.4} | {factor_4:.4}", $frac_bits);
+            report_batch(
+                "random corpus",
+                $frac_bits,
+                &measure_cases_at::<$frac_bits>(&random, step_scale),
+            );
+            report_batch(
+                "adversarial (feasible thin sliver)",
+                $frac_bits,
+                &measure_cases_at::<$frac_bits>(&adversarial_feasible, step_scale),
+            );
+            report_batch(
+                "adversarial (genuinely infeasible)",
+                $frac_bits,
+                &measure_cases_at::<$frac_bits>(&adversarial_infeasible, step_scale),
+            );
+        }};
+    }
+
+    sweep_one!(12);
+    sweep_one!(16);
+    sweep_one!(20);
+    sweep_one!(24);
+    sweep_one!(26);
+    sweep_one!(28);
+    sweep_one!(30);
+}
+
 /// Handoff §0.2: confirm the **device** kernel actually compiles and runs
-/// over `Q32`, on a few fixed instances — not the full corpus, which is the
+/// over `Q32`, on one fixed instance — not the full corpus, which is the
 /// cluster kernel's job in this module.
 #[test]
 fn the_device_constrained_kernel_compiles_and_runs_over_q32() {
@@ -273,6 +601,7 @@ fn the_device_constrained_kernel_compiles_and_runs_over_q32() {
         solve_constrained_projected_first_order,
     };
 
+    type Q = Q32<20>;
     const DN: usize = 2;
     const DM: usize = 1;
     struct DeviceProgram {
@@ -354,272 +683,14 @@ fn the_device_constrained_kernel_compiles_and_runs_over_q32() {
     );
 }
 
-/// RFC 043 S1: the cluster constrained kernel over `Q32<20>`, measured on a
-/// 300-instance random corpus against the exact optimum and the `f64` solve.
-#[test]
-fn q32_constrained_solves_measured_against_the_exact_reference_and_the_f64_solve() {
-    let corpus = random_corpus(300, 0x600D_C0DE_u64);
-    let step_scale = 0.4; // 2/lambda_max <= 2/(2+2*0.9)=0.526; 0.4 is safely inside.
-
-    let mut converged_mismatches = 0usize;
-    let mut evidence_q32_only = Vec::new();
-    let mut evidence_f64_only = Vec::new();
-    let mut q32_cap_hits_count = 0usize;
-    let mut f64_cap_hits_count = 0usize;
-    let mut converged_but_wrong = Vec::new();
-    let mut no_exact_reference = 0usize;
-    let mut worst_relative_deviation = 0.0_f64;
-    let mut worst_relative_absolute: (usize, f64, f64) = (0, 0.0, 0.0);
-
-    for (i, instance) in corpus.iter().enumerate() {
-        let q_outcome = solve_cluster(
-            instance,
-            Q::from_f64,
-            Q::to_f64,
-            step_scale,
-            Q::from_raw(4),
-            Q::from_raw(4),
-            2_000,
-        )
-        .unwrap_or_else(|e| panic!("instance {i}: Q32 solve failed: {e:?}"));
-        let f_outcome = solve_cluster(instance, |v| v, |v| v, step_scale, 1e-10, 1e-10, 2_000)
-            .unwrap_or_else(|e| panic!("instance {i}: f64 solve failed: {e:?}"));
-
-        if q_outcome.projection_cap_hits > 0 {
-            q32_cap_hits_count += 1;
-        }
-        if f_outcome.projection_cap_hits > 0 {
-            f64_cap_hits_count += 1;
-        }
-
-        let q_conv = matches!(q_outcome.status, SolveStatus::Converged);
-        let f_conv = matches!(f_outcome.status, SolveStatus::Converged);
-        if q_conv != f_conv {
-            converged_mismatches += 1;
-        }
-
-        match (
-            q_outcome.infeasibility_evidence,
-            f_outcome.infeasibility_evidence,
-        ) {
-            (true, false) => evidence_q32_only.push(i),
-            (false, true) => evidence_f64_only.push(i),
-            _ => {}
-        }
-
-        if q_conv {
-            if let Some(exact) = exact_optimum(&dense_qp(instance)) {
-                let q_deviation = max_abs_diff(&q_outcome.iterate, &exact);
-                let f_deviation = max_abs_diff(&f_outcome.iterate, &exact);
-                // Relative to the f64 solve's own deviation from the same exact
-                // optimum (RFC 041 S2's measure), not an absolute constant: a
-                // baseline deviation floor of 1e-9 keeps the ratio defined when
-                // the f64 solve is itself (near-)exact.
-                let relative = q_deviation / f_deviation.max(1e-9);
-                if relative > worst_relative_deviation {
-                    worst_relative_deviation = relative;
-                    worst_relative_absolute = (i, q_deviation, f_deviation);
-                }
-                // "Wrong" means meaningfully worse than the f64 solve's own
-                // approximation error, not merely nonzero.
-                if relative > 50.0 && q_deviation > 1e-4 {
-                    converged_but_wrong.push((i, q_deviation, f_deviation));
-                }
-            } else {
-                no_exact_reference += 1;
-            }
-        }
-    }
-
-    eprintln!("Q32 constrained solves over {} instances:", corpus.len());
-    eprintln!("  converged-status mismatches (Q32 vs f64): {converged_mismatches}  [measured]");
-    eprintln!(
-        "  infeasibility_evidence: Q32-only {} ({:?}), f64-only {} ({:?})  [measured]",
-        evidence_q32_only.len(),
-        evidence_q32_only,
-        evidence_f64_only.len(),
-        evidence_f64_only
-    );
-    eprintln!(
-        "  projection_cap_hits > 0: Q32 {q32_cap_hits_count}/{}, f64 {f64_cap_hits_count}/{}  [measured]",
-        corpus.len(),
-        corpus.len()
-    );
-    eprintln!(
-        "  (max|lambda| and its saturation count are not exposed by the public API; \
-         projection_cap_hits above is the closest available proxy — see this module's doc)"
-    );
-    eprintln!(
-        "  converged instances with no exact reference available (infeasible or n > MAX_N): {no_exact_reference}  [measured]"
-    );
-    eprintln!(
-        "  worst Q32 deviation from exact, relative to f64's own deviation from exact: {worst_relative_deviation:.2}x  [measured/derived]"
-    );
-    eprintln!(
-        "    (at instance {}: Q32 absolute deviation {:e}, f64 absolute deviation {:e} — \
-         a large ratio with a tiny f64 deviation is the 1e-9 floor, not a Q32 problem)  [measured]",
-        worst_relative_absolute.0, worst_relative_absolute.1, worst_relative_absolute.2
-    );
-    if converged_but_wrong.is_empty() {
-        eprintln!("  converged-but-wrong instances: none  [measured]");
-    } else {
-        eprintln!(
-            "  converged-but-wrong instances: {} — {converged_but_wrong:?}  [measured]",
-            converged_but_wrong.len()
-        );
-    }
-
-    // The deliverable is the measurement (RFC 043 §3.1); report, do not
-    // silently pass over, a nonempty result.
-    assert!(
-        converged_but_wrong.is_empty(),
-        "Q32 reported Converged but was wrong (relative to f64's own deviation) on {converged_but_wrong:?}"
-    );
-}
-
-/// RFC 043 §2.3: a random corpus may simply not be adversarial enough to
-/// stress multiplier growth, since real snapshots are correlated along a
-/// trajectory and the false positive needs `max|λ|` to actually climb.
-/// Nearly-parallel constraint rows are this project's own established
-/// mechanism for that (`conformance/adversarial`'s `qp-adv-parallel-angle-*`
-/// family): a thin sliver forces many Dykstra sweeps per outer iteration,
-/// which is exactly where multipliers have room to grow. This deliberately
-/// hunts for the false positive rather than waiting to see it by chance.
-#[test]
-fn q32_near_parallel_rows_with_small_sweep_caps_hunted_for_the_false_positive() {
-    let angles: [f64; 4] = [1e-2, 1e-3, 1e-4, 1e-5];
-    let caps = [65u32, 100, 300, 1_000];
-    let mut evidence_q32_only = Vec::new();
-    let mut evidence_f64_only = Vec::new();
-    let mut tried = 0usize;
-    let mut q32_capped = 0usize;
-    let mut f64_capped = 0usize;
-
-    for &angle in &angles {
-        // Two nearly-parallel rows in the first two coordinates, both near
-        // their bound at the thin sliver's vertex; `c` pushes the
-        // unconstrained optimum well past both rows, so they both bind hard.
-        let instance = Instance {
-            m: 2,
-            q: q_tridiagonal(0.5),
-            c: vec![-6.0, -6.0, -6.0, -6.0],
-            lower: vec![-10.0; N],
-            upper: vec![10.0; N],
-            a: vec![1.0, 0.0, 0.0, 0.0, angle.cos(), angle.sin(), 0.0, 0.0],
-            b: vec![1.0, 1.0],
-        };
-        for &cap in &caps {
-            tried += 1;
-            let q_outcome = solve_cluster(
-                &instance,
-                Q::from_f64,
-                Q::to_f64,
-                0.4,
-                Q::from_raw(4),
-                Q::from_raw(4),
-                cap,
-            )
-            .unwrap_or_else(|e| panic!("angle {angle}, cap {cap}: Q32 solve failed: {e:?}"));
-            let f_outcome = solve_cluster(&instance, |v| v, |v| v, 0.4, 1e-10, 1e-10, cap)
-                .unwrap_or_else(|e| panic!("angle {angle}, cap {cap}: f64 solve failed: {e:?}"));
-            if q_outcome.projection_cap_hits > 0 {
-                q32_capped += 1;
-            }
-            if f_outcome.projection_cap_hits > 0 {
-                f64_capped += 1;
-            }
-            match (
-                q_outcome.infeasibility_evidence,
-                f_outcome.infeasibility_evidence,
-            ) {
-                (true, false) => evidence_q32_only.push((angle, cap)),
-                (false, true) => evidence_f64_only.push((angle, cap)),
-                _ => {}
-            }
-        }
-    }
-
-    // A genuinely infeasible instance too: two contradictory near-parallel
-    // rows (`x0 <= -1` and, at a slight angle, `x0 >= 1`-ish), so the
-    // predicate's intended case — real divergence — gets a chance to fire at
-    // all before concluding Q32 agrees or disagrees with f64 on it.
-    for &angle in &angles {
-        for &cap in &caps {
-            tried += 1;
-            let instance = Instance {
-                m: 2,
-                q: q_tridiagonal(0.5),
-                c: vec![0.0; N],
-                lower: vec![-10.0; N],
-                upper: vec![10.0; N],
-                a: vec![1.0, 0.0, 0.0, 0.0, -angle.cos(), -angle.sin(), 0.0, 0.0],
-                b: vec![-1.0, -1.0],
-            };
-            let q_outcome = solve_cluster(
-                &instance,
-                Q::from_f64,
-                Q::to_f64,
-                0.4,
-                Q::from_raw(4),
-                Q::from_raw(4),
-                cap,
-            )
-            .unwrap_or_else(|e| {
-                panic!("infeasible angle {angle}, cap {cap}: Q32 solve failed: {e:?}")
-            });
-            let f_outcome = solve_cluster(&instance, |v| v, |v| v, 0.4, 1e-10, 1e-10, cap)
-                .unwrap_or_else(|e| {
-                    panic!("infeasible angle {angle}, cap {cap}: f64 solve failed: {e:?}")
-                });
-            if q_outcome.projection_cap_hits > 0 {
-                q32_capped += 1;
-            }
-            if f_outcome.projection_cap_hits > 0 {
-                f64_capped += 1;
-            }
-            match (
-                q_outcome.infeasibility_evidence,
-                f_outcome.infeasibility_evidence,
-            ) {
-                (true, false) => evidence_q32_only.push((angle, cap)),
-                (false, true) => evidence_f64_only.push((angle, cap)),
-                _ => {}
-            }
-        }
-    }
-
-    eprintln!(
-        "near-parallel adversarial hunt (feasible thin-sliver batch + a genuinely infeasible \
-         batch): {tried} (angle, cap) combinations, {} angles x {} caps x 2 batches",
-        angles.len(),
-        caps.len()
-    );
-    eprintln!(
-        "  projection_cap_hits > 0: Q32 {q32_capped}/{tried}, f64 {f64_capped}/{tried}  [measured]"
-    );
-    eprintln!(
-        "  infeasibility_evidence: Q32-only {} {evidence_q32_only:?}, f64-only {} {evidence_f64_only:?}  [measured]",
-        evidence_q32_only.len(),
-        evidence_f64_only.len()
-    );
-    if evidence_q32_only.is_empty() {
-        eprintln!(
-            "  the false positive did not fire on this adversarial batch either — not because \
-             it cannot, but because it was not found here  [measured]"
-        );
-    }
-}
-
-/// RFC 043 §2's own measurement, moved into tracked code (handoff §1: "also
-/// move the §2 differential into tracked code"). Reproduces **only** the
-/// cross-multiplied comparisons `has_infeasibility_evidence` currently uses —
-/// conditions 3 and 4 of RFC 034 Amendment 1, `10·final ≥ 19·midpoint` and
-/// `100·final ≥ 99·midpoint` — through the public `Q32`/`f64` arithmetic, on
-/// independently drawn snapshot quadruples. This is the predicate's defect in
-/// isolation, not a real solve; §2.3 of the RFC is explicit that correlated,
-/// trajectory-drawn snapshots (the kernel measurement above) may disagree far
-/// less often than this.
-/// The four comparison constants, built once per scalar type.
+/// RFC 043 §2's own measurement, moved into tracked code. Reproduces
+/// **only** the cross-multiplied comparisons `has_infeasibility_evidence`
+/// currently uses — conditions 3 and 4 of RFC 034 Amendment 1,
+/// `10·final ≥ 19·midpoint` and `100·final ≥ 99·midpoint` — through the
+/// public `Q32`/`f64` arithmetic, at `FRAC_BITS = 20`, on independently
+/// drawn snapshot quadruples. This is the predicate's defect in isolation at
+/// one precision, not a real solve and not the structural (cross-precision)
+/// finding — that is `a1_frac_bits_sweep...` above.
 struct Factors<S> {
     ten: S,
     nineteen: S,
@@ -645,7 +716,9 @@ fn cross_multiplied_conditions<S: MetricScalar>(factors: &Factors<S>, snap: &Qua
 }
 
 #[test]
-fn the_cross_multiplied_predicate_manufactures_evidence_under_q32_but_never_hides_it() {
+fn the_cross_multiplied_predicate_manufactures_evidence_under_q32_but_never_hides_it_at_frac_bits_20()
+ {
+    type Q = Q32<20>;
     let scales = [10.0_f64, 25.0, 120.0, 1_000.0, 2_000.0];
     const DRAWS: usize = 200_000;
 
@@ -698,13 +771,15 @@ fn the_cross_multiplied_predicate_manufactures_evidence_under_q32_but_never_hide
             }
         }
         eprintln!("  {scale:>13} | {q32_only:>32} | {f64_only:>32}");
-        // RFC 043 §2's finding, re-verified independently: saturation can
-        // only manufacture evidence, never suppress it.
+        // At FRAC_BITS = 20 the factors themselves are intact (Amendment 2's
+        // table), so this specific precision's defect is one-directional.
+        // That is NOT a general claim across every FRAC_BITS — see the
+        // sweep above, which finds the opposite at 24.
         assert_eq!(
             f64_only, 0,
-            "scale {scale}: the cross-multiplied form hid real evidence Q32 should have seen \
-             — this would mean the defect also produces false negatives, which RFC 043 §2 says \
-             it does not"
+            "scale {scale}: at FRAC_BITS=20 the cross-multiplied form hid real evidence Q32 \
+             should have seen, which review 096 did not find and which would need its own \
+             investigation"
         );
     }
 }

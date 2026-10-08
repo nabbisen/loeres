@@ -15,27 +15,45 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
-**RFC 043 S1 — the constrained kernel over `Q32`, measured.** RFC 041 S3 found that
-`has_infeasibility_evidence`'s cross-multiplied comparisons can saturate under a bounded
-scalar and manufacture a false infeasibility diagnosis; this slice measures whether a real
-constrained solve reaches that case before S2 fixes the predicate's form.
+**RFC 043 S1 (+ A1) — the constrained kernel over `Q32`, measured across its documented
+`FRAC_BITS` range.** RFC 041 S3 found that `has_infeasibility_evidence`'s cross-multiplied
+comparisons can saturate under a bounded scalar and manufacture a false infeasibility
+diagnosis; this slice measures whether a real constrained solve reaches that case, before S2
+fixes the predicate's form.
 
-- A tracked `#[cfg(test)]` harness (`xtask/src/checks/fixed_point_constrained.rs`, no gate,
-  no reported command, no pinned threshold) confirms the constrained kernel compiles and
-  runs over `Q32<20>` in both the device and the cluster path.
-- On 300 random correlated-trajectory solves, and on a further 32 deliberately adversarial
-  near-parallel and genuinely infeasible instances chosen to stress multiplier growth, the
-  false positive **did not fire** — zero `infeasibility_evidence` disagreements between
-  `Q32` and `f64` in either batch, zero converged-but-wrong instances relative to the exact
-  optimum (`checks::exact::exact_optimum`), zero converged-status mismatches.
-- The predicate's defect in isolation, independently reproduced on 200 000 independently
-  drawn snapshot quadruples per scale: the false-negative column is empty at every scale
-  (saturation only ever manufactures evidence, never hides it), matching architect review
-  096 §0.1's finding.
-- No crate changed; no public API change. S2 proceeds as **hardening against an unreached
-  defect** on this evidence, not as a fix for a diagnosis reachable on this corpus — per
-  `rfcs/handoffs/release-0.24.0/scope-and-decision-points.md` §3 decision 1, this needs no
-  separate authorization and the architect rules on the characterisation.
+- A tracked `#[cfg(test)]` harness (`xtask/src/checks/fixed_point_constrained.rs`, no gate, no
+  reported command) confirms the constrained kernel compiles and runs over `Q32` in both the
+  device and the cluster path, and re-runs the same 300-instance random corpus and 32-instance
+  adversarial batch (16 feasible thin-sliver, 16 genuinely infeasible) at
+  `FRAC_BITS ∈ {12, 16, 20, 24, 26, 28, 30}` — the type's full documented `1 ≤ FRAC_BITS ≤ 30`
+  range, not the single precision (`20`) S1 first measured.
+- **S1's "did not fire" was true only at `FRAC_BITS = 20`, not in general — the original
+  entry overstated its own scope, and this corrects it rather than restating it.** At
+  `FRAC_BITS = 24`, the genuinely-infeasible adversarial batch shows `infeasibility_evidence`
+  disagreement in **both** directions (`Q32`-only on 1 of 16 instances, `f64`-only on 7 of
+  16), contradicting the one-directional claim RFC 043 §2 drew from the `FRAC_BITS = 20`
+  measurement. At `FRAC_BITS ∈ {26, 28, 30}` the `Q32`-only direction persists (1 of 16) and
+  the `f64`-only direction does not recur; the mechanism behind this asymmetry is not
+  established by this harness and is reported as open, not assumed.
+- **A second, independent mechanism, needing no adversarial data at all.** The predicate's
+  own constants are themselves built by repeated addition inside `Q32`'s documented range: at
+  `FRAC_BITS = 26` the `100·final ≥ 99·midpoint` factor (`99/100`, measured directly via the
+  kernel's own `scalar_from` formula, not assumed) degrades from `0.99` to exactly `1.0`;
+  at `FRAC_BITS = 28` the `10·final ≥ 19·midpoint` factor (`19/10`) degrades from `1.9` to
+  `1.0` as well — the exact band RFC 034 Amendment 1 already proved unsound, reached by
+  construction rather than by any adversarial trajectory.
+- On the random corpus, `Q32` also stops tracking the `f64`/exact-optimum reference at both
+  ends of the swept range: 300 of 300 converged-but-wrong instances at `FRAC_BITS = 12`, 77 of
+  300 at `16`, zero across `{20, 24, 26, 28}`, then 68 of 300 at `FRAC_BITS = 30` alongside 99
+  of 300 `Err(Overflow)` outcomes (2 at `26`, 11 at `28`) as the representable range shrinks.
+- The predicate's defect in isolation (independent of any real solve), on 200 000
+  independently drawn snapshot quadruples per scale at `FRAC_BITS = 20` specifically: the
+  false-negative column is empty at every scale there — a property of that one precision, not
+  of the type in general, matching architect review 096 §0.1's finding at that precision only.
+- No crate changed; no public API change. **Decision 1 revised: S2 is a correctness fix, not
+  hardening against an unreached defect** — per `rfcs/handoffs/release-0.24.0/scope-and-decision-points.md`
+  §3, architect review 097 ruled against "hardening" on exactly this evidence, now reproduced
+  directly rather than taken on the architect's word.
 
 ## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
 
