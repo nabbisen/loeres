@@ -159,7 +159,7 @@ fn a_different_frac_bits_is_a_genuinely_different_type_and_scale() {
 ///
 /// ```text
 /// error[E0080]: evaluation panicked: Q32's FRAC_BITS must satisfy 1 <= FRAC_BITS <= 30
-///    --> crates/loeres/src/scalar/fixed_point.rs:115:37
+///    --> crates/loeres/src/scalar/fixed_point.rs:143:37
 ///     | evaluation of `scalar::fixed_point::Q32::<32>::VALID_FRAC_BITS` failed here
 /// ```
 #[test]
