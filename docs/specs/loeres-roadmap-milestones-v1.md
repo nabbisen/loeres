@@ -5,7 +5,7 @@ Scope: RFC roadmap, implementation sprint ordering, verification gates, and mile
 Calendar policy: No calendar dates or duration estimates. All progress is gated by design acceptance and automated validation.
 
 > **Release currency metadata.**
-> This tree: **0.23.1**.
+> This tree: **0.24.0**.
 > Last reconciled repository release: **0.23.0**.
 > Implemented scope: **RFCs 001-042**.
 >

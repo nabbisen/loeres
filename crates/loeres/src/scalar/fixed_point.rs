@@ -82,6 +82,19 @@
 //! them. S3 decides whether a future checked-arithmetic tier is warranted;
 //! this baseline commits to nothing beyond what is implemented here.
 //!
+//! **`checked_add`/`checked_sub`/`checked_mul` are inherent methods, not a
+//! trait (RFC 043 S5).** They are the capability a caller reaches for when
+//! `BaseScalar`'s saturating discipline is not acceptable for their own use
+//! of this type directly — `Option<Self>` where the exact result would not
+//! fit `i32`, rather than the clamped value `add`/`sub`/`mul` return. **No
+//! kernel in this crate calls them**, and implementing a checked-arithmetic
+//! trait is a different, bigger commitment than adding three methods to one
+//! type: it would mean deciding what every current and future `BaseScalar`
+//! implementor owes a caller who wants to detect a clamp, which is exactly
+//! the question above declines to settle. `checked_mul` checks the
+//! **shift**, not the product: see its own doc comment for why the `i64`
+//! intermediate product can never be what overflows.
+//!
 //! **A narrower, measured claim: the constrained kernel's usable band is
 //! `7..=20`, not the type's full `1..=30` (RFC 043 S6).** This is a
 //! *different kind of claim* from the compile-time-enforced range above —
@@ -195,6 +208,58 @@ impl<const FRAC_BITS: u32> Q32<FRAC_BITS> {
     #[must_use]
     pub fn to_f64(self) -> f64 {
         (self.0 as f64) / (Self::SCALE as f64)
+    }
+
+    /// `self + rhs`, or `None` if the exact sum does not fit `i32` — the
+    /// checked alternative to [`BaseScalar::add`]'s saturating discipline,
+    /// for a caller who wants to detect a clamp rather than accept one
+    /// (RFC 043 S5). **Inherent only, not a trait method**: no kernel in
+    /// this crate calls this, and implementing a checked-arithmetic trait
+    /// would commit `Q32` to something beyond what any kernel here needs —
+    /// `BaseScalar`'s own arithmetic stays saturating (module doc).
+    #[inline]
+    #[must_use]
+    pub const fn checked_add(self, rhs: Self) -> Option<Self> {
+        match self.0.checked_add(rhs.0) {
+            Some(raw) => Some(Self(raw)),
+            None => None,
+        }
+    }
+
+    /// `self - rhs`, or `None` if the exact difference does not fit `i32`.
+    /// See [`Q32::checked_add`] for why this is inherent rather than a
+    /// trait method.
+    #[inline]
+    #[must_use]
+    pub const fn checked_sub(self, rhs: Self) -> Option<Self> {
+        match self.0.checked_sub(rhs.0) {
+            Some(raw) => Some(Self(raw)),
+            None => None,
+        }
+    }
+
+    /// `self * rhs`, or `None` if the exact product does not fit `i32` once
+    /// scaled back down. See [`Q32::checked_add`] for why this is inherent
+    /// rather than a trait method.
+    ///
+    /// **What this actually checks is the shift, not the multiplication.**
+    /// The intermediate product `(self.0 as i64) * (rhs.0 as i64)` is
+    /// computed in `i64`, exactly as [`BaseScalar::mul`] does, and two `i32`
+    /// operands can never overflow that: the product's magnitude is at most
+    /// `i32::MAX² < 2^62`, comfortably inside `i64`. The failure this
+    /// reports is the **shifted** result (`product >> FRAC_BITS`) leaving
+    /// `[i32::MIN, i32::MAX]` after rescaling — the same condition
+    /// [`BaseScalar::mul`] saturates instead of reporting.
+    #[inline]
+    #[must_use]
+    pub const fn checked_mul(self, rhs: Self) -> Option<Self> {
+        let product = (self.0 as i64) * (rhs.0 as i64);
+        let scaled = product >> FRAC_BITS;
+        if scaled > i32::MAX as i64 || scaled < i32::MIN as i64 {
+            None
+        } else {
+            Some(Self(scaled as i32))
+        }
     }
 }
 

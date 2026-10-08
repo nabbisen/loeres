@@ -42,6 +42,25 @@ fn add_sub_and_neg_saturate_rather_than_overflow() {
     assert_eq!(min.neg().to_raw(), i32::MAX);
 }
 
+/// RFC 043 S5: `checked_add`/`checked_sub` are the checked alternative to
+/// the saturating `BaseScalar::add`/`sub` — `None` exactly where the
+/// saturating form would have clamped, `Some` with the same answer
+/// otherwise.
+#[test]
+fn checked_add_and_sub_report_none_exactly_where_add_and_sub_would_clamp() {
+    let max = Q::from_raw(i32::MAX);
+    let min = Q::from_raw(i32::MIN);
+    let one = Q::one();
+
+    assert_eq!(max.checked_add(one), None);
+    assert_eq!(min.checked_sub(one), None);
+
+    let a = Q::from_f64(1.5);
+    let b = Q::from_f64(0.25);
+    assert_eq!(a.checked_add(b), Some(a.add(b)));
+    assert_eq!(a.checked_sub(b), Some(a.sub(b)));
+}
+
 #[test]
 fn abs_of_the_most_negative_value_saturates_and_does_not_panic() {
     // RFC 041 handoff §1: "MetricScalar::abs is the trap: in two's complement
@@ -57,6 +76,22 @@ fn mul_saturates_at_the_extremes_instead_of_wrapping() {
     let two = Q::from_f64(2.0);
     let product = max.mul(two);
     assert_eq!(product.to_raw(), i32::MAX, "{product:?}");
+}
+
+/// RFC 043 S5: `checked_mul` reports `None` exactly where `mul` would have
+/// saturated, and the failure is the **shifted** result leaving `i32`, not
+/// the `i64` intermediate product overflowing — two `i32` raw values can
+/// never make that product overflow `i64`.
+#[test]
+fn checked_mul_reports_none_exactly_where_mul_would_saturate() {
+    let max = Q::from_raw(i32::MAX);
+    let two = Q::from_f64(2.0);
+    assert_eq!(max.checked_mul(two), None);
+    assert_eq!(max.mul(two).to_raw(), i32::MAX);
+
+    let a = Q::from_f64(1.5);
+    let b = Q::from_f64(0.25);
+    assert_eq!(a.checked_mul(b), Some(a.mul(b)));
 }
 
 #[test]

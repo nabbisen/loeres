@@ -11,7 +11,7 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.23.1] — unreleased
+## [0.24.0] — unreleased
 
 **Release status:** unreleased
 
@@ -170,6 +170,52 @@ deliberately not RFC 043 S6's `7..=20` usable band** — that is a measured prop
 kernel's behaviour on one corpus, this is an algebraic invariant of the type itself, and
 asserting the narrower band would forbid box-kernel instantiations that are perfectly sound at
 those same precisions.
+
+**RFC 043 S3 — the checked-arithmetic tier question, answered.** RFC 041 S3 deferred whether a
+future checked-arithmetic scalar tier is warranted to this release's trigger. `crates/loeres/src/scalar.rs`'s
+module doc now answers it: no tier between `BaseScalar` and `AdvancedNumericalScalar` can report
+whether a result was clamped in general, since `BaseScalar`'s arithmetic has no failure channel
+by construction — but that is false for a construction known to be monotonic, which is the only
+case a bounded-scalar kernel has needed so far, and RFC 043 S2's own `build_monotonic` detects
+exactly that case through ordering alone, no new trait method and no new tier. S2 removes the
+need for an overflow signal at that one site; it does not settle the general question. What
+would: a kernel whose correctness needs an overflow signal for a construction that is not
+monotonic, where neither the ordering trick nor an existing tier (`DivisibleScalar`,
+`MetricScalar`) can help. Documentation only; no code change.
+
+**RFC 043 S4 — the coarser-precision box-kernel measurement, and a step-relative threshold in
+both harnesses.** `xtask/src/checks/fixed_point.rs` (RFC 041 S2's box-kernel demonstration) now
+measures at a second, coarser `FRAC_BITS = 12` alongside the original `20`, on the same
+300-instance corpus and seed. Both precisions are clean against both references. The
+converged-but-wrong classifier's guard is now expressed in quantization steps rather than an
+absolute constant, in this harness and in `fixed_point_constrained.rs` alike (RFC 043 Amendment
+3 extended the requirement to both): the box kernel's own worst measured deviation is `≈47`
+steps at *either* precision — `4.5e-5` at `FRAC_BITS = 20`, `1.1e-2` at `FRAC_BITS = 12`, the
+same `47` steps read in absolute terms at each — confirming directly what the former absolute
+`1e-3` guard would have misread: the `FRAC_BITS = 12` figure is `11×` past that constant while
+being exactly as correct as the `FRAC_BITS = 20` one. `#[cfg(test)]`-only; no gate, no pinned
+threshold beyond the step count itself.
+
+**RFC 043 S5 — inherent `checked_add`/`checked_sub`/`checked_mul` on `Q32`.** Three new inherent
+methods, returning `Option<Self>` — **not** a trait, not a tier, and no existing `BaseScalar`
+implementor (including `Q32` itself) commits to anything beyond what it already implements; no
+kernel in this crate calls them. `checked_add`/`checked_sub` report `None` exactly where
+`BaseScalar::add`/`sub` would have saturated. `checked_mul` checks the **shift**, not the
+product: the `i64` intermediate `(self.0 as i64) * (rhs.0 as i64)` can never overflow for two
+`i32` operands (`i32::MAX² < 2^62`), so the only possible failure is the rescaled result
+(`product >> FRAC_BITS`) leaving `[i32::MIN, i32::MAX]` — the same condition `BaseScalar::mul`
+saturates instead of reporting. `check-public-api` and `published-metadata` both passed with no
+specific commentary on the three new methods: `check-public-api` is a forbidden-token sweep over
+public API source text, not an API-shape diff (the same reason it had nothing to say about RFC
+044's associated const), so three `pub const fn … -> Option<Self>` signatures clear it with
+nothing to flag.
+
+**This slice performs the version bump.** Inherent `checked_*` methods are the first callable
+API this release adds, so `0.23.1`'s placeholder becomes `0.24.0`: the workspace version and the
+five internal `[workspace.dependencies]` pins, all eight lockfiles (scoped to only this
+workspace's own packages — no third-party dependency moved), the three apex `This tree` fields,
+and this heading. `Last reconciled repository release` stays at `0.23.0` throughout; RFC 024's
+inequality is strict and the release has not happened yet.
 
 ## [0.23.0] — 2026-10-08 — A batch caller sees what the solve found, and a scalar that is not a float
 
