@@ -65,11 +65,18 @@ before the cut". The four gated places it touches are listed in the handoff §6.
 Per the owner's standing division: the dev team may prepare everything except the cut
 itself, which the architect and the owner perform together.
 
-**Prepped by the dev team:** all five slices, their review requests, the `CHANGELOG.md`
-entries, and E's version bump with its four couplings.
+**Prepped by the dev team:** every slice above, its review request, its `CHANGELOG.md`
+entry, and E's version bump with its four couplings.
 
 **Not prepped by the dev team:** the finalization revision, the tag, the push, the RFC 028
 anchor computation, and publication. Those are the cut.
+
+**This file is the owner's record, not a dev-team instruction.** The same boundary is stated
+where the dev team will actually read it —
+`rfcs/handoffs/043-the-constrained-kernel-over-a-bounded-scalar/implementation-handoff.md`
+§6.1 — so that the handoffs remain the single source of truth for what to do and this file
+remains the record of what was decided. If the two ever disagree, the handoff is wrong and
+this file is the intent.
 
 ## 5. The cut, when it comes
 

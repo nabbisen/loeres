@@ -356,6 +356,13 @@ behind a feature. Expect them to fire and report what they said.
 | S3 (C) | no — documentation | `0.23.1` |
 | S4 (D) | no — `#[cfg(test)]` | `0.23.1` |
 | **S5 (E)** | **yes — inherent `checked_*`** | **`0.24.0`** |
+| S6 (F) | no — documentation and a regrouping | whatever the workspace version is when you take it |
+| RFC 044 (G) | no — a compile-time assert | whatever the workspace version is when you take it |
+
+RFC 044 has its **own** contract and handoff
+(`rfcs/accepted/044-a-frac-bits-a-caller-cannot-get-wrong.md`,
+`rfcs/handoffs/044-a-frac-bits-a-caller-cannot-get-wrong/implementation-handoff.md`) and is
+listed here only so this table is the whole release. It bumps nothing.
 
 **S5's slice performs the bump**, as the first slice to move the release's position, and it
 touches four gated places:
@@ -373,8 +380,26 @@ touches four gated places:
 `Last reconciled repository release` does **not** move. It stays at `0.23.0` until the
 post-release commit; RFC 024's inequality is strict.
 
-If you reach S5 before A–D are accepted, **do not bump early**. Run `--intended-tag 0.23.1`
-for the earlier slices and let S5's own slice carry the bump.
+If you reach S5 before the others are accepted, **do not bump early**. Run
+`--intended-tag 0.23.1` for them and let S5's own slice carry the bump. For S6 and RFC 044,
+**read the workspace version rather than assuming which order the slices landed in**: both
+are patches and both take whatever position S5 has already set, or `0.23.1` if it has not.
+
+## 6.1 Where your work stops
+
+Per the owner's standing division: the dev team prepares everything except the cut itself,
+which the architect and the owner perform together.
+
+**Yours:** every slice above, its review request, its `CHANGELOG.md` entry, and S5's version
+bump with the four couplings in §6.
+
+**Not yours:** the finalization revision, the tag, the push, the RFC 028 archive-anchor
+computation, and publication. Do not run them, and do not prepare them "ready to go" — the
+anchor is recomputed by hand and verified three ways at the cut, and `distributed` is claimed
+only after the tagged CI `release-gate` job is confirmed.
+
+`cargo xtask release-gate --intended-tag <v>` **is** yours and is required of every slice.
+That is a candidate check, not a cut.
 
 ## 7. Non-scope
 
