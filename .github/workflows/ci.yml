@@ -20,11 +20,14 @@ jobs:
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - run: cargo check --workspace --all-features
       - run: cargo test --workspace --all-features
-  xtask-check:
-    # RFC 045 S1: the full twenty-gate aggregate, on every push and PR, not
-    # just the two gates (`zero-bleed`, `supply-chain`) this job used to name
-    # individually. `no-std` is covered twice now (also by `no-std.yml`),
-    # which is cheap; `msrv.yml` stays separate since it pins a different
+  gates:
+    # RFC 045 S1 (review 108 §4): the full twenty-gate aggregate, on every
+    # push and PR, not just the two gates (`zero-bleed`, `supply-chain`) this
+    # job used to name individually. Named `gates`, not `xtask-check` —
+    # this project calls them "20 gates"/`GateKind` everywhere, and a name
+    # starting with `check` reads as a duplicate of `check-test` in a PR's
+    # job list. `no-std` is covered twice now (also by `no-std.yml`), which
+    # is cheap; `msrv.yml` stays separate since it pins a different
     # toolchain this job does not.
     runs-on: ubuntu-latest
     steps:
