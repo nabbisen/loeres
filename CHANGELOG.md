@@ -15,7 +15,16 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
-No changes recorded yet.
+**`tokio` advanced to `1.54.1` for RUSTSEC-2026-0386.** `cargo deny` began failing on `main`
+after the advisory database picked up an `unsound` advisory against `tokio 1.52.3`:
+`AsyncFd`'s safe constructors accept any `T: AsRawFd` without proof of ownership, so safe code
+can build one from a closed or replaced file descriptor. **Loeres was never exposed.** `tokio`
+is an optional dependency of `loeres-cluster` behind the default-off `async-tokio` feature,
+declared with only the `rt` feature; `AsyncFd` lives in `tokio::io::unix` behind `net`, which
+this workspace does not enable, and nothing under `crates/` names `AsyncFd` or `as_raw_fd`.
+The `supply-chain` gate fails closed on an `unsound` advisory regardless of reachability
+(RFC 026), which is why this is a version bump and not a justification. Root lockfile only —
+`tokio` appears in none of the other seven.
 
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
