@@ -9,10 +9,12 @@
 **Target release:** `0.24.1`. **Nothing here bumps anything** — CI configuration and
 documentation, no callable API.
 
-**Four review requests.** **A** is S1 (the aggregate on push/PR). **B** is S2 (the scheduled
-run). **C** is S3 (the exemptions, documentation only). **D** is S4 (report the cost) and is
-folded into A and B's own requests rather than being a separate slice —
+**Two review requests, back to the architect.** **A** is S1 (the aggregate on push/PR), with
+S4's cost reporting folded into it. **B** is S3 (the exemptions, documentation only).
 `cargo xtask release-gate --intended-tag 0.24.1` is required in each.
+
+**S2, the scheduled run, is withdrawn** — RFC 045 Amendment 1. Do not add a `schedule:`
+trigger. Its two replacements are documentation and are listed in §2 below.
 
 ## 0. What the architect measured, so you can check rather than discover
 
@@ -60,26 +62,29 @@ Provisioning, measured (RFC 045 §3.1):
 first run of the new workflow. If it fails, that is the slice telling you something, not a
 flake — read it before re-running.
 
-## 2. B — S2: the scheduled run
+## 2. Instead of a scheduled run — two pull-based notes (RFC 045 Amendment 1)
 
-Add a `schedule:` trigger that runs the full gate on a timer. Daily is defensible; weekly is
-the minimum that would have caught the case that motivates this.
+The architect proposed a scheduled job and the owner rejected it, correctly. The twenty days
+`main` spent failing its own `supply-chain` gate were a **red gate, not an exposure** — `tokio`
+is optional behind a default-off feature with only `rt`, and `AsyncFd` needs `net`, which this
+workspace never enables. The only window in which an advisory could reach a user is a release,
+and `release.yml` already runs all twenty gates on every tag push. And a timer is least
+reliable exactly when it would matter most: this repository did 18 commits on 2026-10-08, then
+nothing for twenty days.
 
-**This is the only obligation here that addresses a failure that already happened.** `main`
-sat at `2b3ae10` from 2026-10-08 and the `tokio` advisory was fixed in `8da67e2` on
-2026-10-28 — about twenty days in which `main` failed its own `supply-chain` gate and nothing
-could say so, because no push happened.
+So **do not add a `schedule:` trigger.** Add these two instead, both documentation:
 
-**A red run nobody reads is the same as no run.** Decide how a scheduled failure becomes
-visible — a failing status, an opened issue, a notification — and **say which you chose and
-why** in the request. This is the part of S2 that actually delivers it; the trigger is the
-easy half.
+1. **In `rfcs/handoffs/release-0.24.0/finalization-checklist.md` §5** (and so in the template
+   future cuts copy): advisory drift at cut time is **expected and is normal maintenance**, not
+   an emergency. State the fix pattern — a **scoped** `cargo update -p <crate>`, never a bare
+   one, then verify every changed lockfile line is a version string on one of this workspace's
+   own crates (architect review 102).
+2. **In this handoff's own §6 required-evidence section, as a standing line for future
+   handoffs:** a `supply-chain` failure on a dependency you did not touch **is not yours**.
+   Report it and fix it scoped. This is the one real cost the twenty-day window carried — an
+   unrelated failure appearing mid-slice and reading as self-inflicted.
 
-Note for honesty in the request: a scheduled run can also fail for reasons unrelated to this
-tree (a yanked crate, a runner image change). Say how you distinguished those from a real
-finding, or that you have not had to yet.
-
-## 3. C — S3: write down what is deliberately exempt
+## 3. B — S3: write down what is deliberately exempt
 
 Documentation only, in `docs/src/development.md`. An exemption that is written down is a
 decision; one that is merely true is an accident waiting to be found by someone else. Record
@@ -98,12 +103,11 @@ all five from RFC 045 §3.3:
 5. **`bench`, `throughput` and `lp` are not gates** — standalone commands, so those figures
    are measured when someone chooses to, and `bench-baseline` is the only part that binds.
 
-## 4. D — S4: report what it cost
+## 4. S4: report what it cost — folded into A
 
-Folded into A's and B's requests, not a separate slice. Report:
+Not a separate request. Report in A:
 
 - the `ci` workflow's duration **before and after** S1, from the Actions runs themselves;
-- the scheduled run's duration;
 - **and if the increase is material, say so plainly.** The fallback is to split the aggregate
   across the existing parallel jobs rather than to drop gates — and that decision needs a
   number, not an impression. Do not pre-emptively split it; measure first.
@@ -139,8 +143,10 @@ State in each request:
 2. **The `CHANGELOG.md` entry you added**, quoted.
 3. For A: the workflow diff, the provisioning you added, and the **before/after `ci` duration**
    from the Actions runs.
-4. For B: the schedule you chose, **how a failure becomes visible**, and why.
-5. For C: that you verified §0 item 4 against `GateKind` rather than taking it from this file.
+4. For B: that you verified §0 item 4 against `GateKind` rather than taking it from this file.
+5. **A `supply-chain` failure on a dependency you did not touch is not yours** (§2 item 2).
+   Report it and fix it with a scoped `cargo update -p <crate>`; do not wonder what you broke
+   and do not run a bare `cargo update`.
 6. Anything in this handoff that does not match the tree. §0.1 names the premise the architect
    most expects to be wrong — the three-second figure does not transfer to CI, and if the real
    number is uncomfortable, that is the finding, not a failure.

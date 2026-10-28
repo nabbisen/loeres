@@ -8,6 +8,56 @@
 (the overall strategy) §1.1 and §4, of which this RFC implements the first part. Every figure below was measured by the
 architect on the `0.24.1` tree.
 
+## 0.1 Amendment 1 (2026-10-29)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only the
+design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires that form
+there; **the amendment must be named in the Status line when this RFC moves to `rfcs/done/`**,
+which `check-rfcs` enforces for `done/` only.
+
+**S2 — the scheduled run — is withdrawn.** The owner objected that a daily or weekly GitHub
+Actions job is not reasonable or useful in this case, and the objection holds on three counts
+that §3.2 got wrong.
+
+**1. The twenty days were a red gate, not an exposure, and §3.2 conflated them.** `tokio` is
+`optional` on `loeres-cluster` behind the default-off `async-tokio` feature, declared with only
+the `rt` feature; `AsyncFd` lives behind `net`, which this workspace never enables. Nothing was
+reachable at any point. §3.2's *"a project that fails closed on advisories and checks only on
+pushes has an assurance property it cannot deliver"* reads as though users were at risk. They
+were not, and the sentence overstated the harm.
+
+**2. The only consequential window is already gated.** An advisory can reach a user only
+through a release, and `release.yml` runs the full twenty gates on every tag push. So the gap
+S2 was meant to close sits entirely inside a period during which nothing can be published.
+
+**3. A timer is least reliable exactly when the gap is longest.** Measured on this repository:
+18 commits on 2026-10-08, then **nothing for twenty days**, then 2026-10-28. Work happens in
+bursts with long quiet stretches. A daily job would have run about twenty times against an
+unchanged tree to report the same thing, in a repository quiet enough that GitHub's own
+inactivity rules make scheduled workflows unreliable. And §3.2 itself conceded the deciding
+point — *"a red run nobody reads is the same as no run"* — without following it: in a quiet
+period, nobody is reading.
+
+### What replaces it
+
+Two obligations, both free and both **pull-based** — they fire when someone is actually
+looking, which is the only time a finding can be acted on:
+
+1. **`rfcs/handoffs/release-*/finalization-checklist.md` states that advisory drift at cut time
+   is expected and is normal maintenance, not an emergency**, with the fix pattern: a scoped
+   `cargo update -p <crate>`, never a bare one (RFC 102's finding), then verify every changed
+   lockfile line is a version string.
+2. **The implementation-handoff template states that a `supply-chain` failure on a dependency
+   the implementer did not touch is not theirs** — report it and fix it scoped, rather than
+   wondering what they broke. This is the only real cost the twenty-day window carried: an
+   unrelated failure appearing mid-slice and reading as self-inflicted.
+
+§3.4's cost reporting (S4) now folds into S1 alone.
+
+**What this does not change:** S1 and S3 stand. The seventeen unwired gates are the finding
+that matters, and the measurement behind them — three seconds warm, against a three-minute
+workflow — is unaffected by any of the above.
+
 ## 1. Summary
 
 This project has twenty gates and enforces **three** of them against the tree on an ordinary
@@ -63,7 +113,7 @@ that `release.yml` runs the same twenty gates in **6m 57s** cold, including `mdb
 Keep `no-std.yml` and `msrv.yml` as they are: `no-std` is covered twice, which is cheap, and
 `msrv.yml` pins a different toolchain, which the aggregate does not.
 
-### 3.2 S2 — a scheduled run, because advisories arrive on a clock
+### 3.2 S2 — a scheduled run — **WITHDRAWN, see Amendment 1**
 
 Add a `schedule:` trigger running the full gate on a timer — daily is defensible, weekly is the
 minimum that would have caught the `tokio` case.
