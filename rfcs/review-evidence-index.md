@@ -186,6 +186,7 @@ separate, reviewed pass.
 | `102` | 2026-10-08 | rfc043 c d e and the bump architect review | `a60054fad120b6afe9f096119ac2e58a0b50fd3041f64ac04c655e8a2fb6515e` | `architect` | ✓ |
 | `103` | 2026-10-28 | the path from cratesio to a running program scoping | `1f8c114d058ac67562c55e35c541a622dcb57e9b86ba7a0b11290c17b734f638` | `architect` |  |
 | `104` | 2026-10-28 | a front door that is not cargo add scoping | `9f27ba5e4f6d9e5f8e5ffee821bf60a6e905b6bae755c7ffd4071bc0656e6836` | `architect` |  |
+| `105` | 2026-10-28 | three owner corrections to the front door scoping | `3f1540b2edae78cbbaed3dbebf98714de44c20671405462b63abbe33ba85ed55` | `architect` |  |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
