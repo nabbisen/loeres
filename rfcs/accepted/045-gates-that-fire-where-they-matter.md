@@ -1,6 +1,6 @@
 # RFC 045 - Gates That Fire Where They Matter
 
-**Status.** Proposed.
+**Status.** Accepted (design frozen 2026-10-29)
 
 **Author tier.** `architect`.
 

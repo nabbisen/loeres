@@ -2,10 +2,9 @@
 
 **To:** implementer (mid-capability model)
 **From:** architect
-**Authorized by.** The owner approved the improvements in architect review 107 §3 on
-2026-10-29. Read `rfcs/accepted/045-gates-that-fire-where-they-matter.md` once it is accepted;
-until then this handoff and `rfcs/proposed/045-gates-that-fire-where-they-matter.md` are the
-contract. Architect reviews 106 and 107 hold the measurements.
+**Authorized by.** The owner accepted RFC 045 on 2026-10-29. Read
+`rfcs/accepted/045-gates-that-fire-where-they-matter.md` in full. Architect reviews 106 and
+107 hold the measurements.
 **Base revision:** `main` at or after the acceptance commit.
 **Target release:** `0.24.1`. **Nothing here bumps anything** — CI configuration and
 documentation, no callable API.
