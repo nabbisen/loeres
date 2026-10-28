@@ -39,6 +39,27 @@ twice, which is cheap, and `msrv.yml` pins a toolchain the aggregate does not ex
 gate added (architect review 106 §4's four proposed assertions are explicitly deferred to their
 own future RFC). No library change, no version bump.
 
+**A scheduled run was proposed for the twenty days `main` sat on a `supply-chain`-failing
+lockfile, and the owner rejected it (RFC 045 Amendment 1).** Nothing was ever exposed — the
+flagged `tokio` API was behind two default-off features this workspace never enables — and the
+only window in which an advisory reaches a user is a release, which `release.yml` already gates
+in full on every tag push. A timer would have run about twenty times against an unchanged tree
+to report the same thing. In its place: `docs/src/development.md` and this release's
+finalization checklist now state that advisory drift at cut time is expected, normal
+maintenance, with the fix pattern named (a **scoped** `cargo update -p <crate>`, never a bare
+one); and the handoff workflow documentation carries a standing line that a `supply-chain`
+failure on a dependency a slice did not touch is not that slice's fault.
+
+**What is deliberately exempt, written down rather than left to be inferred** (`docs/src/development.md`):
+the RFC 028 archive anchor is hand-recomputed on purpose, not automated; `no-std`,
+`panic-audit` and `check-public-api` cover only the three edge crates, leaving
+`loeres-cluster` and `loeres-backend-std` with no equivalent assertion; only two targets (host,
+`thumbv7em-none-eabihf`) are ever asserted; `size-budget`'s advisory label applies only to the
+reported rlib composition figure, not to the pinned reference-instantiation delta it also
+checks, which is enforced and fails the whole suite if the `size` tool is missing; and `bench`,
+`throughput` and `lp` remain standalone commands, with `bench-baseline` the only part of that
+picture a gate binds.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

@@ -85,6 +85,19 @@ corpus is unchanged. The minor is for S5's three added methods, not for a break.
    refuses for want of exactly one matching heading — it is the gate's **first** check;
 4. `Last reconciled repository release` → `0.24.0` in all three apex documents.
 
+**Advisory drift at cut time is expected and is normal maintenance, not an emergency**
+(RFC 045 Amendment 1). The lockfile updates above, or simply the days between slices, can leave
+`supply-chain` red on a dependency nobody in this release touched — that is what happened for
+twenty quiet days before `8da67e2`, and it is not a sign anything shipped broken: the only
+window in which an advisory reaches a user is a release, and `release-gate` runs the full gate
+set on every tag push regardless. The fix pattern is the one review 102 found the hard way: a
+**scoped** `cargo update -p <crate>`, never a bare one — a bare `cargo update` relocks every
+third-party dependency the workspace's own version ranges permit, which on this tree once moved
+thirteen packages including a `syn` major version. After the scoped update, verify every
+changed lockfile line is a version string on the one flagged crate (or, for the per-crate
+lockfiles outside the workspace, on one of this workspace's own five crates per item 2 above),
+nothing else.
+
 Then `docs/src/specifications.md`: add the row and make it the newest published version.
 
 ## 6. Open, not in this release

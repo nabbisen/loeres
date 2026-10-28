@@ -272,6 +272,39 @@ development team does not publish.
 - **Publication is irreversible.** Check `cargo xtask published-metadata` and the package
   listings before the first `cargo publish`.
 
+### What is deliberately exempt (RFC 045 S3)
+
+An exemption that is written down is a decision; one that is merely true is an accident waiting
+to be found by someone else. Five, all checked against the source that enforces them rather
+than assumed:
+
+- **The RFC 028 archive anchor is hand-recomputed and verified three ways at every cut, on
+  purpose** — including that the stored archive decompresses to it (the finalization
+  checklist's own step). Its value is that a machine did not compute it; making it automatic is
+  explicitly out of scope (RFC 045 §4).
+- **`no-std`, `panic-audit` and `check-public-api` cover only the edge crates** — `loeres`,
+  `loeres-backend-static`, `loeres-device`. Defensible (a `std` crate may legitimately panic or
+  pull in heap types), but the consequence is that **`loeres-cluster` and `loeres-backend-std`
+  have no equivalent assertion** — stated here rather than left to be inferred from a constant
+  in `panic_audit.rs`.
+- **Two targets are asserted: host, and `thumbv7em-none-eabihf`.** No other target is built or
+  checked by any gate.
+- **`size-budget`'s name misleads; this is the actual behaviour.** `GateKind::Advisory`
+  (`release_gate.rs`) changes only the label printed *when the gate passes* —
+  `"advisory baseline reported"` instead of `"pass"` — and the suite's overall result is the
+  conjunction of every gate's result regardless of kind (`results.iter().all(...)`,
+  `release_gate.rs`), so `size-budget` returning `false` fails `cargo xtask check` exactly like
+  any other gate. What is genuinely advisory is the *reported rlib composition figure*
+  (`size_budget.rs`'s `report_rlib_composition` returns `true` even when `size -A` is
+  unavailable, printing the byte count without the breakdown); the **pinned
+  reference-instantiation delta is enforced** (`report_reference_instantiation` returns `false`
+  if the reference crate fails to build, its compiled object is missing, or `size -A` does not
+  run), and a missing `size` binary therefore fails the suite rather than being silently
+  skipped.
+- **`bench`, `throughput` and `lp` are not gates.** They are standalone `cargo xtask` commands,
+  so the figures they print are measured only when someone chooses to run them; `bench-baseline`
+  (inside `cargo xtask check`) is the only part of that performance picture which actually binds.
+
 ## Release version convention
 
 ### What each position means
@@ -430,3 +463,17 @@ A file that genuinely lives outside the tree — a scratch harness, a temporary
 run directory — is not a path a tracked document should hand on at all. State
 the **method** instead, so the reader can rebuild it, and say which tracked
 path will own it.
+
+### A `supply-chain` failure on an untouched dependency is not the implementer's (RFC 045 Amendment 1)
+
+Every implementation handoff's required-evidence section should carry this line, so it does not
+depend on one architect remembering to paste it into one handoff: **if `cargo xtask check` or
+`release-gate` fails `supply-chain` on a dependency the slice did not touch, that is not a
+defect in the slice.** Report it, and fix it with a **scoped** `cargo update -p <crate>` — never
+a bare `cargo update`, which relocks every third-party dependency the workspace's own version
+ranges permit (architect review 102; `--workspace is not optional` above). Do not treat it as
+something to quietly work around, and do not wonder what the slice broke; an advisory reaching
+`main` between pushes is normal maintenance, not an emergency a scheduled job needs to catch
+(RFC 045 §2 — a scheduled run was proposed for exactly this and withdrawn, because the only
+window in which an advisory reaches a user is a release, and `release.yml` already runs every
+gate on every tag push).
