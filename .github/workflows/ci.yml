@@ -20,20 +20,21 @@ jobs:
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
       - run: cargo check --workspace --all-features
       - run: cargo test --workspace --all-features
-  zero-bleed:
+  xtask-check:
+    # RFC 045 S1: the full twenty-gate aggregate, on every push and PR, not
+    # just the two gates (`zero-bleed`, `supply-chain`) this job used to name
+    # individually. `no-std` is covered twice now (also by `no-std.yml`),
+    # which is cheap; `msrv.yml` stays separate since it pins a different
+    # toolchain this job does not.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
-      - run: cargo xtask zero-bleed
-  supply-chain:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
-      - uses: dtolnay/rust-toolchain@4be7066ada62dd38de10e7b70166bc74ed198c30 # stable
+        with:
+          targets: thumbv7em-none-eabihf
       # Pinned: the gate fails when cargo-deny is absent (RFC 026 §11), so the
       # version that enforces policy is part of the reviewed environment rather
       # than whatever the runner happens to resolve.
       - run: cargo install cargo-deny --version 0.20.2 --locked
       - run: cargo deny --version
-      - run: cargo xtask supply-chain
+      - run: cargo xtask check

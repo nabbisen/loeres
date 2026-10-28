@@ -26,6 +26,19 @@ The `supply-chain` gate fails closed on an `unsound` advisory regardless of reac
 (RFC 026), which is why this is a version bump and not a justification. Root lockfile only —
 `tokio` appears in none of the other seven.
 
+**RFC 045 — gates that fire where they matter.** Of this project's twenty verification gates,
+seventeen ran only on a tag push or when a human remembered to type `cargo xtask check` — not
+for cost (the whole suite is three seconds warm against a `ci` workflow that already spent
+three minutes), but because they were wired to the wrong trigger. `ci.yml`'s two
+individually-named `xtask` invocations (`zero-bleed`, `supply-chain`) are replaced by the full
+`cargo xtask check` aggregate, provisioned with the `thumbv7em-none-eabihf` target and pinned
+`cargo-deny 0.20.2` (both already used elsewhere in this repository's workflows); `mdbook` is
+**not** added, since a full `cargo xtask check` never invokes it — only `release-gate`'s
+clean-extraction step does. `no-std.yml` and `msrv.yml` are unchanged: `no-std` is now covered
+twice, which is cheap, and `msrv.yml` pins a toolchain the aggregate does not exercise. No new
+gate added (architect review 106 §4's four proposed assertions are explicitly deferred to their
+own future RFC). No library change, no version bump.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io
