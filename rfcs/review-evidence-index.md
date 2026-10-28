@@ -189,6 +189,7 @@ separate, reviewed pass.
 | `105` | 2026-10-28 | three owner corrections to the front door scoping | `3f1540b2edae78cbbaed3dbebf98714de44c20671405462b63abbe33ba85ed55` | `architect` |  |
 | `106` | 2026-10-28 | overall strategy the state worth aiming at | `4222b181bbec4400f95d12328089cf4603572e4d514588981b52cfa3d842028e` | `architect` |✓ |
 | `107` | 2026-10-29 | how the assurance apparatus is actually run | `706832bdeb2d78cc7ca2178f16d8ea9be6ed64a1ee6e2d8590751fed3cdc64d2` | `architect` |✓ |
+| `108` | 2026-10-29 | rfc045 a and b architect review | `e03ac36f15ed241cea25cf6b7a5538015e4082f78a8f8cab486841a5dee8e4cb` | `architect` |✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |

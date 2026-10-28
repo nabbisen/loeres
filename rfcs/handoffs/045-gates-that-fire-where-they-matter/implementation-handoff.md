@@ -41,8 +41,10 @@ for the same gates. S4 (§4) is how the real number gets recorded.
 
 ## 1. A — S1: the aggregate on every push and pull request
 
-Replace `ci.yml`'s three individually-named xtask invocations (`zero-bleed`, `supply-chain`,
-`no-std`) with `cargo xtask check`.
+Replace `ci.yml`'s **two** individually-named xtask invocations — `zero-bleed` and
+`supply-chain` — with `cargo xtask check`. (**Corrected:** this said *three* and named
+`no-std`. `cargo xtask no-std` is only in `no-std.yml`, which stays untouched; architect
+review 108 §3. The implementer found it with `grep` before writing code.)
 
 Provisioning, measured (RFC 045 §3.1):
 
