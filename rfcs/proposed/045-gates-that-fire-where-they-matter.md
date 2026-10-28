@@ -1,0 +1,136 @@
+# RFC 045 - Gates That Fire Where They Matter
+
+**Status.** Proposed.
+
+**Author tier.** `architect`.
+
+**Governing scoping.** Architect review 107, which measured this, and architect review 106
+(the overall strategy) §1.1 and §4, of which this RFC implements the first part. Every figure below was measured by the
+architect on the `0.24.1` tree.
+
+## 1. Summary
+
+This project has twenty gates and enforces **three** of them against the tree on an ordinary
+commit. The other seventeen run only on a tag push, through `release-gate`, or when a human
+remembers to type `cargo xtask check`.
+
+The whole suite takes **three seconds** warm, while the `ci` workflow already spends **three
+minutes**. So the reason seventeen gates hold nothing is not cost — they are simply wired to
+the wrong trigger. And for advisories there is no trigger at all: **no workflow has a
+`schedule:`**, so `main` carried a lockfile failing its own `supply-chain` gate for about
+twenty days and nothing could have reported it.
+
+This RFC wires what already exists and writes down what is deliberately exempt. **It adds no
+new gate** — strategy 106 §4's four new assertions are deliberately left to their own RFC
+(§4).
+
+## 2. What is enforced today, measured
+
+| trigger | what it enforces against the tree |
+| --- | --- |
+| push / PR to `main` (`ci.yml`, `msrv.yml`, `no-std.yml`) | `cargo fmt --check`, `cargo clippy -D warnings`, `cargo check`, `cargo test`, an MSRV `cargo check`, and **three** gates: `zero-bleed`, `supply-chain`, `no-std` |
+| tag push (`release.yml`) | `cargo xtask release-gate` — all twenty |
+| a human | all twenty, on remembering |
+
+The seventeen that gate nothing per commit: `host-check`, `feature-matrix`, `target-profiles`,
+`check-rfcs`, `doc-currency`, `review-evidence`, `check-public-api`, `panic-audit`,
+`size-budget`, `unsafe-audit`, `examples`, `conformance`, `differential`, `link-audit`,
+`published-metadata`, `doc-build`, `bench-baseline`.
+
+**`cargo test` does not substitute.** The gate modules' `#[cfg(test)]` tests exercise each
+gate's *logic* over synthetic input; they do not run the gate against the repository. A stale
+apex block passes all 657 tests and fails only `cargo xtask check`. CI looks thorough for a
+reason that does not hold.
+
+## 3. Obligations
+
+### 3.1 S1 — `cargo xtask check` on every push and pull request
+
+Replace `ci.yml`'s three individually-named xtask invocations with the aggregate. The
+provisioning this needs was measured, not guessed:
+
+| requirement | status |
+| --- | --- |
+| `thumbv7em-none-eabihf` target | **needed** — `no-std`, `target-profiles`, `size-budget`. `no-std.yml` already provisions it with `dtolnay/rust-toolchain`'s `targets:`; copy that |
+| `cargo-deny` at the pinned `0.20.2` | **needed** — `supply-chain`. `ci.yml` already installs it in one job |
+| GNU `size` (binutils) | **needed** — `size_budget`. Present on `ubuntu-latest` (`GNU size 2.47` locally); `size_budget` returns `false` if it is missing, so absence fails closed rather than silently skipping |
+| `mdbook` | **not needed.** `doc-build` runs `cargo doc --workspace --all-features --no-deps` under `RUSTDOCFLAGS=-D warnings`. A full `cargo xtask check` invokes `mdbook` **zero** times; only `release-gate`'s clean-extraction step does |
+
+**The three-second figure is warm and local; CI is cold.** Do not promise it. What is known is
+that `release.yml` runs the same twenty gates in **6m 57s** cold, including `mdbook` and
+`cargo-deny` installs that S1 does not all need. Measure the first run and report it (§3.4).
+
+Keep `no-std.yml` and `msrv.yml` as they are: `no-std` is covered twice, which is cheap, and
+`msrv.yml` pins a different toolchain, which the aggregate does not.
+
+### 3.2 S2 — a scheduled run, because advisories arrive on a clock
+
+Add a `schedule:` trigger running the full gate on a timer — daily is defensible, weekly is the
+minimum that would have caught the `tokio` case.
+
+**This is the only obligation here that addresses a failure that already happened.** `main` sat
+at `2b3ae10` from 2026-10-08; RUSTSEC-2026-0386 was fixed in `8da67e2` on 2026-10-28. For about
+twenty days `main` failed its own `supply-chain` gate and nothing could say so, because no push
+happened. A project that fails closed on advisories and checks only on pushes has an assurance
+property it cannot deliver.
+
+A scheduled failure must be visible without someone opening the Actions tab. How — a failing
+status, an issue, a notification — is an implementation question; **say which you chose and
+why**, because an unread red run is the same as no run.
+
+### 3.3 S3 — write down what is deliberately exempt
+
+An exemption that is written down is a decision; one that is merely true is an accident waiting
+to be found by someone else. Record in `docs/src/development.md`:
+
+1. **The RFC 028 anchor is hand-recomputed and verified three ways at every cut, on purpose.**
+   Its value is that a machine did not do it. This is an exemption, not an omission.
+2. **`no-std`, `panic-audit` and `check-public-api` cover only the edge crates** — `loeres`,
+   `loeres-backend-static`, `loeres-device`. Defensible (a `std` crate may legitimately panic),
+   but `loeres-cluster` and `loeres-backend-std` therefore have no equivalent assertion, and
+   that should be stated rather than inferred.
+3. **Two targets are asserted**: host and `thumbv7em-none-eabihf`. No other.
+4. **`size-budget`'s name misleads and the behaviour should be stated.** `GateKind::Advisory`
+   changes only the *label when it passes* ("advisory baseline reported"); a `false` prints
+   `FAIL` and the suite's result is the conjunction of all gates, so it **is** enforced. What
+   is advisory is the *reported rlib figure*; the pinned reference-instantiation delta is
+   enforced, and a missing `size` fails the suite.
+5. **`bench`, `throughput` and `lp` are not gates** — standalone commands. The performance
+   figures are therefore measured when someone chooses to, and `bench-baseline` is the only
+   part of that which binds.
+
+### 3.4 S4 — report what it cost
+
+CI minutes are a real cost and this RFC increases them. Report, from the first runs: the `ci`
+workflow's duration before and after S1, and the scheduled run's duration. **If the increase
+is material, say so** — the fallback is to split the aggregate across the existing parallel
+jobs rather than to drop gates, and that decision needs a number, not an impression.
+
+## 4. Non-goals
+
+- **Architect review 106 §4's four new assertions** — an API-shape baseline, RFC-index section
+  membership, user-facing commands and version pins, and procedures verified rather than
+  documented. Each needs its own design; an API-shape baseline against a generic,
+  feature-gated surface in particular is a real design problem (review 100 §8 raised it and
+  left it open). **This RFC adds no new gate**, so that none of them is smuggled in without
+  the design it deserves.
+- Changing what any existing gate checks.
+- Making the RFC 028 anchor automatic (§3.3 item 1).
+- Any library change.
+
+## 5. Release position
+
+CI configuration and documentation. No callable API, no behaviour change, so this is a
+**patch** and the workspace stays at `0.24.1`.
+
+## 6. Risks
+
+- **Functional — Low.** No library code changes.
+- **Business — Low.** CI minutes.
+- **Operational — Low, and the unusual part: this *reduces* operational load.** It moves
+  seventeen manual invocations into CI and removes the dependence on someone remembering.
+  The counter-risk is flakiness: `conformance` and `bench-baseline` will now run per-push on
+  shared runners. `release.yml` runs them already, so there is precedent, but per-push is a
+  different exposure than per-tag, and S4's measurement is what would reveal it.
+- **Security — Medium, improved by S2.** A project that fails closed on advisories but checks
+  only on pushes will learn about the next one late, exactly as it did about this one.

@@ -16,7 +16,7 @@ identity only and confers no authority (RFC 022).
 
 | RFC | Title | Status | Notes |
 |---:|---|---|---|
-None currently.
+| [045](proposed/045-gates-that-fire-where-they-matter.md) | Gates That Fire Where They Matter | Proposed | Twenty gates exist and **three** are enforced against the tree on an ordinary commit; the other seventeen run only on a tag push or when a human remembers. The whole suite takes **three seconds** warm while `ci` already spends three minutes, so the reason is not cost — they are wired to the wrong trigger. And for advisories there is no trigger: no workflow has a `schedule:`, so `main` carried a lockfile failing its own `supply-chain` gate for about twenty days with nothing able to report it. `cargo test` does not substitute — the gate modules' tests exercise each gate's *logic* over synthetic input, not the tree's compliance. Wires the aggregate into push/PR with the provisioning measured (`mdbook` is **not** needed; `doc-build` runs `cargo doc`), adds a scheduled run, writes down the deliberate exemptions, and reports the CI cost. **Adds no new gate.** Architect review 107 measured it. |
 
 ## Accepted RFCs
 
