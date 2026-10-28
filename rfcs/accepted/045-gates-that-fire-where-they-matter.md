@@ -66,12 +66,16 @@ remembers to type `cargo xtask check`.
 
 The whole suite takes **three seconds** warm, while the `ci` workflow already spends **three
 minutes**. So the reason seventeen gates hold nothing is not cost — they are simply wired to
-the wrong trigger. And for advisories there is no trigger at all: **no workflow has a
-`schedule:`**, so `main` carried a lockfile failing its own `supply-chain` gate for about
-twenty days and nothing could have reported it.
+the wrong trigger.
+
+A related gap looked like a missing timer and is not. `main` carried a lockfile failing its
+own `supply-chain` gate for about twenty days before anyone ran a gate, and this RFC first
+proposed a scheduled run for it. **Amendment 1 withdraws that**: the twenty days were a red
+gate rather than an exposure, the only window in which an advisory can reach a user is a
+release, and `release.yml` already runs all twenty gates on every tag push.
 
 This RFC wires what already exists and writes down what is deliberately exempt. **It adds no
-new gate** — strategy 106 §4's four new assertions are deliberately left to their own RFC
+new gate** — architect review 106 §4's four new assertions are deliberately left to their own RFC
 (§4).
 
 ## 2. What is enforced today, measured
