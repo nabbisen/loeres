@@ -1,11 +1,13 @@
 # RFC 046 - Pinned Tools Installed By Identity, Not By Rebuild
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-29)
 
 **Author tier.** `architect`.
 
 **Governing scoping.** Architect review 108 §2, which named this as a candidate and declined to
-smuggle it into RFC 045 because it touches `release.yml`. The owner authorized it on 2026-10-29.
+smuggle it into RFC 045 because it touches `release.yml`. The owner authorized the `cargo-deny`
+change on 2026-10-29 and, on accepting this RFC the same day, authorized §3.3 item 3 (`mdbook`)
+and the landing order in §5's last row.
 Every figure below was measured by the architect from this repository's own workflow runs, and
 every hash was downloaded and recomputed by the architect, not copied from upstream prose.
 
@@ -67,20 +69,31 @@ that asymmetry.
 
 ### 3.1 S1 — a composite action that installs a pinned tool by verified hash
 
-`.github/actions/install-pinned-tool/action.yml`, a composite action with three inputs: `url`,
-`sha256`, `binary`. In order:
+`.github/actions/install-pinned-tool/action.yml`, a composite action with **one** input,
+`tool`, whose accepted values are `cargo-deny` and `mdbook`. The pins themselves (§3.2) live in
+a table at the top of that one file, not at the call sites.
+
+**Why one input and not three.** The first form of this obligation took `url`, `sha256` and
+`binary` at the call site, which reads cleanly — the job states what it installs. But
+`cargo-deny` is installed by **two** workflows, so its pin would exist twice, and a pin that
+exists twice is a pin that will eventually disagree with itself. One table in one file is also
+the artifact a human reviews when a version moves, which is the review §2.3 exists to require.
+The mechanism stays generic; only the data moved.
+
+In order:
 
 1. Download the asset into a fresh empty directory under `$RUNNER_TEMP` with
    `curl --proto '=https' --tlsv1.2 -sSfL`.
 2. Compute its SHA-256 and compare against the `sha256` input. **On mismatch, print both values
    and fail the step** — before the archive is extracted and before anything in it is executed.
    The order is the whole point: an archive is attacker-controlled input until its hash matches.
-3. Extract, locate `binary` by name, and install it into a tools directory appended to
-   `$GITHUB_PATH`. Locating by name rather than by path is required, because the two assets have
-   different layouts (§3.2) — `cargo-deny`'s tarball nests the binary one directory deep,
-   `mdbook`'s has it at the root.
+3. Extract, locate the binary **by name** rather than by path, and install it into a tools
+   directory appended to `$GITHUB_PATH`. By name is required: the two assets have different
+   layouts (§3.2) — `cargo-deny`'s tarball nests the binary one directory deep, `mdbook`'s has
+   it at the root.
 4. Print the verified hash and the binary's own `--version`, so the run log records the identity
-   that ran.
+   that ran. **By absolute path**, because `$GITHUB_PATH` takes effect in later steps, not the
+   one that writes it.
 
 Nothing is piped to a shell. Review 105's objection was identity, and step 2 answers it.
 
@@ -96,38 +109,35 @@ which makes the point concrete rather than theoretical.
 | `cargo-deny` | `0.20.2` | `cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz` | `4936832` | `9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f` |
 | `mdbook` | `0.5.4` | `mdbook-v0.5.4-x86_64-unknown-linux-musl.tar.gz` | `4944048` | `5222beabd3e37dc5be0d18ff99b79058469354db5c220153a1b92db5ba12be89` |
 
+| tool | binary inside the archive | installed by |
+| --- | --- | --- |
+| `cargo-deny` | `<asset stem>/cargo-deny` (nested one level) | `ci.yml`, `release.yml` |
+| `mdbook` | `mdbook` (archive root) | `release.yml` |
+
 The two tag forms differ (`0.20.2` against `v0.5.4`) and so do the asset-name forms, which is why
-S1 takes a full `url` rather than constructing one from a version.
+the table holds whole URLs rather than a template and a version.
 
 `cargo-deny`'s value independently matches its upstream sidecar and the asset size the GitHub API
 reports. `mdbook`'s is hand-computed only, there being nothing to match it against.
 
 ### 3.3 S3 — the call sites
 
-**Authorized now:**
+All three are authorized. Items 1 and 2 were authorized when this RFC was scoped; item 3 was
+put to the owner separately, with its cost, and authorized on acceptance — `mdbook` is the
+identical defect with the identical fix, and building the mechanism while declining to use it for
+the second of its two callers would have left 1m 19s of the same job on the table for no reason
+anyone could state later.
 
 1. `ci.yml`'s `gates` job — replace `cargo install cargo-deny --version 0.20.2 --locked`.
 2. `release.yml`'s `release-gate` job — replace
    `cargo +stable install cargo-deny --version 0.20.2 --locked`.
-
-**Beyond the present authorization, costed here so it can be decided rather than inferred:**
-
 3. `release.yml`'s `release-gate` job — replace
    `cargo +stable install mdbook --version 0.5.4 --locked`.
 
-The owner authorized the `cargo-deny` change. `mdbook` is the identical defect with the identical
-fix, its pin is already in §3.2, and it is 1m 19s of the same job; leaving it would mean building
-the mechanism and declining to use it for the second of its two callers. It is listed separately
-so that it is an owner's decision and not an architect's quiet widening of scope.
-
-- Items 1 and 2 only: the release gate goes 6m 20s → about **5m 01s**; `ci`'s `gates` job goes
-  2m 47s → **under a minute**.
-- Items 1, 2 and 3: the release gate goes 6m 20s → about **3m 18s**, a 48% reduction, and
-  `mdbook` stops being a compiler's problem at the one moment a release cannot be retried
-  cheaply.
-- Cost of item 3: one more call site, one more pin to update when the version moves, and
-  `release.yml` — the file that gates releases — is edited once rather than twice if `mdbook` is
-  deferred and taken later.
+Expected after all three: the release gate goes 6m 20s → about **3m 18s**, a 48% reduction, and
+`mdbook` stops being a compiler's problem at the one moment a release cannot be cheaply retried;
+`ci`'s `gates` job goes 2m 47s → **under a minute**, making the workflow's bound `check-test` at
+1m 7s. These are predictions, not measurements. **S5 requires the real numbers.**
 
 ### 3.4 S4 — what this must not change
 
@@ -138,6 +148,19 @@ so that it is an owner's decision and not an architect's quiet widening of scope
 - **The gates.** No gate is added, removed, or reordered. Twenty stay twenty, and
   `release-gate`'s own behaviour is untouched.
 - **`no-std.yml` and `msrv.yml`** install neither tool and are not edited.
+
+### 3.5 S5 — report the real numbers, and the landing order
+
+§3.3's figures are arithmetic on measured step times, not measurements of the new workflow.
+Report, from the first runs: `ci`'s `gates` job duration and the `ci` workflow total, and — at the
+next cut, not on a tag created for the purpose — the `release-gate` job duration with its per-step
+breakdown. Record them in §3.3 the way RFC 045 §3.4 records its own answer, so the next person
+asking what this cost reads a number rather than a prediction.
+
+**The action and item 1 land first, on an ordinary push**, because `ci`'s `gates` job is the
+only thing that can exercise the action without creating a tag. Items 2 and 3 edit
+`release.yml`, whose path cannot be exercised except at a cut; they land only after that push is
+green, and their verification is the next `release-gate` run — not a tag created to test them.
 
 ## 4. Non-goals
 
