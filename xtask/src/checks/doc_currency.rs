@@ -8,10 +8,20 @@ use std::collections::BTreeSet;
 use std::fs;
 use std::path::Path;
 
+/// RFC 048: the three normative apex specs plus the four current-facing
+/// documents that make release-scope claims of their own — a roadmap, a book
+/// introduction, the book's specifications index, and the threat model — and
+/// previously held none. Each carries the ordinary apex block (RFC 024 §3,
+/// RFC 048 §3), byte-identical to the others, so a document making a
+/// release-scope claim can no longer go stale without this gate seeing it.
 const APEX_DOCS: &[&str] = &[
     "docs/specs/loeres-requirements-v1.md",
     "docs/specs/loeres-external-design-v1.md",
     "docs/specs/loeres-roadmap-milestones-v1.md",
+    "ROADMAP.md",
+    "docs/src/introduction.md",
+    "docs/src/specifications.md",
+    "docs/src/threat-model.md",
 ];
 
 const RFC_FOLDERS: &[&str] = &["proposed", "accepted", "done", "archive"];

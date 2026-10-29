@@ -13,6 +13,12 @@ contributors edit those documents directly; readers can browse them here.
 
 This is the one home for release currency. The README links here (RFC 035 §3.3).
 
+> **Release currency metadata.**
+> This tree: **0.24.1**.
+> Last reconciled repository release: **0.24.0**.
+> Implemented scope: **RFCs 001-044**.
+>
+
 > **Publication status.** A repository release is *distributed* when its tag is
 > accepted by the authoritative remote and the tagged CI `release-gate` job
 > succeeds, and *published* when its version is in the crates.io index for every
@@ -62,8 +68,7 @@ At the 0.20.x line the shipped contracts were `000`–`021`. The list has grown 
 
 > **Currency notice.** The apex trio carries RFC 024's ordinary post-release
 > block: this tree's identity and the release this documentation was last
-> reconciled against, never release status. Repository release `0.20.2`
-> shipped 2026-07-30 and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034. On conflict, stop affected
+> reconciled against, never release status. On conflict, stop affected
 > public-boundary work rather than silently choosing code or prose. See the
 > [Architecture Recovery Roadmap](recovery-roadmap.md).
 

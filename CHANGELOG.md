@@ -197,6 +197,38 @@ no pinned version changed, no tag created. Whether RFC 046 is complete is for th
 judge against the tree; this entry states what (F) held and what it deliberately left
 unasserted, not that claim.
 
+**RFC 048 — one release list that cannot rot.** Seven tracked documents carried the same
+hand-maintained sentence — *"Repository release `X` shipped `DATE` and carries RFCs
+`NNN-NNN`."* — appended once per release on one run-on line. All seven stopped at `0.22.0`;
+five releases shipped since (`0.22.1` through `0.24.0`) were missing from every one of them,
+including all three normative apex specifications, a few lines from a machine-checked currency
+block that was itself correct. `docs/src/threat-model.md` opened by naming `v0.20.0` and
+repository release `0.20.2`, four releases behind the tree, in the one document a cautious
+integrator reads to decide whether to trust this library. `cargo xtask check` passed throughout,
+twenty gates, because nothing compared a document's release claims against the workspace —
+`doc-currency` held a blocklist of specific stale phrases, not a comparison. The sentence is
+deleted everywhere it was found — eight sites across the seven documents, forty-seven
+occurrences of its leading phrase — except `CHANGELOG.md` itself (the record every other
+document now defers to) and one historical mention in `docs/src/recovery-roadmap.md` (a past
+recovery narrative, not a currency claim). The RFC 024 apex currency block — this tree's
+identity, the release last reconciled against, and the implemented RFC scope, already
+machine-checked across the three normative specs — now also covers `ROADMAP.md`,
+`docs/src/introduction.md`, `docs/src/specifications.md`, and `docs/src/threat-model.md`: the
+four current-facing documents that were making release-scope claims under no gate at all.
+`docs/src/threat-model.md`'s opening sentence no longer names a version or a date in prose; its
+disclaimers that this is not a formal security proof, safety certification, or release-readiness
+claim are untouched, verbatim. `docs/src/introduction.md` has no `##` heading to place the block
+before, as the handoff's placement table assumed for all four documents — reported here rather
+than guessed around: the block sits immediately after the document's title instead, which this
+entry records as a deviation from the handoff's literal instruction, not a silent fix.
+`ROADMAP.md`'s preamble now names `rfcs/accepted/047-the-state-worth-aiming-at.md` as the
+destination its milestones are milestones toward, without restating RFC 047's own goal sentence.
+Verified against the committed tree, not by eye: the seven apex blocks are byte-identical under
+the gate's own whitespace normalization, and five exercises — one per assertion, each in a
+different one of the four new documents bar one repeat, each reverted — reproduce the gate's
+`APEX RELEASE`, strict-inequality, stale-scope, `APEX MISMATCH`, and missing-marker failures by
+name. No new gate, no new predicate, no pinned version changed, no tag created.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

@@ -3,31 +3,38 @@
 Loeres is developed design-first. Progress is gated by design acceptance and
 automated verification, not by calendar dates. The authoritative, detailed plan
 lives in [`docs/specs/loeres-roadmap-milestones-v1.md`](docs/specs/loeres-roadmap-milestones-v1.md);
-this file is a short summary.
+this file is a short summary. This roadmap's milestones are milestones toward
+[`rfcs/accepted/047-the-state-worth-aiming-at.md`](rfcs/accepted/047-the-state-worth-aiming-at.md)
+— the project's stated destination and the properties that would constitute
+arriving at it.
+
+> **Release currency metadata.**
+> This tree: **0.24.1**.
+> Last reconciled repository release: **0.24.0**.
+> Implemented scope: **RFCs 001-044**.
+>
 
 > **Architecture recovery notice (2026-07-15, resolved 2026-07-30).** An
 > independent architecture audit found four blockers in the v0.20.0 baseline:
-> broken declared MSRV, release-tag/workflow mismatch, incomplete
-> tag-revision gates, and materially stale normative specifications. v0.20.0
-> was **No-Go** for release-readiness claims. The dependency-gated corrective
-> schedule was the [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md).
-> RFC 019 and RFC 020 owned the blocking recovery and were Accepted (design
-> frozen 2026-07-15) before Q2 staging. R0.5 lifecycle activation, the RFC
-> 019 S1-S3 baseline, the RFC 020 S1 traceability matrix, reviewed S2 apex
-> reconciliation, corrected S3 supporting documentation, corrected S4
-> semantic currency checks, S5 integration, and RFC 019 S4/S5 gate
-> implementation are owner-durable. Architecture review 024 accepted the
-> non-publishing tagged evidence for canonical tag `0.20.1` at
-> `ed282545...`, but RFC 021 later classified that immutable local tag as a
-> permanently blocked, unpublished candidate (audit blocker B6). Reviews
-> 031/032 accepted RFC 021 S1/S2, the project owner authorized one atomic Q2
-> finalization revision, and that revision released successfully on
-> 2026-07-30 as repository release `0.20.2`: the canonical tag peeled to the
-> finalization revision, the release workflow reached a successful terminal
-> conclusion, and its required evidence upload succeeded. Repository release
-> `0.20.2` carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034. RFC
-> 024 subsequently retired the one-release conditional apparatus from ordinary
-> post-release development.
+> broken declared MSRV, release-tag/workflow mismatch, incomplete tag-revision
+> gates, and materially stale normative specifications. v0.20.0 was **No-Go**
+> for release-readiness claims. The dependency-gated corrective schedule was
+> the [Architecture Recovery Roadmap](docs/src/recovery-roadmap.md). RFC 019
+> and RFC 020 owned the blocking recovery and were Accepted (design frozen
+> 2026-07-15) before Q2 staging. R0.5 lifecycle activation, the RFC 019 S1-S3
+> baseline, the RFC 020 S1 traceability matrix, reviewed S2 apex
+> reconciliation, corrected S3 supporting documentation, corrected S4 semantic
+> currency checks, S5 integration, and RFC 019 S4/S5 gate implementation are
+> owner-durable. Architecture review 024 accepted the non-publishing tagged
+> evidence for canonical tag `0.20.1` at `ed282545...`, but RFC 021 later
+> classified that immutable local tag as a permanently blocked, unpublished
+> candidate (audit blocker B6). Reviews 031/032 accepted RFC 021 S1/S2, the
+> project owner authorized one atomic Q2 finalization revision, and that
+> revision released successfully on 2026-07-30 as repository release `0.20.2`:
+> the canonical tag peeled to the finalization revision, the release workflow
+> reached a successful terminal conclusion, and its required evidence upload
+> succeeded. RFC 024 subsequently retired the one-release conditional
+> apparatus from ordinary post-release development.
 
 ## Next (approved 2026-09-12)
 
@@ -109,10 +116,9 @@ only, the gateway is mock-only, and validation caching is process-local.
 RFCs 019/020/021 shipped in repository release `0.20.2`, released 2026-07-30
 under RFC 021's conditional-finalization protocol; immutable local tag
 `0.20.1` and its accepted evidence remain historical blocked-candidate
-evidence only and are never reused. Repository release `0.21.0` shipped
-2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034. Currency lives in the apex trio's RFC 024
-block, which records the tree's identity and the release it was last reconciled
-against, never release status.
+evidence only and are never reused. Currency lives in the apex trio's RFC 024
+block, which records the tree's identity and the release it was last
+reconciled against, never release status.
 
 The `0.21.0` consolidation shipped: RFCs 022-026 are in `rfcs/done/`. RFC 026
 added an enforced

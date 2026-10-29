@@ -1,17 +1,24 @@
 # Threat Model
 
-This chapter describes the implemented v0.20.0 device, cluster, validation,
-telemetry, and gateway boundaries plus RFCs 019/020/021, which shipped in
-repository release `0.20.2` (released 2026-07-30). It separates implemented
-controls from release gates, residual risks, and future work. It is not a
-formal security proof, safety certification, or claim that the repository is
-release-ready.
+This chapter describes the device, cluster, validation, telemetry and gateway
+boundaries this tree implements, and the release gates around them. This
+chapter's release currency block, just before "Trust boundaries" below,
+states which tree and which reconciled release that is. It separates
+implemented controls from release gates, residual risks, and future work. It
+is not a formal security proof, safety certification, or claim that the
+repository is release-ready.
 
 Release-local normative sources are
 `docs/specs/loeres-requirements-v1.md`,
 `docs/specs/loeres-external-design-v1.md` and RFCs under `rfcs/done/`. If
 these sources conflict, affected implementation stops under RFC 020's
 conflict rule.
+
+> **Release currency metadata.**
+> This tree: **0.24.1**.
+> Last reconciled repository release: **0.24.0**.
+> Implemented scope: **RFCs 001-044**.
+>
 
 ## Trust boundaries
 
@@ -153,8 +160,7 @@ semantic defects. Size evidence remains advisory until owner RFCs freeze
 thresholds.
 
 RFC 019's package/readiness gate is distinct from the developer aggregate
-and follows RFC 021's conditional boundary. Repository release `0.20.2` is
-released and carries RFCs 001-021. Repository release `0.21.0` shipped 2026-09-12 and carries RFCs 001-026. Repository release `0.21.1` shipped 2026-09-24 and carries RFCs 001-029. Repository release `0.21.2` shipped 2026-09-24 and carries RFCs 001-030. Repository release `0.21.3` shipped 2026-09-24 and carries RFCs 001-033. Repository release `0.22.0` shipped 2026-09-24 and carries RFCs 001-034.
+and follows RFC 021's conditional boundary.
 
 ## Residual risks and future work
 
