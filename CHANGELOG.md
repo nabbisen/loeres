@@ -116,6 +116,26 @@ action's table as the authority, and both name the pinned version explicitly; `c
 a local convenience is kept, per RFC 046 §4 — the fix is not making a human run a curl-and-hash
 incantation. No gate added, no pinned version changed, no tag created.
 
+**RFC 046 (D) — assert the pinned *version*, not only the hash, and this is the RFC's last
+slice** (review 110 F4). (C) named the pinned version everywhere a human is told to install the
+tool, which was right and moved the same omission (F2) one level up: a version string nobody
+checks goes stale exactly as silently as a hash nobody checks, and a stale version is worse than
+a vague one — it is confidently wrong. The test already holding the hashes now also holds both
+version strings and asserts each occurs in `action.yml`'s own pinned URL and in every file that
+claims it — `docs/src/development.md`, `xtask/src/checks/supply_chain.rs`'s failure hint, and
+`docs/src/recovery-roadmap.md`. Verified directly, one scratch edit per tool: bumping either
+version string in one claiming file fails the matching assertion by name, then reverted before
+committing. `recovery-roadmap.md`'s own narrative sentence about the release workflow was wrong
+in two ways after RFC 046 landed — "action references are full reviewed SHAs" no longer covers
+the two local `install-pinned-tool` references `release.yml` now holds, and "mdBook is pinned to
+`0.5.4`" understated that this is now by verified SHA-256, not `cargo install --version` — both
+corrected in place, in that document's own narrative register. The test renamed from
+`release_workflow_selects_canonical_tags_and_pins_actions` to
+`release_workflow_and_its_pinned_tool_table_match_what_was_reviewed`, since it now checks a file
+shared by two workflows, not one workflow's own text. No gate added, no pinned version changed,
+no tag created. After this slice each pinned tool has exactly one operative home and every
+tracked claim about it is checked; RFC 046 is complete.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

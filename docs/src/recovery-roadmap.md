@@ -238,7 +238,10 @@ the immutable candidate; it did not itself certify or publish a release —
 that step, RFC 021's owner-authorized `D_release` bundle, is what completed
 2026-07-30. RFC 019 S3 aligned CI, the exact MSRV workflow, and the
 non-publishing release workflow with the accepted command profiles. The
-release selector uses the canonical unprefixed tag family, action references
-are full reviewed SHAs, and mdBook is pinned to 0.5.4. The workflow retains
+release selector uses the canonical unprefixed tag family; every third-party
+action reference is a full reviewed SHA, the two local `install-pinned-tool`
+references (RFC 046) are pinned by being part of the gated commit itself
+rather than by a separate SHA, and mdBook is pinned to 0.5.4 by verified
+SHA-256, not merely by `cargo install --version`. The workflow retains
 successful gate evidence but has no publication or GitHub-release step;
 certification remains separately authorized and has not been sought.

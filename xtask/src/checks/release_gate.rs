@@ -733,7 +733,7 @@ mod tests {
     }
 
     #[test]
-    fn release_workflow_selects_canonical_tags_and_pins_actions() {
+    fn release_workflow_and_its_pinned_tool_table_match_what_was_reviewed() {
         let workflow = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../.github/workflows/release.yml");
         let source = std::fs::read_to_string(workflow).unwrap();
@@ -780,6 +780,56 @@ mod tests {
                  has drifted from what RFC 046 §3.2 reviewed"
             );
         }
+
+        // RFC 046 follow-up D (review 110 F4): naming the pinned *version*
+        // wherever a human is told to install the tool (RFC 046 follow-up C)
+        // moved the same omission F2 found for the hash rather than closing
+        // it — a version string nobody checks goes stale exactly as
+        // silently as a hash nobody checks. Held here, next to the hashes,
+        // rather than parsed out of `action.yml`'s own URL: a check that
+        // derives its expectation from the thing it is checking asserts
+        // nothing.
+        let cargo_deny_version = "0.20.2";
+        let mdbook_version = "0.5.4";
+
+        assert!(
+            action_source.contains(cargo_deny_version),
+            "action.yml's own pinned URL must still name {cargo_deny_version}"
+        );
+        assert!(
+            action_source.contains(mdbook_version),
+            "action.yml's own pinned URL must still name {mdbook_version}"
+        );
+
+        let development_md = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../docs/src/development.md"),
+        )
+        .unwrap_or_else(|e| panic!("docs/src/development.md must exist: {e}"));
+        assert!(
+            development_md.contains(cargo_deny_version),
+            "docs/src/development.md's cargo-deny instructions must still name \
+             {cargo_deny_version}"
+        );
+
+        let supply_chain_rs = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src/checks/supply_chain.rs"),
+        )
+        .unwrap_or_else(|e| panic!("src/checks/supply_chain.rs must exist: {e}"));
+        assert!(
+            supply_chain_rs.contains(cargo_deny_version),
+            "supply_chain.rs's tool_gate failure hint must still name {cargo_deny_version}"
+        );
+
+        let recovery_roadmap_md = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../docs/src/recovery-roadmap.md"),
+        )
+        .unwrap_or_else(|e| panic!("docs/src/recovery-roadmap.md must exist: {e}"));
+        assert!(
+            recovery_roadmap_md.contains(mdbook_version),
+            "docs/src/recovery-roadmap.md must still name mdBook's pinned version \
+             {mdbook_version}"
+        );
 
         let mut external_action_count = 0;
         for line in source.lines().map(str::trim) {
