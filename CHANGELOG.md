@@ -179,14 +179,23 @@ improves the explanation, for improving it rather than for getting the table wro
 exemption is recorded beside the predicate itself, not in `docs/src/development.md`'s exemption
 list, since it is a test-design note rather than a contributor-facing consequence. Verified per
 cell, not per file: each of the six cells was broken individually, with the operative `case` arm
-and the row's other two cells left untouched, and a seventh exercise deleted the `cargo-deny`
-row entirely and confirmed the exactly-one-row assertion fires its own named message rather than
-an index panic. (E)'s closing sentence claimed every tracked claim was now checked by a
-predicate that names it; F7 is a tracked claim that sentence was wrong about — the same shape as
-(D)'s "RFC 046 is complete" — so it is removed above rather than amended, the same honest form
-(E) used for (D). No gate added, no pinned version changed, no tag created. Whether RFC 046 is
-complete is for the architect to judge against the tree; this entry states what (F) held and
-what it deliberately left unasserted, not that claim.
+and the row's other two cells left untouched. Deleting a row, or editing its hash cell, also
+drops that hash's occurrence count from 2 to 1, so (C)'s earlier assertion fires first and the
+row predicate is never reached — a correct earlier detection of the same corruption, not a gap.
+Reaching the row predicate itself takes a corruption that leaves (C)'s counts intact, and
+architect review 113 §1 confirmed it against this test with three: swapping the two rows' hash
+cells, so each row carries the other tool's reviewed hash while every count stays correct;
+deleting a row while restoring its hash's count elsewhere, which fails the exactly-one-row
+assertion by its own name with `left: 0` rather than indexing an empty vector; and duplicating a
+row with a different hash in the copy, which fails it with `left: 2`. The first of those is a
+table that lies about which hash belongs to which tool with no count anywhere in the file wrong,
+which is the defect the row predicate exists for and the one (C) cannot see. (E)'s closing
+sentence claimed every tracked claim was now checked by a predicate that names it; F7 is a
+tracked claim that sentence was wrong about — the same shape as (D)'s "RFC 046 is complete" — so
+it is removed above rather than amended, the same honest form (E) used for (D). No gate added,
+no pinned version changed, no tag created. Whether RFC 046 is complete is for the architect to
+judge against the tree; this entry states what (F) held and what it deliberately left
+unasserted, not that claim.
 
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
