@@ -1,10 +1,11 @@
 # RFC 047 - The State Worth Aiming At
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-29)
 
 **Author tier.** `architect`.
 
-**Governing scoping.** Architect strategy 106, requested by the owner on 2026-10-28 — *"let's
+**Governing scoping.** Authorized by the owner on 2026-10-29 ("Authorized."), on the decisions
+recorded in architect review 114. Architect strategy 106, requested by the owner on 2026-10-28 — *"let's
 establish an overall strategy … let's acknowledge those setbacks as we work together to define
 the ideal future state and the ultimate goal we should aim for."* Architect review 114 §1 and §3
 corrected 106 §3's goal statement and decided what this RFC may contain; architect review 114 §2

@@ -195,7 +195,7 @@ separate, reviewed pass.
 | `111` | 2026-10-29 | rfc046 d architect review | `f2d46b2e62f58083a85a5aed6f10d28f820f49eddf35b7cfd7bf58423951b510` | `architect` |✓ |
 | `112` | 2026-10-29 | rfc046 e architect review | `bbbfdbe4a5aab7d91582d9680984893be1ea27b77f646754ece77af529b7de1f` | `architect` |✓ |
 | `113` | 2026-10-29 | rfc046 f architect review | `b1f077b68daa761b8c485159e8b18984634a4aed77b07357b5bd6f82c696baf1` | `architect` |✓ |
-| `114` | 2026-10-29 | three open strategy decisions | `f4dbe394b0efb18b3c0ccc1129c031270cf437c36272e3b188ab11d68b8b6365` | `architect` |✓ |
+| `114` | 2026-10-29 | three open strategy decisions | `e98ef85368ff86165f646f15e9fa1db55fec305b91c3a8fc1fdd14544fd4b1f7` | `architect` |✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
