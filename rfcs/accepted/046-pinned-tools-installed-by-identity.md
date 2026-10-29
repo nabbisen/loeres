@@ -11,6 +11,34 @@ and the landing order in §5's last row.
 Every figure below was measured by the architect from this repository's own workflow runs, and
 every hash was downloaded and recomputed by the architect, not copied from upstream prose.
 
+## 0.1 Amendment 1 (2026-10-29)
+
+Made while Accepted, under RFC 000's in-place-amendment rule. The Status line carries only the
+design-freeze date while this RFC is in `accepted/`, because `doc-currency` requires that form
+there; **the amendment must be named in the Status line when this RFC moves to `rfcs/done/`**,
+which `check-rfcs` enforces for `done/` only.
+
+**S6 — the documented human procedure must stop contradicting CI.** Architect review 109 §5 found
+that after S1–S3 land, `docs/src/development.md` still instructs a contributor to run
+`cargo install cargo-deny --version 0.20.2 --locked`, and `xtask/src/checks/supply_chain.rs`'s
+failure hint — the text a developer actually reads when the gate reports `unavailable` — says
+`cargo install cargo-deny --locked`, **naming no version at all**.
+
+So the tracked procedure a human follows obtains the tool in exactly the way §2.3 argues is
+insufficient, while CI obtains it by identity; and the gate's own hint is looser than the
+documentation, so a developer who follows it can install a different `cargo-deny` and reach a
+**different verdict on the same tree** than CI reaches. That is a pre-existing defect this RFC did
+not create but does make visible, and it is a direct failure of the second design principle — a
+procedure that confuses the person following it.
+
+**The resolution is not to make a human run a curl-and-hash incantation**, which trades one
+confusion for a worse one. It is to state that the action's table is the authority, that CI
+installs by pinned hash, and that the local `cargo install` form is a convenience which **must
+name the pinned version** — with the gate's hint corrected to include it.
+
+This was a gap in the implementation handoff, which asked only for §4's exemption note and named
+neither file. Neither review request is marked down for it.
+
 ## 1. Summary
 
 Two pinned tools — `cargo-deny 0.20.2` and `mdbook 0.5.4` — are installed in CI by compiling
@@ -138,6 +166,26 @@ Expected after all three: the release gate goes 6m 20s → about **3m 18s**, a 4
 `mdbook` stops being a compiler's problem at the one moment a release cannot be cheaply retried;
 `ci`'s `gates` job goes 2m 47s → **under a minute**, making the workflow's bound `check-test` at
 1m 7s. These are predictions, not measurements. **S5 requires the real numbers.**
+
+**The real numbers for items 1 and 2** (architect review 109 §1, re-derived from run
+`40800754665`'s own step API rather than from the implementer's report):
+
+| | before | after |
+| --- | ---: | ---: |
+| `ci`'s `gates` job | 2m 47s | **28s** |
+| the install step itself | 1m 56s | **355 ms** |
+| `cargo xtask check` inside it | — | 22s |
+| the `ci` workflow | 2m 53s | **1m 10s**, bounded by `check-test` at 1m 7s |
+
+Better than predicted: 28s against "under a minute". Stated against the baseline that matters,
+`ci` ran **three** gates in ~2m 20s before RFC 045 and now runs **twenty** in **1m 10s** — more
+enforcement and a faster workflow than before any of this began.
+
+Two corrections this measurement forces. **The twenty gates are 22–29 seconds cold, not a single
+figure**; review 108's 29s was derived by subtraction from a job total, while the 22s here is the
+step's own measured window, so it is the better of the two and neither is wrong. And item 3's
+release-gate figure above **remains a prediction** — `release.yml`'s path cannot be exercised
+without a tag, so its number arrives at the next cut, per §3.5.
 
 ### 3.4 S4 — what this must not change
 
