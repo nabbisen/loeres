@@ -75,8 +75,27 @@ read: run against a deliberately wrong hash, the step fails at the comparison wi
 `extracted/` directory ever created. `ci.yml`'s `gates` job now calls the action for
 `cargo-deny`; `docs/src/development.md`'s exemption list gains a sixth item recording that no
 gate re-checks a pin against upstream, and why that is acceptable (the failure mode is closed
-and loud, not silent). `release.yml` is not part of this request — it cannot be exercised
-without a tag, so it lands as its own slice (B) after this one's push is confirmed green.
+and loud, not silent).
+
+**Measured, not predicted, on the push that landed this**: `gates` went `2m 47s` → **`28s`**
+(beating RFC 046's own "under a minute" estimate), the `ci` workflow total `2m 53s` → **`1m
+10s`**, and the download-verify-install action itself — read from the run's own sub-second log
+markers, not estimated — took **`355ms`** end to end. `release.yml` is not part of this entry;
+see RFC 046 (B) below.
+
+**RFC 046 (B) — the same action, `release.yml`'s two call sites.** `cargo +stable install
+mdbook --version 0.5.4 --locked` and the equivalent `cargo-deny` line are replaced the same way,
+in place, without reordering them relative to the steps around them — they no longer need the
+Rust toolchain installed first, but keeping their position means a future diff against the
+`0.24.0` cut's own step list stays readable. The "Record tool versions" step, which prints both
+`rustc` versions, `mdbook --version` and `cargo deny --version` as the tracked record of what
+ran at a cut, is byte-for-byte unchanged. A tracked test
+(`release_workflow_selects_canonical_tags_and_pins_actions`) that asserted the literal old
+`cargo install` line is updated to assert the new call sites instead, and a local composite
+action is now correctly exempted from the SHA-pin check that still applies to every third-party
+action in the file — a local action is pinned by being part of the gated commit itself. No tag
+was created to test this; per RFC 046 §3.5, `release.yml`'s path cannot be exercised without
+one, so its verification is the next real cut's `release-gate` run.
 
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 

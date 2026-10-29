@@ -33,10 +33,14 @@ jobs:
         uses: dtolnay/rust-toolchain@98effd2fc0b766278e30ab86762dd5e9a8531399 # 1.85.0
 
       - name: Install the pinned documentation tool
-        run: cargo +stable install mdbook --version 0.5.4 --locked
+        uses: ./.github/actions/install-pinned-tool
+        with:
+          tool: mdbook
 
       - name: Install the pinned supply-chain tool
-        run: cargo +stable install cargo-deny --version 0.20.2 --locked
+        uses: ./.github/actions/install-pinned-tool
+        with:
+          tool: cargo-deny
 
       - name: Record tool versions
         run: |

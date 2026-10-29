@@ -739,14 +739,37 @@ mod tests {
         let source = std::fs::read_to_string(workflow).unwrap();
         assert!(source.contains("tags: [\"[0-9]+.[0-9]+.[0-9]+\"]"));
         assert!(!source.contains("tags: [\"v*\"]"));
-        assert!(source.contains("cargo +stable install mdbook --version 0.5.4 --locked"));
 
-        let mut action_count = 0;
+        // RFC 046: both pinned tools install via the local composite action,
+        // keyed by its `tool` input, rather than `cargo install --version
+        // ... --locked`. That line's own identity pin lives in
+        // `.github/actions/install-pinned-tool/action.yml`'s hash table, not
+        // in this workflow file.
+        assert_eq!(
+            source
+                .matches("uses: ./.github/actions/install-pinned-tool")
+                .count(),
+            2,
+            "expected one call site for mdbook and one for cargo-deny"
+        );
+        assert!(source.contains("tool: mdbook"));
+        assert!(source.contains("tool: cargo-deny"));
+        assert!(!source.contains("cargo +stable install mdbook"));
+        assert!(!source.contains("cargo +stable install cargo-deny"));
+
+        let mut external_action_count = 0;
         for line in source.lines().map(str::trim) {
             let Some(reference) = line.strip_prefix("uses: ") else {
                 continue;
             };
-            action_count += 1;
+            // A local action (this repository's own tree, at this revision)
+            // is pinned by being part of the gated commit itself; the
+            // SHA-pin discipline below is for a *third-party* action, whose
+            // tracked history this repository does not own.
+            if reference.starts_with("./") {
+                continue;
+            }
+            external_action_count += 1;
             let revision = reference
                 .split_once('@')
                 .map(|(_, value)| value.split_whitespace().next().unwrap_or(""))
@@ -757,7 +780,7 @@ mod tests {
                 "action is not pinned: `{line}`"
             );
         }
-        assert_eq!(action_count, 4);
+        assert_eq!(external_action_count, 4);
         let gate = source.find("cargo +stable xtask release-gate").unwrap();
         let upload = source.find("actions/upload-artifact@").unwrap();
         assert!(
