@@ -275,7 +275,7 @@ development team does not publish.
 ### What is deliberately exempt (RFC 045 S3)
 
 An exemption that is written down is a decision; one that is merely true is an accident waiting
-to be found by someone else. Five, all checked against the source that enforces them rather
+to be found by someone else. Six, all checked against the source that enforces them rather
 than assumed:
 
 - **The RFC 028 archive anchor is hand-recomputed and verified three ways at every cut, on
@@ -304,6 +304,16 @@ than assumed:
 - **`bench`, `throughput` and `lp` are not gates.** They are standalone `cargo xtask` commands,
   so the figures they print are measured only when someone chooses to run them; `bench-baseline`
   (inside `cargo xtask check`) is the only part of that performance picture which actually binds.
+- **No gate asserts that a pinned tool's hash still matches upstream (RFC 046 §4).**
+  `.github/actions/install-pinned-tool` installs `cargo-deny` and `mdbook` by a SHA-256 this
+  repository committed after reviewing the bytes once, not by re-deriving trust from upstream on
+  every run. Checking that pin against upstream again would need network access from a gate,
+  which only `supply-chain` has today and only against an advisory database, not an arbitrary
+  release asset. This is acceptable because of the failure mode, not despite it: a stale or
+  wrong pin fails **closed and loudly** at the hash comparison, with both values printed, before
+  anything in the archive is extracted or executed — never silently. The repair is a human
+  updating one number after reviewing new bytes, which is the review this exemption exists to
+  require rather than automate away.
 
 ## Release version convention
 

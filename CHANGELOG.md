@@ -60,6 +60,24 @@ checks, which is enforced and fails the whole suite if the `size` tool is missin
 `throughput` and `lp` remain standalone commands, with `bench-baseline` the only part of that
 picture a gate binds.
 
+**RFC 046 (A) — pinned tools installed by verified hash, not rebuilt from source.**
+`ci.yml`'s `gates` job spent `1m 56s` of its `2m 47s` compiling `cargo-deny` from a crate
+version that pins the tool but not the compiler or image that builds it — the same asymmetry
+RFC 028's hand-verified archive anchor already exists to close for this tree's own source, now
+closed for the tools that run the gates too. A new composite action,
+`.github/actions/install-pinned-tool`, downloads the pinned release asset into a fresh directory,
+computes its SHA-256 and compares it against a table committed in the action itself — on
+mismatch it prints both values and fails **before** extracting or executing anything in the
+archive — then locates the binary by name (the two tools' archives have different internal
+layouts) and puts it on `PATH`. Both hashes were downloaded and recomputed independently rather
+than copied from the handoff; both match. The mismatch path was exercised directly, not merely
+read: run against a deliberately wrong hash, the step fails at the comparison with no
+`extracted/` directory ever created. `ci.yml`'s `gates` job now calls the action for
+`cargo-deny`; `docs/src/development.md`'s exemption list gains a sixth item recording that no
+gate re-checks a pin against upstream, and why that is acceptable (the failure mode is closed
+and loud, not silent). `release.yml` is not part of this request — it cannot be exercised
+without a tag, so it lands as its own slice (B) after this one's push is confirmed green.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

@@ -1,0 +1,121 @@
+name: Install a pinned tool by verified hash
+description: >
+  Downloads a pinned release asset for cargo-deny or mdbook, verifies its
+  SHA-256 against the pin table below before extracting anything, and only
+  then installs the binary onto PATH (RFC 046). Replaces `cargo install`,
+  which rebuilds the tool from source on every run and pins the crate
+  version but not the compiler or image that compiles it.
+#
+# The pin table (RFC 046 S2). Each hash was downloaded and recomputed by the
+# architect directly, not copied from upstream prose; `cargo-deny`'s matches
+# its own upstream .sha256 sidecar and the byte count the GitHub API
+# reports, but that sidecar is signed by nobody and served by the same party
+# as the asset, so it is not the source of truth here — this table is. The
+# tag forms and asset-name forms differ between the two tools (`0.20.2` vs
+# `v0.5.4`), which is why this holds whole URLs rather than a version and a
+# template.
+#
+# | tool         | asset                                                     | bytes   | sha256                                                            |
+# | ------------ | ---------------------------------------------------------- | ------- | ------------------------------------------------------------------ |
+# | cargo-deny   | cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz          | 4936832 | 9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f |
+# | mdbook       | mdbook-v0.5.4-x86_64-unknown-linux-musl.tar.gz              | 4944048 | 5222beabd3e37dc5be0d18ff99b79058469354db5c220153a1b92db5ba12be89 |
+#
+# The two archives also have different internal layouts: cargo-deny's
+# tarball nests the binary one directory deep
+# (`cargo-deny-0.20.2-x86_64-unknown-linux-musl/cargo-deny`); mdbook's has
+# the binary at the archive root. The install step below locates the binary
+# by name rather than by path for exactly this reason.
+
+inputs:
+  tool:
+    description: "Which pinned tool to install. Accepted values: cargo-deny, mdbook."
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Resolve the pinned url, byte count and hash for the requested tool
+      id: pin
+      shell: bash
+      run: |
+        set -euo pipefail
+        case "${{ inputs.tool }}" in
+          cargo-deny)
+            url="https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz"
+            sha256="9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f"
+            ;;
+          mdbook)
+            url="https://github.com/rust-lang/mdBook/releases/download/v0.5.4/mdbook-v0.5.4-x86_64-unknown-linux-musl.tar.gz"
+            sha256="5222beabd3e37dc5be0d18ff99b79058469354db5c220153a1b92db5ba12be89"
+            ;;
+          *)
+            echo "::error::install-pinned-tool: unrecognised tool '${{ inputs.tool }}' (accepted: cargo-deny, mdbook)"
+            exit 1
+            ;;
+        esac
+        echo "url=$url" >> "$GITHUB_OUTPUT"
+        echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+    - name: Download the asset into a fresh, empty directory
+      id: download
+      shell: bash
+      run: |
+        set -euo pipefail
+        work="$(mktemp -d "$RUNNER_TEMP/install-pinned-tool.XXXXXX")"
+        archive="$work/asset.tar.gz"
+        # Untrusted input until its hash is verified below: no extraction,
+        # no execution of anything from this archive happens before that.
+        curl --proto '=https' --tlsv1.2 -sSfL --retry 3 -o "$archive" "${{ steps.pin.outputs.url }}"
+        echo "work=$work" >> "$GITHUB_OUTPUT"
+        echo "archive=$archive" >> "$GITHUB_OUTPUT"
+
+    - name: Verify the SHA-256 before extracting or executing anything
+      shell: bash
+      run: |
+        set -euo pipefail
+        if ! command -v sha256sum >/dev/null 2>&1; then
+          echo "::error::install-pinned-tool: sha256sum is unavailable on this runner; refusing to install ${{ inputs.tool }} unverified rather than skip the comparison"
+          exit 1
+        fi
+        actual="$(sha256sum "${{ steps.download.outputs.archive }}" | awk '{print $1}')"
+        expected="${{ steps.pin.outputs.sha256 }}"
+        if [ "$actual" != "$expected" ]; then
+          echo "::error::install-pinned-tool: SHA-256 mismatch for ${{ inputs.tool }} -- refusing to extract or run it"
+          echo "expected: $expected"
+          echo "actual:   $actual"
+          exit 1
+        fi
+        echo "verified sha256 for ${{ inputs.tool }}: $actual"
+
+    - name: Extract, locate the binary by name, and put it on PATH
+      id: install
+      shell: bash
+      run: |
+        set -euo pipefail
+        work="${{ steps.download.outputs.work }}"
+        extracted="$work/extracted"
+        mkdir -p "$extracted"
+        tar -xzf "${{ steps.download.outputs.archive }}" -C "$extracted"
+        binary="$(find "$extracted" -type f -name "${{ inputs.tool }}" | head -n1)"
+        if [ -z "$binary" ]; then
+          echo "::error::install-pinned-tool: no file named '${{ inputs.tool }}' found inside the verified archive"
+          exit 1
+        fi
+        chmod +x "$binary"
+        tools_dir="$work/bin"
+        mkdir -p "$tools_dir"
+        # The binary inside the archive is already named "${{ inputs.tool }}";
+        # moved as-is, never renamed (cargo needs to find `cargo-deny` on
+        # PATH under exactly that name to work as a cargo subcommand).
+        mv "$binary" "$tools_dir/${{ inputs.tool }}"
+        echo "$tools_dir" >> "$GITHUB_PATH"
+        echo "installed=$tools_dir/${{ inputs.tool }}" >> "$GITHUB_OUTPUT"
+
+    - name: Print the verified identity and the installed binary's version
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "install-pinned-tool: ${{ inputs.tool }} verified sha256=${{ steps.pin.outputs.sha256 }}"
+        # By absolute path: $GITHUB_PATH takes effect in later steps of the
+        # calling job, not this one.
+        "${{ steps.install.outputs.installed }}" --version

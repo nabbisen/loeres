@@ -37,7 +37,11 @@ jobs:
           targets: thumbv7em-none-eabihf
       # Pinned: the gate fails when cargo-deny is absent (RFC 026 §11), so the
       # version that enforces policy is part of the reviewed environment rather
-      # than whatever the runner happens to resolve.
-      - run: cargo install cargo-deny --version 0.20.2 --locked
+      # than whatever the runner happens to resolve. The pin is a hash now, not
+      # only a version (RFC 046) — installed by verified identity rather than
+      # rebuilt from source on every run.
+      - uses: ./.github/actions/install-pinned-tool
+        with:
+          tool: cargo-deny
       - run: cargo deny --version
       - run: cargo xtask check
