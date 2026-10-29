@@ -203,7 +203,11 @@ runs `cargo deny check bans` per edge crate with `--no-default-features` and
 asserts each has an empty external dependency set — a second zero-bleed witness
 independent of the `zero-bleed` gate's internal-edge scan.
 
-Install the tool before running the aggregate:
+**CI installs the pinned `0.20.2` release binary by verified SHA-256, not by rebuilding it**
+(RFC 046) — `.github/actions/install-pinned-tool/action.yml`'s table is the authority for which
+version and which bytes that is. Locally, the one-line `cargo install` form below remains a
+legitimate convenience, but it obtains the tool by version number, not by identity, so name the
+version explicitly rather than taking whatever resolves on the day:
 
 ```sh
 cargo install cargo-deny --version 0.20.2 --locked

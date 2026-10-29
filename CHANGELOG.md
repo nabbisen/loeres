@@ -97,6 +97,25 @@ action in the file — a local action is pinned by being part of the gated commi
 was created to test this; per RFC 046 §3.5, `release.yml`'s path cannot be exercised without
 one, so its verification is the next real cut's `release-gate` run.
 
+**RFC 046 (C) — assert the operative pin table, and stop telling a human to contradict it**
+(review 109 F2, Amendment 1 S6). The two pinned hashes lived in three tracked places — this
+RFC's own text, the implementation handoff, and `.github/actions/install-pinned-tool/action.yml`
+— and only the third ever ran; nothing asserted that file still existed or still held the
+reviewed bytes, so deleting it or flipping one hex digit would have passed every test and every
+gate and failed only at a cut. The test B already touched now also asserts the action file
+exists and that each pinned SHA-256 occurs in it **exactly twice** — the table comment and the
+`case` arm — which also catches the two copies inside that one file drifting apart. Verified
+directly: flipping one hex digit of one hash in a scratch edit drops its count from `2` to `1`
+and fails the assertion with both numbers printed; the edit was reverted before committing
+anything. Separately, two user-facing texts still told a human to obtain `cargo-deny` by version
+number — `docs/src/development.md`'s local-install instructions, and
+`xtask/src/checks/supply_chain.rs`'s own failure hint, the text a developer reads when the gate
+reports the tool missing, which **named no version at all** and so was looser than the
+documentation it should have agreed with. Both now say CI installs by verified hash with the
+action's table as the authority, and both name the pinned version explicitly; `cargo install` as
+a local convenience is kept, per RFC 046 §4 — the fix is not making a human run a curl-and-hash
+incantation. No gate added, no pinned version changed, no tag created.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

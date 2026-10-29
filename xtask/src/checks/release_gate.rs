@@ -757,6 +757,30 @@ mod tests {
         assert!(!source.contains("cargo +stable install mdbook"));
         assert!(!source.contains("cargo +stable install cargo-deny"));
 
+        // RFC 046 follow-up (review 109 F2): the path string above is pinned,
+        // but nothing yet asserted that the file it names exists, or that it
+        // still holds the two hashes this project actually reviewed. Both
+        // hashes are RFC 046 §3.2's own table; each appears twice inside
+        // `action.yml` by design — once in its human-readable comment table,
+        // once in the `case` arm that actually runs — so an exact count of 2
+        // also catches the two copies in that one file drifting apart.
+        let action = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../.github/actions/install-pinned-tool/action.yml");
+        let action_source = std::fs::read_to_string(&action)
+            .unwrap_or_else(|e| panic!("install-pinned-tool/action.yml must exist: {e}"));
+        for hash in [
+            "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f",
+            "5222beabd3e37dc5be0d18ff99b79058469354db5c220153a1b92db5ba12be89",
+        ] {
+            assert_eq!(
+                action_source.matches(hash).count(),
+                2,
+                "pinned hash `{hash}` must occur exactly twice in action.yml \
+                 (the table comment and the case arm) — the operative pin table \
+                 has drifted from what RFC 046 §3.2 reviewed"
+            );
+        }
+
         let mut external_action_count = 0;
         for line in source.lines().map(str::trim) {
             let Some(reference) = line.strip_prefix("uses: ") else {

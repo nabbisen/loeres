@@ -161,8 +161,10 @@ fn is_path_local(line: &str) -> bool {
 fn tool_gate(version: Option<String>) -> Result<String, String> {
     version.ok_or_else(|| {
         "`cargo deny` is not runnable — unavailable, and unavailable fails this gate. \
-         Install it with `cargo install cargo-deny --locked`; a missing tool is an \
-         environment defect, not a legitimate absence like RFC 022's maintainer-held corpus"
+         Install it with `cargo install cargo-deny --version 0.20.2 --locked` (CI installs the \
+         same version by verified hash, not by version number alone — see \
+         .github/actions/install-pinned-tool/action.yml); a missing tool is an environment \
+         defect, not a legitimate absence like RFC 022's maintainer-held corpus"
             .to_owned()
     })
 }
