@@ -1,10 +1,12 @@
 # RFC 048 - One Release List That Cannot Rot
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-29)
 
 **Author tier.** `architect`.
 
-**Governing scoping.** RFC 047 property **G** — *no current-facing document may state a version, a
+**Governing scoping.** Accepted by the owner on 2026-10-29 ("RFC 048 is accepted."), as written —
+which decides §7's open question in favour of the wider reading: **S2 covers all four documents**,
+book chapters included, under one currency mechanism rather than two. RFC 047 property **G** — *no current-facing document may state a version, a
 release list or a scope that the workspace contradicts, and that is asserted mechanically rather
 than by review discipline.* Architect review 114 §4 found the defect while reading
 `docs/src/threat-model.md` for an unrelated purpose, and understated it; §2 below is the
