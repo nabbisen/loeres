@@ -1,6 +1,6 @@
 # RFC 049 - The README Tells A User What To Write
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-30)
 
 **Author tier.** `architect`.
 
@@ -12,6 +12,44 @@ slice that is **already done** (§2.4). Every figure here was measured on the tr
 
 RFC 048 held what current-facing documents say about *this project*. This holds what the README
 tells a user to *write*.
+
+## 0.1 Amendment 1 (2026-10-30)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, and recorded in architect review
+116. The Status line carries only the design-freeze date while this RFC is in `accepted/`, because
+`doc-currency` requires that form there; **this amendment must be named in the Status line when
+this RFC moves to `rfcs/done/`**, which `check-rfcs` enforces for `done/` only.
+
+**The defect is in my own measurement.** §2.1 states *four sites* and names `README.md:55,56,59,60`.
+There are **eight** tracked wildcard sites in two files. The four this RFC missed are
+`docs/specs/loeres-external-design-v1.md:238,239,252,253` — the `toml` fences of its §1.4 **Public
+Import Model**, under the sentence *"The intended downstream import model is:"*. That file is one
+of the three normative apex specs, so there the wildcard is not stale prose quoting an
+instruction: it **is** the project's normative statement of what a user should write, and what it
+says to write is the form `deny.toml:49` denies. I measured `README.md` and `crates/*/README.md`,
+which was the hypothesis I had formed, and stopped.
+
+Checked rather than assumed: both snippets appeared on 2026-06-30 under RFC 008, the README's one
+commit before the apex sync, so neither is derived from the other. They are two copies of one
+decision.
+
+**This amendment implements nothing.** It corrects the measurement — §2.1's heading and its
+closing paragraph say *eight in two files* — and it adds **no provision to S1, S2, S3 or S4**.
+The frozen core as the owner accepted it is unchanged and is authorized: S1 over the README's four
+sites, S2, S3, and S4's predicate scoped to `README.md` and `crates/*/README.md`. Its
+implementation handoff is `rfcs/handoffs/049-the-readme-tells-a-user-what-to-write/implementation-handoff.md`.
+
+**The four spec sites are deferred to the owner, not to a later slice by default.** Review 116 §3
+states three treatments and the cost of each: **A** pin them as the README is pinned, with the
+predicate extended to that file's fences and the value taken from the apex block already in it;
+**B** drop `version` from §1.4's fences and defer to the README, which is RFC 048's one-home move
+and needs no per-release value; **C** leave them, which is the only option that makes the tree
+less consistent after this slice than before it, because `README.md` would say `"0.24"` while the
+normative spec says `"0.x"`. I recommend **B**, with **A** acceptable. Until the owner chooses,
+those four lines are out of scope and the implementer reports rather than touches them.
+
+Monotonicity (roadmap §1.5) is not engaged: nothing here touches a shipped constraint, a public
+API, or a gate's existing predicate.
 
 ## 1. Summary
 
@@ -33,7 +71,7 @@ needs.
 
 ## 2. The defect, measured
 
-### 2.1 `version = "0.x"` — four sites, and the project's own policy forbids it
+### 2.1 `version = "0.x"` — eight sites in two files, and the project's own policy forbids it
 
 `README.md:55`, `:56`, `:59`, `:60`:
 
@@ -59,6 +97,13 @@ up a correctness fix, *because* `0.24.0` is a minor.
 
 An invisible defect that becomes a user's broken build at a time of our choosing is worse than a
 visible one, and it is the second principle failing in the one place every user looks.
+
+**Amendment 1: the same four lines exist in a normative apex spec.**
+`docs/specs/loeres-external-design-v1.md:238,239,252,253`, the `toml` fences of its §1.4 **Public
+Import Model**, carry the identical wildcard — so the tracked total is **eight sites in two
+files**, not four. Those four are **deferred**, not fixed by this RFC: §0.1 states why, and
+architect review 116 §3 states the three treatments and what each costs. S1 and S4 below are
+unchanged and cover `README.md` only.
 
 ### 2.2 The `## Quick Start` is still a contributor's, inside out
 
