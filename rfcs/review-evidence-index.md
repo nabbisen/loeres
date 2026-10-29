@@ -184,7 +184,7 @@ separate, reviewed pass.
 | `100` | 2026-10-08 | rfc043 s6 and rfc044 architect review | `5619a890ed9243be412ed3ab7060d78d661f8d954a78a6d2ce6a5f727b957a4c` | `architect` | ✓ |
 | `101` | 2026-10-08 | rfc044 g1 architect review | `ea85420e53a8b07f3fb57bf57add61148516ae8280567496dc5e03eae8ccd435` | `architect` | ✓ |
 | `102` | 2026-10-08 | rfc043 c d e and the bump architect review | `a60054fad120b6afe9f096119ac2e58a0b50fd3041f64ac04c655e8a2fb6515e` | `architect` | ✓ |
-| `103` | 2026-10-28 | the path from cratesio to a running program scoping | `1f8c114d058ac67562c55e35c541a622dcb57e9b86ba7a0b11290c17b734f638` | `architect` |  |
+| `103` | 2026-10-28 | the path from cratesio to a running program scoping | `1f8c114d058ac67562c55e35c541a622dcb57e9b86ba7a0b11290c17b734f638` | `architect` |✓ |
 | `104` | 2026-10-28 | a front door that is not cargo add scoping | `9f27ba5e4f6d9e5f8e5ffee821bf60a6e905b6bae755c7ffd4071bc0656e6836` | `architect` |  |
 | `105` | 2026-10-28 | three owner corrections to the front door scoping | `3f1540b2edae78cbbaed3dbebf98714de44c20671405462b63abbe33ba85ed55` | `architect` |✓ |
 | `106` | 2026-10-28 | overall strategy the state worth aiming at | `4222b181bbec4400f95d12328089cf4603572e4d514588981b52cfa3d842028e` | `architect` |✓ |
