@@ -478,6 +478,23 @@ run directory — is not a path a tracked document should hand on at all. State
 the **method** instead, so the reader can rebuild it, and say which tracked
 path will own it.
 
+### An accepted slice is pushed; a tag is not the implementer's (architect review 110)
+
+**A slice whose review has been accepted is pushed as part of closing it.** An unpushed commit is
+not a recorded state: it cannot be cited, it cannot ride a release cut, and it can diverge or be
+forgotten. Pushing is ordinary development here, not an outward-facing release action, because
+**only a tag push triggers `release.yml`** — a push to `main` runs `ci`, `no-std` and `msrv` and
+publishes nothing.
+
+**Creating a tag is the architect's and the owner's, never the implementer's.** That is the
+boundary that matters, and it is not a matter of permission levels but of what a tag means: it
+selects the revision a release is cut from. If a slice's verification seems to need a tag, it does
+not — say so in the request and let the next real cut be the verification, as RFC 046 §3.5 does
+for `release.yml`'s own call sites.
+
+This convention exists so the question is not re-decided per commit. An implementer who is unsure
+should still ask rather than assume, but the default is written down here so asking is rare.
+
 ### A `supply-chain` failure on an untouched dependency is not the implementer's (RFC 045 Amendment 1)
 
 Every implementation handoff's required-evidence section should carry this line, so it does not
