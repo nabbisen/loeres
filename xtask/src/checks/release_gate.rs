@@ -781,24 +781,32 @@ mod tests {
             );
         }
 
-        // RFC 046 follow-up D (review 110 F4): naming the pinned *version*
-        // wherever a human is told to install the tool (RFC 046 follow-up C)
-        // moved the same omission F2 found for the hash rather than closing
-        // it — a version string nobody checks goes stale exactly as
-        // silently as a hash nobody checks. Held here, next to the hashes,
-        // rather than parsed out of `action.yml`'s own URL: a check that
-        // derives its expectation from the thing it is checking asserts
-        // nothing.
-        let cargo_deny_version = "0.20.2";
-        let mdbook_version = "0.5.4";
-
+        // RFC 046 follow-up E (review 111 F5): follow-up D asserted that the
+        // bare version string `contains`-matched somewhere in each claiming
+        // file, which two of those files satisfy regardless of what the
+        // real claim says — `development.md`'s own `cargo publish
+        // --dry-run` failure example quotes unrelated `loeres` versions
+        // including `0.20.2`, and `supply_chain.rs`'s own `tool_gate` test
+        // fixtures hard-code the string `"cargo-deny 0.20.2"` twice. A bare
+        // version is not the claim; the whole sentence or command a human
+        // actually reads is, so that is what gets matched here, verbatim.
+        // `action.yml`'s assertion is the whole pinned **URL**, not the bare
+        // version, so that editing the `case` arm alone (leaving the
+        // comment table's copy of the version untouched) cannot pass by
+        // accident.
         assert!(
-            action_source.contains(cargo_deny_version),
-            "action.yml's own pinned URL must still name {cargo_deny_version}"
+            action_source.contains(
+                "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/\
+                 cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz"
+            ),
+            "action.yml must still pin cargo-deny's exact release URL"
         );
         assert!(
-            action_source.contains(mdbook_version),
-            "action.yml's own pinned URL must still name {mdbook_version}"
+            action_source.contains(
+                "https://github.com/rust-lang/mdBook/releases/download/v0.5.4/\
+                 mdbook-v0.5.4-x86_64-unknown-linux-musl.tar.gz"
+            ),
+            "action.yml must still pin mdbook's exact release URL"
         );
 
         let development_md = std::fs::read_to_string(
@@ -806,9 +814,12 @@ mod tests {
         )
         .unwrap_or_else(|e| panic!("docs/src/development.md must exist: {e}"));
         assert!(
-            development_md.contains(cargo_deny_version),
-            "docs/src/development.md's cargo-deny instructions must still name \
-             {cargo_deny_version}"
+            development_md.contains("cargo install cargo-deny --version 0.20.2 --locked"),
+            "docs/src/development.md's local-install command must still name 0.20.2"
+        );
+        assert!(
+            development_md.contains("pinned `0.20.2` release binary"),
+            "docs/src/development.md's CI-installs-by-hash sentence must still name 0.20.2"
         );
 
         let supply_chain_rs = std::fs::read_to_string(
@@ -816,8 +827,8 @@ mod tests {
         )
         .unwrap_or_else(|e| panic!("src/checks/supply_chain.rs must exist: {e}"));
         assert!(
-            supply_chain_rs.contains(cargo_deny_version),
-            "supply_chain.rs's tool_gate failure hint must still name {cargo_deny_version}"
+            supply_chain_rs.contains("cargo install cargo-deny --version 0.20.2 --locked"),
+            "supply_chain.rs's tool_gate failure hint must still name 0.20.2"
         );
 
         let recovery_roadmap_md = std::fs::read_to_string(
@@ -826,9 +837,8 @@ mod tests {
         )
         .unwrap_or_else(|e| panic!("docs/src/recovery-roadmap.md must exist: {e}"));
         assert!(
-            recovery_roadmap_md.contains(mdbook_version),
-            "docs/src/recovery-roadmap.md must still name mdBook's pinned version \
-             {mdbook_version}"
+            recovery_roadmap_md.contains("mdBook is pinned to 0.5.4"),
+            "docs/src/recovery-roadmap.md must still name mdBook's pinned version as 0.5.4"
         );
 
         let mut external_action_count = 0;

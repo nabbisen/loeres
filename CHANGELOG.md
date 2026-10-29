@@ -116,8 +116,8 @@ action's table as the authority, and both name the pinned version explicitly; `c
 a local convenience is kept, per RFC 046 §4 — the fix is not making a human run a curl-and-hash
 incantation. No gate added, no pinned version changed, no tag created.
 
-**RFC 046 (D) — assert the pinned *version*, not only the hash, and this is the RFC's last
-slice** (review 110 F4). (C) named the pinned version everywhere a human is told to install the
+**RFC 046 (D) — assert the pinned *version*, not only the hash** (review 110 F4). (C) named
+the pinned version everywhere a human is told to install the
 tool, which was right and moved the same omission (F2) one level up: a version string nobody
 checks goes stale exactly as silently as a hash nobody checks, and a stale version is worse than
 a vague one — it is confidently wrong. The test already holding the hashes now also holds both
@@ -133,8 +133,31 @@ corrected in place, in that document's own narrative register. The test renamed 
 `release_workflow_selects_canonical_tags_and_pins_actions` to
 `release_workflow_and_its_pinned_tool_table_match_what_was_reviewed`, since it now checks a file
 shared by two workflows, not one workflow's own text. No gate added, no pinned version changed,
-no tag created. After this slice each pinned tool has exactly one operative home and every
-tracked claim about it is checked; RFC 046 is complete.
+no tag created. **Two of the four version assertions this slice added turned out to assert
+nothing — see RFC 046 (E) below, in this same unreleased version.**
+
+**RFC 046 (E) — assert the claim, not the version string** (review 111 F5). Two of (D)'s four
+new assertions checked whether a bare version string appeared anywhere in a file, and in two of
+those files something unrelated keeps the string present regardless of what the real claim
+says: `docs/src/development.md`'s own `cargo publish --dry-run` failure example quotes
+`loeres`'s unrelated historical versions including `0.20.2`, and
+`xtask/src/checks/supply_chain.rs`'s `tool_gate` test fixtures hard-code the literal string
+`"cargo-deny 0.20.2"` twice. Both assertions passed while the real claim — the install command,
+the CI-installs-by-hash sentence — could be silently wrong underneath them; a stale claim with a
+green assertion is worse than no assertion, because it stops anyone from looking again. All four
+are replaced with the exact claim each names: the whole pinned release **URL** in
+`action.yml` (not the bare version, so editing the `case` arm alone while leaving the comment
+table untouched can no longer pass), the exact `cargo install` command in `development.md` and
+in `supply_chain.rs`'s hint, and the exact sentence in `recovery-roadmap.md`. Verified per
+assertion, not per file: each of the six claims was broken individually, with every *other*
+occurrence of that version in that file left untouched — including, for `development.md` and
+`supply_chain.rs`, the unrelated occurrences that previously masked the defect — and each
+failure named the broken claim by its own message before being reverted. (C)'s hash assertions
+are unchanged; a hash cannot collide with unrelated prose the way a bare version number can, so
+the exact-count form was already correct there. No gate added, no pinned version changed, no
+tag created. After this slice, each pinned tool has exactly one operative home and every
+tracked claim about it — hash and version, in all five files — is checked against it by a
+predicate that names the claim rather than merely the string.
 
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
