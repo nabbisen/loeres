@@ -116,13 +116,13 @@ action's table as the authority, and both name the pinned version explicitly; `c
 a local convenience is kept, per RFC 046 §4 — the fix is not making a human run a curl-and-hash
 incantation. No gate added, no pinned version changed, no tag created.
 
-**RFC 046 (D) — assert the pinned *version*, not only the hash** (review 110 F4). (C) named
-the pinned version everywhere a human is told to install the
-tool, which was right and moved the same omission (F2) one level up: a version string nobody
-checks goes stale exactly as silently as a hash nobody checks, and a stale version is worse than
-a vague one — it is confidently wrong. The test already holding the hashes now also holds both
-version strings and asserts each occurs in `action.yml`'s own pinned URL and in every file that
-claims it — `docs/src/development.md`, `xtask/src/checks/supply_chain.rs`'s failure hint, and
+**RFC 046 (D) — assert the pinned *version*, not only the hash** (review 110 F4). (C) named the
+pinned version everywhere a human is told to install the tool, which was right and moved the
+same omission (F2) one level up: a version string nobody checks goes stale exactly as silently
+as a hash nobody checks, and a stale version is worse than a vague one — it is confidently
+wrong. The test already holding the hashes now also holds both version strings and asserts each
+occurs in `action.yml`'s own pinned URL and in every file that claims it —
+`docs/src/development.md`, `xtask/src/checks/supply_chain.rs`'s failure hint, and
 `docs/src/recovery-roadmap.md`. Verified directly, one scratch edit per tool: bumping either
 version string in one claiming file fails the matching assertion by name, then reverted before
 committing. `recovery-roadmap.md`'s own narrative sentence about the release workflow was wrong
@@ -155,9 +155,38 @@ occurrence of that version in that file left untouched — including, for `devel
 failure named the broken claim by its own message before being reverted. (C)'s hash assertions
 are unchanged; a hash cannot collide with unrelated prose the way a bare version number can, so
 the exact-count form was already correct there. No gate added, no pinned version changed, no
-tag created. After this slice, each pinned tool has exactly one operative home and every
-tracked claim about it — hash and version, in all five files — is checked against it by a
-predicate that names the claim rather than merely the string.
+tag created. Each of the six claims (D) named — the hash and the version, across
+`action.yml`'s pinned URL, `development.md`, `supply_chain.rs`, and `recovery-roadmap.md` — is
+now held by a predicate naming that exact claim. **`action.yml`'s own comment table, which
+nominates itself as the source of truth over the upstream, unsigned `.sha256` sidecar, still had
+two of its three columns — the asset name and the byte count — unheld; see RFC 046 (F) below,
+in this same unreleased version.**
+
+**RFC 046 (F) — hold the pin table's own asset-name and byte-count columns, and stop
+certifying completeness** (review 112 F7, F8). `action.yml`'s pin table nominates itself as the
+source of truth over the upstream, unsigned `.sha256` sidecar, but only its hash column was
+held — by (C)'s exact-count-2 — leaving the asset-name and byte-count columns free to drift from
+what RFC 046 §3.2 reviewed without failing anything; the operative `case` arm could stay correct
+while the table lied about which asset was reviewed or how large it was. The test now adds, per
+tool, a row predicate: locate the table's one row for that tool by its line prefix (never by
+column padding, which the next realignment would legitimately change), require exactly one such
+row before reading it — `find(...).unwrap()` would silently check only the first of two — and
+require that row to carry the reviewed asset name, byte count, and hash, each a literal from
+this handoff and never derived from the file it checks, with a failure message naming the cell
+rather than the file. `action.yml:14-15` and `:25` restate parts of the table in explanatory
+prose and stay deliberately unasserted — holding prose verbatim would fail the next person who
+improves the explanation, for improving it rather than for getting the table wrong — and that
+exemption is recorded beside the predicate itself, not in `docs/src/development.md`'s exemption
+list, since it is a test-design note rather than a contributor-facing consequence. Verified per
+cell, not per file: each of the six cells was broken individually, with the operative `case` arm
+and the row's other two cells left untouched, and a seventh exercise deleted the `cargo-deny`
+row entirely and confirmed the exactly-one-row assertion fires its own named message rather than
+an index panic. (E)'s closing sentence claimed every tracked claim was now checked by a
+predicate that names it; F7 is a tracked claim that sentence was wrong about — the same shape as
+(D)'s "RFC 046 is complete" — so it is removed above rather than amended, the same honest form
+(E) used for (D). No gate added, no pinned version changed, no tag created. Whether RFC 046 is
+complete is for the architect to judge against the tree; this entry states what (F) held and
+what it deliberately left unasserted, not that claim.
 
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 

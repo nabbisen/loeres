@@ -790,10 +790,13 @@ mod tests {
         // fixtures hard-code the string `"cargo-deny 0.20.2"` twice. A bare
         // version is not the claim; the whole sentence or command a human
         // actually reads is, so that is what gets matched here, verbatim.
-        // `action.yml`'s assertion is the whole pinned **URL**, not the bare
-        // version, so that editing the `case` arm alone (leaving the
+        // `action.yml`'s assertion below holds the whole pinned **URL** —
+        // the `case` arm's copy, the one `curl` is actually given — not the
+        // bare version, so editing the `case` arm alone (leaving the
         // comment table's copy of the version untouched) cannot pass by
-        // accident.
+        // accident. The *table's* own copy is a separate predicate, just
+        // below, because the two copies are held for different reasons and
+        // neither one's assertion covers the other's.
         assert!(
             action_source.contains(
                 "https://github.com/EmbarkStudios/cargo-deny/releases/download/0.20.2/\
@@ -808,6 +811,72 @@ mod tests {
             ),
             "action.yml must still pin mdbook's exact release URL"
         );
+
+        // RFC 046 follow-up F (review 112 F7): `action.yml:9-16` nominates
+        // its own comment table as the source of truth over the upstream
+        // `.sha256` sidecar — "that sidecar is ... not the source of truth
+        // here — this table is." C held the table's hash column at
+        // exact-count-2; the table's other two columns (the asset name and
+        // the byte count) were held by nothing, so the table could be
+        // edited to misname which asset was reviewed, or lie about its
+        // size, without failing anything — the case arm above would still
+        // be correct and this test would still pass. This is a row
+        // predicate, not a bare presence check: locate each tool's one
+        // table row by its line prefix (never by column padding, which the
+        // next realignment would break, not a defect), require exactly one
+        // such row before reading it — `find(...).unwrap()` would silently
+        // check only the first of two — and require that row to carry all
+        // three reviewed cells. Every literal below is this handoff's own,
+        // never derived from the file it checks.
+        //
+        // `action.yml:14-15` and `:25` restate parts of this table in
+        // explanatory prose (the tag-form/asset-name-form contrast, and the
+        // nested-path example). Those stay deliberately unasserted: holding
+        // prose verbatim would fail the next person who improves the
+        // explanation, for improving it rather than for getting the table
+        // wrong.
+        for (tool, asset, bytes, hash) in [
+            (
+                "cargo-deny",
+                "cargo-deny-0.20.2-x86_64-unknown-linux-musl.tar.gz",
+                "4936832",
+                "9f12ed4c49936e09b48bf862b595cde2fe64fcbd9d74dfacac6131ca824c8d5f",
+            ),
+            (
+                "mdbook",
+                "mdbook-v0.5.4-x86_64-unknown-linux-musl.tar.gz",
+                "4944048",
+                "5222beabd3e37dc5be0d18ff99b79058469354db5c220153a1b92db5ba12be89",
+            ),
+        ] {
+            let prefix = format!("# | {tool}");
+            let rows: Vec<&str> = action_source
+                .lines()
+                .map(str::trim)
+                .filter(|line| line.starts_with(&prefix))
+                .collect();
+            assert_eq!(
+                rows.len(),
+                1,
+                "action.yml's pin table must carry exactly one row for {tool}"
+            );
+            let row = rows[0];
+            assert!(
+                row.contains(asset),
+                "action.yml's pin table row for {tool} must still carry the reviewed \
+                 asset name {asset}"
+            );
+            assert!(
+                row.contains(bytes),
+                "action.yml's pin table row for {tool} must still carry the reviewed \
+                 byte count {bytes}"
+            );
+            assert!(
+                row.contains(hash),
+                "action.yml's pin table row for {tool} must still carry the reviewed \
+                 hash {hash}"
+            );
+        }
 
         let development_md = std::fs::read_to_string(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../docs/src/development.md"),
