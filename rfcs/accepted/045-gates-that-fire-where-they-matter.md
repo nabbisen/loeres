@@ -45,7 +45,7 @@ looking, which is the only time a finding can be acted on:
 
 1. **`rfcs/handoffs/release-*/finalization-checklist.md` states that advisory drift at cut time
    is expected and is normal maintenance, not an emergency**, with the fix pattern: a scoped
-   `cargo update -p <crate>`, never a bare one (RFC 102's finding), then verify every changed
+   `cargo update -p <crate>`, never a bare one (architect review 102's finding), then verify every changed
    lockfile line is a version string.
 2. **The implementation-handoff template states that a `supply-chain` failure on a dependency
    the implementer did not touch is not theirs** — report it and fix it scoped, rather than
@@ -100,8 +100,11 @@ reason that does not hold.
 
 ### 3.1 S1 — `cargo xtask check` on every push and pull request
 
-Replace `ci.yml`'s three individually-named xtask invocations with the aggregate. The
-provisioning this needs was measured, not guessed:
+Replace `ci.yml`'s two individually-named xtask invocations — `zero-bleed` and
+`supply-chain` — with the aggregate. The third gate a push reaches, `no-std`, is invoked from
+`no-std.yml`, which this RFC leaves alone; that is why §2's table counts three gates on a push
+but only two of them live in the file S1 edits. The provisioning this needs was measured, not
+guessed:
 
 | requirement | status |
 | --- | --- |
@@ -155,10 +158,23 @@ to be found by someone else. Record in `docs/src/development.md`:
 
 ### 3.4 S4 — report what it cost
 
-CI minutes are a real cost and this RFC increases them. Report, from the first runs: the `ci`
-workflow's duration before and after S1, and the scheduled run's duration. **If the increase
-is material, say so** — the fallback is to split the aggregate across the existing parallel
-jobs rather than to drop gates, and that decision needs a number, not an impression.
+CI minutes are a real cost and this RFC increases them. Report, from the first runs, the `ci`
+workflow's duration before and after S1. (Amendment 1 withdrew S2, so there is no scheduled run
+to measure.) **If the increase is material, say so** — the fallback is to split the aggregate
+across the existing parallel jobs rather than to drop gates, and that decision needs a number,
+not an impression.
+
+**The answer, recorded here because this is where the question was asked** (architect review
+108 §4). It is not material and the aggregate is not split. Cold in CI the twenty gates take
+**29 seconds**. The job that runs them took **2m 32s** (run `40775245512`) and **2m 47s** (run
+`40792044395`), of which **1m 51s–1m 56s** is `cargo install cargo-deny` — a cost the
+`supply-chain` job this replaced already paid, and the reason that job was itself the old
+workflow's bound, at 2m 17s against a 2m 20s total. So the marginal cost of wiring the other
+seventeen gates is **about fifteen seconds** of job wall time. The `ci` workflow's total went
+from ~2m 20s to **2m 53s**; the first run's 4m 32s was 1m 28s of queueing before any job
+started, not compute. The lever worth pulling is a prebuilt-binary `cargo-deny` install, which
+would leave the job faster than it was before this RFC — splitting twenty gates across jobs
+would recover nineteen seconds.
 
 ## 4. Non-goals
 
