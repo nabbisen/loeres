@@ -229,6 +229,32 @@ different one of the four new documents bar one repeat, each reverted — reprod
 `APEX RELEASE`, strict-inequality, stale-scope, `APEX MISMATCH`, and missing-marker failures by
 name. No new gate, no new predicate, no pinned version changed, no tag created.
 
+**RFC 049 — the README tells a user what to write.** `README.md`'s dependency snippet told a
+user to write `version = "0.x"` for all four crates — a wildcard requirement, the exact form
+`deny.toml:49` denies in this project's own manifests. It resolved correctly today and would have
+kept resolving correctly until the first `0.25.0`, at which point `cargo update` alone would move
+every reader of the snippet across a minor-compatibility boundary with nothing to warn them. The
+snippet now pins each crate to `"0.24"`, the last released minor per the RFC 024/048 apex block,
+with one sentence saying why a minor is named rather than left open. `## Quick Start` now opens
+with the user's own instruction — the "choose by where the solve runs" table, the dependency
+snippet, and the device control step — and the three contributor commands move to their own
+`## Building from source` section below it; the README's own "Start here" line no longer says
+"install" where the reader means *add the dependency* and the chapter means *clone the
+repository*. `docs/src/getting-started.md` gains one paragraph saying it is a from-source tour
+and pointing a library user at the README's snippet instead. `doc_currency.rs` gains one
+assertion, joining the gate RFC 048 already keyed to the apex block rather than opening a new
+one: every `version = "…"` inside a `toml` fence in `README.md` must equal `MAJOR.MINOR` of the
+apex block's `Last reconciled repository release`, and no such requirement anywhere in
+`README.md` or any `crates/*/README.md` may be a wildcard — `deny.toml`'s own rule, applied to
+what this project tells a user to write. `docs/src/documentation-convention.md`'s tables are
+updated to match: the Quick Start row now names the dependency requirement rather than a build
+command, the build command's new home is recorded in the Setup row, and §5 lists the new
+assertion beside the other README rows `doc-currency` already held. **Four sites remain**:
+`docs/specs/loeres-external-design-v1.md:238,239,252,253` carry the identical wildcard in a
+normative apex spec's own Public Import Model, measured by RFC 049 Amendment 1 and deferred to
+the owner's choice of treatment — this slice does not touch them and the new assertion is scoped
+to `README.md` and `crates/*/README.md` only, not to that file.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

@@ -9,13 +9,28 @@ Loeres is a Rust workspace of optimization kernels for constrained quadratic pro
 
 ## Quick Start
 
-Build and check from source. The toolchain, components and bare-metal target come from `rust-toolchain.toml`.
+Add the dependency for your path, then solve a problem.
 
-```sh
-cargo check --workspace --all-features
-cargo xtask check        # developer aggregate; not release approval
-cargo xtask examples     # builds and runs each example, checks its dependency isolation
+Choose the crates by where the solve runs:
+
+| You are building | Use | Storage | Threads |
+|---|---|---|---|
+| an embedded controller with bounded time | `loeres-device` + `loeres-backend-static` | fixed-size, caller-owned | none |
+| a server, batch or scheduler | `loeres-cluster` + `loeres-backend-std` | heap, dynamic sizes | optional (`parallel-rayon`) |
+
+The dependency snippets for both:
+
+```toml
+# Cluster / server user
+loeres-cluster        = { version = "0.24", features = ["parallel-rayon"] }
+loeres-backend-std    = { version = "0.24", features = ["dense"] }
+
+# Device / edge user
+loeres-device         = { version = "0.24", default-features = false }
+loeres-backend-static = { version = "0.24", default-features = false, features = ["owned-arrays"] }
 ```
+
+At `0.y`, the minor is the compatibility unit, so this requirement names one deliberately rather than accepting the next.
 
 A device-side control step, copied from [`examples/device-mpc-step`](examples/device-mpc-step/src/main.rs). Run the whole example with `cargo run --manifest-path examples/device-mpc-step/Cargo.toml`:
 
@@ -41,23 +56,14 @@ fn plan_move(
 
 The problem type `MpcPlan` and the `main` that calls this function are in that file.
 
-Choose the crates by where the solve runs:
+## Building from source
 
-| You are building | Use | Storage | Threads |
-|---|---|---|---|
-| an embedded controller with bounded time | `loeres-device` + `loeres-backend-static` | fixed-size, caller-owned | none |
-| a server, batch or scheduler | `loeres-cluster` + `loeres-backend-std` | heap, dynamic sizes | optional (`parallel-rayon`) |
+Build and check from source. The toolchain, components and bare-metal target come from `rust-toolchain.toml`.
 
-The dependency snippets for both:
-
-```toml
-# Cluster / server user
-loeres-cluster        = { version = "0.x", features = ["parallel-rayon"] }
-loeres-backend-std    = { version = "0.x", features = ["dense"] }
-
-# Device / edge user
-loeres-device         = { version = "0.x", default-features = false }
-loeres-backend-static = { version = "0.x", default-features = false, features = ["owned-arrays"] }
+```sh
+cargo check --workspace --all-features
+cargo xtask check        # developer aggregate; not release approval
+cargo xtask examples     # builds and runs each example, checks its dependency isolation
 ```
 
 ## Reading a result
@@ -89,7 +95,7 @@ Each example names the problem it solves in its first paragraph.
 
 ## More Detail
 
-- Start here: [Getting Started](docs/src/getting-started.md) — install, solve one problem, read the result.
+- Start here: [Getting Started](docs/src/getting-started.md) — clone the repository, solve one problem, read the result.
 - Book: [`docs/src/`](docs/src/) — introduction, architecture, threat model, and the maintainer bridge to the specifications (mdBook).
 - Specifications: [`docs/specs/`](docs/specs/) — requirements, external design, roadmap and milestones.
 - RFCs: the [RFC index](rfcs/README.md) lists every RFC by state.

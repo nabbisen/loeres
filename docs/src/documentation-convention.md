@@ -21,7 +21,7 @@ The README follows the 3–30–3 rule:
 | Part | Content | Rule |
 |---|---|---|
 | First screen (3 s) | One-line summary, 3–5 features | No release sentences |
-| Quick Start (30 s) | One build command; one minimal working example | Example under 20 lines, **copied from a gated example** |
+| Quick Start (30 s) | The dependency requirement; one minimal working example | Example under 20 lines, **copied from a gated example** |
 | Navigation and meta (3 min) | Links to the book, RFC index, `CONTRIBUTING.md`, `CHANGELOG.md`, `LICENSE` | No links into empty RFC folders |
 
 **The length is 100–200 lines.** `doc-currency` checks this.
@@ -47,7 +47,7 @@ The README links to it and does not repeat it.
 | Topic | Keep in `README.md` | Offload to `docs/src/` |
 |---|---|---|
 | Overview and design | Purpose, features | Architecture, design philosophy |
-| Setup | One build command | Platform steps, edge cases |
+| Setup | One build command, under `## Building from source` | Platform steps, edge cases |
 | Usage | One or two common patterns | Full API reference, advanced recipes |
 | Development | Link to `CONTRIBUTING.md` | Local setup, test strategy, workflow |
 | Releases | Link to the currency page | Version history (`CHANGELOG.md`), migration |
@@ -122,6 +122,7 @@ changed in each. A changed printed record is one a reader could copy.
 | README length 100–200 lines | `doc-currency` |
 | README Quick Start equals the marked example region, byte-for-byte | `doc-currency` |
 | Marked region under 20 lines | `doc-currency` |
+| README dependency requirement names the released minor, never a wildcard | `doc-currency` |
 | No stale release phrases or release notes in current-facing docs | `doc-currency` |
 | Each example builds, runs, and is dependency-isolated | `examples` gate |
 | Captured output in the book matches the run | `examples` gate, via the `example-output` marker |

@@ -312,7 +312,7 @@ pub fn run() -> bool {
 fn validate_repository() -> Vec<String> {
     let mut errors = Vec::new();
     let expected_release = workspace_release_marker(&mut errors);
-    check_apex_currency(expected_release.as_deref(), &mut errors);
+    let last_reconciled = check_apex_currency(expected_release.as_deref(), &mut errors);
     check_rfc_index(&mut errors);
     check_root_roadmap(&mut errors);
     check_book_navigation(&mut errors);
@@ -320,6 +320,7 @@ fn validate_repository() -> Vec<String> {
     check_stale_ledger(&mut errors);
     check_conditional_current_prose(&mut errors);
     check_readme_landing(&mut errors);
+    check_readme_requirements(last_reconciled.as_deref(), &mut errors);
     check_example_guides(&mut errors);
     errors
 }
@@ -353,7 +354,11 @@ fn workspace_release_marker(errors: &mut Vec<String>) -> Option<String> {
     }
 }
 
-fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>) {
+/// Returns the apex block's `Last reconciled repository release` field, raw
+/// and without a `v` prefix — the value `check_readme_requirements` (RFC 049
+/// S4) binds its `MAJOR.MINOR` requirement to, so it is parsed once here
+/// rather than a second time there.
+fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>) -> Option<String> {
     let scope = implemented_scope(errors);
     let changelog_source = match fs::read_to_string(CHANGELOG_PATH) {
         Ok(source) => Some(source),
@@ -398,6 +403,10 @@ fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>)
             }
         }
     }
+
+    found
+        .first()
+        .map(|(_, currency)| currency.last_reconciled.clone())
 }
 
 /// Parse the RFC 024 ordinary apex block, as amended by Amendment 1 §0.1/§0.2.
@@ -900,6 +909,147 @@ fn marked_region(source: &str) -> Option<String> {
     None
 }
 
+/// `crates/*/README.md`: RFC 049 §2.4/§4 — no install snippet is asked for,
+/// but clause 2 covers them so that a future one cannot be a wildcard.
+const CRATE_README_PATHS: &[&str] = &[
+    "crates/loeres/README.md",
+    "crates/loeres-backend-static/README.md",
+    "crates/loeres-backend-std/README.md",
+    "crates/loeres-cluster/README.md",
+    "crates/loeres-device/README.md",
+];
+
+/// RFC 049 S4: `README.md`'s dependency requirement names the released
+/// minor (clause 1), and no requirement site in `README.md` or any
+/// `crates/*/README.md` may be a wildcard (clause 2) — `deny.toml:49`'s own
+/// rule, applied to what a user is told to write rather than only to what
+/// this workspace compiles. `last_reconciled` is the apex block's raw field
+/// (`0.24.0`), reduced to `MAJOR.MINOR` (`0.24`) here — the single site of
+/// that derivation — before being passed to the pure predicate below. It is
+/// `None` when the apex block itself failed to parse; clause 1 is then
+/// skipped (a second, derived complaint would be noise over an error
+/// `check_apex_currency` already reported) and clause 2 still runs, since it
+/// needs no version.
+fn check_readme_requirements(last_reconciled: Option<&str>, errors: &mut Vec<String>) {
+    let expected_minor = last_reconciled.and_then(major_minor);
+    if let Some(readme) = read_required(README_PATH, errors) {
+        errors.extend(readme_requirement_findings(
+            README_PATH,
+            &readme,
+            expected_minor.as_deref(),
+        ));
+    }
+    for path in CRATE_README_PATHS {
+        if let Some(source) = read_required(path, errors) {
+            errors.extend(readme_requirement_findings(path, &source, None));
+        }
+    }
+}
+
+/// `MAJOR.MINOR` of an `X.Y.Z` version string, or `None` if it is not that
+/// shape.
+fn major_minor(version: &str) -> Option<String> {
+    let mut parts = version.split('.');
+    let major = parts.next()?;
+    let minor = parts.next()?;
+    parts.next()?;
+    if parts.next().is_some() {
+        return None;
+    }
+    Some(format!("{major}.{minor}"))
+}
+
+/// RFC 049 S4's predicate, as a pure function over strings so every branch
+/// can be exercised on literals (architect review 113 F5: an unexercised
+/// branch is how a predicate goes vacuous). A wildcard site is reported
+/// instead of a clause-1 mismatch against it — the wildcard is the defect;
+/// comparing a wildcard's literal text to a specific minor would just add a
+/// second, redundant message for the one broken line.
+fn readme_requirement_findings(
+    path: &str,
+    readme: &str,
+    expected_minor: Option<&str>,
+) -> Vec<String> {
+    let mut findings = Vec::new();
+    for (line, crate_name, value) in requirement_sites(readme) {
+        if crate_name == "version" {
+            findings.push(format!(
+                "README VERSION: {path}:{line} a `version = ...` line with no crate name \
+                 before it is not a shape this assertion reads"
+            ));
+            continue;
+        }
+        if is_wildcard_requirement(value) {
+            findings.push(format!(
+                "README VERSION: {path}:{line} `{crate_name}` must not advertise a wildcard \
+                 requirement (found `{value}`)"
+            ));
+            continue;
+        }
+        if let Some(expected_minor) = expected_minor {
+            if value != expected_minor {
+                findings.push(format!(
+                    "README VERSION: {path}:{line} `{crate_name}` requires `{value}`, expected \
+                     the released minor `{expected_minor}`"
+                ));
+            }
+        }
+    }
+    findings
+}
+
+/// Every `version = "…"` line inside a ` ```toml ` fence, as
+/// `(1-based line number, identifier before the line's first '=', the
+/// quoted value)`. The identifier is the crate name for an ordinary site
+/// (`crate = { version = "…" }`) and the literal `version` for the
+/// `[dependencies.<crate>]` form, which `readme_requirement_findings`
+/// reports rather than silently skips (RFC 049 §4.2).
+fn requirement_sites(source: &str) -> Vec<(usize, &str, &str)> {
+    let mut sites = Vec::new();
+    let mut in_fence = false;
+    for (index, line) in source.lines().enumerate() {
+        match line.trim() {
+            "```toml" => {
+                in_fence = true;
+                continue;
+            }
+            "```" => {
+                in_fence = false;
+                continue;
+            }
+            _ => {}
+        }
+        if !in_fence {
+            continue;
+        }
+        let Some(value) = requirement_value(line) else {
+            continue;
+        };
+        let Some(equals) = line.find('=') else {
+            continue;
+        };
+        sites.push((index + 1, line[..equals].trim(), value));
+    }
+    sites
+}
+
+/// The quoted value of a `version = "…"` occurrence on one line, or `None`
+/// if the line does not contain the literal `version` followed by `=` and a
+/// double-quoted string.
+fn requirement_value(line: &str) -> Option<&str> {
+    let (_, after_version) = line.split_once("version")?;
+    let after_eq = after_version.trim_start().strip_prefix('=')?.trim_start();
+    let (value, _) = after_eq.strip_prefix('"')?.split_once('"')?;
+    Some(value)
+}
+
+/// `deny.toml:49`'s own rule (`wildcards = "deny"`), applied to a version
+/// requirement string: a `*`, or any dot-separated component equal to `x` or
+/// `X`.
+fn is_wildcard_requirement(value: &str) -> bool {
+    value.contains('*') || value.split('.').any(|part| part.eq_ignore_ascii_case("x"))
+}
+
 fn bounded_value(source: &str, prefix: &str, suffix: &str) -> Option<String> {
     let (_, after_prefix) = source.split_once(prefix)?;
     let (value, _) = after_prefix.split_once(suffix)?;
@@ -1225,8 +1375,8 @@ mod tests {
     use super::{
         BTreeSet, changelog_marks_released, current_before_historical, implemented_scope_at,
         index_status_matches, numbered_rfc_file, parse_changelog_release_status,
-        parse_design_freeze, parse_ordinary_apex_currency, render_scope,
-        retired_conditional_prose_in, stale_phrases_in,
+        parse_design_freeze, parse_ordinary_apex_currency, readme_requirement_findings,
+        render_scope, retired_conditional_prose_in, stale_phrases_in,
     };
     use std::fs;
     use std::path::PathBuf;
@@ -1896,5 +2046,97 @@ mod tests {
                       See also: the root [`README`](../README.md).\n";
         let findings = super::table_symmetry_findings(&directories, "examples/README.md", index);
         assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    /// RFC 049 S4 §4.3's seven required branches, each on a literal rather
+    /// than a real file, so the predicate is exercised rather than merely
+    /// satisfied by today's tree.
+    fn real_readme_fence() -> String {
+        "```toml\n\
+         # Cluster / server user\n\
+         loeres-cluster        = { version = \"0.24\", features = [\"parallel-rayon\"] }\n\
+         loeres-backend-std    = { version = \"0.24\", features = [\"dense\"] }\n\n\
+         # Device / edge user\n\
+         loeres-device         = { version = \"0.24\", default-features = false }\n\
+         loeres-backend-static = { version = \"0.24\", default-features = false, features = [\"owned-arrays\"] }\n\
+         ```\n"
+            .to_owned()
+    }
+
+    #[test]
+    fn readme_requirements_accepts_the_four_real_sites_at_the_released_minor() {
+        let findings = readme_requirement_findings("README.md", &real_readme_fence(), Some("0.24"));
+        assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn readme_requirements_reports_a_wildcard_naming_the_crate_and_line() {
+        let readme = "```toml\nloeres-device = { version = \"0.x\" }\n```\n";
+        let findings = readme_requirement_findings("README.md", readme, Some("0.24"));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("README.md:2"), "{findings:?}");
+        assert!(findings[0].contains("loeres-device"), "{findings:?}");
+        assert!(findings[0].contains("wildcard"), "{findings:?}");
+    }
+
+    #[test]
+    fn readme_requirements_reports_a_stale_minor_and_reads_the_value_rather_than_a_literal() {
+        let readme = "```toml\nloeres-device = { version = \"0.23\" }\n```\n";
+        let stale = readme_requirement_findings("README.md", readme, Some("0.24"));
+        assert_eq!(stale.len(), 1, "{stale:?}");
+        assert!(stale[0].contains("README.md:2"), "{stale:?}");
+        assert!(stale[0].contains("loeres-device"), "{stale:?}");
+
+        // Same input, the value the site actually names: no finding. This is
+        // what proves the function compares against `expected_minor` rather
+        // than a literal `"0.24"` baked into the predicate.
+        let matching = readme_requirement_findings("README.md", readme, Some("0.23"));
+        assert!(matching.is_empty(), "{matching:?}");
+    }
+
+    #[test]
+    fn readme_requirements_reports_a_wildcard_in_a_per_crate_readme() {
+        // Clause 2 over `crates/*/README.md` matches nothing in the tree
+        // today — no per-crate README contains `version =` at all — so this
+        // synthetic site is the only thing that has ever exercised it.
+        let readme = "```toml\nloeres = { version = \"0.x\" }\n```\n";
+        let findings = readme_requirement_findings("crates/loeres/README.md", readme, None);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("crates/loeres/README.md:2"),
+            "{findings:?}"
+        );
+        assert!(findings[0].contains("wildcard"), "{findings:?}");
+    }
+
+    #[test]
+    fn readme_requirements_with_no_expected_minor_reports_the_wildcard_and_nothing_else() {
+        let readme = "```toml\nloeres-device = { version = \"0.x\" }\n```\n";
+        let findings = readme_requirement_findings("README.md", readme, None);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("wildcard"), "{findings:?}");
+        assert!(
+            !findings[0].contains("expected"),
+            "a clause-1 finding must not also fire: {findings:?}"
+        );
+    }
+
+    #[test]
+    fn readme_requirements_ignores_a_version_line_outside_any_toml_fence() {
+        let readme = "Prose mentioning version = \"0.x\" is not a requirement site.\n";
+        let findings = readme_requirement_findings("README.md", readme, Some("0.24"));
+        assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn readme_requirements_fails_closed_on_the_dependencies_table_shape() {
+        let readme = "```toml\n[dependencies.loeres-device]\nversion = \"0.24\"\n```\n";
+        let findings = readme_requirement_findings("README.md", readme, Some("0.24"));
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("README.md:3"), "{findings:?}");
+        assert!(
+            findings[0].contains("not a shape this assertion reads"),
+            "{findings:?}"
+        );
     }
 }

@@ -5,6 +5,10 @@ problem and shows how to read the result. It does not describe the API; the
 [Device User Guide](device-user-guide.md) and the
 [Cluster User Guide](cluster-user-guide.md) do that.
 
+This chapter clones and builds the repository; it does not add `loeres` as a
+dependency to your own project. If that is what you want, use the
+[README](../../README.md)'s dependency snippet instead.
+
 ## 1. Install
 
 You need `git` and [rustup](https://rustup.rs/). The repository pins its
