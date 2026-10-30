@@ -296,6 +296,24 @@ is bounded and ordered by this gate, not verified**: nothing in this repository 
 a given release actually carried, so a row that understates its own scope by one RFC is still
 invisible. No new gate, no pinned version changed, no tag created.
 
+**RFC 052 corrections — clause 5's derivation did not hold what it said.** Its "newest published
+version" was found by testing whether a status line *contains* `published to crates.io`, and
+`not published to crates.io` contains that same substring: the derivation admitted an unpublished
+release as published, and matched today's tree only because the newest release happens to be the
+one that is published. No document was wrong as a result; the assertion was unsound in a way the
+committed data could not expose. Four changes inside the functions that feed clause 5: a
+released version's publication verdict is read from its status line's own final clause,
+compared for equality against the two literals this project writes rather than searched for as a
+substring, with a third phrasing failing closed rather than silently defaulting to "not
+published"; the `distributed` date is read from the status line's parenthesised clause structure
+rather than a second substring search, the same shape one clause to the left; a table whose
+header cannot be found now raises one finding naming the header it looked for, instead of
+clauses 1 and 5 each reporting every row as a derived, misleading symptom; and
+`implemented_scope` is derived once in `validate_repository` and threaded to both callers that
+need it, rather than being read from `rfcs/done/` twice and reporting a malformed file there
+twice. Clauses 1-4's predicates, their messages, and all twelve of their existing tests are
+unchanged. No new gate, no pinned version changed, no tag created.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

@@ -312,7 +312,15 @@ pub fn run() -> bool {
 fn validate_repository() -> Vec<String> {
     let mut errors = Vec::new();
     let expected_release = workspace_release_marker(&mut errors);
-    let last_reconciled = check_apex_currency(expected_release.as_deref(), &mut errors);
+    // Derived once and threaded to both callers (RFC 052 corrections §4):
+    // `rfcs/done/` is read by `fs::read_dir` exactly once per run, and a
+    // malformed file under it is reported once, not once per caller.
+    let implemented_scope = implemented_scope(&mut errors);
+    let last_reconciled = check_apex_currency(
+        expected_release.as_deref(),
+        implemented_scope.as_deref(),
+        &mut errors,
+    );
     check_rfc_index(&mut errors);
     check_root_roadmap(&mut errors);
     check_book_navigation(&mut errors);
@@ -322,7 +330,11 @@ fn validate_repository() -> Vec<String> {
     check_readme_landing(&mut errors);
     check_readme_requirements(last_reconciled.as_deref(), &mut errors);
     check_import_model_requirements(&mut errors);
-    check_release_table(last_reconciled.as_deref(), &mut errors);
+    check_release_table(
+        last_reconciled.as_deref(),
+        implemented_scope.as_deref(),
+        &mut errors,
+    );
     check_example_guides(&mut errors);
     errors
 }
@@ -360,8 +372,11 @@ fn workspace_release_marker(errors: &mut Vec<String>) -> Option<String> {
 /// and without a `v` prefix — the value `check_readme_requirements` (RFC 049
 /// S4) binds its `MAJOR.MINOR` requirement to, so it is parsed once here
 /// rather than a second time there.
-fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>) -> Option<String> {
-    let scope = implemented_scope(errors);
+fn check_apex_currency(
+    expected_release: Option<&str>,
+    scope: Option<&str>,
+    errors: &mut Vec<String>,
+) -> Option<String> {
     let changelog_source = match fs::read_to_string(CHANGELOG_PATH) {
         Ok(source) => Some(source),
         Err(error) => {
@@ -375,8 +390,7 @@ fn check_apex_currency(expected_release: Option<&str>, errors: &mut Vec<String>)
             Some(source) => source,
             None => continue,
         };
-        let (Some(scope), Some(changelog_source)) = (scope.as_deref(), changelog_source.as_deref())
-        else {
+        let (Some(scope), Some(changelog_source)) = (scope, changelog_source.as_deref()) else {
             continue;
         };
         match parse_ordinary_apex_currency(&source, scope, changelog_source) {
@@ -1001,8 +1015,11 @@ const RELEASE_TABLE_PATH: &str = "docs/src/specifications.md";
 const RELEASE_TABLE_HEADER: &str = "| Repository release | Shipped | Carries RFCs |";
 const RELEASE_TABLE_SEPARATOR: &str = "|---|---|---|";
 
-fn check_release_table(last_reconciled: Option<&str>, errors: &mut Vec<String>) {
-    let implemented_scope = implemented_scope(errors);
+fn check_release_table(
+    last_reconciled: Option<&str>,
+    implemented_scope: Option<&str>,
+    errors: &mut Vec<String>,
+) {
     let Some(specifications) = read_required(RELEASE_TABLE_PATH, errors) else {
         return;
     };
@@ -1013,7 +1030,7 @@ fn check_release_table(last_reconciled: Option<&str>, errors: &mut Vec<String>) 
         &specifications,
         &changelog,
         last_reconciled,
-        implemented_scope.as_deref(),
+        implemented_scope,
     ));
 }
 
@@ -1029,9 +1046,17 @@ fn release_table_findings(
     last_reconciled: Option<&str>,
     implemented_scope: Option<&str>,
 ) -> Vec<String> {
-    let mut findings = Vec::new();
-    let (rows, malformed) = release_table_rows(specifications);
-    findings.extend(malformed);
+    // RFC 052 corrections §3 (F3): a header that cannot be found is one
+    // finding, not twelve derived ones. The other clauses need rows to say
+    // anything meaningful, so this returns early exactly as the `None`
+    // apex-value case already does elsewhere in this file.
+    let Some((rows, malformed)) = release_table_rows(specifications) else {
+        return vec![format!(
+            "RELEASE TABLE: {RELEASE_TABLE_PATH} has no table header; looked for \
+             `{RELEASE_TABLE_HEADER}`"
+        )];
+    };
+    let mut findings = malformed;
     findings.extend(release_table_row_set_symmetry(&rows, changelog));
     findings.extend(release_table_ascending(&rows));
     findings.extend(release_table_shipped_is_distributed(&rows, changelog));
@@ -1048,18 +1073,22 @@ fn release_table_findings(
     findings
 }
 
-/// The `## Release currency` table's rows, in order, as
-/// `(version, Shipped cell, Carries RFCs cell)`. RFC 052 §3.6: a line
-/// between the header's separator and the table's end that looks like a
-/// row but does not parse as exactly three `|`-delimited columns is
+/// `(version, Shipped cell, Carries RFCs cell)` for each row, plus any
+/// malformed-row findings (RFC 052 §3.6).
+type ReleaseTableRows = (Vec<(String, String, String)>, Vec<String>);
+
+/// The `## Release currency` table's rows, in order. `None` if the
+/// table's header and separator cannot be found at all — the caller turns
+/// that into one finding rather than letting every other clause report a
+/// derived, misleading complaint (RFC 052 corrections §3). RFC 052 §3.6: a
+/// line between the header's separator and the table's end that looks
+/// like a row but does not parse as exactly three `|`-delimited columns is
 /// reported in the second return value, never silently skipped.
-fn release_table_rows(source: &str) -> (Vec<(String, String, String)>, Vec<String>) {
+fn release_table_rows(source: &str) -> Option<ReleaseTableRows> {
     let mut rows = Vec::new();
     let mut malformed = Vec::new();
     let marker = format!("{RELEASE_TABLE_HEADER}\n{RELEASE_TABLE_SEPARATOR}\n");
-    let Some((_, after_header)) = source.split_once(&marker) else {
-        return (rows, malformed);
-    };
+    let (_, after_header) = source.split_once(&marker)?;
     for line in after_header.lines() {
         let trimmed = line.trim();
         if !trimmed.starts_with('|') {
@@ -1079,7 +1108,7 @@ fn release_table_rows(source: &str) -> (Vec<(String, String, String)>, Vec<Strin
         let version = fields[0].trim_matches('`').to_owned();
         rows.push((version, fields[1].to_owned(), fields[2].to_owned()));
     }
-    (rows, malformed)
+    Some((rows, malformed))
 }
 
 /// Every version named by a `## [X]` heading in `CHANGELOG.md`'s own
@@ -1178,13 +1207,23 @@ fn changelog_status_line_value<'a>(source: &'a str, version: &str) -> Option<&'a
     status_line.trim().strip_prefix("**Release status:** ")
 }
 
-/// The `distributed YYYY-MM-DD` date from a version's status line, or
-/// `None` if the line has no such clause or the date fails `valid_date`.
+/// The `distributed` date from a status line's parenthesised
+/// `(tagged YYYY-MM-DD, distributed YYYY-MM-DD)` group — read by its
+/// clause structure (split the group on `", "`, match each field's own
+/// prefix) rather than searched for as a substring, which is the shape
+/// F1 corrected one clause to the right (RFC 052 corrections §2). `None`
+/// if the group, the `distributed` field, or its date is absent or fails
+/// `valid_date`.
 fn changelog_distributed_date(source: &str, version: &str) -> Option<String> {
     let line = changelog_status_line_value(source, version)?;
-    let (_, after) = line.split_once("distributed ")?;
-    let date = after.get(0..10)?;
-    valid_date(date).then(|| date.to_owned())
+    let (_, after_open) = line.split_once('(')?;
+    let (group, _) = after_open.split_once(')')?;
+    for field in group.split(", ") {
+        if let Some(date) = field.trim().strip_prefix("distributed ") {
+            return valid_date(date).then(|| date.to_owned());
+        }
+    }
+    None
 }
 
 /// Clause 3: each `Shipped` cell is that release's *distributed* date, not
@@ -1296,20 +1335,62 @@ fn release_table_lineage(
     findings
 }
 
-/// The newest (by `parse_version_triple`) version whose `CHANGELOG.md`
-/// status line contains the literal `published to crates.io` — published
-/// and released are independent (review 118 F3): five of this project's
-/// own releases were distributed and never published.
-fn newest_published_version(changelog: &str) -> Option<String> {
-    changelog_heading_versions(changelog)
+/// The two literals a `released` version's status line's final
+/// `"; "`-separated clause must equal — read as the clause, never searched
+/// for as a substring, because `CHANGELOG_NOT_PUBLISHED` contains
+/// `CHANGELOG_PUBLISHED` (architect review 119 F1: the substring form
+/// admits an unpublished release as published).
+const CHANGELOG_PUBLISHED: &str = "published to crates.io";
+const CHANGELOG_NOT_PUBLISHED: &str = "not published to crates.io";
+
+/// A `released` version's publication verdict, read from its status
+/// line's final clause (after the last `"; "`) and compared for equality
+/// against the two literals above. `Err` when that clause is neither —
+/// fail closed, naming the version and what its line says, rather than
+/// silently defaulting to "not published."
+fn is_published(changelog: &str, version: &str) -> Result<bool, String> {
+    let line = changelog_status_line_value(changelog, version).ok_or_else(|| {
+        format!("`{version}` is released but has no status line to read a publication clause from")
+    })?;
+    let clause = line.rsplit("; ").next().unwrap_or(line).trim();
+    match clause {
+        CHANGELOG_PUBLISHED => Ok(true),
+        CHANGELOG_NOT_PUBLISHED => Ok(false),
+        other => Err(format!(
+            "`{version}`'s status line's final clause is neither `{CHANGELOG_PUBLISHED}` nor \
+             `{CHANGELOG_NOT_PUBLISHED}`: `{other}`"
+        )),
+    }
+}
+
+/// The newest (by `parse_version_triple`) *released* version whose
+/// publication clause is `published to crates.io` — published and
+/// released are independent (review 118 F3): five of this project's own
+/// releases were distributed and never published. The second return
+/// value is any fail-closed finding `is_published` raised along the way;
+/// every one of the released entries in the committed tree carries one of
+/// the two literals, so this is unreachable there and is exercised only by
+/// a unit test (RFC 052 corrections §1.1).
+fn newest_published_version(changelog: &str) -> (Option<String>, Vec<String>) {
+    let mut findings = Vec::new();
+    let newest = changelog_heading_versions(changelog)
         .into_iter()
         .filter(|version| {
-            changelog_status_line_value(changelog, version)
-                .is_some_and(|line| line.contains("published to crates.io"))
+            parse_changelog_release_status(changelog, version)
+                .map(|status| status == "released")
+                .unwrap_or(false)
         })
-        .filter_map(|version| parse_version_triple(&version).map(|triple| (triple, version)))
+        .filter_map(|version| match is_published(changelog, &version) {
+            Ok(true) => parse_version_triple(&version).map(|triple| (triple, version)),
+            Ok(false) => None,
+            Err(reason) => {
+                findings.push(format!("RELEASE TABLE: {reason}"));
+                None
+            }
+        })
         .max()
-        .map(|(_, version)| version)
+        .map(|(_, version)| version);
+    (newest, findings)
 }
 
 /// The `**What is on crates.io.**` paragraph's text, up to the next blank
@@ -1329,8 +1410,9 @@ fn release_table_crates_io_paragraph(
     changelog: &str,
     rows: &[(String, String, String)],
 ) -> Vec<String> {
-    let mut findings = Vec::new();
-    let Some(newest_published) = newest_published_version(changelog) else {
+    let (newest_published, publication_findings) = newest_published_version(changelog);
+    let mut findings = publication_findings;
+    let Some(newest_published) = newest_published else {
         findings
             .push("RELEASE TABLE: CHANGELOG.md names no version published to crates.io".to_owned());
         return findings;
@@ -2871,5 +2953,144 @@ mod tests {
             findings.iter().any(|f| f.contains("malformed row")),
             "{findings:?}"
         );
+    }
+
+    /// RFC 052 corrections §5's six required branches. The twelve tests
+    /// above are unedited, per §7.
+    #[test]
+    fn release_table_crates_io_names_the_newest_published_not_the_newest_released() {
+        // Architect review 119 F1 as a test: `0.24.0` is the newest
+        // *released* version but (here) not published; clause 5 must
+        // demand the paragraph name `0.23.0`, the newest version that
+        // *is* published, not accept the paragraph's claim of `0.24.0`
+        // just because `0.24.0` is the newest release.
+        let changelog = release_table_valid_changelog().replace(
+            "## [0.24.0] — 2026-10-08\n\
+             **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); \
+             published to crates.io\n\n",
+            "## [0.24.0] — 2026-10-08\n\
+             **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); not \
+             published to crates.io\n\n",
+        );
+        let findings = release_table_findings(
+            &release_table_valid_specifications(),
+            &changelog,
+            Some("0.24.0"),
+            Some("RFCs 001-044"),
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("0.23.0") && f.contains("crates.io")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn release_table_crates_io_reports_no_published_version_when_none_is() {
+        let changelog = release_table_valid_changelog()
+            .replace("; published to crates.io", "; not published to crates.io");
+        let findings = release_table_findings(
+            &release_table_valid_specifications(),
+            &changelog,
+            Some("0.24.0"),
+            Some("RFCs 001-044"),
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("names no version published to crates.io")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn release_table_crates_io_fails_closed_on_an_unrecognized_publication_clause() {
+        let changelog = release_table_valid_changelog().replace(
+            "## [0.22.0] — 2026-09-24\n\
+             **Release status:** released (tagged 2026-09-24, distributed 2026-09-24); not \
+             published to crates.io\n\n",
+            "## [0.22.0] — 2026-09-24\n\
+             **Release status:** released (tagged 2026-09-24, distributed 2026-09-24); \
+             published on request\n\n",
+        );
+        let findings = release_table_findings(
+            &release_table_valid_specifications(),
+            &changelog,
+            Some("0.24.0"),
+            Some("RFCs 001-044"),
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("0.22.0") && f.contains("neither")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn release_table_shipped_reports_a_missing_distributed_field() {
+        // Pins F2's refactor against regression: the existing clause-3
+        // finding must still fire when the parenthesised group has no
+        // `distributed` field at all.
+        let changelog = release_table_valid_changelog().replace(
+            "## [0.20.2] — 2026-07-22\n\
+             **Release status:** released (tagged 2026-07-22, distributed 2026-07-30); \
+             published to crates.io\n\n",
+            "## [0.20.2] — 2026-07-22\n\
+             **Release status:** released (tagged 2026-07-22); published to crates.io\n\n",
+        );
+        let findings = release_table_findings(
+            &release_table_valid_specifications(),
+            &changelog,
+            Some("0.24.0"),
+            Some("RFCs 001-044"),
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("0.20.2") && f.contains("no valid")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn release_table_shipped_reports_an_unparseable_distributed_date() {
+        let changelog = release_table_valid_changelog().replace(
+            "## [0.20.2] — 2026-07-22\n\
+             **Release status:** released (tagged 2026-07-22, distributed 2026-07-30); \
+             published to crates.io\n\n",
+            "## [0.20.2] — 2026-07-22\n\
+             **Release status:** released (tagged 2026-07-22, distributed 2026-13-99); \
+             published to crates.io\n\n",
+        );
+        let findings = release_table_findings(
+            &release_table_valid_specifications(),
+            &changelog,
+            Some("0.24.0"),
+            Some("RFCs 001-044"),
+        );
+        assert!(
+            findings
+                .iter()
+                .any(|f| f.contains("0.20.2") && f.contains("no valid")),
+            "{findings:?}"
+        );
+    }
+
+    #[test]
+    fn release_table_reports_exactly_one_finding_when_the_header_is_missing() {
+        let specifications = release_table_valid_specifications().replace(
+            "| Repository release | Shipped | Carries RFCs |",
+            "| Repository release | Shipped date | Carries RFCs |",
+        );
+        let findings = release_table_findings(
+            &specifications,
+            &release_table_valid_changelog(),
+            Some("0.24.0"),
+            Some("RFCs 001-044"),
+        );
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("no table header"), "{findings:?}");
     }
 }
