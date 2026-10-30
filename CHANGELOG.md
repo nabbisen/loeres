@@ -259,6 +259,24 @@ normative apex spec's own Public Import Model, measured by RFC 049 Amendment 1 a
 the owner's choice of treatment — this slice does not touch them and the new assertion is scoped
 to `README.md` and `crates/*/README.md` only, not to that file.
 
+**RFC 051 — one import model, one requirement.** `docs/specs/loeres-external-design-v1.md`
+§1.4's Public Import Model, a normative spec rather than an example, still named the same
+`version = "0.x"` wildcard RFC 049 removed from the README — so the project gave two answers to
+one question, in a document the README itself implements. Treatment B: the two `toml` fences keep
+every crate name and every feature exactly as they were and drop the version requirement entirely,
+each line ending in a comment pointing at `README.md`; one new sentence before the fences says the
+import model fixes crates and features only, and that the version requirement's one home is the
+README. `doc_currency.rs` gains one assertion, reusing RFC 049's `requirement_sites` scanner
+rather than a second one: any `version = "…"` site anywhere in that file is a finding, naming the
+line and the crate — a *correct* version is still a finding, because under treatment B no version
+belongs there at all. `check_stale_ledger`'s separate, independently-ordered copy of the five
+`crates/*/README.md` paths is retired in favor of RFC 049's `CRATE_README_PATHS`, so a future
+sixth crate cannot fall outside one ledger while remaining inside the other; the only visible
+effect is that findings naming more than one of those paths now print in a different order.
+**The eight sites RFC 049 Amendment 1 measured are now all held** — no sentence beyond that: this
+says nothing about any version claim outside those eight. No new gate, no pinned version changed,
+no tag created.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io

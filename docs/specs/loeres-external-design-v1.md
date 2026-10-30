@@ -231,12 +231,16 @@ The public API must make the forbidden edges unnecessary. For example, a device-
 
 The intended downstream import model is:
 
+This model fixes the crates and the features each user imports; the version
+requirement each user writes is in the repository's `README.md`, where
+`doc-currency` holds it against the last reconciled release.
+
 #### Cluster user
 
 ```toml
 [dependencies]
-loeres-cluster = { version = "0.x", features = ["parallel-rayon"] }
-loeres-backend-std = { version = "0.x", features = ["dense"] }
+loeres-cluster = { features = ["parallel-rayon"] }  # version: see README.md
+loeres-backend-std = { features = ["dense"] }       # version: see README.md
 ```
 
 Cluster users normally import:
@@ -249,8 +253,8 @@ Cluster users normally import:
 
 ```toml
 [dependencies]
-loeres-device = { version = "0.x", default-features = false }
-loeres-backend-static = { version = "0.x", default-features = false, features = ["owned-arrays"] }
+loeres-device = { default-features = false }                                       # version: see README.md
+loeres-backend-static = { default-features = false, features = ["owned-arrays"] }  # version: see README.md
 ```
 
 Device users normally import:

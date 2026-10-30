@@ -321,6 +321,7 @@ fn validate_repository() -> Vec<String> {
     check_conditional_current_prose(&mut errors);
     check_readme_landing(&mut errors);
     check_readme_requirements(last_reconciled.as_deref(), &mut errors);
+    check_import_model_requirements(&mut errors);
     check_example_guides(&mut errors);
     errors
 }
@@ -727,16 +728,17 @@ fn check_stale_ledger(errors: &mut Vec<String>) {
         }
     }
 
-    let whole_file_targets = [
-        "README.md",
-        "crates/loeres/README.md",
-        "crates/loeres-backend-std/README.md",
-        "crates/loeres-backend-static/README.md",
-        "crates/loeres-cluster/README.md",
-        "crates/loeres-device/README.md",
-        "docs/src/threat-model.md",
-        "docs/src/specifications.md",
-    ];
+    // RFC 051 §8: built from `CRATE_README_PATHS` rather than a second,
+    // independently-ordered copy of the same five paths, so a sixth crate
+    // cannot fall outside this ledger while remaining inside RFC 049's
+    // wildcard denial. `CRATE_README_PATHS` orders `loeres-backend-static`
+    // before `loeres-backend-std`; the reverse order held here before this
+    // unification, so a finding naming more than one of these paths now
+    // prints in a different order than before — the paths covered are
+    // unchanged.
+    let whole_file_targets = std::iter::once(README_PATH)
+        .chain(CRATE_README_PATHS.iter().copied())
+        .chain(["docs/src/threat-model.md", "docs/src/specifications.md"]);
     for path in whole_file_targets {
         if let Some(source) = read_required(path, errors) {
             stale_phrases_in(&source, path, errors);
@@ -944,6 +946,37 @@ fn check_readme_requirements(last_reconciled: Option<&str>, errors: &mut Vec<Str
             errors.extend(readme_requirement_findings(path, &source, None));
         }
     }
+}
+
+/// `docs/specs/loeres-external-design-v1.md` §1.4 **Public Import Model** —
+/// a normative spec, not an example a user is free to vary. RFC 051
+/// treatment B: its `toml` fences name crates and features only; the
+/// version requirement's one home is `README.md` (RFC 049), so a site here
+/// is a finding regardless of what value it names, including the correct
+/// one.
+const IMPORT_MODEL_PATH: &str = "docs/specs/loeres-external-design-v1.md";
+
+fn check_import_model_requirements(errors: &mut Vec<String>) {
+    if let Some(source) = read_required(IMPORT_MODEL_PATH, errors) {
+        errors.extend(import_model_findings(IMPORT_MODEL_PATH, &source));
+    }
+}
+
+/// RFC 051 S2's predicate: `requirement_sites` over this file must be
+/// empty. Every site found is a finding, never silently accepted — a
+/// version named here, even `MAJOR.MINOR`-correct, contradicts treatment
+/// B, which is why this does not reuse `readme_requirement_findings`.
+fn import_model_findings(path: &str, source: &str) -> Vec<String> {
+    requirement_sites(source)
+        .into_iter()
+        .map(|(line, crate_name, _value)| {
+            format!(
+                "IMPORT MODEL: {path}:{line} `{crate_name}` names a version requirement; the \
+                 import model fixes crates and features only, and the requirement's one home is \
+                 README.md (RFC 051)"
+            )
+        })
+        .collect()
 }
 
 /// `MAJOR.MINOR` of an `X.Y.Z` version string, or `None` if it is not that
@@ -1374,9 +1407,9 @@ fn table_symmetry_findings(directories: &[String], label: &str, table: &str) -> 
 mod tests {
     use super::{
         BTreeSet, changelog_marks_released, current_before_historical, implemented_scope_at,
-        index_status_matches, numbered_rfc_file, parse_changelog_release_status,
-        parse_design_freeze, parse_ordinary_apex_currency, readme_requirement_findings,
-        render_scope, retired_conditional_prose_in, stale_phrases_in,
+        import_model_findings, index_status_matches, numbered_rfc_file,
+        parse_changelog_release_status, parse_design_freeze, parse_ordinary_apex_currency,
+        readme_requirement_findings, render_scope, retired_conditional_prose_in, stale_phrases_in,
     };
     use std::fs;
     use std::path::PathBuf;
@@ -2138,5 +2171,58 @@ mod tests {
             findings[0].contains("not a shape this assertion reads"),
             "{findings:?}"
         );
+    }
+
+    /// RFC 051 §3.2's five required branches.
+    #[test]
+    fn import_model_accepts_fences_with_no_version_site() {
+        let source = "```toml\n\
+                       [dependencies]\n\
+                       loeres-cluster = { features = [\"parallel-rayon\"] }  # version: see README.md\n\
+                       loeres-backend-std = { features = [\"dense\"] }       # version: see README.md\n\
+                       ```\n";
+        let findings = import_model_findings("docs/specs/loeres-external-design-v1.md", source);
+        assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn import_model_rejects_a_correct_version_too() {
+        // Treatment B asserts the absence of a requirement site, not the
+        // wildcard — a *correct* version is still a finding, which is the
+        // whole point of B over A.
+        let source = "```toml\nloeres-cluster = { version = \"0.24\", features = [\"parallel-rayon\"] }\n```\n";
+        let findings = import_model_findings("docs/specs/loeres-external-design-v1.md", source);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(
+            findings[0].contains("docs/specs/loeres-external-design-v1.md:2"),
+            "{findings:?}"
+        );
+        assert!(findings[0].contains("loeres-cluster"), "{findings:?}");
+    }
+
+    #[test]
+    fn import_model_rejects_the_historical_wildcard() {
+        let source =
+            "```toml\nloeres-device = { version = \"0.x\", default-features = false }\n```\n";
+        let findings = import_model_findings("docs/specs/loeres-external-design-v1.md", source);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("loeres-device"), "{findings:?}");
+    }
+
+    #[test]
+    fn import_model_ignores_prose_naming_a_version_outside_a_fence() {
+        let source = "The requirement, `version = \"0.24\"`, lives in README.md.\n";
+        let findings = import_model_findings("docs/specs/loeres-external-design-v1.md", source);
+        assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn import_model_accepts_the_s1_comment_as_prose_not_a_site() {
+        // The one false positive this slice could plausibly ship: the
+        // trailing `# version: see README.md` comment must not itself read
+        // as a requirement site.
+        let source = "```toml\nloeres-cluster = { features = [\"parallel-rayon\"] }  # version: see README.md\n```\n";
+        let findings = import_model_findings("docs/specs/loeres-external-design-v1.md", source);
+        assert!(findings.is_empty(), "{findings:?}");
     }
 }
