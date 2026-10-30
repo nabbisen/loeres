@@ -229,11 +229,10 @@ The public API must make the forbidden edges unnecessary. For example, a device-
 
 ### 1.4 Public Import Model
 
-The intended downstream import model is:
-
-This model fixes the crates and the features each user imports; the version
-requirement each user writes is in the repository's `README.md`, where
-`doc-currency` holds it against the last reconciled release.
+The intended downstream import model is below. It fixes the crates and the
+features each user imports; the version requirement each user writes is in the
+repository's `README.md`, where `doc-currency` holds it against the last
+reconciled release.
 
 #### Cluster user
 
