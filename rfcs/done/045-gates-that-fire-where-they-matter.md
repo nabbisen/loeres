@@ -1,6 +1,6 @@
 # RFC 045 - Gates That Fire Where They Matter
 
-**Status.** Accepted (design frozen 2026-10-29)
+**Status.** Implemented (v0.24.1). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 

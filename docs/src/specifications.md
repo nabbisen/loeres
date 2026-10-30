@@ -16,7 +16,7 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 > **Release currency metadata.**
 > This tree: **0.24.1**.
 > Last reconciled repository release: **0.24.0**.
-> Implemented scope: **RFCs 001-044**.
+> Implemented scope: **RFCs 001-046, 048-052**.
 >
 
 > **Publication status.** A repository release is *distributed* when its tag is

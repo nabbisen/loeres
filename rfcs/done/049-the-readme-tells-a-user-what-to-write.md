@@ -1,6 +1,6 @@
 # RFC 049 - The README Tells A User What To Write
 
-**Status.** Accepted (design frozen 2026-10-30)
+**Status.** Implemented (v0.24.1). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 

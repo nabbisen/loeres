@@ -11,7 +11,7 @@ arriving at it.
 > **Release currency metadata.**
 > This tree: **0.24.1**.
 > Last reconciled repository release: **0.24.0**.
-> Implemented scope: **RFCs 001-044**.
+> Implemented scope: **RFCs 001-046, 048-052**.
 >
 
 > **Architecture recovery notice (2026-07-15, resolved 2026-07-30).** An

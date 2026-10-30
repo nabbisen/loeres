@@ -1,6 +1,6 @@
 # RFC 048 - One Release List That Cannot Rot
 
-**Status.** Accepted (design frozen 2026-10-29)
+**Status.** Implemented (v0.24.1)
 
 **Author tier.** `architect`.
 

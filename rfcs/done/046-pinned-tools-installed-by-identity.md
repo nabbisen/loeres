@@ -1,6 +1,6 @@
 # RFC 046 - Pinned Tools Installed By Identity, Not By Rebuild
 
-**Status.** Accepted (design frozen 2026-10-29)
+**Status.** Implemented (v0.24.1). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 
@@ -180,6 +180,12 @@ Expected after all three: the release gate goes 6m 20s → about **3m 18s**, a 4
 Better than predicted: 28s against "under a minute". Stated against the baseline that matters,
 `ci` ran **three** gates in ~2m 20s before RFC 045 and now runs **twenty** in **1m 10s** — more
 enforcement and a faster workflow than before any of this began.
+
+**Item 3's measured figure lives in
+`rfcs/handoffs/release-0.24.1/cut-plan.md` §7.** §3.5 asks for it here, but it does not exist until
+the tagged `release-gate` job has run — by which time this RFC is in `rfcs/done/`, which RFC 000
+forbids amending in place. A pointer names a file rather than a number, so it can be written at the
+cut; the number cannot.
 
 Two corrections this measurement forces. **The twenty gates are 22–29 seconds cold, not a single
 figure**; review 108's 29s was derived by subtraction from a job total, while the 22s here is the
