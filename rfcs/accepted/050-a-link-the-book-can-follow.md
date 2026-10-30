@@ -1,6 +1,6 @@
 # RFC 050 - A Link The Book Can Follow
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-30)
 
 **Author tier.** `architect`.
 

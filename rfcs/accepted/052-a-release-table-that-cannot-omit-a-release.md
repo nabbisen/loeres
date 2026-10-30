@@ -1,6 +1,6 @@
 # RFC 052 - A Release Table That Cannot Omit A Release
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-30)
 
 **Author tier.** `architect`.
 
@@ -12,6 +12,57 @@ through two slices. Every figure here was measured on the tree at `438c5d3`, `0.
 
 RFC 048 deleted a hand-maintained release list from seven documents because it had rotted. It left
 the one home that list was deleted *in favour of* hand-maintained.
+
+## 0.1 Amendment 1 (2026-10-30)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, and recorded in architect review
+118. The Status line carries only the design-freeze date while this RFC is in `accepted/`, because
+`doc-currency` requires that form there; **this amendment must be named in the Status line when
+this RFC moves to `rfcs/done/`**, which `check-rfcs` enforces for `done/` only.
+
+Found by my own pre-dispatch verification, before the handoff was written. **Three of §3 S2's five
+clauses were wrong**, two of them in ways invisible in today's tree because the values coincide.
+The defect this RFC names is unaffected; the clauses that were to assert it are corrected in place
+below, and the authorized scope is the corrected text.
+
+**1. `Shipped` is the distribution date, not the tag date.** Ten of the eleven releases were tagged
+and distributed on the same day, so the column's meaning cannot be read off them. The eleventh,
+`0.20.2`, was tagged `2026-07-22` and distributed `2026-07-30` — and the release sentence RFC 048
+deleted read *"`0.20.2` shipped 2026-07-30"*. So clause 3 compares against `distributed`, and §3
+S1's one cell becomes **`2026-07-30`**. §2.3 is corrected accordingly, as is §7's caveat, which
+claimed the two dates coincide in every row and was false about the only row that could decide it.
+
+**2. Clause 4 would have failed the gate during every release cut.** It required the last row's
+`Carries RFCs` cell to equal the apex block's `Implemented scope`. `Implemented scope` is derived
+from the exact set of files under `rfcs/done/` — the **tree's** scope, which grows when RFCs move
+to `done/` — while the cell is the scope of **that release**. They coincide only because nothing has
+moved to `done/` since `0.24.0` was cut. At the next cut, `Implemented scope` becomes `RFCs 001-052`
+while the last reconciled release is still `0.24.0`, and the clause would demand the `0.24.0` row
+claim RFCs it does not carry. Clause 4 is replaced by three window-safe parts: the last row's
+**version** equals `Last reconciled repository release`; each row's `Carries RFCs` maximum is
+non-decreasing down the table; and the last row's maximum is **at most** the apex scope's maximum,
+since a released scope is always a subset of the tree's `done/` set. Both maxima are taken as the
+largest number appearing in the string, because `render_scope` emits comma-separated ranges when
+`done/` has a gap.
+
+What that gives up is stated rather than hidden: **nothing in this repository records which RFCs a
+given release carried**, so after this correction the `Carries RFCs` column is bounded and ordered
+but not verified. A row understating its scope stays invisible. Closing that needs a per-release
+attribution this project does not have, which is a different RFC with a real cost.
+
+**3. Clause 5 bound *published* to *reconciled*, against this repository's own precedent.** It
+required the `What is on crates.io.` paragraph to name the last reconciled release. Publication and
+release are independent — the `Publication status` blockquote above the table says so — and five
+releases, `0.21.0` through `0.22.0`, were tagged and distributed and **never published**. Had the
+clause existed then it would have demanded the paragraph name `0.22.0` while the newest published
+version was `0.20.2`: a gate requiring a document to misstate what a user can install. Clause 5
+now reads: the paragraph names the newest version whose `CHANGELOG.md` status line says `published
+to crates.io`, and the RFC range it states equals **that version's own row** in the table. The
+phrase is already machine-readable in all thirteen status lines.
+
+Clauses 1 and 2, §4's three exclusions, and §1's claim that one cell is the whole document change
+are unaffected and were re-verified (review 118 §4). Monotonicity (roadmap §1.5) is not engaged:
+nothing here touches a shipped constraint, a public API, or an existing gate's predicate.
 
 ## 1. Summary
 
@@ -26,8 +77,8 @@ caught a stale row is four lines away in the same file, reading a different part
 
 **Measured, and this is why the slice is small:** the table's eleven rows are *exactly* the
 versions `CHANGELOG.md` marks `released`, in ascending order, and ten of eleven `Shipped` cells
-already equal that release's tag date. The assertion below is satisfiable by changing **one table
-cell**.
+already equal that release's distribution date. The assertion below is satisfiable by changing
+**one table cell** (§0.1 corrects which value it takes).
 
 ## 2. The defect, measured
 
@@ -65,15 +116,19 @@ The table's eleven rows are that `released` set exactly, in that order. So the p
 window constant, no date list and no hand-written expectation: **the row set is the released set,
 and the gate can derive it.**
 
-### 2.3 The `Shipped` column is already the tag date, in ten of eleven cells
+### 2.3 The `Shipped` column is already the distribution date, in ten of eleven cells
 
-| table row | `Shipped` cell | `CHANGELOG.md` tag date | |
+| table row | `Shipped` cell | `CHANGELOG.md` distributed date | |
 | --- | --- | --- | --- |
-| `0.20.2` | `released` | `2026-07-22` | **differs** |
+| `0.20.2` | `released` | `2026-07-30` | **differs** |
 | `0.21.0` … `0.24.0` (ten rows) | the date | the same date | match |
 
 One cell says `released` where the other ten carry a date. That single inconsistency is the whole
 document change this RFC needs.
+
+`0.20.2` is also the only release whose tag and distribution dates differ — tagged `2026-07-22`,
+distributed `2026-07-30` — which is how the column's meaning is decidable at all, and which §0.1
+records me getting wrong in the first draft of this RFC.
 
 ### 2.4 The last row and the paragraph restate the apex block
 
@@ -82,14 +137,20 @@ scope `RFCs 001-044`. The paragraph says the newest published version of every c
 and that it carries RFCs `001-044`. Three statements of two values, one of them machine-held and
 two not.
 
+**They coincide today and do not mean the same thing**, which §0.1 is about: the apex scope is the
+tree's `rfcs/done/` set, the row's scope is one release's, and the paragraph's version is the
+newest *published* one, which five releases of this project's own history show is not the newest
+released one.
+
 ## 3. What to do
 
 ### S1 — one cell
 
-`docs/src/specifications.md`'s `0.20.2` row: `released` becomes `2026-07-22`, the tag date
-`CHANGELOG.md` records. Nothing else in the table changes. The column header already reads
-`Shipped`; if a word is needed to say the cell is the tag date, put it in the `Publication status`
-blockquote above the table, which already distinguishes *distributed* from *published*.
+`docs/src/specifications.md`'s `0.20.2` row: `released` becomes **`2026-07-30`**, the
+*distributed* date `CHANGELOG.md` records (§0.1). Nothing else in the table changes. The column
+header already reads `Shipped`; if a word is needed to say the cell is the distribution date, put
+it in the `Publication status` blockquote above the table, which already distinguishes
+*distributed* from *published*.
 
 ### S2 — the assertion
 
@@ -100,13 +161,20 @@ sources. **No new gate.** It reads `docs/src/specifications.md`'s release table 
    `CHANGELOG.md` marks `released` — a missing row and an extra row both fail, each naming the
    version. Reuse `parse_changelog_release_status`; do not write a second status parser.
 2. **Ascending order**, by `parse_version_triple`, which the file already has.
-3. **Each `Shipped` cell is that release's tag date** as `CHANGELOG.md` records it.
-4. **The last row is the apex block's lineage.** Its version equals `Last reconciled repository
-   release` and its `Carries RFCs` cell equals the range in `Implemented scope`. The value comes
-   from `check_apex_currency`'s return, which RFC 049 S4 already threaded through
-   `validate_repository` — parse the block once, not twice.
-5. **The `What is on crates.io.` paragraph names the same two values** — that version and that RFC
-   range.
+3. **Each `Shipped` cell is that release's *distributed* date** as `CHANGELOG.md` records it
+   (§0.1).
+4. **The last row's version equals `Last reconciled repository release`**, taken from
+   `check_apex_currency`'s return, which RFC 049 S4 already threaded through `validate_repository`
+   — parse the block once, not twice. **Each row's `Carries RFCs` maximum is non-decreasing** down
+   the table, and **the last row's maximum is at most the apex `Implemented scope`'s maximum**,
+   since a released scope is always a subset of the tree's `rfcs/done/` set. Take the largest
+   number appearing in each string rather than assuming an `001-NNN` form, because `render_scope`
+   emits comma-separated ranges when `done/` has a gap. **This does not verify a row's scope** and
+   §0.1 says why it cannot.
+5. **The `What is on crates.io.` paragraph names the newest version whose `CHANGELOG.md` status
+   line says `published to crates.io`**, and the RFC range it states equals **that version's own
+   row** in the table (§0.1). Not the last reconciled release: five releases of this project were
+   distributed and never published.
 
 Every failure names the row or the paragraph and the two values it is between. **Fail closed on a
 table shape the parser does not recognise**: a row that does not match the expected three-column form
@@ -164,11 +232,10 @@ statements:
 
 ## 7. What I could be wrong about
 
-- **Clause 3 assumes `Shipped` means the tag date.** Ten of eleven cells support that reading and
-  the eleventh says `released`, so the column's meaning is inferred from its contents, not from a
-  statement anywhere. If `Shipped` was meant to be the *distribution* date, the two coincide in
-  every row today and the clause is still satisfiable — but it would be asserting the wrong thing
-  for the right result, and the blockquote above the table should then say which it is.
+- **Clause 3 reads `Shipped` as the distribution date**, which the first draft of this RFC got
+  wrong (§0.1). Ten cells cannot decide it; the eleventh can, and the prose RFC 048 deleted agrees
+  with it. The column's meaning is still *inferred* rather than stated anywhere, and the blockquote
+  above the table should say which date it is — S1 offers that and does not require it.
 - **Clause 1's symmetry assumes the table is meant to be complete over released versions.** It is
   complete today. If a future release were deliberately left out of the table, this assertion would
   have to be withdrawn rather than worked around.

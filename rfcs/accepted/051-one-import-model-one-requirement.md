@@ -1,6 +1,6 @@
 # RFC 051 - One Import Model, One Requirement
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-30)
 
 **Author tier.** `architect`.
 
