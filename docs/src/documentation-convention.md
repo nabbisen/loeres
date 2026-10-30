@@ -11,6 +11,9 @@ check is named; the rest is guidance, enforced in review.
   to the book.
 - **Progressive disclosure.** Concepts on the landing page; detail in
   `docs/src/`, navigated by `SUMMARY.md`.
+- **A book link stays inside the book.** A chapter is read as rendered HTML, so
+  a relative link out of `docs/src/` is dead even when the file it names is
+  present in the repository.
 - **Signal over noise.** No release bookkeeping on a landing page. Prefer code,
   tables and short lists to explanatory prose.
 
@@ -124,6 +127,7 @@ changed in each. A changed printed record is one a reader could copy.
 | Marked region under 20 lines | `doc-currency` |
 | README dependency requirement names the released minor, never a wildcard | `doc-currency` |
 | The release table and the crates.io paragraph agree with `CHANGELOG.md` and the apex block | `doc-currency` |
+| A `docs/src/` link resolves inside `docs/src/` | `link-audit` |
 | No stale release phrases or release notes in current-facing docs | `doc-currency` |
 | Each example builds, runs, and is dependency-isolated | `examples` gate |
 | Captured output in the book matches the run | `examples` gate, via the `example-output` marker |

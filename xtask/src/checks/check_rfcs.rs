@@ -421,7 +421,8 @@ pub(crate) fn markdown_links(src: &str) -> BTreeSet<String> {
         if in_fence {
             continue;
         }
-        let mut rest = line;
+        let masked = mask_code_spans(line);
+        let mut rest = masked.as_str();
         while let Some(open) = rest.find("](") {
             rest = &rest[open + 2..];
             let Some(close) = rest.find(')') else {
@@ -437,7 +438,39 @@ pub(crate) fn markdown_links(src: &str) -> BTreeSet<String> {
     links
 }
 
-fn external_or_anchor(target: &str) -> bool {
+/// Blank out matched inline-code spans within one line (RFC 050 S2): a
+/// link quoted inside backticks is a quotation, not a link, and nothing
+/// renders it as one. Walk the line; on a backtick, look for the next
+/// one. If there is one, the span between them (backticks included) is
+/// blanked. If there is not, the rest of the line — the lone backtick
+/// included — is ordinary text and is left exactly as it is.
+///
+/// Deliberately not CommonMark's backtick-run matching: a double backtick
+/// pairs with the *next* single backtick as an empty span, so a link
+/// inside a `` `` double-backtick `` `` span is left resolved. That is
+/// the documented, conservative limitation of RFC 050 §6 — it keeps
+/// checking something this already checks, rather than fixed here.
+fn mask_code_spans(line: &str) -> String {
+    let mut masked = String::with_capacity(line.len());
+    let mut rest = line;
+    loop {
+        let Some(open) = rest.find('`') else {
+            masked.push_str(rest);
+            break;
+        };
+        masked.push_str(&rest[..open]);
+        let after_open = &rest[open + 1..];
+        let Some(close) = after_open.find('`') else {
+            masked.push_str(&rest[open..]);
+            break;
+        };
+        masked.push(' ');
+        rest = &after_open[close + 1..];
+    }
+    masked
+}
+
+pub(crate) fn external_or_anchor(target: &str) -> bool {
     target.starts_with("http://")
         || target.starts_with("https://")
         || target.starts_with("mailto:")
@@ -448,9 +481,10 @@ fn external_or_anchor(target: &str) -> bool {
 mod tests {
     use super::{
         RFC_DIRS, RfcFile, amendment_headings, amendment_ordinal, amendments_named_in_status,
-        check_done_rfc_amendments_are_named_by_status, missing_governed_directories,
-        status_matches_folder, unaccounted_amendments,
+        check_done_rfc_amendments_are_named_by_status, markdown_links,
+        missing_governed_directories, status_matches_folder, unaccounted_amendments,
     };
+    use std::collections::BTreeSet;
     use std::path::PathBuf;
 
     /// A `done/` RFC amended while it was Accepted: the exact shape that
@@ -669,5 +703,49 @@ mod tests {
     fn missing_governed_directory_fails_the_invariant() {
         let missing = missing_governed_directories(|folder| folder != "accepted");
         assert_eq!(missing, vec!["accepted"]);
+    }
+
+    /// RFC 050 S2 §2.2's six required branches.
+    #[test]
+    fn a_line_with_only_a_backticked_link_returns_no_target() {
+        let links = markdown_links("Quoting `[fake](fake.md)` as text.\n");
+        assert!(links.is_empty(), "{links:?}");
+    }
+
+    #[test]
+    fn a_line_with_a_real_link_returns_it_unchanged() {
+        let links = markdown_links("See [real](real.md).\n");
+        assert_eq!(links, BTreeSet::from(["real.md".to_owned()]));
+    }
+
+    #[test]
+    fn a_line_with_both_returns_only_the_real_one() {
+        let links = markdown_links("Real [real](real.md) and quoted `[fake](fake.md)`.\n");
+        assert_eq!(links, BTreeSet::from(["real.md".to_owned()]));
+    }
+
+    #[test]
+    fn an_unmatched_backtick_before_a_real_link_still_returns_it() {
+        let links = markdown_links("A lone ` before [real](real.md).\n");
+        assert_eq!(links, BTreeSet::from(["real.md".to_owned()]));
+    }
+
+    #[test]
+    fn a_link_inside_a_fenced_block_is_still_skipped() {
+        // Pins S2 against regressing the pre-existing fence handling.
+        let links = markdown_links("```\n[fake](fake.md)\n```\n");
+        assert!(links.is_empty(), "{links:?}");
+    }
+
+    #[test]
+    fn a_link_inside_a_double_backtick_span_is_still_returned() {
+        // The documented, conservative limitation of RFC 050 §6: this
+        // implementation pairs a backtick with the *next* single
+        // backtick, so a `` `` double-backtick `` `` span's first pair is
+        // empty and its content is read as ordinary text rather than
+        // masked. Not an oversight — pinned here so a future change to
+        // `mask_code_spans` cannot narrow coverage without noticing.
+        let links = markdown_links("``[real](real.md)``\n");
+        assert_eq!(links, BTreeSet::from(["real.md".to_owned()]));
     }
 }

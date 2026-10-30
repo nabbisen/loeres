@@ -314,6 +314,22 @@ need it, rather than being read from `rfcs/done/` twice and reporting a malforme
 twice. Clauses 1-4's predicates, their messages, and all twelve of their existing tests are
 unchanged. No new gate, no pinned version changed, no tag created.
 
+**RFC 050 — a link the book can follow.** `link-audit` resolved every Markdown link relative to
+the file that contains it and checked that the target exists in the repository — the wrong frame
+of reference for a book chapter, whose rendered artifact is the published book, where nothing
+above `docs/src/` exists and a relative `.md` target has been rewritten to `.html`. That let
+`docs/src/getting-started.md` link the repository root's `README.md` in `e328aea`, pass every
+gate, and 404 in the rendered book; it was corrected by hand in `438c5d3`, by building the book
+and reading the rendered `href`. `link-audit` now also asserts, for every chapter under
+`docs/src/`, that a relative link resolves to a path inside `docs/src/` itself — composing with
+the existing repository-wide existence check rather than replacing it. A second fidelity defect
+in the shared link scanner is fixed in the same slice: a link quoted inside backticks, as text,
+was being resolved as though it were a real link, which cost RFC 049's own handoff three drafts
+to word around; inline code spans are now excluded before a line is scanned for targets. **Both
+assertions adopt with zero document changes** — the tree already satisfied them: of the relative
+links in the book, none resolved outside it, and no tracked Markdown file anywhere quoted a link
+inside a code span. No new gate, no library change, no version changed, no tag created.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io
