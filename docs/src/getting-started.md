@@ -6,8 +6,10 @@ problem and shows how to read the result. It does not describe the API; the
 [Cluster User Guide](cluster-user-guide.md) do that.
 
 This chapter clones and builds the repository; it does not add `loeres` as a
-dependency to your own project. If that is what you want, use the
-[README](../../README.md)'s dependency snippet instead.
+dependency to your own project. If that is what you want, take the dependency
+snippet from the repository's `README.md`
+([moving-branch navigation](https://github.com/nabbisen/loeres/blob/main/README.md))
+instead.
 
 ## 1. Install
 

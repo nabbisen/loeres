@@ -241,7 +241,11 @@ snippet, and the device control step — and the three contributor commands move
 `## Building from source` section below it; the README's own "Start here" line no longer says
 "install" where the reader means *add the dependency* and the chapter means *clone the
 repository*. `docs/src/getting-started.md` gains one paragraph saying it is a from-source tour
-and pointing a library user at the README's snippet instead. `doc_currency.rs` gains one
+and pointing a library user at the README's snippet instead, by absolute repository URL rather
+than a relative path: mdBook rewrites a relative `.md` target to `.html`, so a book-relative link
+to a repository-root file resolves outside the rendered book and is dead there, while `link-audit`
+resolves it against the repository and passes (architect review 117 F1, which also records that
+no gate renders the book). `doc_currency.rs` gains one
 assertion, joining the gate RFC 048 already keyed to the apex block rather than opening a new
 one: every `version = "…"` inside a `toml` fence in `README.md` must equal `MAJOR.MINOR` of the
 apex block's `Last reconciled repository release`, and no such requirement anywhere in
