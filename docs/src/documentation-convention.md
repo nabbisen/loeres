@@ -123,6 +123,7 @@ changed in each. A changed printed record is one a reader could copy.
 | README Quick Start equals the marked example region, byte-for-byte | `doc-currency` |
 | Marked region under 20 lines | `doc-currency` |
 | README dependency requirement names the released minor, never a wildcard | `doc-currency` |
+| The release table and the crates.io paragraph agree with `CHANGELOG.md` and the apex block | `doc-currency` |
 | No stale release phrases or release notes in current-facing docs | `doc-currency` |
 | Each example builds, runs, and is dependency-isolated | `examples` gate |
 | Captured output in the book matches the run | `examples` gate, via the `example-output` marker |

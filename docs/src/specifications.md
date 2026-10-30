@@ -23,10 +23,11 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 > accepted by the authoritative remote and the tagged CI `release-gate` job
 > succeeds, and *published* when its version is in the crates.io index for every
 > publishable crate. The two are independent, and the table below records both.
+> The table's `Shipped` column is the distribution date, not the tag date.
 
 | Repository release | Shipped | Carries RFCs |
 |---|---|---|
-| `0.20.2` | released | 001-021 |
+| `0.20.2` | 2026-07-30 | 001-021 |
 | `0.21.0` | 2026-09-12 | 001-026 |
 | `0.21.1` | 2026-09-24 | 001-029 |
 | `0.21.2` | 2026-09-24 | 001-030 |

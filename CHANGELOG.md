@@ -277,6 +277,25 @@ effect is that findings naming more than one of those paths now print in a diffe
 says nothing about any version claim outside those eight. No new gate, no pinned version changed,
 no tag created.
 
+**RFC 052 — a release table that cannot omit a release.** `docs/src/specifications.md`'s
+`## Release currency` section carries a hand-read table, a crates.io paragraph, and (one file up)
+a machine-held apex block, none of which were checked against each other or against
+`CHANGELOG.md`'s own release-status record. One cell was already wrong: the `0.20.2` row's
+`Shipped` cell read `released` where every other row names a date, and the blockquote above the
+table did not say which date the column means. The cell now reads `2026-07-30`, the distribution
+date — `0.20.2` is the one release this project has tagged and distributed on different days — and
+the blockquote states the column's meaning. `doc_currency.rs` gains one assertion: the table's
+versions are exactly the versions `CHANGELOG.md` marks released, in ascending order, each
+`Shipped` cell matching that version's own `distributed` date; the last row's version matches the
+apex block's last reconciled release, and each row's `Carries RFCs` maximum is non-decreasing and
+never exceeds the apex block's own implemented-scope maximum — bounded and ordered, never equated,
+because the apex scope runs ahead of every row during a release cut; and the crates.io paragraph
+names the newest version `CHANGELOG.md` marks published, not the newest reconciled one, since five
+of this project's own releases were distributed and never published. **The `Carries RFCs` column
+is bounded and ordered by this gate, not verified**: nothing in this repository records which RFCs
+a given release actually carried, so a row that understates its own scope by one RFC is still
+invisible. No new gate, no pinned version changed, no tag created.
+
 ## [0.24.0] — 2026-10-08 — A predicate that survives a bounded scalar, and a precision a caller cannot get wrong
 
 **Release status:** released (tagged 2026-10-08, distributed 2026-10-08); published to crates.io
