@@ -52,6 +52,11 @@ pub fn run() -> bool {
 /// directory, and that file must declare at least one public item. A declaration
 /// whose file cannot be found is a finding, not a skip.
 ///
+/// `pub(crate)`, `pub(super)`, `pub(self)` and `pub(in …)` are **deliberately not**
+/// counted as a public item: all four are crate-internal, so a module containing only
+/// restricted-visibility items is still unreachable from outside the crate even though
+/// its own declaration is `pub mod` (architect review 126 F1).
+///
 /// **Limits, measured rather than assumed.** This does not handle an inline
 /// `pub mod x { .. }` block, nor a module whose only public surface is a `pub use`
 /// re-export — resolving either correctly would need parsing, not a line scan.
@@ -132,10 +137,9 @@ fn empty_module_finding(path: &Path, line: usize, name: &str) -> Option<String> 
         ));
     };
     let src = fs::read_to_string(&resolved).unwrap_or_default();
-    let declares_public_item = src.lines().any(|raw| {
-        let trimmed = strip_comment(raw).trim_start();
-        trimmed.starts_with("pub ") || trimmed.starts_with("pub(")
-    });
+    let declares_public_item = src
+        .lines()
+        .any(|raw| strip_comment(raw).trim_start().starts_with("pub "));
     if declares_public_item {
         None
     } else {
@@ -378,6 +382,16 @@ mod tests {
         fixture.write("occupied.rs", "pub fn do_it() {}\n");
         let findings = empty_public_module_findings(&[fixture.root.as_path()]);
         assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn a_pub_crate_only_module_is_a_finding() {
+        let fixture = ModuleFixture::new();
+        fixture.write("lib.rs", "pub mod scratchmod;\n");
+        fixture.write("scratchmod.rs", "pub(crate) fn helper() {}\n");
+        let findings = empty_public_module_findings(&[fixture.root.as_path()]);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("scratchmod"), "{}", findings[0]);
     }
 
     #[test]
