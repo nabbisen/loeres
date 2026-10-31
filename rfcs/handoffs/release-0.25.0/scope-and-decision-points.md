@@ -10,7 +10,8 @@ release itself, are authorized separately.
 claim. The cut, when it comes, is its own file.
 
 **Why this one is `0.25.0` and the last two were not.** §2 derives it rather than predicting it:
-this scope adds a function a caller can call, which is the convention's second row.
+this scope adds a function a caller can call (§1.1) and removes four public paths (§1.3) — the
+convention's second and third rows, either of which alone forces the minor.
 
 ## 1. Scope
 
@@ -88,6 +89,27 @@ RFC 048 and RFC 053 S2 did; do not rewrite the range.
 It also raises a question §4 records rather than answers: RFC 053 §7 said I was not claiming
 `ROADMAP.md` was the only place prose sits beside a correct machine-held field, and this is the
 first instance found since — in a file no apex sweep covers.
+
+### 1.3 RFC 055 — four empty public modules, removed
+
+Added 2026-10-31, authorized the same day. Found while writing RFC 054's handoff and **not** a
+suitability claim, so it is its own RFC: `rfcs/proposed/055-no-public-module-that-declares-nothing.md`.
+
+Measured: of **30** `pub mod` declarations across the five published crates, **four** resolve to a
+file that declares no public item — `loeres_backend_std::{adapter, batch, view}` and
+`loeres_device::diagnostic` — each telling a crates.io reader it is a *"Phase 0 placeholder"* for a
+milestone that has completed. `loeres-backend-std` built `--no-default-features` has a public
+surface of exactly those three empty modules.
+
+**This is the item that makes the release's break**, and it is why the position would be `0.25.0`
+even if §1.1's additive slice were dropped: removing a public path is breaking, and under Cargo's
+`0.x` rules a breaking change cannot ship as a patch. RFC 055 §3 is the compatibility and safety
+analysis `docs/specs/loeres-roadmap-milestones-v1.md` §1.5 requires of a superseding RFC.
+
+*Cost:* a documented break, in a release that already carries one additive change — so the
+`CHANGELOG.md` entry must state both, and state them separately. *Gain:* no dead published surface,
+four stale claims and one phantom capability promise gone by construction, and one assertion so the
+class cannot return.
 
 ### 1.3 Not in this release
 
