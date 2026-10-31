@@ -11,9 +11,13 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.24.1] — 2026-10-31 — Documents that cannot quietly go stale, and tools installed by identity
+## [0.24.2] — unreleased
 
 **Release status:** unreleased
+
+## [0.24.1] — 2026-10-31 — Documents that cannot quietly go stale, and tools installed by identity
+
+**Release status:** released (tagged 2026-10-31, distributed 2026-10-31); published to crates.io
 
 **No library code changed in this release.** `git diff 0.24.0..0.24.1 -- crates/` is empty: no
 public API was added and none broke, which is why this is a patch. Everything below is

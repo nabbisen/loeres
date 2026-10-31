@@ -1,8 +1,8 @@
 # Introduction
 
 > **Release currency metadata.**
-> This tree: **0.24.1**.
-> Last reconciled repository release: **0.24.0**.
+> This tree: **0.24.2**.
+> Last reconciled repository release: **0.24.1**.
 > Implemented scope: **RFCs 001-046, 048-052**.
 >
 
