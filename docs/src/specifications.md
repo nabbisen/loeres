@@ -14,8 +14,8 @@ contributors edit those documents directly; readers can browse them here.
 This is the one home for release currency. The README links here (RFC 035 §3.3).
 
 > **Release currency metadata.**
-> This tree: **0.24.2**.
-> Last reconciled repository release: **0.24.1**.
+> This tree: **0.24.3**.
+> Last reconciled repository release: **0.24.2**.
 > Implemented scope: **RFCs 001-046, 048-053**.
 >
 
@@ -39,12 +39,13 @@ This is the one home for release currency. The README links here (RFC 035 §3.3)
 | `0.23.0` | 2026-10-08 | 001-042 |
 | `0.24.0` | 2026-10-08 | 001-044 |
 | `0.24.1` | 2026-10-31 | 001-046, 048-052 |
+| `0.24.2` | 2026-10-31 | 001-046, 048-053 |
 
-**What is on crates.io.** The newest published version of every Loeres crate is `0.24.1`,
-published on 2026-10-31. It carries RFCs 001-046, 048-052, including the constrained
+**What is on crates.io.** The newest published version of every Loeres crate is `0.24.2`,
+published on 2026-10-31. It carries RFCs 001-046, 048-053, including the constrained
 quadratic-program contract (RFC 027), so the registry and this tree describe the same library.
-`0.24.1` adds no library code to `0.24.0` — the five crates' sources are byte-identical — so a
-dependent on `loeres = "0.24"` needs no action.
+`0.24.2` adds no library code to `0.24.1`, which added none to `0.24.0` — the five crates' sources
+are byte-identical across all three — so a dependent on `loeres = "0.24"` needs no action.
 
 **If you use `Q32` with the constrained kernel, move your requirement to `0.24`.** `0.24.0`
 fixes an infeasibility-evidence predicate that could manufacture a false "this problem is
