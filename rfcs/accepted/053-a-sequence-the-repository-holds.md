@@ -14,6 +14,51 @@ tree at `a699418`, workspace `0.24.2`.
 `rfcs/handoffs/release-0.24.2/scope-and-decision-points.md` §1.1 is the owner's record of this
 scope; the owner answered its D1 with this RFC alone.
 
+## 0.1 Amendment 1 (2026-10-31)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, and recorded in architect review
+122. The Status line carries only the design-freeze date while this RFC is in `accepted/`, because
+`doc-currency` requires that form there; **this amendment must be named in the Status line when
+the file moves to `rfcs/done/`**, which `check-rfcs` enforces there and only there.
+
+It adds one clause and records one limitation. Where it differs from §3 S3 below, **this section
+governs**.
+
+### Clause 4 — the sequence file defines a duplicate-free, contiguous set from I
+
+`rfcs/destination-sequence.md`'s phase numerals must form a contiguous roman sequence starting at
+I — I, II, … N — with no numeral defined twice.
+
+Two measurements make it necessary, both in architect review 122:
+
+1. **A duplicate phase section passes clause 1 and clause 2 silently** (review 122 F4): a second
+   `## Phase III` with a valid state produced zero findings. The file's own first sentence calls
+   itself the single definition, and two sections for one phase are two sources that can disagree
+   — the confusion RFC 047 property **D** forbids.
+2. **Clause 1 cannot promise that a deleted phase is caught**, because every phase heading cites
+   its own phase: the protection comes from *other* files, and for Phases IV and VI those are only
+   the sequence file itself and this RFC's handoff. Clause 4 catches a deleted phase whether or not
+   anything cites it.
+
+### The plural form is not seen, and the matcher is deliberately not widened
+
+Measured (review 122 F3): `Phases II-VII are unscheduled.` added to a tracked document yields
+**zero findings**, although `Phase VII` is undefined, because the matcher keys on the literal
+`"Phase "` and cannot match `"Phases "`. `Phases I and II` and `Phases IV and V` are likewise
+unseen, and all three forms are already in use in tracked documents.
+
+**This errs in the unsafe direction** — it misses rather than over-reports — unlike RFC 050 §6's
+double-backtick limitation. It is recorded rather than fixed, for a reason with a cost attached:
+catching `Phases II-VI` means reading every roman run on any line containing `Phases`, and `CI` is
+a valid roman run, so the cheap widening buys a false-positive class on precisely the lines that
+discuss this mechanism — inside a gate whose own charter is that it *"deliberately does not
+attempt to infer arbitrary prose semantics"*. Clause 4 bounds the exposure instead: a missing
+definition can no longer hide behind plural-only citations.
+
+**What remains uncovered after clause 4:** a plural-only reference to a phase beyond the defined
+contiguous range — a future `Phases VI-VIII` while VII and VIII are undefined. That is the honest
+residual, and the first time it costs anything is the time to widen the matcher.
+
 ## 1. Summary
 
 RFC 047 is the destination. Its phases — the order in which the destination is approached — live
