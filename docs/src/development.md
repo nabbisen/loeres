@@ -259,7 +259,8 @@ development team does not publish.
 - **What establishes the packaged set compiles, before publication.** `cargo package -p <crate>
   --list --offline` needs no registry resolution. For all five crates together it takes about
   0.14 seconds. The listing shows that the packaged `src/` set is identical to the tracked `src/`
-  set (18, 9, 9, 13 and 25 files), and that no crate has a `build.rs`. So the published crates'
+  set (20, 9, 9, 13 and 25 files at `0.24.1` — a snapshot; the equality itself is what
+  `published-metadata` asserts per commit, not these counts), and that no crate has a `build.rs`. So the published crates'
   compilable content is byte-identical to the workspace members', and the published set compiles
   if `cargo check --workspace --all-features` passes. A separate source check, made by reading the
   sources and not by the listing, found that no source uses `include_str!` or `include_bytes!`.

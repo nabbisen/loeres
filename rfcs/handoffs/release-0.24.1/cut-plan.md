@@ -228,8 +228,43 @@ Every gate invocation is checked on its own exit status, never through a pipe.
 
 ## 7. Measured at this cut — RFC 046 §3.3 item 3
 
-*To be filled in at step 12. Prediction: 6m 20s → about 3m 18s, a 48% reduction. Record the job
-duration and the per-step breakdown, and say plainly whether the prediction held.*
+**The prediction held and was beaten.** `release.yml`'s `release-gate` job on the `0.24.1` tag,
+run `41147305484`, derived from the run's own step API rather than a wall-clock impression
+(architect review 109's method):
+
+| | before | predicted | **measured** |
+| --- | ---: | ---: | ---: |
+| the `release-gate` job | 6m 20s | about 3m 18s | **2m 56s** |
+| reduction | — | 48% | **54%** |
+
+Per-step, `2026-10-30T23:55:41Z` → `23:58:37Z`:
+
+| step | duration |
+| --- | ---: |
+| Set up job | 2s |
+| Check out the candidate revision | 1s |
+| Install stable Rust | 2s |
+| Install the declared MSRV | 7s |
+| **Install the pinned documentation tool** (`mdbook`) | **0s** |
+| **Install the pinned supply-chain tool** (`cargo-deny`) | **1s** |
+| Record tool versions | 0s |
+| **Run the canonical non-publishing candidate gate** | **2m 39s** |
+| Retain non-publishing candidate evidence | 1s |
+| Post checkout, complete job | 1s |
+
+**The two pinned-tool installs together take one second.** They were compiling from source before —
+RFC 046 §3.3 measured `cargo-deny`'s install at 1m 56s in `ci` and predicted `mdbook` at 1m 19s
+here — so about 3m 15s of compilation became 1s of download and verification.
+
+**What this measurement actually settles** is the architectural claim, not the arithmetic: the job
+is now bounded by `cargo xtask check`'s own work at **2m 39s of 2m 56s**, so a release's cost is
+now the cost of its twenty gates and nothing else. Tool compilation has stopped being a release's
+problem at the one moment a release cannot be cheaply retried — which is what RFC 046 §3.3 item 3
+was authorized to buy.
+
+The 22-second margin over the prediction is not an accuracy claim: §3.3's figures were arithmetic
+on measured step times from a different runner on a different day, and runner variance is of the
+same order. The direction and the magnitude are what hold.
 
 ## 8. Risks
 
