@@ -1,6 +1,6 @@
 # RFC 054 - A Suitability Claim A Gate Can Assert
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-31)
 
 **Author tier.** `architect`.
 
