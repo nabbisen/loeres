@@ -1,6 +1,6 @@
 # RFC 055 - No Public Module That Declares Nothing
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-31)
 
 **Author tier.** `architect`.
 
@@ -14,6 +14,42 @@ the owner authorized scoping it on 2026-10-31. Every figure was measured on `1ac
 This RFC removes public API, so `docs/specs/loeres-roadmap-milestones-v1.md` §1.5 requires *"a
 superseding RFC with an explicit compatibility and safety analysis"*. That analysis is **§3**, and
 it is a required section rather than a courtesy.
+
+## 0.1 Amendment 1 (2026-10-31)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, and recorded in the implementation
+handoff §0.2. The Status line carries only the design-freeze date while this RFC is in
+`accepted/`, because `doc-currency` requires that form there; **this amendment must be named in
+the Status line when the file moves to `rfcs/done/`**.
+
+§8 promised that two normative sentences would be decided *"with the sentence quoted in front of
+it"* rather than from memory. Both were, and **both survive** — S2's instruction to delete them is
+superseded by this section. The pattern is the one RFC 048 and RFC 053 S2 established in the other
+direction: **remove the dead reference, keep the live constraint.**
+
+### `loeres-external-design-v1.md:295` — *"Adapter modules must be feature-gated."* survives
+
+It is not a description of the module being removed; it is a constraint on any adapter module ever
+added. Its substance — a third-party numerical dependency must not reach the baseline public
+surface — is the same rule RFC 008 applied to Rayon and Tokio, and `feature-matrix` and
+`supply-chain` are what hold it. Deleting the sentence with the module would drop a constraint the
+project still wants, and would leave the reserved `adapter-*` features (§2.4) ungoverned.
+
+**Reworded to be forward-looking rather than deleted.** Replacement text: handoff §2.2.
+
+### `loeres-external-design-v1.md` §4.7 survives; only its first sentence is rewritten
+
+S2 said to delete `:1114`. Reading the section with it quoted shows that would be wrong: §4.7
+*Device Diagnostics Without Logging* is a **normative policy** with seven allowed and five
+forbidden examples — no strings, no heap-allocated reports, no logging macros as public API, no
+tracing spans, no telemetry queues — and `check-public-api`'s forbidden-token sweep and the
+zero-bleed gate already hold parts of it. The policy is about the **device path's diagnostics**,
+not about which module hosts them; deleting its first sentence would leave a normative section
+with no subject and would read as retiring the policy.
+
+**Only the first sentence is rewritten, to name where device diagnostics actually live.**
+Replacement text: handoff §2.3. The allowed and forbidden lists and the closing sentence about an
+optional no-`std` sink are untouched.
 
 ## 1. Summary
 
