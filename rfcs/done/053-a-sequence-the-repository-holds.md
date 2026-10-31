@@ -1,6 +1,6 @@
 # RFC 053 - A Sequence The Repository Holds
 
-**Status.** Accepted (design frozen 2026-10-31)
+**Status.** Implemented (v0.24.2). Amendment 1 was made while Accepted, under RFC 000's in-place-amendment rule.
 
 **Author tier.** `architect`.
 
