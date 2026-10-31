@@ -1829,8 +1829,13 @@ fn render_roman(mut value: u32) -> String {
 /// cites its own phase; the protection for Phases IV and VI, which no
 /// other tracked document names in the singular, comes only from this
 /// clause. One finding per defect, not per phase (review 119 F3): a
-/// duplicate is one finding naming it; a gap is one finding naming the
-/// missing numeral.
+/// duplicate is one finding naming it. Contiguity is checked as a single
+/// comparison — the highest numeral present against how many distinct
+/// numerals are defined — rather than enumerated numeral by numeral
+/// (review 123 F1: a stray four-digit numeral, `M`, once enumerated 994
+/// individually-true findings for one cause); on a mismatch, one finding
+/// names the highest numeral present and the lowest missing one, the
+/// only numeral a reader needs to act on.
 fn phase_numeral_sequence_findings(phases: &[DestinationPhase]) -> Vec<String> {
     let mut findings = Vec::new();
     let mut seen: BTreeMap<u32, Vec<String>> = BTreeMap::new();
@@ -1854,14 +1859,17 @@ fn phase_numeral_sequence_findings(phases: &[DestinationPhase]) -> Vec<String> {
         }
     }
     if let Some(&max) = seen.keys().max() {
-        for value in 1..=max {
-            if !seen.contains_key(&value) {
-                findings.push(format!(
-                    "PHASE STATE: {DESTINATION_SEQUENCE_PATH} is missing Phase {}, between the \
-                     defined numerals",
-                    render_roman(value)
-                ));
-            }
+        let distinct_count = seen.len() as u32;
+        if max != distinct_count {
+            let lowest_missing = (1..=max)
+                .find(|value| !seen.contains_key(value))
+                .expect("max != distinct_count implies a gap exists at or below max");
+            findings.push(format!(
+                "PHASE STATE: {DESTINATION_SEQUENCE_PATH} defines {distinct_count} phase(s) up \
+                 to Phase {}, but Phase {} is missing; the sequence must be contiguous from I",
+                render_roman(max),
+                render_roman(lowest_missing)
+            ));
         }
     }
     findings
@@ -3590,5 +3598,24 @@ mod tests {
         let findings = phase_numeral_sequence_findings(&phases);
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(findings[0].contains("III"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_stray_four_digit_numeral_yields_exactly_one_gap_finding() {
+        // Review 123 F1: `## Phase VI` → `## Phase M` once enumerated 994
+        // individually-true findings for one cause. `assert_eq!(len, 1)`
+        // is the point of this test, asserted before the contents.
+        let phases = ["I", "II", "III", "IV", "V", "M"]
+            .iter()
+            .map(|numeral| DestinationPhase {
+                numeral: (*numeral).to_owned(),
+                state: "deferred".to_owned(),
+                rfcs: Vec::new(),
+            })
+            .collect::<Vec<_>>();
+        let findings = phase_numeral_sequence_findings(&phases);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("VI"), "{findings:?}");
+        assert!(findings[0].contains('M'), "{findings:?}");
     }
 }
