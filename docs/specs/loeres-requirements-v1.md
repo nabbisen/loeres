@@ -10,7 +10,7 @@
 **Primary change theme:** Convert second-architect feedback into requirements-level constraints while avoiding premature implementation design.
 
 > **Release currency metadata.**
-> This tree: **0.24.3**.
+> This tree: **0.25.0**.
 > Last reconciled repository release: **0.24.2**.
 > Implemented scope: **RFCs 001-046, 048-053**.
 >

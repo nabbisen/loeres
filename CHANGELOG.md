@@ -11,9 +11,40 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.24.3] — unreleased
+## [0.25.0] — unreleased
 
 **Release status:** unreleased
+
+Repository release `0.25.0` carries RFC 055 (no public module that declares nothing), and is a
+minor because that is a source break (see below).
+
+**A source break, and who it affects.** Four `pub mod` declarations that resolved to a file
+declaring no public item are removed: `loeres_backend_std::{adapter, batch, view}` and
+`loeres_device::diagnostic`. **Naming any of these paths no longer compiles** — `use
+loeres_backend_std::batch;` fails with `error[E0432]`, and a bare path mention such as
+`loeres_device::diagnostic::Anything` fails with `error[E0433]`. The only code affected is a `use`
+of one of these modules that imports nothing from it — since the module declared no public item,
+nothing could ever have been imported *from* it, and the compiler already warns about such an
+import as unused. The fix is to delete the import. **No capability is lost**: device diagnostics
+are `loeres::diagnostic`'s core categories, together with `DeviceSolveReport` and
+`DeviceWorkspaceDiagnostic`, and always were — `loeres_device::diagnostic` never held any.
+
+**The addition.** `check-public-api` gains `EMPTY PUBLIC MODULE`, an assertion wider than the
+`check-public-api` edge-crate scan: it resolves every `pub mod` declaration across all five
+published crates' `src` trees and fails closed when the resolved file declares no public item, or
+when it cannot be found at all. It is why nothing caught three of these four modules before now —
+three sat outside the narrower scan's edge-crate set.
+
+### RFC 055 — no public module that declares nothing
+
+- `loeres-backend-std::{adapter, batch, view}` and `loeres-device::diagnostic` are removed, each
+  having carried only a rustdoc placeholder naming a milestone that had already shipped.
+- `docs/specs/loeres-external-design-v1.md`'s module maps drop the four corresponding rows.
+  Two normative sentences the modules' removal would otherwise have orphaned survive, reworded to
+  the policy they actually state rather than the specific module: the feature-gating rule for a
+  third-party numerical adapter added later, and the device path's diagnostics sentence, now
+  naming `DeviceSolveReport` and `DeviceWorkspaceDiagnostic` directly.
+- `check-public-api` gains the `EMPTY PUBLIC MODULE` assertion described above.
 
 ## [0.24.2] — 2026-10-31 — A sequence the repository holds, and a roadmap that cannot call a shipped release upcoming
 

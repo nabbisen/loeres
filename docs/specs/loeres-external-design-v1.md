@@ -6,7 +6,7 @@ Source baseline: `loeres-requirements-v0.2.md`, `loeres-external-design-v0.1.md`
 Audience: Rust library users, crate maintainers, RFC authors, integration engineers
 
 > **Release currency metadata.**
-> This tree: **0.24.3**.
+> This tree: **0.25.0**.
 > Last reconciled repository release: **0.24.2**.
 > Implemented scope: **RFCs 001-046, 048-053**.
 >
@@ -288,12 +288,9 @@ loeres::dimension   // dimension descriptors and dimension mismatch categories
 ```text
 loeres_backend_std::dense       // heap-backed dense vectors/matrices
 loeres_backend_std::sparse      // heap-backed sparse storage adapters
-loeres_backend_std::view        // borrowed views over dynamic storage
-loeres_backend_std::batch       // server-side batched storage containers
-loeres_backend_std::adapter     // optional third-party numerical crate adapters
 ```
 
-Adapter modules must be feature-gated.
+Any third-party numerical adapter added later must be feature-gated, so the baseline public surface never requires a third-party type.
 
 #### `loeres-backend-static`
 
@@ -332,7 +329,6 @@ loeres_device::problem      // fixed-size problem wrappers and supported problem
 loeres_device::solve        // deterministic solve entrypoints
 loeres_device::config       // iteration caps, tolerances, timing modes, safety policy
 loeres_device::workspace    // solver-specific typed workspace aliases and lifecycle
-loeres_device::diagnostic   // compact no_std diagnostics, no logging framework
 ```
 
 `loeres-device` must remain intentionally small.
@@ -1111,7 +1107,7 @@ Constant-iteration mode is useful for timing stabilization and side-channel redu
 
 ### 4.7 Device Diagnostics Without Logging
 
-`loeres-device::diagnostic` may expose compact diagnostics through result or state types.
+The device path's diagnostics are the core categories in `loeres::diagnostic` together with the `DeviceSolveReport` and `DeviceWorkspaceDiagnostic` types. They may expose compact diagnostics through result or state types.
 
 Allowed examples:
 

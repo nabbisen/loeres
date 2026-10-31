@@ -8,7 +8,7 @@
 //! or FFI gateways.
 //!
 //! Public module topography (external design §1.5):
-//! `problem`, `solve`, `config`, `workspace`, `diagnostic`.
+//! `problem`, `solve`, `config`, `workspace`.
 //!
 //! Milestone 2 is complete. RFC 005 provides `config` (runtime
 //! `DeviceSolveConfig` / `TimingMode` policy and structural validation) and
@@ -22,13 +22,11 @@
 //! work vectors are RFC 004 `FixedVector<S, N>`. RFC 027 adds
 //! [`solve::solve_constrained_projected_first_order`], the same kernel over a
 //! box with `M >= 1` linear inequalities `Ax <= b` for a
-//! [`loeres::QuadraticProgram`]. `diagnostic` is reserved for future richer
-//! diagnostics.
+//! [`loeres::QuadraticProgram`].
 #![cfg_attr(not(test), no_std)]
 #![forbid(unsafe_code)]
 
 pub mod config;
-pub mod diagnostic;
 pub mod problem;
 pub mod solve;
 pub mod workspace;
