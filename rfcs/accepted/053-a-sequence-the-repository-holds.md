@@ -1,6 +1,6 @@
 # RFC 053 - A Sequence The Repository Holds
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-10-31)
 
 **Author tier.** `architect`.
 
@@ -213,9 +213,12 @@ Named, because S2 edits an apex document and the temptation is to tidy:
   sit at `deferred` after a phase has in fact shipped, which no mechanism can detect, and which is
   the honest limit of this RFC.
 - **Clause 1 could fire on prose that means nothing by it** — a sentence about "Phase I" in a
-  quoted external document, say. Measured now: the only roman-phase references in tracked files are
-  the four in §2.1, all intended. If a false positive appears, the fix is the one RFC 050 took for
-  code spans, not an exemption list.
+  quoted external document, say. **Measured under the predicate itself**, not by eye: **26 raw
+  occurrences in 4 tracked files, 12 distinct (file, phase) pairs, referencing phases I, II, III
+  and V only** — every one intended, and all four phases will be defined by S1. The command that
+  produced those figures is in the implementation handoff §0.1; §2.1's table counts the four
+  *pre-existing* sites, and this RFC and its scope file are the other two files. If a false
+  positive ever appears, the fix is the one RFC 050 took for code spans, not an exemption list.
 - **The file could become a plan nobody reads.** It is three screens at most, it is cited from
   `ROADMAP.md`'s destination sentence, and clause 1 gives it one reader that cannot forget.
 
