@@ -29,11 +29,12 @@ or a second masker: every `Phase <roman-numeral>` reference anywhere in the trac
 `done/` RFCs included, by design — must resolve to a phase the new file defines, every phase's
 state must be one of the three literals, and a `shipped` phase must name at least one RFC that
 resolves to a file in `rfcs/done/`. **Phase I is `shipped`, by RFCs 049, 050 and 051; Phases
-II–VI are `deferred`.** Two stale claims recurring in `ROADMAP.md` — a hand-maintained RFC range
-RFC 048 had already deleted from seven other documents, and a shipped release still described as
-upcoming — are deleted and replaced with a pointer to the fields that already hold them,
-following RFC 048's own remedy rather than rewriting the numbers. No crate, no public API, no
-new gate: this release is the patch already on `main`.
+II–VI are `deferred`.** Three stale claims recurring in `ROADMAP.md` — a hand-maintained RFC
+range RFC 048 had already deleted from seven other documents, a shipped release still described
+as upcoming, and the assertion that `README.md`'s headline still claims "high-throughput server
+solving" (`grep -c -i throughput README.md` is `0`) — are deleted and replaced with a pointer to
+the fields that already hold them, following RFC 048's own remedy rather than rewriting the
+numbers. No crate, no public API, no new gate: this release is the patch already on `main`.
 
 ## [0.24.1] — 2026-10-31 — Documents that cannot quietly go stale, and tools installed by identity
 

@@ -1756,6 +1756,117 @@ fn phase_rfc_findings(phases: &[DestinationPhase], done_numbers: &BTreeSet<u32>)
     findings
 }
 
+/// A roman numeral's integer value, or `None` if `numeral` is not one
+/// this gate can read — Amendment 1 clause 4 treats that as its own
+/// finding, not a silent skip. Lenient (additive/subtractive), not a
+/// strict-grammar validator: this file's numerals are small and few, and
+/// the clause's job is contiguity, not roman-numeral orthography.
+fn roman_value(numeral: &str) -> Option<u32> {
+    const VALUES: &[(char, u32)] = &[
+        ('I', 1),
+        ('V', 5),
+        ('X', 10),
+        ('L', 50),
+        ('C', 100),
+        ('D', 500),
+        ('M', 1000),
+    ];
+    let value_of = |c: char| VALUES.iter().find(|&&(ch, _)| ch == c).map(|&(_, v)| v);
+    let chars: Vec<char> = numeral.chars().collect();
+    if chars.is_empty() {
+        return None;
+    }
+    let mut total: u32 = 0;
+    let mut i = 0;
+    while i < chars.len() {
+        let current = value_of(chars[i])?;
+        if i + 1 < chars.len() {
+            let next = value_of(chars[i + 1])?;
+            if current < next {
+                total += next - current;
+                i += 2;
+                continue;
+            }
+        }
+        total += current;
+        i += 1;
+    }
+    (total > 0).then_some(total)
+}
+
+/// The roman-numeral text for a small positive integer — `roman_value`'s
+/// inverse, used only to name a missing numeral in a finding.
+fn render_roman(mut value: u32) -> String {
+    const NUMERALS: &[(u32, &str)] = &[
+        (1000, "M"),
+        (900, "CM"),
+        (500, "D"),
+        (400, "CD"),
+        (100, "C"),
+        (90, "XC"),
+        (50, "L"),
+        (40, "XL"),
+        (10, "X"),
+        (9, "IX"),
+        (5, "V"),
+        (4, "IV"),
+        (1, "I"),
+    ];
+    let mut out = String::new();
+    for &(n, symbol) in NUMERALS {
+        while value >= n {
+            out.push_str(symbol);
+            value -= n;
+        }
+    }
+    out
+}
+
+/// Clause 4 (Amendment 1): `rfcs/destination-sequence.md`'s phase
+/// numerals form a duplicate-free, contiguous roman sequence starting at
+/// I — I, II, … N — with no gap and no numeral defined twice. Clause 1
+/// cannot promise a deleted phase is caught, because every phase heading
+/// cites its own phase; the protection for Phases IV and VI, which no
+/// other tracked document names in the singular, comes only from this
+/// clause. One finding per defect, not per phase (review 119 F3): a
+/// duplicate is one finding naming it; a gap is one finding naming the
+/// missing numeral.
+fn phase_numeral_sequence_findings(phases: &[DestinationPhase]) -> Vec<String> {
+    let mut findings = Vec::new();
+    let mut seen: BTreeMap<u32, Vec<String>> = BTreeMap::new();
+    for phase in phases {
+        let Some(value) = roman_value(&phase.numeral) else {
+            findings.push(format!(
+                "PHASE STATE: {DESTINATION_SEQUENCE_PATH}'s Phase {} numeral is not a roman \
+                 numeral this gate can read",
+                phase.numeral
+            ));
+            continue;
+        };
+        seen.entry(value).or_default().push(phase.numeral.clone());
+    }
+    for numerals in seen.values() {
+        if numerals.len() > 1 {
+            findings.push(format!(
+                "PHASE STATE: {DESTINATION_SEQUENCE_PATH} defines Phase {} more than once",
+                numerals[0]
+            ));
+        }
+    }
+    if let Some(&max) = seen.keys().max() {
+        for value in 1..=max {
+            if !seen.contains_key(&value) {
+                findings.push(format!(
+                    "PHASE STATE: {DESTINATION_SEQUENCE_PATH} is missing Phase {}, between the \
+                     defined numerals",
+                    render_roman(value)
+                ));
+            }
+        }
+    }
+    findings
+}
+
 /// The RFC numbers present as files under `rfcs/done/`, by file name
 /// alone. A non-`NNN-slug.md` name is skipped silently here rather than
 /// reported: `implemented_scope` already reports that defect as its own
@@ -1798,6 +1909,7 @@ fn check_phase_sequence(errors: &mut Vec<String>) {
     errors.extend(phase_reference_findings(&files, &defined));
 
     errors.extend(phase_state_findings(&phases));
+    errors.extend(phase_numeral_sequence_findings(&phases));
 
     if let Some(done_numbers) = done_rfc_numbers(errors) {
         errors.extend(phase_rfc_findings(&phases, &done_numbers));
@@ -2094,8 +2206,8 @@ mod tests {
         BTreeSet, DestinationPhase, changelog_marks_released, current_before_historical,
         implemented_scope_at, import_model_findings, index_status_matches, numbered_rfc_file,
         parse_changelog_release_status, parse_design_freeze, parse_ordinary_apex_currency,
-        phase_reference_findings, phase_rfc_findings, phase_state_findings,
-        readme_requirement_findings, release_table_findings, render_scope,
+        phase_numeral_sequence_findings, phase_reference_findings, phase_rfc_findings,
+        phase_state_findings, readme_requirement_findings, release_table_findings, render_scope,
         retired_conditional_prose_in, stale_phrases_in,
     };
     use std::fs;
@@ -3433,5 +3545,50 @@ mod tests {
         let done_numbers: BTreeSet<u32> = BTreeSet::new();
         let findings = phase_rfc_findings(&phases, &done_numbers);
         assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    /// RFC 053 Amendment 1 clause 4 (corrections handoff C2)'s two
+    /// required branches.
+    #[test]
+    fn a_duplicated_numeral_fails_once_naming_it() {
+        let phases = vec![
+            DestinationPhase {
+                numeral: "I".to_owned(),
+                state: "shipped".to_owned(),
+                rfcs: vec!["049".to_owned()],
+            },
+            DestinationPhase {
+                numeral: "I".to_owned(),
+                state: "deferred".to_owned(),
+                rfcs: Vec::new(),
+            },
+        ];
+        let findings = phase_numeral_sequence_findings(&phases);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("Phase I"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_gap_in_the_sequence_fails_naming_the_missing_numeral() {
+        let phases = vec![
+            DestinationPhase {
+                numeral: "I".to_owned(),
+                state: "deferred".to_owned(),
+                rfcs: Vec::new(),
+            },
+            DestinationPhase {
+                numeral: "II".to_owned(),
+                state: "deferred".to_owned(),
+                rfcs: Vec::new(),
+            },
+            DestinationPhase {
+                numeral: "IV".to_owned(),
+                state: "deferred".to_owned(),
+                rfcs: Vec::new(),
+            },
+        ];
+        let findings = phase_numeral_sequence_findings(&phases);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("III"), "{findings:?}");
     }
 }

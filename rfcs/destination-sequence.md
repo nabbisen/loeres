@@ -12,6 +12,10 @@ amendment (RFC 047 §5 item 1).
 The arabic `Phase 0-3` in `ROADMAP.md` and `docs/specs/loeres-roadmap-milestones-v1.md` are the
 crate-layering milestones, a different axis from the roman phases below.
 
+A mention of a phase this file does not define must be written inside single backticks:
+`doc-currency` resolves every `Phase <roman-numeral>` reference in a tracked document — in
+prose and in fenced code blocks alike — against this file's own definitions below.
+
 This sequence was first written in architect strategy 106 §5, which is cited in
 `rfcs/review-evidence-index.md` and is not a tracked file; this file is now the definition
 rather than a copy with an authority elsewhere.
