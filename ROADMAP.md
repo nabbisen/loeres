@@ -6,7 +6,10 @@ lives in [`docs/specs/loeres-roadmap-milestones-v1.md`](docs/specs/loeres-roadma
 this file is a short summary. This roadmap's milestones are milestones toward
 [`rfcs/accepted/047-the-state-worth-aiming-at.md`](rfcs/accepted/047-the-state-worth-aiming-at.md)
 — the project's stated destination and the properties that would constitute
-arriving at it.
+arriving at it. The order in which that destination is approached, and the state
+of each of its phases, is
+[`rfcs/destination-sequence.md`](rfcs/destination-sequence.md); the arabic
+`Phase 0-3` below are the crate-layering milestones and a different axis.
 
 > **Release currency metadata.**
 > This tree: **0.24.2**.
@@ -56,34 +59,24 @@ RFC 036 made the **published artifact** a reviewed deliverable; both shipped in
 `0.22.1`, which on 2026-10-07 became the first release **published to crates.io**
 since `0.20.2`.
 
-**Next: T7 as `0.23.0`, then T6.** T7 — a fixed-point scalar baseline — is the most
-embedded-aligned remaining item and the one most likely to matter to the device audience
-(architect review 065 §8); `fixed-point-hooks` has been a declared-but-inert feature since
-RFC 001. Its risk is numerical rather than structural: saturation, rounding and overflow are
-where fixed-point goes wrong, and `FiniteScalar`'s contract was written with floats in mind.
+**T7 and T6's batch seam shipped.** T7 — a fixed-point scalar baseline — landed as
+RFC 041, and T6's batch seam (L10) as RFC 042. Both are in `rfcs/done/`, and
+`CHANGELOG.md` records which release carried them. T6's other three items —
+metadata-only observability, the mock-only `ffi-gateway` seam, and the
+process-local validation cache — **stay closed until a real consumer exists**, the
+gateway especially, being external surface with security weight.
 
-**T6 does not need a consumer as a whole — it needs splitting**, which review 065 already
-said: its four items "are not one theme: they differ in risk and in audience". Of the four,
-**the batch seam (L10) is ready now**: the owner settled its shape as option (a) in review
-056, a constrained job already batches (`ClusterConstrainedJob` implements `ClusterJob`), and
-the batch path computes `max_constraint_violation` and `infeasibility_evidence` and then
-**discards both at the seam** — so the same problem solved directly tells a caller more than
-solved in a batch, which `examples/cluster-qp-constrained` already documents as "status only".
-Carrying them is source-breaking: `BatchItemOutcome` is not `#[non_exhaustive]`, so adding
-fields to `Solved` breaks patterns without `..` (`E0027`) and literal construction (`E0063`) —
-a minor bump, which `0.23.0` is. The other three — metadata-only observability, the
-mock-only `ffi-gateway` seam, and the process-local validation cache — stay closed until a
-real consumer exists; the gateway especially, being external surface with security weight.
+**T4, a benchmark harness, is the open theme.** The owner's fourth visitor
+question, "how effective or powerful", is the one RFC 035 §4 deferred, and it is
+still unanswered. Architect review 086 scopes it: effectiveness and counted-work
+cost are deterministic and reproducible — RFC 031's difficulty reporting already
+measures deviation from the exact optimum — while wall-time throughput is
+environment-dependent and can only ever be advisory. The themes still open are T4,
+T5 (LP) and T6's three closed items.
 
-**Earlier: T4, a benchmark harness.** The owner's fourth visitor question, "how
-effective or powerful", is the one RFC 035 §4 deferred, and it is still unanswered.
-Architect review 086 scopes it: effectiveness and counted-work cost are deterministic
-and reproducible — RFC 031's difficulty reporting already measures deviation from the
-exact optimum — while wall-time throughput is environment-dependent and can only ever
-be advisory. Review 086 also records that `README.md`'s headline already claims
-"high-throughput server solving" while four tracked documents disclaim having
-throughput evidence; resolving that is the theme's first obligation. Themes after T4:
-T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars).
+**No release position is claimed here.** Which release carries which theme follows
+from the slices, under `docs/src/development.md`'s release version convention;
+what `main` carries between releases is a placeholder, not a prediction.
 
 ## Phases
 
@@ -102,12 +95,10 @@ T5 (LP), T6 (server-side maturity), T7 (fixed-point scalars).
 
 ## Current status
 
-RFCs 001-034 are implemented: 001-026 shipped in `0.21.0`, 027-029 shipped in
-`0.21.1`, RFC 030 (randomized differential testing for numerical kernels) shipped
-in `0.21.2`, RFCs 031-033 (adversarial and extended conformance, step-size
-guidance, an exact projection in the `Converged` claim) shipped in `0.21.3`, and
-RFC 034 (a heuristic `infeasibility_evidence` field, wrong in both directions)
-shipped in `0.22.0`. The current numerical breadth is one
+The implemented RFC scope is the `Implemented scope` field of the currency block
+above, and which release carried what is `CHANGELOG.md`. Neither is restated
+here: a hand-maintained copy of either is what RFC 048 deleted from seven
+documents and what RFC 053 found still here. The current numerical breadth is one
 projected-first-order family on device and cluster, over a box and, since
 `0.21.1`, over a box with linear inequalities (RFC 027). Infeasibility is not detected as a status. LP (`Q = 0`) solves soundly but without a convergence guarantee: the projection's sweep cap or, for a wide box and a small step scale, the outer iteration cap (zero projection cap hits in that case) can bind first — scale the step to the problem's extent to clear the latter (RFC 039).
 Conformance is a bounded smoke corpus; no broad LP/SOCP, large-N,

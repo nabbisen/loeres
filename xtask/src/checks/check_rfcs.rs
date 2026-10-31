@@ -450,7 +450,7 @@ pub(crate) fn markdown_links(src: &str) -> BTreeSet<String> {
 /// inside a `` `` double-backtick `` `` span is left resolved. That is
 /// the documented, conservative limitation of RFC 050 §6 — it keeps
 /// checking something this already checks, rather than fixed here.
-fn mask_code_spans(line: &str) -> String {
+pub(crate) fn mask_code_spans(line: &str) -> String {
     let mut masked = String::with_capacity(line.len());
     let mut rest = line;
     loop {

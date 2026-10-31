@@ -15,6 +15,26 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
+**RFC 053 — a sequence the repository holds.** RFC 047's phases — the order in which its
+destination is approached — lived only in an untracked review file (`.gitignore:24`), yet a
+`done/` RFC cited "Phase III" and "Phase V" by name: workflow held in a prompt, which this
+project's working rule forbids. `rfcs/destination-sequence.md` is now the single, tracked
+definition of the six phases, deliberately **not** an RFC — so revising which phase is next, or
+what it costs, needs no amendment — with each phase's state one of three literals, `deferred`,
+`scheduled` or `shipped`, checked by **equality**, never `contains`: the obvious word for an
+unstarted phase, `unscheduled`, contains `scheduled`, which is the exact substring shape RFC
+052's clause 5 shipped a defect through before this. `doc_currency.rs` gains one assertion,
+reusing `link_audit::collect_md` and `check_rfcs::mask_code_spans` rather than a third file walk
+or a second masker: every `Phase <roman-numeral>` reference anywhere in the tracked tree —
+`done/` RFCs included, by design — must resolve to a phase the new file defines, every phase's
+state must be one of the three literals, and a `shipped` phase must name at least one RFC that
+resolves to a file in `rfcs/done/`. **Phase I is `shipped`, by RFCs 049, 050 and 051; Phases
+II–VI are `deferred`.** Two stale claims recurring in `ROADMAP.md` — a hand-maintained RFC range
+RFC 048 had already deleted from seven other documents, and a shipped release still described as
+upcoming — are deleted and replaced with a pointer to the fields that already hold them,
+following RFC 048's own remedy rather than rewriting the numbers. No crate, no public API, no
+new gate: this release is the patch already on `main`.
+
 ## [0.24.1] — 2026-10-31 — Documents that cannot quietly go stale, and tools installed by identity
 
 **Release status:** released (tagged 2026-10-31, distributed 2026-10-31); published to crates.io

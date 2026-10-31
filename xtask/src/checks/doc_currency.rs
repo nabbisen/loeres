@@ -4,9 +4,12 @@
 //! small explicit stale-phrase ledger. It deliberately does not attempt to
 //! infer arbitrary prose semantics; human architecture review remains required.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+
+use super::check_rfcs::mask_code_spans;
+use super::link_audit;
 
 /// RFC 048: the three normative apex specs plus the four current-facing
 /// documents that make release-scope claims of their own — a roadmap, a book
@@ -335,6 +338,7 @@ fn validate_repository() -> Vec<String> {
         implemented_scope.as_deref(),
         &mut errors,
     );
+    check_phase_sequence(&mut errors);
     check_example_guides(&mut errors);
     errors
 }
@@ -1573,6 +1577,233 @@ const EXAMPLE_REGISTRY: &[(&str, ExampleCategory)] = &[
     ("cluster-counted-work", ExampleCategory::WorkedProblem),
 ];
 
+/// RFC 053: the single, non-RFC definition of RFC 047's phases. Not in
+/// `APEX_DOCS` and carries no apex currency block — it makes no release
+/// or scope claim.
+const DESTINATION_SEQUENCE_PATH: &str = "rfcs/destination-sequence.md";
+
+/// The three state literals, checked by equality on the trimmed value,
+/// never `contains` — `unscheduled` contains `scheduled`, which is how
+/// RFC 052's clause 5 shipped a defect past its own gate (architect
+/// review 119 F1), and the literals here are pairwise non-substrings as a
+/// second line of defence.
+const PHASE_STATES: &[&str] = &["deferred", "scheduled", "shipped"];
+
+/// One phase's own held fields, parsed from `rfcs/destination-sequence.md`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct DestinationPhase {
+    numeral: String,
+    state: String,
+    rfcs: Vec<String>,
+}
+
+/// Parse `rfcs/destination-sequence.md`'s `## Phase <roman> — <title>`
+/// sections into their own `**State.**` and `**RFCs.**` fields. Pure over
+/// the file's own text so every branch is exercisable on literals.
+fn parse_destination_phases(source: &str) -> Vec<DestinationPhase> {
+    let mut phases = Vec::new();
+    let mut current: Option<DestinationPhase> = None;
+    for line in source.lines() {
+        if let Some(rest) = line.strip_prefix("## Phase ") {
+            if let Some(phase) = current.take() {
+                phases.push(phase);
+            }
+            let numeral = rest.split_whitespace().next().unwrap_or("").to_owned();
+            current = Some(DestinationPhase {
+                numeral,
+                state: String::new(),
+                rfcs: Vec::new(),
+            });
+            continue;
+        }
+        let Some(phase) = current.as_mut() else {
+            continue;
+        };
+        if let Some(value) = line.strip_prefix("**State.**") {
+            phase.state = value.trim().to_owned();
+        } else if let Some(value) = line.strip_prefix("**RFCs.**") {
+            let value = value.trim();
+            if value != "—" {
+                phase.rfcs = value.split(',').map(|s| s.trim().to_owned()).collect();
+            }
+        }
+    }
+    if let Some(phase) = current.take() {
+        phases.push(phase);
+    }
+    phases
+}
+
+/// Every `Phase <roman-run>` reference on a line already passed through
+/// `mask_code_spans` — a maximal run of `IVXLCDM` characters immediately
+/// after the literal `"Phase "`, non-empty, and followed by a word
+/// boundary, so `Phase IV9` is not read as `Phase IV` and arabic
+/// `Phase 0`-`3` never match at all (RFC 053 S3 clause 1). This is a
+/// roman-numeral *run*, not an enumeration of defined phases: a future
+/// `Phase VII` is matched here and only fails later, for want of a
+/// definition, which is the point.
+fn phase_references(line: &str) -> Vec<&str> {
+    let mut found = Vec::new();
+    for (pos, _) in line.match_indices("Phase ") {
+        let start = pos + "Phase ".len();
+        let tail = &line[start..];
+        let end = tail
+            .find(|c: char| !"IVXLCDM".contains(c))
+            .unwrap_or(tail.len());
+        if end == 0 {
+            continue;
+        }
+        let boundary = tail[end..]
+            .chars()
+            .next()
+            .is_none_or(|c| !c.is_alphanumeric());
+        if boundary {
+            found.push(&tail[..end]);
+        }
+    }
+    found
+}
+
+/// Clause 1: every roman-numeral phase reference, in every file
+/// `collect_md` finds, resolves to a phase `defined` names. One finding
+/// per undefined phase, naming every site it is cited from — not one
+/// finding per occurrence, which is architect review 119 F3's mistake
+/// repeated (a renamed table header produced twelve findings for one
+/// cause). Historical documents are in scope by design: the point is that
+/// `rfcs/done/049-…:188`'s reference resolves, and exempting `done/`
+/// would exempt the citations that motivated this RFC.
+fn phase_reference_findings(
+    files: &[(PathBuf, String)],
+    defined: &BTreeSet<String>,
+) -> Vec<String> {
+    let mut sites: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for (path, source) in files {
+        for (index, line) in source.lines().enumerate() {
+            let masked = mask_code_spans(line);
+            for numeral in phase_references(&masked) {
+                if !defined.contains(numeral) {
+                    sites.entry(numeral.to_owned()).or_default().push(format!(
+                        "{}:{}",
+                        path.display(),
+                        index + 1
+                    ));
+                }
+            }
+        }
+    }
+    sites
+        .into_iter()
+        .map(|(numeral, cited_at)| {
+            format!(
+                "PHASE REFERENCE: `Phase {numeral}` is not defined in \
+                 {DESTINATION_SEQUENCE_PATH}; cited at {}",
+                cited_at.join(", ")
+            )
+        })
+        .collect()
+}
+
+/// Clause 2: every phase's `State.` equals one of `PHASE_STATES`, by
+/// equality on the trimmed value, failing closed on anything else —
+/// `unscheduled` included.
+fn phase_state_findings(phases: &[DestinationPhase]) -> Vec<String> {
+    phases
+        .iter()
+        .filter(|phase| !PHASE_STATES.contains(&phase.state.as_str()))
+        .map(|phase| {
+            format!(
+                "PHASE STATE: {DESTINATION_SEQUENCE_PATH}'s Phase {} state `{}` is not one of \
+                 {PHASE_STATES:?}",
+                phase.numeral, phase.state
+            )
+        })
+        .collect()
+}
+
+/// Clause 3: a `shipped` phase names at least one RFC, and every RFC it
+/// names resolves to a file in `rfcs/done/` — `deferred` and `scheduled`
+/// phases may name none. `done_numbers` is read by `numbered_rfc_file`'s
+/// own filename grammar (RFC 053 asks whether an RFC's *file* is present,
+/// a narrower question than `implemented_scope`'s rendered range), not
+/// re-derived from that range.
+fn phase_rfc_findings(phases: &[DestinationPhase], done_numbers: &BTreeSet<u32>) -> Vec<String> {
+    let mut findings = Vec::new();
+    for phase in phases {
+        if phase.state != "shipped" {
+            continue;
+        }
+        if phase.rfcs.is_empty() {
+            findings.push(format!(
+                "PHASE STATE: {DESTINATION_SEQUENCE_PATH}'s Phase {} is `shipped` but names no \
+                 RFC",
+                phase.numeral
+            ));
+            continue;
+        }
+        for rfc in &phase.rfcs {
+            let resolves = rfc
+                .parse::<u32>()
+                .is_ok_and(|number| done_numbers.contains(&number));
+            if !resolves {
+                findings.push(format!(
+                    "PHASE STATE: {DESTINATION_SEQUENCE_PATH}'s Phase {} is `shipped` but names \
+                     RFC {rfc}, which does not resolve to a file in rfcs/done/",
+                    phase.numeral
+                ));
+            }
+        }
+    }
+    findings
+}
+
+/// The RFC numbers present as files under `rfcs/done/`, by file name
+/// alone. A non-`NNN-slug.md` name is skipped silently here rather than
+/// reported: `implemented_scope` already reports that defect as its own
+/// `RFC SCOPE` finding, and reporting it a second time from here would be
+/// architect review 119 F4's mistake again (the same cause, found twice).
+fn done_rfc_numbers(errors: &mut Vec<String>) -> Option<BTreeSet<u32>> {
+    let entries = match fs::read_dir(Path::new("rfcs").join("done")) {
+        Ok(entries) => entries,
+        Err(error) => {
+            errors.push(format!("PHASE STATE: cannot read rfcs/done: {error}"));
+            return None;
+        }
+    };
+    let mut numbers = BTreeSet::new();
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if let Some(number) = numbered_rfc_file(name) {
+            numbers.insert(number);
+        }
+    }
+    Some(numbers)
+}
+
+fn check_phase_sequence(errors: &mut Vec<String>) {
+    let Some(sequence_source) = read_required(DESTINATION_SEQUENCE_PATH, errors) else {
+        return;
+    };
+    let phases = parse_destination_phases(&sequence_source);
+    let defined: BTreeSet<String> = phases.iter().map(|phase| phase.numeral.clone()).collect();
+
+    let mut paths = Vec::new();
+    link_audit::collect_md(Path::new("."), &mut paths);
+    let files: Vec<(PathBuf, String)> = paths
+        .into_iter()
+        .filter_map(|path| fs::read_to_string(&path).ok().map(|source| (path, source)))
+        .collect();
+    errors.extend(phase_reference_findings(&files, &defined));
+
+    errors.extend(phase_state_findings(&phases));
+
+    if let Some(done_numbers) = done_rfc_numbers(errors) {
+        errors.extend(phase_rfc_findings(&phases, &done_numbers));
+    }
+}
+
 const EXAMPLES_INDEX_PATH: &str = "examples/README.md";
 
 fn check_example_guides(errors: &mut Vec<String>) {
@@ -1860,9 +2091,10 @@ fn table_symmetry_findings(directories: &[String], label: &str, table: &str) -> 
 #[cfg(test)]
 mod tests {
     use super::{
-        BTreeSet, changelog_marks_released, current_before_historical, implemented_scope_at,
-        import_model_findings, index_status_matches, numbered_rfc_file,
+        BTreeSet, DestinationPhase, changelog_marks_released, current_before_historical,
+        implemented_scope_at, import_model_findings, index_status_matches, numbered_rfc_file,
         parse_changelog_release_status, parse_design_freeze, parse_ordinary_apex_currency,
+        phase_reference_findings, phase_rfc_findings, phase_state_findings,
         readme_requirement_findings, release_table_findings, render_scope,
         retired_conditional_prose_in, stale_phrases_in,
     };
@@ -3092,5 +3324,114 @@ mod tests {
         );
         assert_eq!(findings.len(), 1, "{findings:?}");
         assert!(findings[0].contains("no table header"), "{findings:?}");
+    }
+
+    /// RFC 053 S3.4's eight required branches.
+    #[test]
+    fn phase_reference_to_an_undefined_phase_fails() {
+        let defined: BTreeSet<String> = ["I".to_owned()].into_iter().collect();
+        let files = vec![(
+            PathBuf::from("doc.md"),
+            "See Phase II for details.\n".to_owned(),
+        )];
+        let findings = phase_reference_findings(&files, &defined);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("Phase II"), "{findings:?}");
+        assert!(findings[0].contains("doc.md:1"), "{findings:?}");
+    }
+
+    #[test]
+    fn phase_vii_fails_proving_a_roman_run_not_an_enumeration() {
+        let defined: BTreeSet<String> = ["I", "II", "III", "IV", "V", "VI"]
+            .iter()
+            .map(|s| (*s).to_owned())
+            .collect();
+        let files = vec![(
+            PathBuf::from("doc.md"),
+            "A future Phase VII would need defining.\n".to_owned(),
+        )];
+        let findings = phase_reference_findings(&files, &defined);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("Phase VII"), "{findings:?}");
+    }
+
+    #[test]
+    fn an_undefined_reference_inside_backticks_passes_and_unbackticked_fails() {
+        let defined: BTreeSet<String> = ["I".to_owned()].into_iter().collect();
+        let quoted = vec![(
+            PathBuf::from("doc.md"),
+            "Quoting `Phase IX` as text.\n".to_owned(),
+        )];
+        assert!(
+            phase_reference_findings(&quoted, &defined).is_empty(),
+            "a backticked reference must not be checked"
+        );
+
+        let real = vec![(
+            PathBuf::from("doc.md"),
+            "Citing Phase IX for real.\n".to_owned(),
+        )];
+        let findings = phase_reference_findings(&real, &defined);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+    }
+
+    #[test]
+    fn arabic_phase_2_does_not_match() {
+        let defined: BTreeSet<String> = BTreeSet::new();
+        let files = vec![(
+            PathBuf::from("doc.md"),
+            "Phase 2 is the static backend.\n".to_owned(),
+        )];
+        let findings = phase_reference_findings(&files, &defined);
+        assert!(findings.is_empty(), "{findings:?}");
+    }
+
+    #[test]
+    fn a_state_of_in_progress_fails_closed() {
+        let phases = vec![DestinationPhase {
+            numeral: "I".to_owned(),
+            state: "in progress".to_owned(),
+            rfcs: Vec::new(),
+        }];
+        let findings = phase_state_findings(&phases);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+    }
+
+    #[test]
+    fn a_state_of_unscheduled_fails_the_substring_trap() {
+        // The literal a `contains("scheduled")` implementation would pass.
+        let phases = vec![DestinationPhase {
+            numeral: "II".to_owned(),
+            state: "unscheduled".to_owned(),
+            rfcs: Vec::new(),
+        }];
+        let findings = phase_state_findings(&phases);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("unscheduled"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_shipped_phase_naming_an_accepted_not_done_rfc_fails() {
+        let phases = vec![DestinationPhase {
+            numeral: "I".to_owned(),
+            state: "shipped".to_owned(),
+            rfcs: vec!["047".to_owned()],
+        }];
+        let done_numbers: BTreeSet<u32> = [49, 50, 51].into_iter().collect();
+        let findings = phase_rfc_findings(&phases, &done_numbers);
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("047"), "{findings:?}");
+    }
+
+    #[test]
+    fn a_deferred_phase_naming_no_rfc_passes() {
+        let phases = vec![DestinationPhase {
+            numeral: "II".to_owned(),
+            state: "deferred".to_owned(),
+            rfcs: Vec::new(),
+        }];
+        let done_numbers: BTreeSet<u32> = BTreeSet::new();
+        let findings = phase_rfc_findings(&phases, &done_numbers);
+        assert!(findings.is_empty(), "{findings:?}");
     }
 }
