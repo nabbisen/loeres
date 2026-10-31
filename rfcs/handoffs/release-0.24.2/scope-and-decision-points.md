@@ -1,16 +1,19 @@
-# Release 0.25.0 — scope and decision points
+# Release 0.24.2 — scope and decision points
 
 **Author tier.** `architect`. **Date:** 2026-10-31.
-**Status.** Planning. No slice has landed; the workspace is at `0.24.2`, a placeholder.
-**Authorized by.** The owner authorized this file on 2026-10-31. The scope in §1, each RFC in it,
-and the release itself are each authorized separately.
+**Status.** Planning. No slice has landed; the workspace is at `0.24.2`, which §2 establishes is
+the position this scope carries rather than a placeholder awaiting one.
+**Authorized by.** The owner authorized this file on 2026-10-31 and answered §3 D1 the same day:
+**RFC 053 alone** (§1.1). Each RFC's design freeze, and the release itself, are authorized
+separately. §3 records what was asked and what the answer costs.
 
 **Whose file this is: the owner's.** It records what is in scope, what is decided, and at what
 cost. The cut procedure, when it comes, is its own file (§5). The dev team's instructions are the
 per-RFC handoffs, never this file; §4 states the boundary.
 
-**This directory's name is a prediction, and the release convention forbids relying on one.**
-See §2 — as scoped in §1.1 alone, the release is `0.24.2`.
+**This directory was first named `release-0.25.0`, which was a prediction the release convention
+forbids relying on.** D1's answer fixes the scope at §1.1 alone, so the position derives to
+`0.24.2` and the directory was renamed. See §2.
 
 ## 1. Scope
 
@@ -50,8 +53,10 @@ See §2 — as scoped in §1.1 alone, the release is `0.24.2`.
 **Shape — three slices, no new gate.**
 
 - **S1 — one home.** `rfcs/destination-sequence.md`: Phases I–VI, each with its title, the
-  properties it serves, a state of `unscheduled` / `scheduled` / `shipped`, and the RFCs that
-  implemented it. Order and cost are **explicitly advisory** and revisable; the file is not an
+  properties it serves, a state of `deferred` / `scheduled` / `shipped`, and the RFCs that
+  implemented it. The literals are pairwise non-substrings and parsed by equality: `unscheduled`,
+  the obvious word, **contains** `scheduled`, which is the shape of the defect architect review
+  119 F1 found in RFC 052's clause 5. Order and cost are **explicitly advisory** and revisable; the file is not an
   RFC, so RFC 000's amendment discipline does not reach it, which is the whole point of §5 item
   1's argument honoured in a tracked place. One sentence distinguishes the two phase vocabularies
   (defect 6). The RFC tree already holds two non-RFC files at that level — `rfcs/README.md` and
@@ -74,7 +79,7 @@ and it went stale inside one release with twenty gates green.
 
 **Cost.** One dev-team slice — RFC, implementation, review. The state field is then maintained,
 and it joins the cut's couplings (§5). **What it does not do:** it does not schedule anything.
-Phase I is `shipped`; II–VI start `unscheduled`, and a state change remains my recommendation and
+Phase I is `shipped`; II–VI start `deferred`, and a state change remains my recommendation and
 the owner's authorization.
 
 ### 1.2 Candidate A — a release's RFC manifest
@@ -111,26 +116,30 @@ propose changing what the scope field means until it does.
   being external surface with security weight.
 - **T5 (LP).**
 
-## 2. The position is derived from the slices, and this directory's name is a prediction
+## 2. The position is derived from the slices, and was derived, not predicted
 
 `docs/src/development.md` §"A slice that moves the release's position bumps the version before the
 cut" states it: what `main` carries between releases is **a placeholder, not a prediction**, and
 its table derives the position — *only measures or documents* → the patch already on `main`;
 *adds functionality a caller can call* → a minor, bumped by the first such slice.
 
-**As scoped in §1.1 alone — documents plus one assertion in an existing gate — nothing adds
-callable functionality, so the release is `0.24.2`,** the placeholder already on `main`, and this
-directory should be `rfcs/handoffs/release-0.24.2/`. It becomes `0.25.0` only if the owner adds
-candidate B (§1.3) or another additive slice.
+**D1's answer is §1.1 alone — documents plus one assertion in an existing gate. Nothing adds
+callable functionality, so the release is `0.24.2`,** the version already on `main`, and no slice
+performs a bump: the convention's first row applies, *"nobody; the placeholder was right"*. Every
+slice runs `cargo xtask release-gate --intended-tag 0.24.2`.
 
-I proposed the `0.25.0` name before deriving the position. That is the same error as review 121 §5
-item 1, where I named `0.25.0` for what the convention made `0.24.1`, from the size of the
-sequence rather than from the rule. **This directory is renamed the moment §3 D1 is answered**,
-and no slice runs `release-gate --intended-tag` against a version this file has guessed.
+**It would become `0.25.0` only on an additive slice** — candidate B (§1.3) is the one in view —
+and the first such slice would perform the bump, with the four gated places `docs/src/development.md`
+enumerates. Nothing in the authorized scope reaches that row.
+
+I first named this directory `release-0.25.0`, before deriving the position: the same error as
+review 121 §5 item 1, where I named `0.25.0` for what the convention made `0.24.1`, from the size
+of the sequence rather than from the rule. Caught here before any slice ran a gate against it.
 
 ## 3. Decision points — what the owner is asked, and when
 
-**D1 — the scope. Now.** Three forms, costs in §1:
+**D1 — the scope. Answered 2026-10-31: the first row, RFC 053 alone.** The three forms put, and
+their costs:
 
 | choice | cost | what it buys |
 | --- | --- | --- |
@@ -138,7 +147,11 @@ and no slice runs `release-gate --intended-tag` against a version this file has 
 | §1.1 + candidate A | a second slice, and a new per-release field at every cut | one more hand-held column becomes checked; release is `0.24.2` |
 | §1.1 + candidate B | much the largest; design, harness, and an advisory/deterministic split | answers the fourth visitor question; **forces the minor**, release is `0.25.0` |
 
-**D2 — Phase II's audience question. Not blocking, and not mine.** Nothing in §1 depends on it;
+**What the chosen row gives up:** the `Carries RFCs` column stays bounded and ordered but not
+verified (§1.2), and the fourth visitor question stays unanswered (§1.3). Both are recorded in §6
+rather than closed.
+
+**D2 — Phase II's audience question. Put, not answered, and not blocking.** Nothing in §1 depends on it;
 RFC 047 property **D** does, and `rfcs/done/049-…:226` records it undecided. **Cost of deferring:**
 Phase III — the front door's contract — stays unschedulable, because review 106 §5 puts property
 **D** behind the audience statement. **Cost of answering now:** it commits a published scope
@@ -170,7 +183,8 @@ at the cut, that change joins the single post-release commit that already has to
 
 ## 6. Open after this release
 
-- **RFC 047 Phases II–VI stay unscheduled** — visibly, in S1's file, rather than in my memory.
+- **RFC 047 Phases II–VI stay deferred** — visibly, in S1's file, rather than in my memory.
+  RFC 053 is `rfcs/proposed/053-a-sequence-the-repository-holds.md`, awaiting design freeze.
 - The permanent-gap question (§1.4).
 - T4 (unless D1 takes candidate B), T5, and T6's three remaining items.
 - Carried unchanged from `rfcs/handoffs/release-0.24.0/scope-and-decision-points.md` §6: the
