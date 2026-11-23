@@ -21,8 +21,9 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
-use super::util::{cargo, command_stdout};
+use super::util::{cargo, collect_ext, command_stdout};
 
 const DEVICE_TARGET: &str = "thumbv7em-none-eabihf";
 const REFERENCE_MANIFEST: &str = "device-size-reference/Cargo.toml";
@@ -165,24 +166,42 @@ fn relative_delta(measured: u64, baseline: u64) -> f64 {
 }
 
 /// The most recently built `device_size_reference-*.o` under the fixture's own
-/// `target/`, since the hash in the file name changes between builds.
+/// `target/<DEVICE_TARGET>/release/` subtree. **Searched for, not known**: cargo
+/// 1.100 moved the object from `release/deps/` to a per-package `release/build/.../out/`
+/// directory (architect review 127 E1), so this recurses the whole `release/` subtree
+/// rather than reading one fixed directory — it survives the next layout change the
+/// same way it survives this one, with no toolchain-version check.
 fn find_reference_object() -> Option<PathBuf> {
     let dir = Path::new("device-size-reference")
         .join("target")
         .join(DEVICE_TARGET)
-        .join("release")
-        .join("deps");
-    let entries = fs::read_dir(dir).ok()?;
-    entries
-        .flatten()
-        .map(|entry| entry.path())
-        .filter(|path| path.extension().and_then(|e| e.to_str()) == Some("o"))
-        .filter(|path| {
+        .join("release");
+    let mut object_paths = Vec::new();
+    collect_ext(&dir, "o", &mut object_paths);
+    let candidates = object_paths.into_iter().filter_map(|path| {
+        let modified = fs::metadata(&path).and_then(|m| m.modified()).ok()?;
+        Some((path, modified))
+    });
+    newest_object_named(candidates, REFERENCE_CRATE)
+}
+
+/// Pure over a listing of `(path, modified)` pairs — the filesystem walk and the
+/// `fs::metadata` read happen outside this function, which only compares what it is
+/// given. Kept pure so the two-layout search is testable on literals rather than a
+/// fixture that fakes a cargo layout (RFC 040 object-path correction).
+fn newest_object_named(
+    candidates: impl IntoIterator<Item = (PathBuf, SystemTime)>,
+    crate_name: &str,
+) -> Option<PathBuf> {
+    candidates
+        .into_iter()
+        .filter(|(path, _)| {
             path.file_name()
                 .and_then(|n| n.to_str())
-                .is_some_and(|n| n.starts_with(REFERENCE_CRATE))
+                .is_some_and(|n| n.starts_with(crate_name))
         })
-        .max_by_key(|path| fs::metadata(path).and_then(|m| m.modified()).ok())
+        .max_by_key(|(_, modified)| *modified)
+        .map(|(path, _)| path)
 }
 
 /// One `(name, size)` pair per real section line in `size -A` output. A "real"
@@ -228,7 +247,60 @@ fn rlib_metadata_and_other_bytes(size_a_output: &str) -> (u64, u64) {
 
 #[cfg(test)]
 mod tests {
-    use super::{relative_delta, rlib_metadata_and_other_bytes, sum_prefixed_sections};
+    use super::{
+        newest_object_named, relative_delta, rlib_metadata_and_other_bytes, sum_prefixed_sections,
+    };
+    use std::path::PathBuf;
+    use std::time::{Duration, SystemTime};
+
+    #[test]
+    fn newest_object_named_prefers_the_newer_candidate_regardless_of_layout() {
+        let deps_layout = (
+            PathBuf::from(
+                "device-size-reference/target/thumbv7em-none-eabihf/release/deps/device_size_reference-aaa.o",
+            ),
+            SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        );
+        let build_layout = (
+            PathBuf::from(
+                "device-size-reference/target/thumbv7em-none-eabihf/release/build/device-size-reference/bbb/out/device_size_reference-bbb.o",
+            ),
+            SystemTime::UNIX_EPOCH + Duration::from_secs(2),
+        );
+
+        // build/ layout newer: it wins, proving deps/ is not privileged.
+        assert_eq!(
+            newest_object_named(
+                [deps_layout.clone(), build_layout.clone()],
+                "device_size_reference"
+            ),
+            Some(build_layout.0.clone())
+        );
+
+        // deps/ layout newer: it wins, proving build/ is not privileged either.
+        let older_build = (
+            build_layout.0.clone(),
+            SystemTime::UNIX_EPOCH + Duration::from_secs(0),
+        );
+        assert_eq!(
+            newest_object_named([deps_layout.clone(), older_build], "device_size_reference"),
+            Some(deps_layout.0)
+        );
+    }
+
+    #[test]
+    fn newest_object_named_excludes_an_unrelated_crates_object() {
+        let unrelated = (
+            PathBuf::from(
+                "device-size-reference/target/thumbv7em-none-eabihf/release/deps/some_other_crate-aaa.o",
+            ),
+            SystemTime::UNIX_EPOCH + Duration::from_secs(1),
+        );
+        assert_eq!(
+            newest_object_named([unrelated], "device_size_reference"),
+            None
+        );
+    }
 
     #[test]
     fn sums_only_text_and_rodata_prefixed_sections() {
