@@ -2,9 +2,19 @@
 //!
 //! RFC 040 adds the measurement RFC 010 §3.7 asked for and nobody had built: `.text`
 //! and `.rodata` of one concrete device-kernel instantiation, measured on the
-//! instantiation's own compiled object (`cargo rustc -- --emit=obj`, then `size -A`),
+//! instantiation's own compiled object (`cargo rustc -- --emit=obj` with
+//! `CARGO_INCREMENTAL=0` forced regardless of the ambient shell, then `size -A`),
 //! summed by section-name prefix because the target emits one section per function
 //! (`.text.<symbol>`, so an exact `.text` match reads zero — RFC 040 §2.3).
+//!
+//! **Incremental compilation is forced off for the reference build, not left to the
+//! caller's environment** (architect review 128 F1): it changes codegen-unit
+//! partitioning and therefore inlining, which moved this exact measurement by 11.3% —
+//! past the enforced bound — with no change to the measured code path. Nothing in the
+//! repository otherwise pins `CARGO_INCREMENTAL`, so a developer with it set globally
+//! would otherwise get a false failure whose printed remedy ("re-pin the baseline") is
+//! actively wrong: re-pinning to an incremental number would then fail for everyone
+//! else.
 //!
 //! **This figure is enforced**, not by an absolute ceiling but by a bounded delta from
 //! a pinned baseline (RFC 040 §2.3): a move past the declared fraction fails. On a
@@ -23,7 +33,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-use super::util::{cargo, collect_ext, command_stdout};
+use super::util::{cargo, cargo_with_env, collect_ext, command_stdout};
 
 const DEVICE_TARGET: &str = "thumbv7em-none-eabihf";
 const REFERENCE_MANIFEST: &str = "device-size-reference/Cargo.toml";
@@ -112,17 +122,20 @@ fn report_rlib_composition(path: &str) -> bool {
 /// unavailable tool, build or object **fails** — RFC 010 §3.7: an unavailable
 /// required measurement must not pass silently.
 fn report_reference_instantiation() -> bool {
-    let build_ok = cargo(&[
-        "rustc",
-        "--locked",
-        "--manifest-path",
-        REFERENCE_MANIFEST,
-        "--release",
-        "--target",
-        DEVICE_TARGET,
-        "--",
-        "--emit=obj",
-    ]);
+    let build_ok = cargo_with_env(
+        &[
+            "rustc".to_owned(),
+            "--locked".to_owned(),
+            "--manifest-path".to_owned(),
+            REFERENCE_MANIFEST.to_owned(),
+            "--release".to_owned(),
+            "--target".to_owned(),
+            DEVICE_TARGET.to_owned(),
+            "--".to_owned(),
+            "--emit=obj".to_owned(),
+        ],
+        &[("CARGO_INCREMENTAL", "0".to_owned())],
+    );
     if !build_ok {
         eprintln!("  unavailable: device-size-reference did not build");
         return false;
@@ -139,8 +152,8 @@ fn report_reference_instantiation() -> bool {
     let delta = relative_delta(total, REFERENCE_BASELINE_BYTES);
     let within = delta <= REFERENCE_DELTA_FRACTION;
     eprintln!(
-        "  enforced: device-size-reference (N={REFERENCE_N}, M={REFERENCE_M}, release, panic=abort): \
-         .text+.rodata = {total} bytes (pinned {REFERENCE_BASELINE_BYTES}, delta {:.1}%, bound {:.0}%; tool: size -A)",
+        "  enforced: device-size-reference (N={REFERENCE_N}, M={REFERENCE_M}, release, panic=abort, \
+         incremental=0): .text+.rodata = {total} bytes (pinned {REFERENCE_BASELINE_BYTES}, delta {:.1}%, bound {:.0}%; tool: size -A)",
         delta * 100.0,
         REFERENCE_DELTA_FRACTION * 100.0
     );
