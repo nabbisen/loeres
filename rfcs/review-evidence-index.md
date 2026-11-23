@@ -209,6 +209,7 @@ separate, reviewed pass.
 | `125` | 2026-10-31 | phase ii the audience question reviewed | `2ac2aac48649207582460a3b24bec572874bdac6a54d8aedad4cede719373e1a` | `architect` |✓ |
 | `126` | 2026-11-01 | rfc055 architect review | `fcec5b63197e2be341be157c8efa3c867d8b665336c0db538cf300cdc4c884a9` | `architect` |✓ |
 | `127` | 2026-11-23 | rfc055 f1 and a toolchain break | `17341451df3ee9175b9d3104192933184c1c0c3225e07476fb71e15b97fdf5f0` | `architect` |✓ |
+| `128` | 2026-11-23 | size budget object path architect review | `fdad37d5bf2e4b7afb44d87bd5a44203d26e65580908194beeae1e836eab2fb4` | `architect` |✓ |
 | `—` | — | loeres rfc009 architect design review v1 | `d80d14533252eae46b7198abcaeceeb1e9dec1389cb0becc61118b03f027bedc` | `unrecorded` |  |
 | `—` | — | loeres rfc009 impl decision and patch review v1 | `80908d7680c8d5ce14be6553b7c25e0e7ab51f96c5817a54591ef908073f16ca` | `unrecorded` |  |
 | `—` | — | loeres rfc010 xtask verification governance review v0.1 | `d017955a2f268118a1d2457c89178d1400f6061ba15d06f52c95f2ac081cdc20` | `unrecorded` |  |
