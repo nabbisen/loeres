@@ -1,6 +1,6 @@
 # RFC 056 - A Release Page That States The Anchor
 
-**Status.** Proposed
+**Status.** Accepted (design frozen 2026-11-23)
 
 **Author tier.** `architect`.
 
@@ -18,6 +18,38 @@ compatibility and safety analysis"*. That analysis is **§3**.
 **Target release: `0.25.1`.** It changes no public surface and forces no position; it lands
 **after** `0.25.0` because release machinery must not change in the release that uses it, and it
 first runs at the tag after this one.
+
+## 0.1 Amendment 1 (2026-11-23)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, and recorded in the implementation
+handoff §0. The Status line carries only the design-freeze date while this RFC is in `accepted/`,
+because `doc-currency` requires that form there; **this amendment must be named in the Status line
+when the file moves to `rfcs/done/`**.
+
+### S1's status-line assertion: **three** permitted values, not two, and the parser already exists
+
+S1 says the renderer *"asserts that the line it drops is exactly one of the two known literals,
+failing if a third phrasing appears"*. Measured instead:
+`xtask/src/checks/doc_currency.rs:232` holds
+
+```text
+const CHANGELOG_STATUS_VALUES: &[&str] = &["withdrawn candidate", "unreleased", "released"];
+```
+
+— **three** values, each also accepted with a trailing ` (` detail form. So the count in S1 is
+mine and it is wrong, and the phrasing that must fail closed is a **fourth**, not a third.
+
+**More to the point, the function already exists and must be reused, not rewritten.**
+`parse_changelog_release_status` (`doc_currency.rs:240-271`) extracts the value under a version's
+heading, validates it against that constant, and fails closed on anything else — and it is already
+pure over the supplied source so that every case is testable without a file on disk. S1's
+fail-closed requirement is therefore **already implemented once**; the renderer calls it.
+
+Reimplementing it would put two parsers on one record, which is the defect RFC 051 removed by
+unifying `CRATE_README_PATHS` and RFC 053 avoided by sharing `collect_md` and `mask_code_spans`.
+
+**Nothing else in S1 changes:** the line is still dropped, for the reason §4 S1 gives, and the
+drop still fails closed — through the existing function rather than a new one.
 
 ## 1. Summary
 
