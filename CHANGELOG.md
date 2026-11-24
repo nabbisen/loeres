@@ -65,9 +65,8 @@ logistics, scheduling platforms, energy-grid analysis, and others), the *"real-t
 describing capabilities the tree does not have (FFI adapters to mature numerical engines, large
 sparse/dense matrix support, non-deterministic-enough solver families, multi-tenant isolation
 policies, and WCET-suitable timing behavior), and the *"high-throughput"* claim from two crate
-purpose lines and a published rustdoc line. A corrected domain list is not an acceptable
-replacement for a deleted one — the defect is naming any domain at all, not which domains are
-named.
+purpose lines. A corrected domain list is not an acceptable replacement for a deleted one — the
+defect is naming any domain at all, not which domains are named.
 
 **What replaced them:** `docs/specs/loeres-requirements-v1.md` §2 now opens with a single
 statement of who this is for — engineers writing Rust who already have a model — the one problem
@@ -82,13 +81,24 @@ the project's own self-description.
 says less than it did, not more: no application domain is named as one Loeres is fit for, and
 `TERMS_OF_USE.md` continues to state only what the project does and does not establish.
 
+**What is left, and why it is not a residue.** `high-throughput`/`high throughput` still appears
+at `loeres-requirements-v1.md:730` (a requirement about the *caller's* paths, not this project's),
+`:1287` (a traceability row naming a requirement theme), `loeres-roadmap-milestones-v1.md:658` (a
+stated objective, not an achievement claim), and `loeres-external-design-v1.md:723`, `:829`,
+`:1370` (a design permission, a *Purpose* column, and rationale for why isolation matters to such
+workloads — none of them a claim about what this project has built). Two more are disclaimers that
+must survive: `loeres-roadmap-milestones-v1.md:730` and `docs/src/threat-model.md:82`, both stating
+that a control *does not* establish high-throughput. A reader who greps the word themselves will
+find exactly these six, deliberately kept.
+
 - Adds `doc-currency`'s `SUITABILITY CLAIM` assertion: the safety-and-compliance vocabulary
   (`safety-relevant`, `safety-critical`, `medical iot`, `medical device`, `autonomous system`, and
   their variants) may not appear, case-insensitively, in any claim-making document — `README.md`,
-  the five crate `README.md`s, `docs/src/introduction.md`, `loeres-requirements-v1.md`, or
-  `loeres-external-design-v1.md`. `TERMS_OF_USE.md` and `docs/src/threat-model.md` are excluded by
-  rule, not convenience: a document whose purpose is to name a standard and disclaim it must be
-  able to name it.
+  the five crate `README.md`s, `docs/src/introduction.md`, `loeres-requirements-v1.md`,
+  `loeres-external-design-v1.md`, or `loeres-roadmap-milestones-v1.md`. `TERMS_OF_USE.md`,
+  `docs/src/threat-model.md` and `docs/specs/loeres-reconciliation-traceability-v020.md` are
+  excluded by rule, not convenience: a document whose purpose is to name a standard and disclaim
+  it must be able to name it.
 
 ## [0.24.2] — 2026-10-31 — A sequence the repository holds, and a roadmap that cannot call a shipped release upcoming
 

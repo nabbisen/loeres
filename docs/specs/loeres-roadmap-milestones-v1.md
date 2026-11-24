@@ -50,7 +50,7 @@ Loeres is intentionally split across two execution worlds:
 
 1. **Core Layer:** mathematical abstraction and shared public contracts.
 2. **Device Layer:** fixed-size, real-time, `no_std`, allocation-free execution.
-3. **Cluster Layer:** dynamic, cloud-native, high-throughput execution.
+3. **Cluster Layer:** dynamic, server-side execution.
 
 The roadmap therefore follows the same topological order:
 

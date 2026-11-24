@@ -88,13 +88,16 @@ const SUITABILITY_CLAIM_TERMS: &[&str] = &[
 /// (the reason RFC 051 §8 unified `CRATE_README_PATHS` in the first place),
 /// so this is a function rather than a second literal `const` array.
 ///
-/// `TERMS_OF_USE.md` and `docs/src/threat-model.md` are deliberately absent.
-/// **This is a rule, not a convenience exemption**: a document whose purpose
-/// is to name a standard and disclaim it must be able to name it —
+/// `TERMS_OF_USE.md`, `docs/src/threat-model.md` and
+/// `docs/specs/loeres-reconciliation-traceability-v020.md` are deliberately
+/// absent. **This is a rule, not a convenience exemption**: a document whose
+/// purpose is to name a standard and disclaim it must be able to name it —
 /// `TERMS_OF_USE.md` names IEC 61508, ISO 26262, IEC 62304, EN 50128 and
 /// DO-178C in order to say the project has been assessed against none of
-/// them. A third exclusion should not be added here for convenience; it
-/// should be argued the way this one is.
+/// them, and the reconciliation traceability document's `OQ-012` row records
+/// that a safety-critical disclaimer is *missing*, which is the same naming-
+/// to-disclaim shape. A fourth exclusion should not be added here for
+/// convenience; it should be argued the way these three are.
 fn suitability_claim_docs() -> impl Iterator<Item = &'static str> {
     std::iter::once(README_PATH)
         .chain(CRATE_README_PATHS.iter().copied())
@@ -102,6 +105,7 @@ fn suitability_claim_docs() -> impl Iterator<Item = &'static str> {
             "docs/src/introduction.md",
             "docs/specs/loeres-requirements-v1.md",
             "docs/specs/loeres-external-design-v1.md",
+            "docs/specs/loeres-roadmap-milestones-v1.md",
         ])
 }
 
@@ -2694,6 +2698,17 @@ mod tests {
         let mut docs = suitability_claim_docs();
         assert!(!docs.any(|path| path == "TERMS_OF_USE.md"));
         assert!(!suitability_claim_docs().any(|path| path == "docs/src/threat-model.md"));
+    }
+
+    #[test]
+    fn suitability_claim_scan_covers_the_third_apex_spec() {
+        // Architect review 131 F1: the roadmap/milestones spec was never
+        // surveyed when S4's document set was drawn up, so a claim there went
+        // unseen until this slice.
+        assert!(
+            suitability_claim_docs()
+                .any(|path| path == "docs/specs/loeres-roadmap-milestones-v1.md")
+        );
     }
 
     #[test]

@@ -1222,7 +1222,7 @@ The requirements document is satisfied when:
 | AC-011 | Device solver design has explicit iteration bounds. |
 | AC-012 | Device solver design treats no-panic tooling as a release gate, not as proof. |
 | AC-013 | Floating-point determinism claims are tied to target/profile documentation. |
-| AC-014 | Server solver design supports dynamic allocation and high-throughput integration without contaminating edge crates. |
+| AC-014 | Server solver design supports dynamic allocation and server-side integration without contaminating edge crates. |
 | AC-015 | FFI is unavailable to core/static/device crates. |
 | AC-016 | CI includes no-std/no-alloc checks for edge-facing crates. |
 | AC-017 | v1.0 publication is blocked until explicit project-owner confirmation. |
