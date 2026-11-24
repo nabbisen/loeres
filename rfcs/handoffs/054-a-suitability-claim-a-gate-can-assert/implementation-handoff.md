@@ -7,9 +7,12 @@ report the disagreement rather than choosing. Findings are architect review 125.
 **Release.** `0.25.0`. **This slice performs no version bump** — it adds no callable surface. The
 bump belongs to the slice that lands the linear-objective step
 (`rfcs/handoffs/release-0.25.0/scope-and-decision-points.md` §1.1), and until that lands the
-workspace stays at `0.24.3`, so every slice here runs
-`cargo xtask release-gate --intended-tag 0.24.3`. **If the step slice lands first, use its
-version instead and say so in your request.**
+workspace stays at `0.24.3`.
+
+**Corrected 2026-11-24, before dispatch:** the bump has since been performed by **RFC 055's**
+slice, not by the linear-objective step slice this header anticipated — the step slice is still
+unimplemented. The workspace is at `0.25.0`, so **every slice here runs
+`cargo xtask release-gate --intended-tag 0.25.0`**. Do not perform a bump; it is done.
 
 **Order: S1, then S2, then S3, then S4.** S4 asserts what S1-S3 establish; written first it would
 fail on a tree that is still correct.
@@ -295,7 +298,9 @@ the RFC meant to keep.
 
 1. `cargo xtask doc-currency` → PASS.
 2. `cargo xtask check` → **PASS, 20 gates**, on the gate's own exit status, never through a pipe.
-3. `cargo xtask release-gate --intended-tag 0.24.3` → PASS, whole stream to a file (see the header
+   Architect review 127 E1's `size-budget` breakage is fixed as of `fa3e0c3`, so twenty is the
+   expected count now; if it is nineteen, that is yours.
+3. `cargo xtask release-gate --intended-tag 0.25.0` → PASS, whole stream to a file (see the header
    if the step slice has landed first).
 4. `cargo xtask published-metadata` → PASS. §1.6 edits a published crate's rustdoc, and this gate
    is what holds the packaged READMEs and sources.
