@@ -6,11 +6,11 @@ the warranty disclaimer and limitation of liability in the
 [Apache License 2.0](LICENSE), sections 7 and 8. It is engineering guidance, not
 legal advice.
 
-Loeres describes itself as suitable for edge and control-adjacent domains,
-including robotics, model-predictive control, industrial controllers, and
-medical IoT. Those domains carry qualification obligations. This document
-records precisely what the project does and does not establish, so that an
-integrator can tell the difference.
+An integrator evaluating Loeres may be considering edge or control-adjacent
+work — robotics, model-predictive control, industrial controllers, medical IoT.
+Those domains carry qualification obligations, and **Loeres makes no claim of
+fitness for any of them.** This document records precisely what the project does
+and does not establish, so that an integrator can tell the difference.
 
 ## No safety certification
 

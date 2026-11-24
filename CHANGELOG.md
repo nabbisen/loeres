@@ -46,6 +46,50 @@ three sat outside the narrower scan's edge-crate set.
   naming `DeviceSolveReport` and `DeviceWorkspaceDiagnostic` directly.
 - `check-public-api` gains the `EMPTY PUBLIC MODULE` assertion described above.
 
+### RFC 054 — a suitability claim a gate can assert
+
+**Documentation only. Semver: none.** No crate source, no public API, no new gate, no new
+command, and no behavior changes.
+
+Three tracked documents disagreed about who Loeres is for, and the most permissive of them —
+`docs/specs/loeres-requirements-v1.md` and the book's first chapter — named domains this project
+has never gated: *"embedded, control-loop, and safety-relevant environments"*, and *"robotics,
+model predictive control, industrial controllers, autonomous systems, medical IoT, smart-grid
+devices"*. Elsewhere, the threat model already recorded that no safety-critical disclaimer existed
+and that the project is not certified for safety-critical control.
+
+**What was deleted, and not replaced with a corrected list:** the domain and sector lists naming
+specific application areas (robotics, medical IoT, autonomous systems, smart-grid devices,
+logistics, scheduling platforms, energy-grid analysis, and others), the *"real-time-safe"* and
+*"safety-relevant"* adjectives describing the device path, four representative-requirement rows
+describing capabilities the tree does not have (FFI adapters to mature numerical engines, large
+sparse/dense matrix support, non-deterministic-enough solver families, multi-tenant isolation
+policies, and WCET-suitable timing behavior), and the *"high-throughput"* claim from two crate
+purpose lines and a published rustdoc line. A corrected domain list is not an acceptable
+replacement for a deleted one — the defect is naming any domain at all, not which domains are
+named.
+
+**What replaced them:** `docs/specs/loeres-requirements-v1.md` §2 now opens with a single
+statement of who this is for — engineers writing Rust who already have a model — the one problem
+class both paths solve (quoted from RFC 047 §2.2), and the device path's engineering properties
+exactly as they are gate-asserted in `cargo xtask check`, with an explicit "what is not claimed"
+paragraph pointing at `TERMS_OF_USE.md` and the threat model rather than restating them.
+`docs/src/introduction.md` carries the same gate-asserted property list. `TERMS_OF_USE.md`'s
+opening now names the domains an *integrator* may be considering, rather than reporting them as
+the project's own self-description.
+
+**This document does not say the project is now suitable for any of the deleted domains.** It
+says less than it did, not more: no application domain is named as one Loeres is fit for, and
+`TERMS_OF_USE.md` continues to state only what the project does and does not establish.
+
+- Adds `doc-currency`'s `SUITABILITY CLAIM` assertion: the safety-and-compliance vocabulary
+  (`safety-relevant`, `safety-critical`, `medical iot`, `medical device`, `autonomous system`, and
+  their variants) may not appear, case-insensitively, in any claim-making document — `README.md`,
+  the five crate `README.md`s, `docs/src/introduction.md`, `loeres-requirements-v1.md`, or
+  `loeres-external-design-v1.md`. `TERMS_OF_USE.md` and `docs/src/threat-model.md` are excluded by
+  rule, not convenience: a document whose purpose is to name a standard and disclaim it must be
+  able to name it.
+
 ## [0.24.2] — 2026-10-31 — A sequence the repository holds, and a roadmap that cannot call a shipped release upcoming
 
 **Release status:** released (tagged 2026-10-31, distributed 2026-10-31); published to crates.io

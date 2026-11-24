@@ -65,6 +65,46 @@ const STALE_PHRASES: &[&str] = &[
     "dependency vulnerability and license-policy scanning are not enforced",
 ];
 
+/// RFC 054 S4: the safety-and-compliance vocabulary only, because these terms
+/// cannot be anything but a suitability claim — a stated membership rule,
+/// written beside the statement it protects, not an incident log (RFC 047
+/// §1.1's criticism does not apply: extending this list means editing the
+/// same place that defines the scope). Deliberately **not** included:
+/// domain words like `robotics` or `energy grid`, which would also catch
+/// legitimate prose (RFC 054 §6), and `WCET`, a legitimate engineering term
+/// distinct from the unheld claim RFC 054 S2 deletes about it.
+const SUITABILITY_CLAIM_TERMS: &[&str] = &[
+    "safety-relevant",
+    "safety relevant",
+    "safety-critical",
+    "safety critical",
+    "medical iot",
+    "medical device",
+    "autonomous system",
+];
+
+/// RFC 054 S4's claim-making documents. Built from `CRATE_README_PATHS`
+/// rather than a second, independently-ordered copy of the same five paths
+/// (the reason RFC 051 §8 unified `CRATE_README_PATHS` in the first place),
+/// so this is a function rather than a second literal `const` array.
+///
+/// `TERMS_OF_USE.md` and `docs/src/threat-model.md` are deliberately absent.
+/// **This is a rule, not a convenience exemption**: a document whose purpose
+/// is to name a standard and disclaim it must be able to name it —
+/// `TERMS_OF_USE.md` names IEC 61508, ISO 26262, IEC 62304, EN 50128 and
+/// DO-178C in order to say the project has been assessed against none of
+/// them. A third exclusion should not be added here for convenience; it
+/// should be argued the way this one is.
+fn suitability_claim_docs() -> impl Iterator<Item = &'static str> {
+    std::iter::once(README_PATH)
+        .chain(CRATE_README_PATHS.iter().copied())
+        .chain([
+            "docs/src/introduction.md",
+            "docs/specs/loeres-requirements-v1.md",
+            "docs/specs/loeres-external-design-v1.md",
+        ])
+}
+
 /// Documents that must no longer carry present-tense claims that the RFC 021
 /// conditional apparatus is active, pending, or unresolved, now that `0.20.2`
 /// has released (RFC 024 Amendment 1; review 036 blocker B1). Historical
@@ -329,6 +369,7 @@ fn validate_repository() -> Vec<String> {
     check_book_navigation(&mut errors);
     check_release_local_paths(&mut errors);
     check_stale_ledger(&mut errors);
+    check_suitability_claims(&mut errors);
     check_conditional_current_prose(&mut errors);
     check_readme_landing(&mut errors);
     check_readme_requirements(last_reconciled.as_deref(), &mut errors);
@@ -778,6 +819,45 @@ fn stale_phrases_in(source: &str, label: &str, errors: &mut Vec<String>) {
             errors.push(format!("STALE CURRENT PROSE: {label} contains `{phrase}`"));
         }
     }
+}
+
+/// RFC 054 S4: every `SUITABILITY_CLAIM_DOCS` entry, scanned for
+/// `SUITABILITY_CLAIM_TERMS`. One finding per occurrence, naming the
+/// document, the line, and the term — unlike `stale_phrases_in`'s one
+/// finding per phrase per whole document, because each occurrence here is a
+/// separate site a writer needs to see and fix (backtick it or delete it),
+/// not one defect cited from several places.
+fn check_suitability_claims(errors: &mut Vec<String>) {
+    for path in suitability_claim_docs() {
+        if let Some(source) = read_required(path, errors) {
+            errors.extend(suitability_claim_findings_in(&source, path));
+        }
+    }
+}
+
+/// Pure over one document's text (the shape of `stale_phrases_in`), but the
+/// **opposite** masking behaviour: `stale_phrases_in` strips decoration so a
+/// backticked phrase still matches, while this masks inline code spans
+/// (`mask_code_spans`, RFC 050 S2) first, so a term named inside an inline
+/// code span is exposition, not a claim, and does not fire (RFC 054 S4's
+/// third required test). Fenced code blocks are **not** masked — the same
+/// conservative direction RFC 053's clause 1 takes — so a term inside one
+/// still fires; a writer who needs to name a term in a covered document
+/// backticks it inline.
+fn suitability_claim_findings_in(source: &str, label: &str) -> Vec<String> {
+    let mut findings = Vec::new();
+    for (index, line) in source.lines().enumerate() {
+        let masked = mask_code_spans(line).to_ascii_lowercase();
+        for term in SUITABILITY_CLAIM_TERMS {
+            if masked.contains(term) {
+                findings.push(format!(
+                    "SUITABILITY CLAIM: {label}:{} contains `{term}`",
+                    index + 1
+                ));
+            }
+        }
+    }
+    findings
 }
 
 /// RFC 024 retires the RFC 021 conditional apparatus permanently (§11.3): no
@@ -2216,7 +2296,8 @@ mod tests {
         parse_changelog_release_status, parse_design_freeze, parse_ordinary_apex_currency,
         phase_numeral_sequence_findings, phase_reference_findings, phase_rfc_findings,
         phase_state_findings, readme_requirement_findings, release_table_findings, render_scope,
-        retired_conditional_prose_in, stale_phrases_in,
+        retired_conditional_prose_in, stale_phrases_in, suitability_claim_docs,
+        suitability_claim_findings_in,
     };
     use std::fs;
     use std::path::PathBuf;
@@ -2595,6 +2676,38 @@ mod tests {
         let mut errors = Vec::new();
         stale_phrases_in(current_before_historical(source), "synthetic", &mut errors);
         assert_eq!(errors.len(), 1);
+    }
+
+    #[test]
+    fn suitability_claim_scan_catches_a_covered_terms_document_and_line() {
+        let source = "line one\nthe device path is safety-relevant here\nline three\n";
+        let findings = suitability_claim_findings_in(source, "example.md");
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("example.md:2"), "{}", findings[0]);
+        assert!(findings[0].contains("safety-relevant"), "{}", findings[0]);
+    }
+
+    #[test]
+    fn suitability_claim_scan_excludes_terms_of_use_and_the_threat_model_by_rule() {
+        // RFC 054 S4's exclusion is a rule, not a convenience: a document whose
+        // purpose is to name a standard and disclaim it must be able to.
+        let mut docs = suitability_claim_docs();
+        assert!(!docs.any(|path| path == "TERMS_OF_USE.md"));
+        assert!(!suitability_claim_docs().any(|path| path == "docs/src/threat-model.md"));
+    }
+
+    #[test]
+    fn suitability_claim_scan_masks_a_backticked_term_but_not_its_unbackticked_sibling() {
+        let source = "naming `safety-relevant` here is exposition, not a claim\nsafety-relevant unbackticked\n";
+        let findings = suitability_claim_findings_in(source, "example.md");
+        assert_eq!(findings.len(), 1, "{findings:?}");
+        assert!(findings[0].contains("example.md:2"), "{}", findings[0]);
+    }
+
+    #[test]
+    fn suitability_claim_scan_is_case_insensitive() {
+        let findings = suitability_claim_findings_in("Safety-Critical system", "example.md");
+        assert_eq!(findings.len(), 1, "{findings:?}");
     }
 
     #[test]

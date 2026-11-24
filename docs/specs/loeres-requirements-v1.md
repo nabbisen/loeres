@@ -32,8 +32,8 @@
 
 Loeres is a Rust workspace-based mathematical optimization library family. Its defining requirement is not merely to provide optimization algorithms, but to preserve a hard compile-time boundary between two fundamentally different execution worlds:
 
-1. **Cluster / Server optimization**: high-throughput, dynamically allocated, parallel, cloud-native computation.
-2. **Device / Edge optimization**: deterministic, allocation-free, panic-averse, real-time-safe computation for embedded, control-loop, and safety-relevant environments.
+1. **Cluster / Server optimization**: dynamically allocated, parallel, server-side computation.
+2. **Device / Edge optimization**: deterministic, allocation-free, panic-averse computation for code that cannot allocate.
 
 Loeres must not become a single runtime that switches between these worlds dynamically. The separation must be encoded in crate boundaries, dependency direction, feature policy, CI gates, public APIs, documentation, and release procedures. Server-side crates may depend on `std`, dynamic allocation, async runtimes, logging, metrics, BLAS/LAPACK bindings, and parallel execution libraries. Edge-facing crates must remain `#![no_std]`, must not depend on `alloc`, and must avoid transitive dependency paths that introduce `std` or heap allocation.
 
@@ -106,25 +106,46 @@ Compared with earlier drafts, this version adds or strengthens the following poi
 
 ## 2. Target Users and Use Cases
 
+**Who this is for.** Loeres is for engineers writing Rust who already have a model and need it
+solved under constraints they can check. Using it means implementing this library's traits: there
+is no file format and no command-line entry point, so a user who does not write Rust cannot use it
+today.
+
+Both paths solve exactly one class:
+
+> Minimize `f(x) = ½xᵀQx + cᵀx` subject to `lo ≤ x ≤ hi` and `Ax ≤ b`, with all data finite and
+> `Q` symmetric positive semidefinite as an unverified caller precondition. There are no equality
+> constraints and no free variables.
+
+Equality constraints and unbounded variables are **absent from the design**, not unimplemented.
+
+**The device path's engineering properties, each asserted by a gate in `cargo xtask check`:**
+`#![no_std]`, no `alloc`, no panic in public solve paths, bounded iteration, determinism for a
+given target, zero external dependencies, and a caller-owned workspace whose dimensions are fixed
+at compile time or at initialization. They are stated here because a gate asserts them, and that
+is the only reason this document states any of them.
+
+**What is not claimed.** Wall-clock throughput: it depends on the host, and no gate asserts it.
+Solver breadth: there is one projected-first-order family, and no LP, SOCP, large-`n` or
+adversarial-parity claim. **Fitness for any application domain:** this document names none, and
+`TERMS_OF_USE.md` and `docs/src/threat-model.md` state what the project does and does not
+establish.
+
 ### 2.1 Server / Cluster Users
 
-Server users need high-throughput optimization over large or variable-sized models. They may run Loeres inside SaaS systems, batch jobs, distributed services, logistics engines, scheduling platforms, energy grid analysis, or analytics pipelines.
+Server users solve many problems of the same class inside a long-running process or a batch job, over models whose dimensions are known only at run time.
 
 Representative requirements:
 
 - Dynamic dimensions.
-- Batch solving.
+- Batch solving with per-item outcomes.
 - Multi-threaded execution.
 - Async service integration.
 - Logging, metrics, tracing, cancellation, and time budgeting.
-- Optional FFI adapters to mature numerical engines.
-- Support for large sparse or dense matrices.
-- Support for solver families that are not deterministic enough for edge use.
-- Isolation policies for multi-tenant service operation.
 
 ### 2.2 Device / Edge Users
 
-Device users need small, predictable optimization kernels for real-time or near-real-time environments. Example domains include robotics, model predictive control, industrial controllers, autonomous systems, medical IoT, smart-grid devices, and inference-adjacent decision policies.
+Device users solve small, fixed-size problems inside code that cannot allocate and must not panic.
 
 Representative requirements:
 
@@ -136,7 +157,6 @@ Representative requirements:
 - Bounded stack and static memory footprint.
 - Explicit non-convergence handling.
 - Panic-averse or panic-free public solve paths.
-- Stable timing behavior suitable for WCET review.
 - Reference-target documentation for floating-point behavior.
 
 ### 2.3 Project Positioning
@@ -442,7 +462,7 @@ Important scope rule:
 
 ### 5.2.1 Purpose
 
-`loeres-backend-std` provides dynamic storage and high-throughput numerical backend integrations for server use.
+`loeres-backend-std` provides dynamic storage for server use.
 
 ### 5.2.2 Required Properties
 
@@ -513,7 +533,7 @@ Requirements:
 
 ### 5.4.1 Purpose
 
-`loeres-cluster` provides server-side solver engines and orchestration APIs for dynamic, high-throughput workloads.
+`loeres-cluster` provides server-side solver engines and orchestration APIs for dynamic workloads.
 
 ### 5.4.2 Required Properties
 
@@ -935,7 +955,7 @@ The repository must include:
 - `CHANGELOG.md`.
 - `SECURITY.md`.
 - `CONTRIBUTING.md`.
-- `TERMS_OF_USE.md` or equivalent disclaimers for safety-critical usage.
+- `TERMS_OF_USE.md` or equivalent disclaimers for `safety-critical` usage.
 - Crate-level READMEs for each crate.
 
 ### 10.2 Required Architecture Documentation

@@ -10,11 +10,20 @@ Loeres is a Rust workspace of mathematical-optimization crates. Its defining
 property is not the solvers it provides, but the boundary it preserves: a hard,
 compile-time separation between two fundamentally different execution worlds.
 
-- **Cluster / server optimization** — high-throughput, dynamically allocated,
-  parallel, cloud-native computation.
-- **Device / edge optimization** — deterministic, allocation-free, panic-averse,
-  real-time-safe computation for embedded, control-loop, and safety-relevant
-  environments.
+- **Cluster / server optimization** — dynamically allocated, parallel,
+  server-side computation.
+- **Device / edge optimization** — deterministic, allocation-free,
+  panic-averse computation for code that cannot allocate.
+
+**Who this is for, and what is not claimed.** Loeres is for engineers writing
+Rust who already have a model. The device path's properties — `#![no_std]`, no
+`alloc`, no panic in public solve paths, bounded iteration, determinism for a
+given target, and zero external dependencies — are each asserted by a gate in
+`cargo xtask check`. Wall-clock throughput is not claimed; solver breadth is one
+projected-first-order family; and no application domain is named as one this
+library is fit for. `docs/specs/loeres-requirements-v1.md` §2 is the normative
+statement, and `TERMS_OF_USE.md` and the threat model record what the project
+does and does not establish.
 
 Loeres is deliberately *not* a single runtime that switches between these worlds
 at run time. The separation is encoded in crate boundaries, dependency
