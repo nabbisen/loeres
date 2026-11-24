@@ -11,7 +11,7 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.25.0] — unreleased
+## [0.25.0] — 2026-11-24 — Who this is for, said once in properties, and four public modules that declared nothing
 
 **Release status:** unreleased
 
@@ -91,8 +91,8 @@ workloads — none of them a claim about what this project has built). Two more 
 must survive: `loeres-roadmap-milestones-v1.md:730` and `docs/src/threat-model.md:82`, both stating
 that a control *does not* establish high-throughput. Two more are RFC 008's own section title and its
 node in the dependency graph, at `loeres-roadmap-milestones-v1.md:726` and `:1143` — historical
-text, not claims. A reader who greps the word themselves will find **ten** occurrences, of which
-these **eight** are deliberately kept.
+text, not claims. A reader who greps the word themselves will find **ten** occurrences, and every
+one of them is deliberately kept.
 
 - Adds `doc-currency`'s `SUITABILITY CLAIM` assertion: the safety-and-compliance vocabulary
   (`safety-relevant`, `safety-critical`, `medical iot`, `medical device`, `autonomous system`, and
