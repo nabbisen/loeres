@@ -15,6 +15,51 @@ The owner's second principle governs this RFC more directly than any other in th
 and UI/UX for users not to be confused or misunderstand*. The thing a reader is currently able to
 misunderstand is whether this library may be used in a system that can hurt someone.
 
+## 0.1 Amendment 1 (2026-11-24)
+
+Made while Accepted, under RFC 000's in-place-amendment rule, and recorded in architect review
+131. The Status line carries only the design-freeze date while this RFC is in `accepted/`;
+**this amendment must be named in the Status line when the file moves to `rfcs/done/`**.
+
+**§2.3's table was built from truncated `grep` output and reads as exhaustive. It is not.**
+Measured with no limit (review 131 §2): **twelve** occurrences of the throughput claim exist in
+tracked files outside `rfcs/` and `CHANGELOG.md`, where §2.3 judged seven. Two of the five it never
+saw are defects of the same shape §2.3 did judge, and one of them is in a **third normative apex
+specification this RFC never surveyed at all**.
+
+### Two further defect sites, added to S2
+
+| site | text | why |
+| --- | --- | --- |
+| `docs/specs/loeres-roadmap-milestones-v1.md:53` | *"**Cluster Layer:** dynamic, cloud-native, high-throughput execution."* | the identical sentence shape S2 corrects at `loeres-requirements-v1.md:35`, in an apex document outside the original survey |
+| `docs/specs/loeres-requirements-v1.md:1225` | *"AC-014 \| Server solver design **supports** dynamic allocation and high-throughput integration without contaminating edge crates."* | an **acceptance criterion** — asserted, not aspired — of the same shape as `:445` and `:516` |
+
+The other three unsurveyed occurrences are **not** defects, and are named so the judgement is on
+the record rather than re-litigated: `loeres-requirements-v1.md:730` (a requirement about the
+*caller's* high-throughput paths), `:1287` (a traceability row naming a requirement theme), and
+`loeres-roadmap-milestones-v1.md:658` (a stated objective). `external-design:829`'s *Purpose*
+column is likewise not a defect, by the same rule that spared `:723`'s *"may optimize for"*:
+a purpose is an intention. `loeres-roadmap-milestones-v1.md:730` and `docs/src/threat-model.md:82`
+are **disclaimers** and must survive.
+
+### `loeres-roadmap-milestones-v1.md` joins S4's covered documents
+
+Measured: a `safety-critical` added to that file leaves `doc-currency` **passing** (review 131 §2).
+It is a normative apex specification that makes exactly the claims S4 exists to hold, and its
+absence from `suitability_claim_docs()` is a consequence of §2's incomplete survey rather than a
+decision.
+
+**`docs/specs/loeres-reconciliation-traceability-v020.md` is deliberately *not* added**, by the
+same rule that excludes `TERMS_OF_USE.md` and `docs/src/threat-model.md`: its OQ-012 row records
+that a safety-critical disclaimer is *missing*, which is naming a term in order to disclaim it.
+
+### The survey method, corrected
+
+§2.3's defect is not its judgements but its completeness. A survey that becomes a table in an RFC
+is **run with no `head` limit, and its total count is stated beside the table** — extending review
+121 §1's remedy (state the command) with: the command must not be truncated, and the count must be
+printed so a reader can see whether the table accounts for it.
+
 ## 1. Summary
 
 **Three tracked documents say who Loeres is for. They do not agree, and the most permissive of
