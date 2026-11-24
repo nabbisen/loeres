@@ -12,8 +12,8 @@ of each of its phases, is
 `Phase 0-3` below are the crate-layering milestones and a different axis.
 
 > **Release currency metadata.**
-> This tree: **0.25.0**.
-> Last reconciled repository release: **0.24.2**.
+> This tree: **0.25.1**.
+> Last reconciled repository release: **0.25.0**.
 > Implemented scope: **RFCs 001-046, 048-055**.
 >
 

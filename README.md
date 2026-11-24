@@ -22,12 +22,12 @@ The dependency snippets for both:
 
 ```toml
 # Cluster / server user
-loeres-cluster        = { version = "0.24", features = ["parallel-rayon"] }
-loeres-backend-std    = { version = "0.24", features = ["dense"] }
+loeres-cluster        = { version = "0.25", features = ["parallel-rayon"] }
+loeres-backend-std    = { version = "0.25", features = ["dense"] }
 
 # Device / edge user
-loeres-device         = { version = "0.24", default-features = false }
-loeres-backend-static = { version = "0.24", default-features = false, features = ["owned-arrays"] }
+loeres-device         = { version = "0.25", default-features = false }
+loeres-backend-static = { version = "0.25", default-features = false, features = ["owned-arrays"] }
 ```
 
 At `0.y`, the minor is the compatibility unit, so this requirement names one deliberately rather than accepting the next.

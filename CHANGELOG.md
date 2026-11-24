@@ -11,9 +11,13 @@ authoritative remote and the tagged CI `release-gate` job succeeds (RFC 021 §7)
 two are independent: a release can be distributed and not published. Release-status lines
 from `0.20.2` onward say which of the two hold.
 
-## [0.25.0] — 2026-11-24 — Who this is for, said once in properties, and four public modules that declared nothing
+## [0.25.1] — unreleased
 
 **Release status:** unreleased
+
+## [0.25.0] — 2026-11-24 — Who this is for, said once in properties, and four public modules that declared nothing
+
+**Release status:** released (tagged 2026-11-24, distributed 2026-11-24); published to crates.io
 
 Repository release `0.25.0` carries RFC 054 (a suitability claim a gate can assert) and RFC 055
 (no public module that declares nothing), and is a minor because RFC 055 removes four public
