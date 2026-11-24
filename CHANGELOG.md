@@ -15,8 +15,9 @@ from `0.20.2` onward say which of the two hold.
 
 **Release status:** unreleased
 
-Repository release `0.25.0` carries RFC 055 (no public module that declares nothing), and is a
-minor because that is a source break (see below).
+Repository release `0.25.0` carries RFC 054 (a suitability claim a gate can assert) and RFC 055
+(no public module that declares nothing), and is a minor because RFC 055 removes four public
+paths, which is a source break (see below).
 
 **A source break, and who it affects.** Four `pub mod` declarations that resolved to a file
 declaring no public item are removed: `loeres_backend_std::{adapter, batch, view}` and
@@ -88,8 +89,10 @@ stated objective, not an achievement claim), and `loeres-external-design-v1.md:7
 `:1370` (a design permission, a *Purpose* column, and rationale for why isolation matters to such
 workloads — none of them a claim about what this project has built). Two more are disclaimers that
 must survive: `loeres-roadmap-milestones-v1.md:730` and `docs/src/threat-model.md:82`, both stating
-that a control *does not* establish high-throughput. A reader who greps the word themselves will
-find exactly these six, deliberately kept.
+that a control *does not* establish high-throughput. Two more are RFC 008's own section title and its
+node in the dependency graph, at `loeres-roadmap-milestones-v1.md:726` and `:1143` — historical
+text, not claims. A reader who greps the word themselves will find **ten** occurrences, of which
+these **eight** are deliberately kept.
 
 - Adds `doc-currency`'s `SUITABILITY CLAIM` assertion: the safety-and-compliance vocabulary
   (`safety-relevant`, `safety-critical`, `medical iot`, `medical device`, `autonomous system`, and
