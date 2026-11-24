@@ -134,6 +134,13 @@ deliberate opt-in.
      sites. Recorded here because it is the one correction that would otherwise be lost between
      the review and the cut.
 
+   - **architect review 133 F1, a second correction in the same paragraph:** the replacement
+     sentence the prep slice landed reads *"will find **ten** occurrences, of which these **eight**
+     are deliberately kept"* — and the paragraph names **ten** sites (six non-defects, two
+     disclaimers, two historical titles), all of them deliberately kept. The *"eight"* is mine,
+     carried from review 132 §2's own partition error. Replace the clause with *"and every one of
+     them is deliberately kept"*: a sentence with one number cannot disagree with itself.
+
    Keep `**Release status:** unreleased` — §6 sets it.
 4. **Check, do not edit:** §1's five facts.
 5. `cargo xtask check` → **20 gates PASS**, on the gate's own exit status, never through a pipe.
